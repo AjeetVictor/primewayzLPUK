@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem; /* Accounts for fixed navbar height */
+  }
+}
+
+@theme {
+  /* Brand Blue - Primary */
+  --color-emerald-50: #f0f7ff;
+  --color-emerald-100: #e0efff;
+  --color-emerald-200: #badbff;
+  --color-emerald-300: #7cc0ff;
+  --color-emerald-400: #389fff;
+  --color-emerald-500: #1B59A7;
+  --color-emerald-600: #12468a;
+  --color-emerald-700: #0f386e;
+  --color-emerald-800: #0c2a52;
+  --color-emerald-900: #091c36;
+
+  /* Brand Pink - Accent */
+  --color-indigo-50: #fff1f4;
+  --color-indigo-100: #ffe4e9;
+  --color-indigo-200: #ffccd6;
+  --color-indigo-300: #ffa3b5;
+  --color-indigo-400: #ff6b8a;
+  --color-indigo-500: #E61E50;
+  --color-indigo-600: #c41440;
+  --color-indigo-700: #a30d32;
+  --color-indigo-800: #820a26;
+  --color-indigo-900: #6b081f;
+}

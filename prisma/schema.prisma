@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model FormResponse {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String
+  message   String
+  createdAt DateTime @default(now())
+}
+
+model ChatSession {
+  id        String   @id @default(uuid())
+  name      String?
+  email     String?
+  createdAt DateTime @default(now())
+  messages  ChatMessage[]
+}
+
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id])
+  sender    String   // 'user', 'bot', 'admin'
+  text      String
+  timestamp DateTime @default(now())
+  replyToId Int?
+  replyTo   ChatMessage? @relation("Replies", fields: [replyToId], references: [id])
+  replies   ChatMessage[] @relation("Replies")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  role      String   @default("viewer") // 'admin', 'editor', 'viewer'
+  createdAt DateTime @default(now())
+}
+
+model BlogPostComment {
+  id        Int      @id @default(autoincrement())
+  postId    String
+  name      String
+  text      String
+  createdAt DateTime @default(now())
+}
