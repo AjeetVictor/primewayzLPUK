@@ -1,22 +1,7 @@
 import { useState, useEffect, useRef, FormEvent, KeyboardEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageCircle, X, Send, User, Bot, Minus } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-const model = "gemini-3-flash-preview";
-
-const SYSTEM_INSTRUCTION = `You are the Primewayz Support Bot. 
-Primewayz is an elite software development agency that provides "Engineering as a Service".
-Key features:
-- No contracts, cancel anytime.
-- Elite engineering talent.
-- Scalable development teams.
-- Fixed monthly pricing.
-- Fast delivery.
-
-Your goal is to be helpful, professional, and encourage users to book a call or fill out the contact form. 
-Keep responses concise and friendly. If you don't know something, suggest they speak with a human expert.`;
+import { apiUrl } from '../utils/apiUrl';
 
 interface Message {
   id: string;
@@ -36,6 +21,7 @@ export const LiveChat = () => {
   const [userName, setUserName] = useState(() => localStorage.getItem('chat_user_name') || '');
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem('chat_user_email') || '');
   const [showLeadForm, setShowLeadForm] = useState(!userName || !userEmail);
+  const [apiAvailable, setApiAvailable] = useState(true);
   const [sessionId] = useState(() => {
     const saved = localStorage.getItem('chat_session_id');
     if (saved) return saved;
@@ -43,13 +29,12 @@ export const LiveChat = () => {
     localStorage.setItem('chat_session_id', newId);
     return newId;
   });
-  const chatSessionRef = useRef<any>(null);
 
   // Fetch persistent chat history
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await fetch(`/api/chat/${sessionId}`);
+        const res = await fetch(apiUrl(`/api/chat/${sessionId}`));
         if (res.ok) {
           const history = await res.json();
           if (history.length > 0) {
@@ -67,9 +52,23 @@ export const LiveChat = () => {
               timestamp: new Date(),
             }]);
           }
+        } else if (res.status === 404) {
+          setApiAvailable(false);
+          setMessages([{
+            id: '1',
+            text: 'Hi there! 👋 Welcome to Primewayz. How can we help you scale your development today?',
+            sender: 'bot',
+            timestamp: new Date(),
+          }]);
         }
       } catch (error) {
-        console.error('Failed to fetch chat history:', error);
+        setApiAvailable(false);
+        setMessages([{
+          id: '1',
+          text: 'Hi there! 👋 Welcome to Primewayz. How can we help you scale your development today?',
+          sender: 'bot',
+          timestamp: new Date(),
+        }]);
       }
     };
     fetchHistory();
@@ -77,11 +76,11 @@ export const LiveChat = () => {
 
   // Polling for new messages (especially admin replies)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !apiAvailable) return;
     
     const pollInterval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/chat/${sessionId}`);
+        const res = await fetch(apiUrl(`/api/chat/${sessionId}`));
         if (res.ok) {
           const history = await res.json();
           if (history.length > messages.length) {
@@ -93,12 +92,12 @@ export const LiveChat = () => {
           }
         }
       } catch (error) {
-        console.error('Polling error:', error);
+        setApiAvailable(false);
       }
     }, 5000); // Poll every 5 seconds
 
     return () => clearInterval(pollInterval);
-  }, [isOpen, sessionId, messages.length]);
+  }, [isOpen, sessionId, messages.length, apiAvailable]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -126,22 +125,6 @@ export const LiveChat = () => {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  // Initialize Chat Session
-  useEffect(() => {
-    if (!chatSessionRef.current) {
-      const dynamicInstruction = userName 
-        ? `${SYSTEM_INSTRUCTION}\nThe user's name is ${userName}. Acknowledge them by name occasionally.`
-        : SYSTEM_INSTRUCTION;
-
-      chatSessionRef.current = ai.chats.create({
-        model,
-        config: {
-          systemInstruction: dynamicInstruction,
-        },
-      });
-    }
-  }, [userName]);
-
   const handleLeadSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!userName.trim() || !userEmail.trim()) return;
@@ -150,14 +133,18 @@ export const LiveChat = () => {
     localStorage.setItem('chat_user_email', userEmail);
     
     try {
-      await fetch('/api/chat/session', {
+      const res = await fetch(apiUrl('/api/chat/session'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, name: userName, email: userEmail })
       });
+      if (!res.ok) {
+        setApiAvailable(false);
+      }
       setShowLeadForm(false);
     } catch (error) {
-      console.error('Failed to save session details:', error);
+      setApiAvailable(false);
+      setShowLeadForm(false);
     }
   };
 
@@ -183,28 +170,21 @@ export const LiveChat = () => {
     setMessage('');
     setIsTyping(true);
 
-    // Save user message to database
+    // Generate bot response via backend (also persists user+bot messages in DB)
     try {
-      await fetch('/api/chat', {
+      const res = await fetch(apiUrl('/api/chat/respond'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sender: 'user', text: userMessage.text, sessionId })
+        body: JSON.stringify({
+          sessionId,
+          message: userMessage.text,
+          userName: userName || undefined,
+        }),
       });
-    } catch (error) {
-      console.error('Failed to save user message:', error);
-    }
-
-    // Get AI response
-    try {
-      if (!chatSessionRef.current) {
-        chatSessionRef.current = ai.chats.create({
-          model,
-          config: { systemInstruction: SYSTEM_INSTRUCTION }
-        });
-      }
-
-      const result = await chatSessionRef.current.sendMessage({ message: userMessage.text });
-      const botText = result.text;
+      if (!res.ok) throw new Error('Backend chat request failed');
+      const payload = await res.json();
+      const botText = payload?.botMessage?.text || '';
+      if (!botText) throw new Error('Bot response missing');
 
       setIsTyping(false);
       const botMessage: Message = {
@@ -214,15 +194,9 @@ export const LiveChat = () => {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, botMessage]);
-
-      // Save bot message to database
-      await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sender: 'bot', text: botText, sessionId })
-      });
     } catch (error) {
       console.error('AI Chat error:', error);
+      setApiAvailable(false);
       setIsTyping(false);
       
       const errorBotMessage: Message = {

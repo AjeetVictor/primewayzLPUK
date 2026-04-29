@@ -1,298 +1,573 @@
 import { motion } from 'motion/react';
-import { Check, ArrowRight, Star, Zap, Users, Shield, Clock, Rocket, Plus, CheckCircle2 } from 'lucide-react';
-import { useState } from 'react';
-import { PricingVisual } from './PricingVisual';
+import {
+  ArrowRight,
+  Check,
+  Cloud,
+  MonitorCog,
+  Minus,
+  Route,
+  ShieldCheck,
+  SlidersHorizontal,
+  Wrench,
+} from 'lucide-react';
 
-const plans = [
-  {
-    name: 'STARTER',
-    price: '2,000 - 10,000',
-    description: 'For small businesses & professionals.',
-    features: [
-      'Modern Responsive Website',
-      'CMS for content/images',
-      'SEO + GEO configuration',
-      'Social media integration',
-      'Weekly 2 content posts',
-      'Hosting up to 10GB free',
-      '1 active task at a time',
-    ],
-    color: 'bg-white border-zinc-200',
-    buttonColor: 'bg-zinc-900 text-white hover:bg-zinc-800',
-  },
-  {
-    name: 'GROWTH',
-    price: '10,000 - 25,000',
-    description: 'For growing companies needing automation.',
-    features: [
-      'Everything in Starter +',
-      'Ecommerce (products/services)',
-      'Payment gateway integration',
-      'Marketing automation',
-      'CRM & API connections',
-      'Hosting up to 25GB',
-      '2 concurrent workflow stages',
-    ],
-    color: 'bg-emerald-50 border-emerald-200 ring-2 ring-emerald-500',
-    buttonColor: 'bg-emerald-600 text-white hover:bg-emerald-700',
-    popular: true,
-  },
-  {
-    name: 'SCALE',
-    price: '25,000 - 75,000',
-    description: 'For serious operational systems.',
-    features: [
-      'Accounting / Finance systems',
-      'Custom admin panels',
-      'ERP modules',
-      'Workflow automation',
-      'Mobile-ready systems',
-      'Priority queue',
-      'Dedicated architect',
-    ],
-    color: 'bg-white border-zinc-200',
-    buttonColor: 'bg-zinc-900 text-white hover:bg-zinc-800',
-  },
-];
-
-const enterprisePlan = {
-  name: 'ENTERPRISE',
-  price: '4,00,000+',
-  description: 'Advanced Platforms & SaaS.',
-  features: [
-    'High-availability architecture',
-    'Microservices & AI integrations',
-    'Compliance-ready systems',
-    'Data pipelines',
-    'Multi-resource execution',
-    'Sprint planning & Release cycles',
-  ],
-  color: 'bg-zinc-900 border-zinc-800 text-white',
-  buttonColor: 'bg-white text-zinc-900 hover:bg-zinc-100',
+type PlanCard = {
+  name: string;
+  launchPrice: string;
+  originalPrice: string;
+  launchDiscount: string;
+  capacity: string;
+  description: string;
+  bestFor: string[];
+  included: string[];
+  limitations?: string[];
+  note?: string;
+  cta: string;
+  ctaHref: string;
+  highlight?: boolean;
 };
 
-const addOns = [
-  { name: 'Dedicated Frontend Dev', price: '+₹10K' },
-  { name: 'Dedicated Backend Dev', price: '+₹20K' },
-  { name: 'UI/UX Designer', price: '+₹8K' },
-  { name: 'DevOps / Digital Marketing', price: '+₹20K' },
-  { name: 'Speed Boost (2x Delivery)', price: '+30-40%' },
+const clarityBadges = [
+  'Prices shown ex VAT',
+  'Third-party vendor costs billed separately',
+  'Flexible monthly capacity',
+  'Move to maintenance anytime',
+] as const;
+
+const foundationSprint: PlanCard = {
+  name: 'Foundation Sprint',
+  launchPrice: '£722.50',
+  originalPrice: '£850 one-time',
+  launchDiscount: '15% Launch Discount',
+  capacity: '2-4 week structured launch phase',
+  description:
+    'A structured starting phase for discovery, planning, setup, and launch readiness.',
+  bestFor: [
+    'New website or platform starts',
+    'Redesign foundations',
+    'CMS setup',
+    'Launch preparation',
+    'Technical SEO baseline',
+    'Roadmap alignment',
+  ],
+  included: [
+    'Discovery and requirement alignment',
+    'Content and structure planning',
+    'UX direction',
+    'CMS / environment setup',
+    'Analytics baseline',
+    'Technical SEO foundation',
+    'Delivery roadmap for next phase',
+  ],
+  limitations: ['Not designed for ongoing monthly feature delivery'],
+  cta: 'Start with Foundation Sprint',
+  ctaHref: '#contact',
+};
+
+const activePlans: PlanCard[] = [
+  {
+    name: 'Essential',
+    launchPrice: '£741/mo',
+    originalPrice: '£950/mo',
+    launchDiscount: '22% Launch Discount',
+    capacity: 'Up to 40 hrs/month • 1 active workstream',
+    description:
+      'For websites, CMS improvements, light integrations, technical upkeep, and technical SEO foundation.',
+    bestFor: [
+      'Stable monthly execution for core website and CMS delivery',
+      'Light integrations and technical upkeep',
+      'Technical SEO foundation support',
+    ],
+    included: [
+      'Monthly planning and prioritisation',
+      'Website and CMS improvements',
+      'Bug fixes and refinement',
+      'Light integrations',
+      'Technical SEO foundation upkeep',
+      'Staging, QA, and deployment support',
+    ],
+    limitations: [
+      'No complex ecommerce ecosystems',
+      'No multi-stream delivery',
+      'No advanced automation',
+    ],
+    cta: 'Book a call for Essential',
+    ctaHref: '#contact',
+  },
+  {
+    name: 'Growth',
+    launchPrice: '£1,189/mo',
+    originalPrice: '£1,450/mo',
+    launchDiscount: '18% Launch Discount',
+    capacity: 'Up to 80 hrs/month',
+    description:
+      'For growing businesses that need ongoing digital improvement, landing pages, CRM integrations, and conversion-focused work.',
+    bestFor: [
+      'Teams needing broader delivery capacity',
+      'Landing pages and digital improvement',
+      'CRM and light API integrations',
+      'Conversion-focused work',
+    ],
+    included: [
+      'Everything in Essential',
+      'Broader design and development coverage',
+      'Landing page system support',
+      'CRM and light API integrations',
+      'SEO growth support',
+      'Analytics and conversion improvements',
+    ],
+    limitations: [
+      'Not ideal for highly complex operational platforms',
+      'Not ideal for governance-heavy delivery',
+    ],
+    cta: 'Book a call for Growth',
+    ctaHref: '#contact',
+    highlight: true,
+  },
+  {
+    name: 'Scale',
+    launchPrice: '£2,100/mo',
+    originalPrice: '£2,500/mo',
+    launchDiscount: '16% Launch Discount',
+    capacity: 'Up to 120 hrs/month',
+    description:
+      'For portals, dashboards, workflow automation, backend/frontend coordination, and structured digital scale-up.',
+    bestFor: [
+      'Businesses running broader digital operations',
+      'Portals and dashboards',
+      'Workflow automation',
+      'Backend/frontend coordination',
+    ],
+    included: [
+      'Everything in Growth',
+      'Custom workflows and admin systems',
+      'Automation and process improvement',
+      'Backend + frontend + QA coordination',
+      'Structured release rhythm',
+    ],
+    limitations: [
+      'Architecture-led transformation should move to Enterprise',
+      'Complex governance needs Enterprise engagement',
+    ],
+    cta: 'Book a call for Scale',
+    ctaHref: '#contact',
+  },
 ];
+
+const maintenancePlan: PlanCard = {
+  name: 'Maintenance Mode',
+  launchPrice: '£405/mo',
+  originalPrice: '£450/mo',
+  launchDiscount: '10% Launch Discount',
+  capacity: '8-10 hrs/month focused continuity support',
+  description:
+    'For continuity, support, and stability between active build phases.',
+  bestFor: [
+    'Teams focused on stable operations between active build phases',
+    'Routine upkeep and minor fixes',
+    'Continuity without active monthly feature delivery',
+  ],
+  included: [
+    'Minor bug fixes',
+    'Routine upkeep',
+    'Limited content/config updates',
+    'Small support requests',
+  ],
+  limitations: ['No active redesign', 'No major new features', 'No deeper integrations'],
+  cta: 'Move to Maintenance Mode',
+  ctaHref: '#contact',
+};
+
+const enterprisePlan: PlanCard = {
+  name: 'Enterprise',
+  launchPrice: '£3,400/mo',
+  originalPrice: '£4,000/mo',
+  launchDiscount: '15% Launch Discount',
+  capacity: 'Custom pod / advanced delivery capacity',
+  description:
+    'For advanced platforms, architect-led delivery, and governance-heavy engagements.',
+  bestFor: [
+    'Complex integration-heavy systems',
+    'Architect-led delivery',
+    'Compliance or governance-heavy work',
+    'Large-scale roadmap execution',
+  ],
+  included: [
+    'Custom team shape',
+    'Architecture support',
+    'Stronger governance',
+    'Advanced integration work',
+    'Compliance-ready delivery support',
+  ],
+  limitations: ['Not required for standard website/CMS monthly delivery'],
+  note: 'Custom scope after discovery may apply for advanced cases.',
+  cta: 'Talk to us about Enterprise',
+  ctaHref: '#contact',
+};
+
+const transparencyColumns = [
+  {
+    title: 'Third-party vendor costs',
+    icon: Cloud,
+    items: [
+      'Cloud hosting (AWS, GCP, Azure)',
+      'Domain registration & SSL',
+      'SaaS tool subscriptions',
+    ],
+  },
+  {
+    title: 'Optional Primewayz add-ons',
+    icon: MonitorCog,
+    items: [
+      'Technical specialists',
+      'Specialized UX/UI support',
+      'Complex DevOps engineering',
+    ],
+  },
+] as const;
+
+const whySubscriptionItems = [
+  {
+    title: 'Flexibility',
+    description:
+      'Adjust your capacity monthly based on your roadmap and current priorities.',
+    icon: SlidersHorizontal,
+  },
+  {
+    title: 'Total transparency',
+    description:
+      'Clear pricing with vendor costs handled separately where applicable.',
+    icon: ShieldCheck,
+  },
+  {
+    title: 'Roadmap continuity',
+    description:
+      'Maintain delivery momentum without restarting procurement or project cycles.',
+    icon: Route,
+  },
+  {
+    title: 'Seamless maintenance',
+    description:
+      'Scale down when priorities slow, then restart active delivery when needed.',
+    icon: Wrench,
+  },
+] as const;
+
+const GroupLabel = ({ label }: { label: string }) => (
+  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">{label}</p>
+);
+
+const FoundationFeaturedCard = ({ plan }: { plan: PlanCard }) => (
+  <article className="rounded-3xl border border-emerald-300 bg-white p-6 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.55)] ring-1 ring-emerald-200 sm:p-7 lg:p-8">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.15fr_0.85fr] lg:gap-6">
+      <div>
+        <div className="mb-4 inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
+          START HERE
+        </div>
+        <h3 className="text-3xl font-semibold tracking-tight text-zinc-900">{plan.name}</h3>
+        <div className="mt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+            2026 Launch Price
+          </p>
+          <p className="mt-1 text-3xl font-bold text-zinc-900">{plan.launchPrice}</p>
+          <p className="mt-1 text-sm text-zinc-500 line-through">{plan.originalPrice}</p>
+          <p className="mt-2 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-emerald-700">
+            {plan.launchDiscount}
+          </p>
+        </div>
+        <p className="mt-3 text-sm font-semibold text-zinc-700">{plan.capacity}</p>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600">{plan.description}</p>
+
+        <div className="mt-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Best for</p>
+          <ul className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
+            {plan.bestFor.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-sm text-zinc-700">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <aside className="rounded-2xl border border-zinc-200/90 bg-zinc-50/70 p-4 sm:p-5">
+        <h4 className="text-sm font-semibold uppercase tracking-[0.12em] text-zinc-700">
+          Included in Foundation Sprint
+        </h4>
+        <ul className="mt-3 space-y-2.5">
+          {plan.included.map((item) => (
+            <li key={item} className="flex items-start gap-2 text-sm text-zinc-700">
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </aside>
+    </div>
+
+    <div className="mt-5 flex flex-col gap-3 border-t border-zinc-200/80 pt-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="rounded-xl border border-amber-100 bg-amber-50/50 px-3 py-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
+          Limitations / not ideal for
+        </p>
+        <p className="mt-1 text-sm text-zinc-700">{plan.limitations?.[0]}</p>
+      </div>
+      <motion.a
+        href={plan.ctaHref}
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.99 }}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 sm:w-auto"
+      >
+        {plan.cta}
+        <ArrowRight className="h-4 w-4" />
+      </motion.a>
+    </div>
+  </article>
+);
+
+const PlanCardBlock = ({ plan, featured }: { plan: PlanCard; featured?: boolean }) => (
+  <article
+    className={`rounded-3xl border bg-white p-6 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.55)] sm:p-7 ${
+      plan.highlight
+        ? 'border-blue-300 ring-1 ring-blue-200'
+        : featured
+          ? 'border-emerald-300 ring-1 ring-emerald-200'
+          : 'border-zinc-200/90'
+    }`}
+  >
+    {(plan.highlight || featured) && (
+      <div
+        className={`mb-4 inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${
+          plan.highlight
+            ? 'bg-blue-50 text-blue-700'
+            : 'bg-emerald-50 text-emerald-700'
+        }`}
+      >
+        {plan.highlight ? 'RECOMMENDED' : 'START HERE'}
+      </div>
+    )}
+    <h3 className="text-2xl font-semibold tracking-tight text-zinc-900">{plan.name}</h3>
+    <div className="mt-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+        2026 Launch Price
+      </p>
+      <p className="mt-1 text-3xl font-bold text-zinc-900">{plan.launchPrice}</p>
+      <p className="mt-1 text-sm text-zinc-500 line-through">{plan.originalPrice}</p>
+      <p
+        className={`mt-2 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] ${
+          plan.highlight
+            ? 'border-blue-200 bg-blue-50 text-blue-700'
+            : featured
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+              : 'border-zinc-200 bg-zinc-100 text-zinc-700'
+        }`}
+      >
+        {plan.launchDiscount}
+      </p>
+    </div>
+    <p className="mt-3 text-sm font-semibold text-zinc-700">{plan.capacity}</p>
+    <p className="mt-3 text-sm leading-6 text-zinc-600">{plan.description}</p>
+    {plan.note && <p className="mt-2 text-xs font-medium text-zinc-500">{plan.note}</p>}
+
+    <div className="mt-5">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Best for</p>
+      <ul className="mt-2 space-y-2">
+        {plan.bestFor.map((item) => (
+          <li key={item} className="flex items-start gap-2 text-sm text-zinc-700">
+            <Check className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <details className="mt-5 rounded-2xl border border-zinc-200/80 bg-zinc-50/60 p-4">
+      <summary className="cursor-pointer list-none text-sm font-semibold text-zinc-800">
+        Included scope details
+      </summary>
+      <ul className="mt-3 space-y-2">
+        {plan.included.map((item) => (
+          <li key={item} className="flex items-start gap-2 text-sm text-zinc-700">
+            <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+
+    {plan.limitations && (
+      <div className="mt-5 rounded-2xl border border-amber-100 bg-amber-50/50 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">Limitations / not ideal for</p>
+        <ul className="mt-2 space-y-2">
+          {plan.limitations.map((item) => (
+            <li key={item} className="flex items-start gap-2 text-sm text-zinc-700">
+              <Minus className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+
+    <motion.a
+      href={plan.ctaHref}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
+      className={`mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-colors ${
+        plan.highlight
+          ? 'bg-blue-700 text-white hover:bg-blue-800'
+          : 'bg-zinc-900 text-white hover:bg-zinc-800'
+      }`}
+    >
+      {plan.cta}
+      <ArrowRight className="h-4 w-4" />
+    </motion.a>
+  </article>
+);
 
 export const Pricing = () => {
   return (
-    <section id="pricing" className="py-24 bg-zinc-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
+    <section id="pricing" className="bg-zinc-50 py-24">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl text-center">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-3xl md:text-5xl font-bold tracking-tight text-zinc-900 mb-4"
+            className="text-3xl font-bold tracking-tight text-zinc-900 md:text-5xl"
           >
-            Productized Subscription Tiers
+            Flexible delivery plans for every stage of growth
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="text-lg text-zinc-600 max-w-2xl mx-auto mb-10"
+            transition={{ delay: 0.08 }}
+            className="mx-auto mt-4 max-w-3xl text-base leading-7 text-zinc-600 md:text-lg"
           >
-            Choose the velocity that matches your business stage. 
-            Pause anytime - resume later.
+            Choose the capacity that fits your current roadmap. Start with a Foundation Sprint,
+            scale through active delivery plans, or move to Maintenance Mode when priorities
+            slow down.
           </motion.p>
         </div>
 
-        <motion.div 
-          variants={{
-            hidden: { opacity: 0 },
-            visible: {
-              opacity: 1,
-              transition: {
-                staggerChildren: 0.15,
-              },
-            },
-          }}
-          initial="hidden"
-          whileInView="visible"
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12"
+          transition={{ delay: 0.12 }}
+          className="mx-auto mt-8 flex max-w-5xl flex-wrap justify-center gap-2.5"
         >
-          {plans.map((plan) => (
-            <motion.div
-              key={plan.name}
-              variants={{
-                hidden: { opacity: 0, y: 30 },
-                visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
-              }}
-              className={`relative p-8 rounded-3xl border ${plan.color} flex flex-col hover:shadow-xl transition-shadow duration-300`}
+          {clarityBadges.map((rule) => (
+            <div
+              key={rule}
+              className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-zinc-700"
             >
-              {plan.popular && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-emerald-500 text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider z-10">
-                  Most Popular
-                </div>
-              )}
-              <div className="mb-8">
-                <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                <p className="text-zinc-500 text-sm">{plan.description}</p>
-              </div>
-
-              <div className="mb-8">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-zinc-900">
-                    ₹{plan.price}
-                  </span>
-                  <span className="text-zinc-500 font-medium">/mo</span>
-                </div>
-              </div>
-
-              <motion.ul 
-                variants={{
-                  hidden: { opacity: 0 },
-                  visible: {
-                    opacity: 1,
-                    transition: {
-                      staggerChildren: 0.05,
-                      delayChildren: 0.3,
-                    },
-                  },
-                }}
-                className="space-y-4 mb-10 flex-grow"
-              >
-                {plan.features.map((feature) => (
-                  <motion.li 
-                    key={feature} 
-                    variants={{
-                      hidden: { opacity: 0, x: -10 },
-                      visible: { opacity: 1, x: 0 },
-                    }}
-                    className="flex items-start gap-3 text-sm text-zinc-600"
-                  >
-                    <Check className="w-5 h-5 text-emerald-500 shrink-0" />
-                    {feature}
-                  </motion.li>
-                ))}
-              </motion.ul>
-
-              <motion.a 
-                href="#contact" 
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                className={`w-full py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 group shadow-lg shadow-emerald-900/5 ${plan.buttonColor}`}
-              >
-                Get Started
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </motion.a>
-            </motion.div>
+              {rule}
+            </div>
           ))}
         </motion.div>
 
-        {/* Enterprise Plan */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className={`relative p-8 md:p-12 rounded-[3rem] border ${enterprisePlan.color} mb-24 overflow-hidden`}
-        >
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h3 className="text-3xl md:text-4xl font-bold mb-4">{enterprisePlan.name}</h3>
-              <p className="text-zinc-400 text-lg mb-8">{enterprisePlan.description}</p>
-              <div className="flex items-baseline gap-1 mb-8">
-                <span className="text-4xl font-bold text-white">₹{enterprisePlan.price}</span>
-                <span className="text-zinc-400 font-medium">/mo</span>
-              </div>
-              <motion.a 
-                href="#contact" 
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                className={`px-10 py-5 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 group shadow-xl shadow-white/5 ${enterprisePlan.buttonColor}`}
-              >
-                Contact for Enterprise
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </motion.a>
+        <div className="mt-12 space-y-10">
+          <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            <FoundationFeaturedCard plan={foundationSprint} />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="space-y-3"
+          >
+            <GroupLabel label="ACTIVE MONTHLY DELIVERY" />
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              {activePlans.map((plan) => (
+                <PlanCardBlock key={plan.name} plan={plan} />
+              ))}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {enterprisePlan.features.map((feature) => (
-                <div key={feature} className="flex items-start gap-3 text-sm text-zinc-300">
-                  <Check className="w-5 h-5 text-emerald-400 shrink-0" />
-                  {feature}
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="grid grid-cols-1 gap-6 lg:grid-cols-2"
+          >
+            <div>
+              <GroupLabel label="PAUSE OR CONTINUITY" />
+              <PlanCardBlock plan={maintenancePlan} />
+            </div>
+            <div>
+              <GroupLabel label="ADVANCED DELIVERY" />
+              <PlanCardBlock plan={enterprisePlan} />
+            </div>
+          </motion.div>
+        </div>
+
+        <section className="mt-10 rounded-3xl border border-slate-700/95 bg-slate-900 p-7 text-slate-100 shadow-[0_28px_60px_-34px_rgba(2,6,23,0.85)] sm:mt-12 sm:p-9">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.3fr] lg:items-start">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-200/90">
+                COMMERCIAL CLARITY
+              </p>
+              <h3 className="mt-3 text-[1.72rem] font-semibold tracking-tight text-white">
+                Transparency first
+              </h3>
+              <p className="mt-4 text-sm leading-6 text-slate-300">
+                All plans cover Primewayz delivery capacity. To ensure you always own your
+                infrastructure and maintain full control, we separate our delivery fees from
+                third-party vendor and operational costs.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {transparencyColumns.map((column) => (
+                <div
+                  key={column.title}
+                  className="rounded-2xl border border-slate-600/90 bg-slate-800/70 p-4 shadow-[0_14px_28px_-24px_rgba(15,23,42,0.95)]"
+                >
+                  <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                    <column.icon className="h-4 w-4 text-blue-200" />
+                    {column.title}
+                  </h4>
+                  <ul className="mt-3 space-y-2">
+                    {column.items.map((item) => (
+                      <li key={item} className="flex items-start gap-2 text-sm text-slate-300">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ))}
             </div>
           </div>
-          {/* Decorative background */}
-          <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-emerald-500/10 to-transparent pointer-events-none" />
-        </motion.div>
+        </section>
 
-        {/* Add-ons Section */}
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h3 className="text-2xl md:text-3xl font-bold text-zinc-900 mb-4">Revenue Multipliers & Add-Ons</h3>
-            <p className="text-zinc-600">Scale your capacity with dedicated specialists and speed boosts.</p>
+        <section className="mt-14">
+          <div className="mb-5">
+            <h3 className="text-2xl font-semibold tracking-tight text-zinc-900 md:text-3xl">
+              Why Subscription Works Better
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-zinc-600">
+              Clear reasons UK teams choose capacity-based delivery.
+            </p>
           </div>
-          <div className="bg-white rounded-[2.5rem] border border-zinc-200 overflow-hidden shadow-sm">
-            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-zinc-100">
-              <div className="p-8">
-                <h4 className="font-bold text-zinc-900 mb-6 flex items-center gap-2">
-                  <Users className="w-5 h-5 text-emerald-600" />
-                  Dedicated Specialists
-                </h4>
-                <ul className="space-y-4">
-                  {addOns.slice(0, 4).map((addon) => (
-                    <li key={addon.name} className="flex items-center justify-between text-sm">
-                      <span className="text-zinc-600">{addon.name}</span>
-                      <span className="font-bold text-zinc-900">{addon.price}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="p-8 bg-zinc-50/50">
-                <h4 className="font-bold text-zinc-900 mb-6 flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-emerald-600" />
-                  Speed & Marketing
-                </h4>
-                <ul className="space-y-4">
-                  <li className="flex items-center justify-between text-sm">
-                    <span className="text-zinc-600">Speed Boost (2x Delivery)</span>
-                    <span className="font-bold text-emerald-600">+30-40%</span>
-                  </li>
-                  <li className="flex items-center justify-between text-sm">
-                    <span className="text-zinc-600">SEO Growth Program</span>
-                    <span className="font-bold text-zinc-900">Add-on</span>
-                  </li>
-                  <li className="flex items-center justify-between text-sm">
-                    <span className="text-zinc-600">Performance Marketing</span>
-                    <span className="font-bold text-zinc-900">Add-on</span>
-                  </li>
-                  <li className="flex items-center justify-between text-sm">
-                    <span className="text-zinc-600">Content Automation</span>
-                    <span className="font-bold text-zinc-900">Add-on</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          
-          {/* Delivery Rules */}
-          <div className="mt-16 grid grid-cols-2 md:grid-cols-5 gap-4">
-            {[
-              'No hourly billing',
-              'No unlimited revisions',
-              'Approved queue only',
-              'One task per lane',
-              'Pause anytime',
-            ].map((rule) => (
-              <div key={rule} className="bg-white border border-zinc-100 p-4 rounded-2xl text-center shadow-sm">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500 mx-auto mb-2" />
-                <span className="text-xs font-bold text-zinc-700 uppercase tracking-tight">{rule}</span>
-              </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {whySubscriptionItems.map((item) => (
+              <article key={item.title} className="rounded-2xl border border-zinc-200 bg-white p-5">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-50 text-blue-700">
+                    <item.icon className="h-4 w-4" />
+                  </span>
+                  <h4 className="text-base font-semibold text-zinc-900">{item.title}</h4>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-zinc-600">{item.description}</p>
+              </article>
             ))}
           </div>
-          
-          <PricingVisual />
-        </div>
+        </section>
       </div>
     </section>
   );

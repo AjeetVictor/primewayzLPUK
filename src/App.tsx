@@ -1,7 +1,5 @@
-import { HelmetProvider } from 'react-helmet-async';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { SEO } from './components/SEO';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { Philosophy } from './components/Philosophy';
@@ -17,7 +15,6 @@ import { BlogSection } from './components/BlogSection';
 import { SuccessStories } from './components/SuccessStories';
 import { ContactForm } from './components/ContactForm';
 import { Footer } from './components/Footer';
-import { FloatingContact } from './components/FloatingContact';
 import { ScrollToTop } from './components/ScrollToTop';
 import { LiveChat } from './components/LiveChat';
 import { AdminPanel } from './components/AdminPanel';
@@ -66,8 +63,8 @@ const MainContent = () => (
           viewport={{ once: true }}
           className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-8"
         >
-          Ready to scale your <br />
-          development?
+          Ready to plan your next <br />
+          delivery phase?
         </motion.h2>
         <motion.p
           initial={{ opacity: 0, y: 20 }}
@@ -76,8 +73,8 @@ const MainContent = () => (
           transition={{ delay: 0.1 }}
           className="text-xl text-emerald-50 mb-12"
         >
-          Join the future of software development. No contracts, 
-          just elite engineering delivered as a service.
+          Start with Foundation Sprint, then move into the monthly delivery capacity
+          that fits your roadmap.
         </motion.p>
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
@@ -89,7 +86,7 @@ const MainContent = () => (
             href="#contact"
             className="inline-block bg-white text-emerald-600 px-10 py-5 rounded-full text-xl font-bold hover:bg-emerald-50 transition-all shadow-xl shadow-emerald-900/20"
           >
-            Get Started Today
+            Book a UK discovery call
           </a>
         </motion.div>
       </div>
@@ -102,23 +99,18 @@ export default function App() {
   const isAdmin = location.pathname.startsWith('/admin');
 
   return (
-    <HelmetProvider>
-      <div className="min-h-screen bg-white font-sans selection:bg-emerald-100 selection:text-emerald-900">
-        <SEO />
-        
-        {!isAdmin && <Navbar />}
-        {!isAdmin && <FloatingContact />}
-        {!isAdmin && <ScrollToTop />}
-        
-        <Routes>
-          <Route path="/" element={<MainContent />} />
-          <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/blog/:id" element={<BlogPost />} />
-        </Routes>
-        
-        {!isAdmin && <Footer />}
-        {!isAdmin && <LiveChat />}
-      </div>
-    </HelmetProvider>
+    <div className="min-h-screen bg-white font-sans selection:bg-emerald-100 selection:text-emerald-900">
+      {!isAdmin && <Navbar />}
+      {!isAdmin && <ScrollToTop />}
+
+      <Routes>
+        <Route path="/" element={<MainContent />} />
+        <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/blog/:id" element={<BlogPost />} />
+      </Routes>
+
+      {!isAdmin && <Footer />}
+      {!isAdmin && <LiveChat />}
+    </div>
   );
 }

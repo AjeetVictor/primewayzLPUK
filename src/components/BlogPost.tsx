@@ -2,6 +2,9 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Calendar, Clock, User, Share2, MessageSquare, Send, Twitter, Linkedin, Mail, Link as LinkIcon } from 'lucide-react';
 import { useEffect, useState, FormEvent } from 'react';
+import { blogPosts } from '../data/blogPosts';
+import { extraBlogPosts } from '../data/extraBlogPosts';
+import { apiUrl } from '../utils/apiUrl';
 
 interface BlogPostData {
   id: string;
@@ -33,6 +36,7 @@ export const BlogPost = () => {
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingComments, setIsLoadingComments] = useState(true);
+  const [commentsApiEnabled, setCommentsApiEnabled] = useState(true);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -44,13 +48,17 @@ export const BlogPost = () => {
 
   const fetchPost = async () => {
     try {
-      const res = await fetch(`/api/blog/posts/${id}`);
+      const res = await fetch(apiUrl(`/api/blog/posts/${id}`));
       if (res.ok) {
         const data = await res.json();
         setPost(data);
+      } else {
+        const localPost = [...blogPosts, ...extraBlogPosts].find((p) => p.id === id) || null;
+        setPost(localPost as BlogPostData | null);
       }
     } catch (error) {
-      console.error('Failed to fetch post:', error);
+      const localPost = [...blogPosts, ...extraBlogPosts].find((p) => p.id === id) || null;
+      setPost(localPost as BlogPostData | null);
     } finally {
       setIsPostLoading(false);
     }
@@ -58,13 +66,15 @@ export const BlogPost = () => {
 
   const fetchComments = async () => {
     try {
-      const res = await fetch(`/api/blog/${id}/comments`);
+      const res = await fetch(apiUrl(`/api/blog/${id}/comments`));
       if (res.ok) {
         const data = await res.json();
         setComments(data);
+      } else {
+        setCommentsApiEnabled(false);
       }
     } catch (error) {
-      console.error('Failed to fetch comments:', error);
+      setCommentsApiEnabled(false);
     } finally {
       setIsLoadingComments(false);
     }
@@ -72,11 +82,11 @@ export const BlogPost = () => {
 
   const handleSubmitComment = async (e: FormEvent) => {
     e.preventDefault();
-    if (!name || !commentText || isSubmitting) return;
+    if (!name || !commentText || isSubmitting || !commentsApiEnabled) return;
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/blog/${id}/comments`, {
+      const res = await fetch(apiUrl(`/api/blog/${id}/comments`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, text: commentText })
@@ -86,9 +96,11 @@ export const BlogPost = () => {
         const newComment = await res.json();
         setComments(prev => [newComment, ...prev]);
         setCommentText('');
+      } else {
+        setCommentsApiEnabled(false);
       }
     } catch (error) {
-      console.error('Failed to post comment:', error);
+      setCommentsApiEnabled(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -329,10 +341,10 @@ export const BlogPost = () => {
               </div>
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !commentsApiEnabled}
                 className="flex items-center gap-2 px-8 py-4 bg-emerald-600 text-white rounded-full font-bold hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-900/10"
               >
-                {isSubmitting ? 'Posting...' : 'Post Comment'}
+                {commentsApiEnabled ? (isSubmitting ? 'Posting...' : 'Post Comment') : 'Comments unavailable'}
                 <Send className="w-4 h-4" />
               </button>
             </form>

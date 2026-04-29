@@ -6,16 +6,16 @@ To host the Primewayz application on an Apache server, follow these steps:
 
 The built application is located in the `dist` folder. When serving this folder with Apache, ensure `mod_rewrite` is enabled.
 
-The `.htaccess` file (already in `public/` and copied to `dist/`) handles the SPA routing for the `/mdpl` base path:
+The `.htaccess` file (already in `public/` and copied to `dist/`) handles SPA routing from the web root:
 
 ```apache
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteBase /mdpl/
+  RewriteBase /
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /mdpl/index.html [L]
+  RewriteRule . /index.html [L]
 </IfModule>
 ```
 
@@ -34,8 +34,7 @@ Add the following to your Apache virtual host configuration:
     ServerName yourdomain.com
     DocumentRoot /var/www/primewayz/dist
 
-    # Serve static files at /mdpl
-    Alias /mdpl /var/www/primewayz/dist
+    # Serve static files from dist at web root
     <Directory /var/www/primewayz/dist>
         Options Indexes FollowSymLinks
         AllowOverride All
@@ -56,3 +55,13 @@ Add the following to your Apache virtual host configuration:
 ## 3. Environment Variables
 
 Ensure the `DATABASE_URL` and any other secrets are set in the environment where the Node.js server is running.
+
+## 4. Admin Panel URL
+
+With this setup, admin panel is available at:
+
+- `https://kreatorbox.com/admin`
+
+Landing page stays at:
+
+- `https://kreatorbox.com/`

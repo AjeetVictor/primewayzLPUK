@@ -83,7 +83,7 @@ export const Footer = () => {
               </div>
               <div className="space-y-1">
                 <div className="text-xs font-bold text-emerald-500 uppercase tracking-widest">Poland</div>
-                <p className="text-xs text-zinc-500 leading-relaxed">Aleja Hallera – 9/182, Wroclaw</p>
+                <p className="text-xs text-zinc-500 leading-relaxed">Aleja Hallera - 9/182, Wroclaw</p>
               </div>
             </div>
           </div>

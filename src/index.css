@@ -7,6 +7,78 @@
   }
 }
 
+/* react-phone-number-input: align country select + number field in bordered wrapper */
+@layer components {
+  .phone-field .PhoneInput {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+  }
+  .phone-field .PhoneInputCountry {
+    margin-right: 0;
+  }
+  .phone-field .PhoneInputCountrySelect {
+    padding-left: 0.5rem;
+    padding-right: 0.25rem;
+  }
+  .phone-field .PhoneInputInput {
+    min-width: 0;
+    flex: 1;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    padding: 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+
+  .tech-marquee-track {
+    display: flex;
+    min-width: max-content;
+    gap: 2.5rem;
+    animation-duration: 24s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    will-change: transform;
+  }
+
+  .tech-marquee-row:hover .tech-marquee-track {
+    animation-play-state: paused;
+  }
+
+  .tech-marquee-track-left {
+    animation-name: tech-marquee-left;
+  }
+
+  .tech-marquee-track-right {
+    animation-name: tech-marquee-right;
+  }
+
+  @media (min-width: 768px) {
+    .tech-marquee-track {
+      gap: 3rem;
+    }
+  }
+
+  @keyframes tech-marquee-left {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @keyframes tech-marquee-right {
+    from {
+      transform: translateX(-50%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+}
+
 @theme {
   /* Brand Blue - Primary */
   --color-emerald-50: #f0f7ff;

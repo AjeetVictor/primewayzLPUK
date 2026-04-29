@@ -1,176 +1,130 @@
 import { motion } from 'motion/react';
-import { ListTodo, Users, Repeat, CheckCircle2, Layout, Database, Shield, Rocket } from 'lucide-react';
-
-const steps = [
-  {
-    icon: ListTodo,
-    title: 'Feature Queue',
-    description: 'Add as many requests to your board as you’d like. We maintain a prioritized queue from high-priority to future backlog.',
-    color: 'bg-emerald-100 text-emerald-600',
-  },
-  {
-    icon: Users,
-    title: 'Sequential Flow',
-    description: 'Only required specialists enter when needed. Architect > UX > Frontend > Backend > QA > Deployment.',
-    color: 'bg-indigo-100 text-indigo-600',
-  },
-  {
-    icon: Repeat,
-    title: 'Active Execution',
-    description: 'One primary resource active at a time per lane. This keeps costs low while maintaining professional delivery.',
-    color: 'bg-amber-100 text-amber-600',
-  },
-  {
-    icon: Rocket,
-    title: 'Continuous Release',
-    description: 'Once a request is complete, we move straight to the next one in your queue. Product evolves continuously.',
-    color: 'bg-rose-100 text-rose-600',
-  },
-];
+import { Target, Layers, BarChart } from 'lucide-react';
 
 const flowSteps = [
-  { name: 'Architect', icon: Shield, desc: 'Requirement shaping' },
-  { name: 'UX / Designer', icon: Layout, desc: 'Layouts & Prototypes' },
-  { name: 'Developer', icon: Database, desc: 'UI & Logic implementation' },
-  { name: 'QA / DevOps', icon: CheckCircle2, desc: 'Validation & Release' },
+  {
+    label: 'STEP 01',
+    title: 'Discovery and priority alignment',
+    description:
+      'Tell us about your goals, roadmap, constraints, and current priorities.',
+    icon: Target,
+  },
+  {
+    label: 'STEP 02',
+    title: 'Scope the right delivery model',
+    description:
+      'We define the best-fit plan, workstream structure, and execution approach for your business.',
+    icon: Layers,
+  },
+  {
+    label: 'STEP 03',
+    title: 'Start delivery and review progress',
+    description:
+      'Work moves through planning, build, QA, and release with clear visibility and regular updates.',
+    icon: BarChart,
+  },
 ];
 
 export const HowItWorks = () => {
   return (
-    <section id="how-it-works" className="py-24 bg-white">
+    <section id="how-it-works" className="bg-white py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-20">
+        <div className="text-center mb-12 md:mb-14">
+          <motion.p
+            initial={{ opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-blue-700/80"
+          >
+            PROCESS & DELIVERY
+          </motion.p>
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-3xl md:text-5xl font-bold tracking-tight text-zinc-900 mb-4"
           >
-            Operational Model
+            How delivery works
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="text-lg text-zinc-600 max-w-2xl mx-auto"
+            className="text-lg text-zinc-600 max-w-3xl mx-auto"
           >
-            A simple, streamlined process designed for speed and predictability. 
-            Customers buy velocity, not hours.
+            A structured process designed for clarity, prioritisation, and steady progress - from
+            discovery through release.
           </motion.p>
         </div>
 
-        <motion.div 
-          variants={{
-            hidden: { opacity: 0 },
-            visible: {
-              opacity: 1,
-              transition: {
-                staggerChildren: 0.15,
-              },
-            },
-          }}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-24"
-        >
-          {steps.map((step, index) => (
-            <motion.div
-              key={step.title}
-              variants={{
-                hidden: { opacity: 0, y: 30 },
-                visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
-              }}
-              className="relative group"
-            >
-              <div className={`w-16 h-16 rounded-2xl ${step.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                <step.icon className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-bold text-zinc-900 mb-3">{step.title}</h3>
-              <p className="text-zinc-600 leading-relaxed">{step.description}</p>
-            </motion.div>
-          ))}
-        </motion.div>
-
         <motion.div
-          initial={{ opacity: 0, y: 40 }}
+          initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="bg-zinc-50 rounded-[3rem] p-8 md:p-16 border border-zinc-100 overflow-hidden relative"
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="overflow-hidden rounded-[2.25rem] border border-zinc-200 bg-zinc-50/80"
         >
-          {/* Background Graphic */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full -mr-32 -mt-32 blur-3xl" />
-          
-          <div className="max-w-5xl mx-auto relative z-10">
-            <h3 className="text-2xl md:text-3xl font-bold text-zinc-900 mb-16 text-center">
-              The <span className="text-emerald-600">Sequential Execution</span> Pipeline
-            </h3>
-            
-            <div className="relative">
-              {/* Connecting Line (Desktop) */}
-              <div className="hidden lg:block absolute top-[48px] left-[12.5%] right-[12.5%] h-1 bg-zinc-200 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  whileInView={{ width: '100%' }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 2, ease: 'easeInOut' }}
-                  className="h-full bg-emerald-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-16">
-                {flowSteps.map((step, i) => (
-                  <motion.div 
-                    key={i} 
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.2, duration: 0.5 }}
-                    className="relative flex flex-col items-center text-center group"
-                  >
-                    {/* Step Number */}
-                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white border border-zinc-200 flex items-center justify-center text-xs font-bold text-zinc-400 shadow-sm z-20">
-                      0{i + 1}
-                    </div>
-
-                    <div className="w-24 h-24 rounded-3xl bg-white shadow-xl shadow-zinc-200/50 border border-zinc-100 flex items-center justify-center mb-6 z-10 group-hover:bg-emerald-600 group-hover:scale-110 transition-all duration-300">
-                      <step.icon className="w-10 h-10 text-emerald-600 group-hover:text-white transition-colors" />
-                    </div>
-                    
-                    <h4 className="text-xl font-bold text-zinc-900 mb-2">{step.name}</h4>
-                    <p className="text-sm text-zinc-500 max-w-[180px] leading-relaxed">{step.desc}</p>
-                    
-                    {/* Status Indicator */}
-                    <div className="mt-4 flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-700 uppercase tracking-tighter">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      Active Phase
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[0.88fr_1.12fr]">
+            <div className="border-b border-zinc-200 bg-zinc-100/70 p-5 sm:p-6 lg:min-h-[520px] lg:border-b-0 lg:border-r lg:p-8">
+              <video
+                controls
+                preload="metadata"
+                playsInline
+                muted
+                poster="/images/delivery-process-poster.jpg"
+                className="mx-auto aspect-[10/16] w-full max-w-[22rem] rounded-2xl border border-zinc-200/80 bg-zinc-900 object-cover object-center shadow-[0_20px_44px_-30px_rgba(15,23,42,0.7)]"
+              >
+                <source src="/videos/delivery-process-pwuk.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
             </div>
 
-            <div className="mt-20 grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="p-8 bg-white rounded-3xl border border-zinc-100 shadow-sm">
-                <h5 className="font-bold text-zinc-900 mb-4 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  No Resource Waste
-                </h5>
-                <p className="text-zinc-600 text-sm leading-relaxed">
-                  Unlike traditional teams where developers wait for designs, our model ensures 
-                  resources are only engaged when the pipeline is ready for them.
-                </p>
-              </div>
-              <div className="p-8 bg-white rounded-3xl border border-zinc-100 shadow-sm">
-                <h5 className="font-bold text-zinc-900 mb-4 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-indigo-500" />
-                  Predictable Velocity
-                </h5>
-                <p className="text-zinc-600 text-sm leading-relaxed">
-                  By focusing on one request at a time, we eliminate context switching overhead, 
-                  resulting in 40% faster completion rates compared to multi-tasking teams.
-                </p>
+            <div className="relative p-7 md:p-10 lg:p-12">
+              <h3 className="text-2xl md:text-3xl font-bold leading-tight text-zinc-900">
+                Delivery milestones
+              </h3>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
+                A clear three-step path that turns priorities into structured delivery, visible
+                progress, and release-ready outcomes.
+              </p>
+
+              <div className="relative mt-6">
+                <div className="relative space-y-5">
+                  <div className="pointer-events-none absolute bottom-5 left-[1.22rem] top-5 w-px bg-zinc-300/80" />
+                  {flowSteps.map((step, index) => (
+                    <motion.div
+                      key={step.title}
+                      initial={{ opacity: 0, x: 18 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: index * 0.1, duration: 0.45 }}
+                      className="relative grid grid-cols-[2.5rem,1fr] items-center gap-4"
+                    >
+                      <div className="z-10 flex h-[2.5rem] w-[2.5rem] shrink-0 items-center justify-center rounded-full border border-blue-200 bg-white text-blue-700 shadow-[0_8px_16px_-12px_rgba(30,64,175,0.55)]">
+                        <step.icon className="h-4 w-4" />
+                      </div>
+                      <div className="rounded-2xl border border-zinc-200/95 bg-white px-4 py-3 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.55)] sm:px-5 sm:py-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-700">
+                          {step.label}
+                        </p>
+                        <h4 className="mt-1 text-xl font-semibold leading-tight text-zinc-900 sm:text-2xl">
+                          {step.title}
+                        </h4>
+                        <p className="mt-1.5 max-w-xl text-sm leading-6 text-zinc-600">{step.description}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+
+                <div className="mt-6 pl-[3.15rem]">
+                  <button
+                    type="button"
+                    className="inline-flex w-fit items-center rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_24px_-16px_rgba(15,23,42,0.6)] transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  >
+                    Book a UK discovery call
+                  </button>
+                </div>
               </div>
             </div>
           </div>

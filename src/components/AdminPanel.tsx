@@ -3,12 +3,14 @@ import { motion } from 'motion/react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send } from 'lucide-react';
 import { format } from 'date-fns';
+import { apiUrl } from '../utils/apiUrl';
 
 interface FormResponse {
   id: number;
   name: string;
   email: string;
   message: string;
+  phone: string | null;
   createdAt: string;
 }
 
@@ -70,7 +72,7 @@ export const AdminPanel = () => {
 
   const checkAuth = async () => {
     try {
-      const res = await fetch('/api/admin/check-auth');
+      const res = await fetch(apiUrl('/api/admin/check-auth'));
       const data = await res.json();
       setIsAuthenticated(data.authenticated);
       if (data.authenticated) {
@@ -97,15 +99,15 @@ export const AdminPanel = () => {
     if (!silent) setLoading(true);
     try {
       const endpoints = [
-        fetch('/api/admin/forms'),
-        fetch('/api/admin/chats'),
-        fetch('/api/admin/sessions'),
-        fetch('/api/admin/blog-comments')
+        fetch(apiUrl('/api/admin/forms')),
+        fetch(apiUrl('/api/admin/chats')),
+        fetch(apiUrl('/api/admin/sessions')),
+        fetch(apiUrl('/api/admin/blog-comments'))
       ];
 
       // Only fetch users if admin
       if (user?.role === 'admin') {
-        endpoints.push(fetch('/api/admin/users'));
+        endpoints.push(fetch(apiUrl('/api/admin/users')));
       }
 
       const results = await Promise.all(endpoints);
@@ -133,7 +135,7 @@ export const AdminPanel = () => {
     e.preventDefault();
     setLoginError('');
     try {
-      const res = await fetch('/api/admin/login', {
+      const res = await fetch(apiUrl('/api/admin/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -153,7 +155,7 @@ export const AdminPanel = () => {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/admin/logout', { method: 'POST' });
+      await fetch(apiUrl('/api/admin/logout'), { method: 'POST' });
       setIsAuthenticated(false);
       setUser(null);
       setFormResponses([]);
@@ -167,7 +169,7 @@ export const AdminPanel = () => {
   const deleteFormResponse = async (id: number) => {
     if (!confirm('Are you sure you want to delete this response?')) return;
     try {
-      const res = await fetch(`/api/admin/forms/${id}`, { method: 'DELETE' });
+      const res = await fetch(apiUrl(`/api/admin/forms/${id}`), { method: 'DELETE' });
       if (res.ok) {
         setFormResponses(prev => prev.filter(r => r.id !== id));
       }
@@ -179,7 +181,7 @@ export const AdminPanel = () => {
   const deleteBlogComment = async (id: number) => {
     if (!confirm('Are you sure you want to delete this comment?')) return;
     try {
-      const res = await fetch(`/api/admin/blog-comments/${id}`, { method: 'DELETE' });
+      const res = await fetch(apiUrl(`/api/admin/blog-comments/${id}`), { method: 'DELETE' });
       if (res.ok) {
         setBlogComments(prev => prev.filter(c => c.id !== id));
       }
@@ -190,7 +192,7 @@ export const AdminPanel = () => {
 
   const updateUserRole = async (id: number, role: string) => {
     try {
-      const res = await fetch(`/api/admin/users/${id}`, {
+      const res = await fetch(apiUrl(`/api/admin/users/${id}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role })
@@ -206,7 +208,7 @@ export const AdminPanel = () => {
   const deleteUser = async (id: number) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     try {
-      const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+      const res = await fetch(apiUrl(`/api/admin/users/${id}`), { method: 'DELETE' });
       if (res.ok) {
         setUsers(prev => prev.filter(u => u.id !== id));
       } else {
@@ -225,7 +227,7 @@ export const AdminPanel = () => {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/admin/users', {
+      const res = await fetch(apiUrl('/api/admin/users'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: newUserEmail, password: newUserPassword, role: newUserRole })
@@ -244,7 +246,7 @@ export const AdminPanel = () => {
   const handleAdminReply = async (sessionId: string, replyToId?: number) => {
     if (!replyText.trim()) return;
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch(apiUrl('/api/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sender: 'admin', text: replyText, sessionId, replyToId })
@@ -263,7 +265,8 @@ export const AdminPanel = () => {
   const filteredForms = formResponses.filter(res => 
     res.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     res.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    res.message.toLowerCase().includes(searchTerm.toLowerCase())
+    res.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (res.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
   );
 
   const filteredChats = chatMessages.filter(msg => 
@@ -465,6 +468,7 @@ export const AdminPanel = () => {
                       <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Date</th>
                       <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Name</th>
                       <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Email</th>
+                      <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Phone</th>
                       <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Message</th>
                       <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400 text-right">Actions</th>
                     </tr>
@@ -472,7 +476,7 @@ export const AdminPanel = () => {
                   <tbody className="divide-y divide-zinc-50">
                     {filteredForms.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center text-zinc-400 italic">
+                        <td colSpan={6} className="px-6 py-12 text-center text-zinc-400 italic">
                           {searchTerm ? `No results matching "${searchTerm}"` : 'No form responses found.'}
                         </td>
                       </tr>
@@ -484,6 +488,7 @@ export const AdminPanel = () => {
                           </td>
                           <td className="px-6 py-4 text-sm font-bold text-zinc-900">{res.name}</td>
                           <td className="px-6 py-4 text-sm text-zinc-600">{res.email}</td>
+                          <td className="px-6 py-4 text-sm text-zinc-600 font-mono whitespace-nowrap">{res.phone || '—'}</td>
                           <td className="px-6 py-4 text-sm text-zinc-500 max-w-xs truncate">{res.message}</td>
                           <td className="px-6 py-4 text-right">
                             {(user?.role === 'admin' || user?.role === 'editor') && (

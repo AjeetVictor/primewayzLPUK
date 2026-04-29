@@ -16,29 +16,29 @@ import { useState, useEffect } from 'react';
 const steps = [
   {
     id: 'request',
-    title: 'Submit a Request',
-    description: 'Add as many feature requests or bug fixes to your queue as you like.',
+    title: 'Submit a priority',
+    description: 'Add approved requests, fixes, or next-phase goals to your backlog.',
     icon: MessageSquare,
     color: 'emerald',
   },
   {
     id: 'queue',
-    title: 'Prioritize & Assign',
-    description: 'We prioritize your requests and assign them to your dedicated elite team.',
+    title: 'Prioritise the right workstream',
+    description: 'We align the next approved item with your plan, roadmap, and current business priorities.',
     icon: Users,
     color: 'indigo',
   },
   {
     id: 'build',
-    title: 'High-Velocity Build',
-    description: 'Our engineers deliver high-quality code in structured, predictable cycles.',
+    title: 'Build in sequence',
+    description: 'Work moves through planning, design, build, QA, and release with clear visibility.',
     icon: Code2,
     color: 'emerald',
   },
   {
     id: 'deliver',
-    title: 'Review & Launch',
-    description: 'Review the work, request revisions, or launch it immediately.',
+    title: 'Review and release',
+    description: 'Review progress, approve outcomes, and move the next item into delivery.',
     icon: Rocket,
     color: 'indigo',
   },
@@ -93,7 +93,7 @@ export const InteractiveDemo = () => {
             transition={{ delay: 0.1 }}
             className="text-4xl md:text-5xl font-bold tracking-tight text-zinc-900 mb-4"
           >
-            See the <span className="text-emerald-600 italic">Workflow</span> in Action
+            How work moves from <span className="text-emerald-600 italic">request</span> to release
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -102,8 +102,7 @@ export const InteractiveDemo = () => {
             transition={{ delay: 0.2 }}
             className="max-w-2xl mx-auto text-lg text-zinc-600"
           >
-            Experience how we've productized software development to deliver 
-            elite engineering at the speed of your business.
+            A structured delivery flow built for clarity, prioritisation, and steady monthly progress.
           </motion.p>
         </div>
 
@@ -202,7 +201,7 @@ export const InteractiveDemo = () => {
                     >
                       <div className="bg-emerald-600 text-white px-6 py-3 rounded-full font-bold flex items-center gap-2 shadow-lg shadow-emerald-900/40">
                         <Send className="w-4 h-4" />
-                        Submit Request
+                        Submit Priority
                       </div>
                     </motion.div>
                   </div>
@@ -314,8 +313,8 @@ export const InteractiveDemo = () => {
                       />
                     </motion.div>
                     <div className="space-y-2">
-                      <h4 className="text-xl font-bold text-white">Feature Delivered!</h4>
-                      <p className="text-zinc-500 text-sm">Your new user dashboard is now live and ready for review.</p>
+                      <h4 className="text-xl font-bold text-white">Review and Release</h4>
+                      <p className="text-zinc-500 text-sm">Review progress, approve outcomes, and move the next item into delivery.</p>
                     </div>
                     <div className="flex gap-3 justify-center">
                       <div className="px-4 py-2 rounded-lg bg-zinc-800 text-zinc-400 text-xs font-bold border border-zinc-700">Request Revision</div>
@@ -348,7 +347,7 @@ export const InteractiveDemo = () => {
             </div>
             <div>
               <h4 className="text-xl font-bold text-white mb-1">Experience it for real.</h4>
-              <p className="text-zinc-500">Book a 15-minute demo to see how we can transform your development.</p>
+              <p className="text-zinc-500">Book a UK discovery call to see how we can transform your development.</p>
             </div>
           </div>
           <motion.a
@@ -357,7 +356,7 @@ export const InteractiveDemo = () => {
             whileTap={{ scale: 0.95 }}
             className="px-8 py-4 bg-emerald-600 text-white rounded-full font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-900/40 flex items-center gap-2"
           >
-            Book My Demo
+            Book a UK discovery call
             <ArrowRight className="w-5 h-5" />
           </motion.a>
         </motion.div>

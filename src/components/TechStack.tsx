@@ -1,100 +1,241 @@
-import { motion } from 'motion/react';
-import { Layout, Server, Database, Shield, Cpu, Globe, Code2, Layers } from 'lucide-react';
+import { useMemo, useState, type FormEvent, type ChangeEvent } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { ArrowRight, Send, X } from 'lucide-react';
+import { apiUrl } from '../utils/apiUrl';
 
-const technologies = [
-  { name: 'React / Next.js', category: 'Frontend', icon: Layout, color: 'text-blue-400' },
-  { name: 'Node.js / Express', category: 'Backend', icon: Server, color: 'text-emerald-400' },
-  { name: 'PostgreSQL / MongoDB', category: 'Database', icon: Database, color: 'text-indigo-400' },
-  { name: 'AWS / Google Cloud', category: 'Infrastructure', icon: Globe, color: 'text-amber-400' },
-  { name: 'TypeScript', category: 'Language', icon: Code2, color: 'text-blue-500' },
-  { name: 'Docker / Kubernetes', category: 'DevOps', icon: Layers, color: 'text-cyan-400' },
-  { name: 'Firebase / Auth0', category: 'Security', icon: Shield, color: 'text-rose-400' },
-  { name: 'AI / ML Integration', category: 'Advanced', icon: Cpu, color: 'text-purple-400' },
+type StackFormData = {
+  name: string;
+  email: string;
+  company: string;
+  requirement: string;
+};
+
+const stackRows = [
+  ['React', 'Next.js', 'TypeScript', 'Node.js', 'Java', 'Python', 'C#', 'Go', 'Swift'],
+  ['Angular', 'Vue.js', 'PHP', 'Rails', '.NET', 'Android', 'iOS', 'Kotlin', 'PostgreSQL'],
 ];
 
+const initialFormData: StackFormData = {
+  name: '',
+  email: '',
+  company: '',
+  requirement: '',
+};
+
 export const TechStack = () => {
+  const [selectedStack, setSelectedStack] = useState<string | null>(null);
+  const [formData, setFormData] = useState<StackFormData>(initialFormData);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const allStacks = useMemo(() => stackRows.flat(), []);
+
+  const closeModal = () => {
+    setSelectedStack(null);
+    setSubmitMessage(null);
+    setSubmitError(null);
+    setIsSubmitting(false);
+    setFormData(initialFormData);
+  };
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedStack) return;
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+    setSubmitMessage(null);
+
+    const messageLines = [
+      `Interested stack: ${selectedStack}`,
+      formData.company.trim() ? `Company: ${formData.company.trim()}` : null,
+      '',
+      formData.requirement.trim() || 'Customer asked for stack consultation.',
+    ].filter(Boolean);
+
+    try {
+      const response = await fetch(apiUrl('/api/contact'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          email: formData.email.trim().toLowerCase(),
+          message: messageLines.join('\n'),
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || 'Unable to submit stack request right now.');
+      }
+
+      setSubmitMessage(`Thanks! We received your request for ${selectedStack}.`);
+      setFormData(initialFormData);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Failed to send your request.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <section className="py-24 bg-white overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-20">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-3xl md:text-5xl font-bold tracking-tight text-zinc-900 mb-4"
-          >
-            Our <span className="text-emerald-600 italic">Battle-Tested</span> Stack
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="text-lg text-zinc-600 max-w-2xl mx-auto"
-          >
-            We use the most reliable and scalable technologies to ensure your 
-            product is built for the future.
-          </motion.p>
-        </div>
-
-        <div className="relative">
-          {/* Decorative Background Elements */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] opacity-[0.03] pointer-events-none">
-            <svg viewBox="0 0 100 100" className="w-full h-full">
-              <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                <path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" strokeWidth="0.5"/>
-              </pattern>
-              <rect width="100" height="100" fill="url(#grid)" />
-            </svg>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 relative z-10">
-            {technologies.map((tech, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.05, duration: 0.4 }}
-                whileHover={{ y: -5 }}
-                className="bg-zinc-50 p-8 rounded-[2rem] border border-zinc-100 flex flex-col items-center text-center group hover:bg-white hover:shadow-xl hover:shadow-zinc-200/50 transition-all duration-300"
-              >
-                <div className={`w-16 h-16 rounded-2xl bg-white shadow-sm flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                  <tech.icon className={`w-8 h-8 ${tech.color}`} />
-                </div>
-                <h4 className="font-bold text-zinc-900 mb-1">{tech.name}</h4>
-                <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{tech.category}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
-        {/* Infographic: Why our stack matters */}
-        <div className="mt-24 grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {[
-            { title: 'Scalability', desc: 'Built to handle millions of users without breaking a sweat.', icon: Layers },
-            { title: 'Maintainability', desc: 'Clean, typed code that your future team will love.', icon: Code2 },
-            { title: 'Security', desc: 'Industry-standard protection for your data and users.', icon: Shield },
-          ].map((item, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.4 + i * 0.1 }}
-              className="flex gap-6 p-8 rounded-3xl bg-emerald-50/50 border border-emerald-100/50"
-            >
-              <div className="shrink-0 w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center text-white">
-                <item.icon className="w-6 h-6" />
-              </div>
-              <div>
-                <h5 className="font-bold text-zinc-900 mb-2">{item.title}</h5>
-                <p className="text-sm text-zinc-600 leading-relaxed">{item.desc}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+    <section className="bg-zinc-100 py-20 md:py-24 overflow-hidden">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-100px' }}
+          className="text-4xl md:text-5xl font-bold tracking-tight text-zinc-900"
+        >
+          Yes. We cover your tech stack<span className="text-orange-500">.</span>
+        </motion.h2>
+        <motion.p
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          viewport={{ once: true, margin: '-100px' }}
+          className="mx-auto mt-4 max-w-2xl text-base md:text-lg text-zinc-600"
+        >
+          Our 4,000+ team has expertise across almost every programming language.
+        </motion.p>
       </div>
+
+      <div className="mt-14 space-y-4">
+        {stackRows.map((row, rowIndex) => {
+          const marqueeItems = [...row, ...row];
+          return (
+            <div key={rowIndex} className="tech-marquee-row group relative overflow-hidden">
+              <div
+                className={`tech-marquee-track ${rowIndex % 2 === 0 ? 'tech-marquee-track-left' : 'tech-marquee-track-right'}`}
+              >
+                {marqueeItems.map((stack, idx) => (
+                  <button
+                    key={`${stack}-${idx}`}
+                    type="button"
+                    onClick={() => {
+                      setSelectedStack(stack);
+                      setSubmitMessage(null);
+                      setSubmitError(null);
+                    }}
+                    className="whitespace-nowrap text-4xl md:text-6xl leading-[1.25] py-1 font-bold text-zinc-300 hover:text-zinc-700 focus-visible:text-zinc-700 transition-colors duration-300"
+                    aria-label={`Open enquiry form for ${stack}`}
+                  >
+                    {stack}
+                  </button>
+                ))}
+              </div>
+              <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-zinc-100 to-transparent" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-zinc-100 to-transparent" />
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-10 flex justify-center">
+        <button
+          type="button"
+          onClick={() => setSelectedStack(allStacks[0])}
+          className="group inline-flex items-center gap-2 border-b border-zinc-400 pb-1 text-sm font-semibold text-zinc-700 hover:text-zinc-900 hover:border-zinc-800 transition-colors"
+        >
+          Our full repertoire
+          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {selectedStack && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] bg-zinc-900/60 backdrop-blur-[2px] p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 22, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              className="mx-auto mt-10 w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 md:p-8 shadow-2xl"
+            >
+              <div className="mb-6 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">Stack Enquiry</p>
+                  <h3 className="mt-2 text-2xl font-bold text-zinc-900">{selectedStack}</h3>
+                  <p className="mt-2 text-sm text-zinc-600">
+                    Share your requirement and our team will reach out with the right plan.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="rounded-full p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 transition-colors"
+                  aria-label="Close stack enquiry form"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="Full name"
+                    required
+                    className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200"
+                  />
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="Work email"
+                    required
+                    className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200"
+                  />
+                </div>
+                <input
+                  type="text"
+                  name="company"
+                  value={formData.company}
+                  onChange={handleChange}
+                  placeholder="Company name (optional)"
+                  className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200"
+                />
+                <textarea
+                  name="requirement"
+                  value={formData.requirement}
+                  onChange={handleChange}
+                  rows={4}
+                  placeholder={`What do you need help with in ${selectedStack}?`}
+                  required
+                  className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm outline-none transition resize-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200"
+                />
+
+                {submitError && <p className="text-sm text-rose-600">{submitError}</p>}
+                {submitMessage && <p className="text-sm text-emerald-700">{submitMessage}</p>}
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-wait disabled:opacity-75"
+                >
+                  <Send className="h-4 w-4" />
+                  {isSubmitting ? 'Sending...' : `Send for ${selectedStack}`}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 };

@@ -2,6 +2,9 @@ import { motion } from 'motion/react';
 import { ArrowRight, Calendar, Clock, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { blogPosts } from '../data/blogPosts';
+import { extraBlogPosts } from '../data/extraBlogPosts';
+import { apiUrl } from '../utils/apiUrl';
 
 interface BlogPost {
   id: string;
@@ -26,13 +29,15 @@ export const BlogSection = () => {
 
   const fetchPosts = async () => {
     try {
-      const res = await fetch('/api/blog/posts');
+      const res = await fetch(apiUrl('/api/blog/posts'));
       if (res.ok) {
         const data = await res.json();
         setPosts(data);
+      } else {
+        setPosts([...blogPosts, ...extraBlogPosts]);
       }
     } catch (error) {
-      console.error('Failed to fetch posts:', error);
+      setPosts([...blogPosts, ...extraBlogPosts]);
     } finally {
       setIsLoading(false);
     }

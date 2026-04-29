@@ -1,7 +1,9 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, X, Code2, LayoutDashboard } from 'lucide-react';
-import { useState } from 'react';
+import { Menu, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import logo from '../assets/primewayz-infotech-logo.svg';
+import { SITE_CONTAINER_CLASS } from '../constants/siteLayout';
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -16,76 +18,75 @@ export const Navbar = () => {
     { name: 'FAQ', href: '/#faq' },
   ];
 
+  useEffect(() => {
+    if (isOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [isOpen]);
+
   return (
     <motion.nav
       initial={{ y: -100 }}
       animate={{ y: 0 }}
-      transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-zinc-200"
+      transition={{ duration: 0.45, ease: 'easeOut' }}
+      className="fixed left-0 right-0 top-0 z-50 border-b border-slate-200/90 bg-white shadow-[0_1px_0_0_rgba(15,23,42,0.04)]"
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <Link to="/" className="flex items-center gap-2 group cursor-pointer" aria-label="Primewayz Home">
-            <div className="relative w-10 h-10">
-              <svg viewBox="0 0 40 40" className="w-full h-full" aria-hidden="true">
-                {/* Vertical bar of P - Blue */}
-                <rect x="8" y="8" width="6" height="24" rx="1" fill="#1B59A7" />
-                {/* Curve of P - Pink */}
-                <path d="M14 10C22 10 28 14 28 20C28 26 22 30 14 30" fill="none" stroke="#E61E50" strokeWidth="6" strokeLinecap="round" />
-                {/* Internal dot/detail */}
-                <circle cx="21" cy="20" r="3" fill="#E61E50" />
-              </svg>
-            </div>
-            <div className="flex flex-col -space-y-1">
-              <span className="text-xl font-bold tracking-tight text-zinc-900 leading-none">Primewayz</span>
-              <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Infotech Pvt. Ltd.</span>
-            </div>
+      <div className={SITE_CONTAINER_CLASS}>
+        <div className="relative flex min-h-[3.25rem] items-center py-2 sm:min-h-16 sm:py-0">
+          <Link
+            to="/"
+            className="relative z-10 flex min-h-[44px] min-w-0 shrink-0 items-center pr-2"
+            aria-label="Primewayz Home"
+          >
+            <img
+              src={logo}
+              alt="Primewayz Infotech logo"
+              className="h-6 w-auto max-w-[min(11rem,42vw)] object-contain object-left sm:h-7 md:h-8"
+            />
           </Link>
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <a
-                key={link.name}
-                href={link.href}
-                className="text-sm font-medium text-zinc-600 hover:text-emerald-600 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/20 rounded-md px-1"
-              >
-                {link.name}
-              </a>
-            ))}
-            <Link 
-              to="/admin"
-              className="flex items-center gap-2 text-sm font-medium text-zinc-400 hover:text-zinc-900 transition-colors"
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              Admin
-            </Link>
-            <motion.a 
-              href="#contact"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="bg-zinc-900 text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/50 shadow-md shadow-zinc-900/10"
-            >
-              Get Started
-            </motion.a>
+          <div className="pointer-events-none absolute inset-x-0 top-0 hidden h-full items-center justify-center lg:flex">
+            <div className="pointer-events-auto flex max-h-14 max-w-[min(100%,36rem)] flex-wrap items-center justify-center gap-x-2 gap-y-1 xl:max-w-[min(100%,44rem)] xl:gap-x-5">
+              {navLinks.map((link) => (
+                <a
+                  key={link.name}
+                  href={link.href}
+                  className="rounded-md px-1.5 py-2 text-[13px] font-medium leading-none text-slate-600 transition-colors hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600/40 xl:text-sm"
+                >
+                  {link.name}
+                </a>
+              ))}
+            </div>
           </div>
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden">
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+            <motion.a
+              href="#contact"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="hidden min-h-[40px] items-center rounded-md bg-slate-900 px-3 py-2 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 md:inline-flex xl:px-5 xl:text-sm"
+            >
+              Book a call
+            </motion.a>
             <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="p-2 text-zinc-600 hover:text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 rounded-md"
+              type="button"
+              onClick={() => setIsOpen((v) => !v)}
+              className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600/40 lg:hidden"
               aria-expanded={isOpen}
-              aria-label={isOpen ? "Close menu" : "Open menu"}
+              aria-label={isOpen ? 'Close menu' : 'Open menu'}
               aria-controls="mobile-menu"
             >
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isOpen ? <X className="h-6 w-6" strokeWidth={2} /> : <Menu className="h-6 w-6" strokeWidth={2} />}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Nav */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -93,36 +94,32 @@ export const Navbar = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-white border-b border-zinc-200 overflow-hidden"
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="border-t border-slate-100 bg-white lg:hidden"
           >
-            <div className="px-4 pt-2 pb-6 space-y-1">
-              {navLinks.map((link) => (
-                <a
-                  key={link.name}
-                  href={link.href}
+            <div
+              className={`${SITE_CONTAINER_CLASS} max-h-[min(70vh,calc(100dvh-3.5rem))] overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] pt-1`}
+            >
+              <div className="flex flex-col gap-0.5 py-2">
+                {navLinks.map((link) => (
+                  <a
+                    key={link.name}
+                    href={link.href}
+                    onClick={() => setIsOpen(false)}
+                    className="min-h-[44px] rounded-md px-3 py-3 text-[15px] font-medium leading-snug text-slate-700 active:bg-slate-50"
+                  >
+                    {link.name}
+                  </a>
+                ))}
+                <motion.a
+                  href="#contact"
                   onClick={() => setIsOpen(false)}
-                  className="block px-3 py-2 text-base font-medium text-zinc-600 hover:text-emerald-600 rounded-md focus:bg-zinc-50"
+                  whileTap={{ scale: 0.99 }}
+                  className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-md bg-slate-900 px-4 py-3 text-[15px] font-semibold text-white shadow-md shadow-slate-900/10"
                 >
-                  {link.name}
-                </a>
-              ))}
-              <Link
-                to="/admin"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-2 px-3 py-2 text-base font-medium text-zinc-600 hover:text-emerald-600 rounded-md focus:bg-zinc-50"
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                Admin Dashboard
-              </Link>
-              <motion.a 
-                href="#contact"
-                onClick={() => setIsOpen(false)}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full mt-4 bg-zinc-900 text-white px-5 py-3 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/50 shadow-lg shadow-zinc-900/10 flex items-center justify-center"
-              >
-                Get Started
-              </motion.a>
+                  Book a call
+                </motion.a>
+              </div>
             </div>
           </motion.div>
         )}

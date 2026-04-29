@@ -1,203 +1,117 @@
 import { motion } from 'motion/react';
-import { Shield, Zap, Users, MessageSquare, Code2, GitBranch, Terminal, RefreshCw } from 'lucide-react';
+import { Shield, Zap, GitBranch, Code2, Terminal, RefreshCw } from 'lucide-react';
 
-const deliveryRules = [
+const deliveryPrinciples = [
   {
-    title: '1 Active Task at a Time',
-    description: 'Each lane focuses on one feature until completion, ensuring maximum velocity and zero context switching.',
-    icon: Zap,
-  },
-  {
-    title: 'Pause/Resume Anytime',
-    description: 'Business slow? Pause your subscription. Scaling up? Resume instantly. No contracts, no penalties.',
+    title: 'Flexible monthly capacity',
+    description: 'Scale delivery based on your roadmap and pace.',
     icon: RefreshCw,
+    color: 'emerald',
   },
   {
-    title: 'Complete Ownership',
-    description: 'You own 100% of the source code and intellectual property. We own the delivery process.',
-    icon: Shield,
-  },
-  {
-    title: 'Fixed Monthly Rate',
-    description: 'No hourly billing or unexpected invoices. One predictable price for elite engineering.',
-    icon: Code2,
-  },
-];
-
-const experienceFeatures = [
-  {
-    title: 'No Project Managers',
-    description: 'Direct access to the engineers building your product. No middle-men, no lost translations.',
-    icon: Users,
-  },
-  {
-    title: 'Direct Queue Access',
-    description: 'Manage your roadmap directly via Trello or Linear. Reprioritize features in real-time.',
+    title: 'One approved workstream at a time',
+    description: 'Keeps execution focused and predictable on entry plans.',
     icon: Terminal,
+    color: 'indigo',
   },
   {
-    title: 'Async-First Communication',
-    description: 'We work where you work - Slack, Trello, or Linear. Fast updates without the meeting fatigue.',
-    icon: MessageSquare,
+    title: 'Transparent commercial model',
+    description: 'Clear subscription scope with add-ons shown separately.',
+    icon: Shield,
+    color: 'amber',
   },
   {
-    title: 'Daily Progress Updates',
-    description: 'Wake up to progress. Every day you get a clear update on what was shipped and what is next.',
+    title: 'Built for evolving roadmaps',
+    description: 'Add, reprioritise, or pause work as business needs change.',
+    icon: GitBranch,
+    color: 'emerald',
+  },
+  {
+    title: 'Quality built into delivery',
+    description: 'Planning, build, QA, and release happen through a structured flow.',
+    icon: Code2,
+    color: 'indigo',
+  },
+  {
+    title: 'Continuity without rigid lock-in',
+    description: 'Move to maintenance mode when priorities slow down.',
     icon: Zap,
+    color: 'amber',
   },
 ];
 
-const workflowSteps = [
-  {
-    title: 'Standardized Stack',
-    description: 'We use a battle-tested tech stack (React, Node, Cloud) to ensure maintainability and speed.',
-    icon: Code2,
+const colorClasses = {
+  emerald: {
+    icon: 'text-emerald-400',
+    bg: 'bg-emerald-500/20',
   },
-  {
-    title: 'Peer Reviews by Default',
-    description: 'Every line of code is reviewed by another senior engineer before it reaches production.',
-    icon: GitBranch,
+  indigo: {
+    icon: 'text-indigo-400',
+    bg: 'bg-indigo-500/20',
   },
-  {
-    title: 'Automated CI/CD',
-    description: 'Continuous integration and deployment mean your features are shipped as soon as they are ready.',
-    icon: Zap,
+  amber: {
+    icon: 'text-amber-400',
+    bg: 'bg-amber-500/20',
   },
-  {
-    title: 'Automated Testing',
-    description: 'We write tests for every critical path to ensure your product stays stable as it grows.',
-    icon: Shield,
-  },
-];
+};
 
 export const Experience = () => {
   return (
     <section id="features" className="py-24 bg-zinc-900 text-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-20">
+        <div className="mb-16 text-center">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-3xl md:text-5xl font-bold tracking-tight mb-6"
           >
-            The <span className="text-emerald-400 italic">Experience</span> of <br />
-            Modern Engineering
+            Delivery principles that keep work moving
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="text-lg text-zinc-400 max-w-2xl"
+            className="text-lg text-zinc-400 max-w-3xl mx-auto"
           >
-            We've redesigned the customer experience to be as seamless as the code we write. 
-            No friction, just pure product evolution.
+            A structured software delivery model built for flexibility, focus, and continuity.
           </motion.p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-          {/* Delivery Rules */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="space-y-8"
-          >
-            <h3 className="text-sm font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-400" />
-              Delivery Rules
-            </h3>
-            <div className="space-y-8">
-              {deliveryRules.map((rule, i) => (
-                <div key={i} className="group">
-                  <div className="flex items-center gap-4 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
-                      <rule.icon className="w-5 h-5 text-emerald-400" />
-                    </div>
-                    <h4 className="text-lg font-bold">{rule.title}</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {deliveryPrinciples.map((principle, i) => {
+            const color = colorClasses[principle.color as keyof typeof colorClasses];
+            return (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05 }}
+                className="group p-8 rounded-2xl bg-zinc-800/50 border border-zinc-700 hover:border-zinc-600 transition-colors"
+              >
+                <div className="flex items-center gap-4 mb-5">
+                  <div className={`w-12 h-12 rounded-xl ${color.bg} flex items-center justify-center group-hover:opacity-90 transition-opacity`}>
+                    <principle.icon className={`w-6 h-6 ${color.icon}`} />
                   </div>
-                  <p className="text-zinc-400 leading-relaxed pl-14">{rule.description}</p>
+                  <h4 className="text-xl font-bold">{principle.title}</h4>
                 </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Customer Experience */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="space-y-8"
-          >
-            <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-indigo-400" />
-              Customer Experience
-            </h3>
-            <div className="space-y-8">
-              {experienceFeatures.map((feature, i) => (
-                <div key={i} className="group">
-                  <div className="flex items-center gap-4 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
-                      <feature.icon className="w-5 h-5 text-indigo-400" />
-                    </div>
-                    <h4 className="text-lg font-bold">{feature.title}</h4>
-                  </div>
-                  <p className="text-zinc-400 leading-relaxed pl-14">{feature.description}</p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Internal Workflow */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="space-y-8"
-          >
-            <h3 className="text-sm font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-amber-400" />
-              Internal Workflow
-            </h3>
-            <div className="space-y-8">
-              {workflowSteps.map((step, i) => (
-                <div key={i} className="group">
-                  <div className="flex items-center gap-4 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center group-hover:bg-amber-500/20 transition-colors">
-                      <step.icon className="w-5 h-5 text-amber-400" />
-                    </div>
-                    <h4 className="text-lg font-bold">{step.title}</h4>
-                  </div>
-                  <p className="text-zinc-400 leading-relaxed pl-14">{step.description}</p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
+                <p className="text-zinc-400 leading-relaxed">{principle.description}</p>
+              </motion.div>
+            );
+          })}
         </div>
 
-        {/* Strategic Advantages Section */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="mt-32 p-12 rounded-[2.5rem] bg-gradient-to-br from-emerald-500/10 to-indigo-500/10 border border-white/5"
+          className="mt-20 text-center"
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              { title: "No 'Wrong Investment' Fear", desc: "Pivot your roadmap instantly as market conditions change." },
-              { title: "No Vendor Lock-in", desc: "You own the code. Take it anywhere, anytime. No strings attached." },
-              { title: "No 'Rebuild' Cycles", desc: "Continuous evolution means your tech never becomes legacy." },
-              { title: "Digital OS", desc: "A continuous operating system for your digital business growth." }
-            ].map((adv, i) => (
-              <div key={i} className="space-y-3">
-                <h5 className="text-emerald-400 font-bold">{adv.title}</h5>
-                <p className="text-sm text-zinc-400 leading-relaxed">{adv.desc}</p>
-              </div>
-            ))}
-          </div>
+          <p className="text-zinc-500 text-sm max-w-2xl mx-auto">
+            Our delivery model is designed to reduce overhead, increase predictability, and adapt to your changing business needs—without the rigidity of traditional contracts.
+          </p>
         </motion.div>
       </div>
     </section>

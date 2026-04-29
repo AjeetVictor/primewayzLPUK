@@ -4,28 +4,44 @@ import { useState } from 'react';
 
 const faqs = [
   {
-    question: 'Why not just hire a full-time developer?',
-    answer: 'The annual cost of a full-time senior-level developer now exceeds ₹80,00,000, plus benefits (and good luck finding one available). Aside from that, you may not always have enough work to keep them busy at all times, so you’re stuck paying for time you aren’t able to utilize. With our monthly plan, you can pause and resume your subscription as often as you need to ensure you’re only paying your developer when you have work available for them.',
+    question: 'Do I need to start with Foundation Sprint?',
+    answer:
+      'In most cases, yes. Foundation Sprint is the recommended starting point because it aligns priorities, confirms scope, and creates the execution plan before active monthly delivery begins.',
   },
   {
-    question: 'Is there a limit to how many requests I can have?',
-    answer: 'Once subscribed, you’re able to add as many development requests to your queue as you’d like, and they will be delivered one by one.',
+    question: 'Can I take Foundation Sprint and a monthly plan together?',
+    answer:
+      'Yes. Some teams run Foundation Sprint first, then move into Essential, Growth, or Scale. Others overlap onboarding so monthly delivery starts immediately once priorities are approved.',
   },
   {
-    question: 'How fast will I receive my requests?',
-    answer: 'On average, most requests are completed in just two days or less. However, more complex requests can take longer.',
+    question: 'How do I choose between Essential, Growth, and Scale?',
+    answer:
+      'Choose based on delivery capacity and complexity.\n\nEssential fits core website/CMS improvements and lighter integrations.\nGrowth fits broader conversion-focused delivery and CRM/API work.\nScale fits heavier operational systems, portals, dashboards, and automation.\n\nIf unsure, Primewayz recommends the best-fit plan on a discovery call.',
   },
   {
-    question: 'Who are the developers?',
-    answer: 'You might be surprised to hear this, but Primewayz is actually an agency of one. This means you’ll work directly with me, the founder of Primewayz Infortech Private Limited. However, power-ups requests such as custom illustrations or complex animations are provided by partner designers.',
+    question: 'Why are add-ons billed separately?',
+    answer:
+      'Add-ons are optional specialist capability beyond core delivery capacity. Keeping them separate means you only pay for extra support when it is genuinely needed.',
   },
   {
-    question: 'What if I don’t like the code?',
-    answer: 'No worries! We’ll continue to revise the code until you’re 100% satisfied.',
+    question: 'Why are third-party vendor costs separate?',
+    answer:
+      'Third-party costs are external charges, not Primewayz delivery fees. This includes hosting, domains, email/messaging providers, payment gateways, and SaaS tooling. Separation keeps pricing transparent and keeps vendor ownership with your team.',
   },
   {
-    question: 'What if I only have a single request?',
-    answer: 'That’s fine. You can pause your subscription when finished and return when you have additional development needs. There’s no need to let the remainder of your subscription go to waste.',
+    question: 'When should I move to Maintenance Mode?',
+    answer:
+      'Move to Maintenance Mode when roadmap intensity drops and you need continuity, upkeep, and minor fixes without full active delivery capacity. You can move back into an active plan when priorities increase again.',
+  },
+  {
+    question: 'When is Enterprise the right fit?',
+    answer:
+      'Enterprise is best for advanced integration-heavy systems, architect-led programmes, governance-heavy delivery, and large roadmap execution that needs custom team shape and commercial structure.',
+  },
+  {
+    question: 'Can I switch plans as priorities change?',
+    answer:
+      'Yes. Capacity is flexible month to month. You can move between Essential, Growth, Scale, and Maintenance Mode as business priorities shift.',
   },
 ];
 
@@ -34,79 +50,129 @@ export const FAQ = () => {
 
   return (
     <section id="faq" className="py-24 bg-white">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[0.45fr_0.55fr] lg:gap-10">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-3xl md:text-5xl font-bold tracking-tight text-zinc-900 mb-4"
+            className="rounded-3xl border border-zinc-200 bg-zinc-50/80 p-6 sm:p-7"
           >
-            Common questions
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="text-lg text-zinc-600"
-          >
-            Everything you need to know about our productized service.
-          </motion.p>
-        </div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-700/80">
+              DELIVERY MODEL GUIDE
+            </p>
+            <h3 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
+              Watch how to choose the right delivery model
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-zinc-600">
+              A quick walkthrough of when to start with Foundation Sprint, when to move into
+              monthly delivery, and how add-ons and third-party costs work.
+            </p>
 
-        <motion.div 
-          variants={{
-            hidden: { opacity: 0 },
-            visible: {
-              opacity: 1,
-              transition: {
-                staggerChildren: 0.1,
-              },
-            },
-          }}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="space-y-4"
-        >
-          {faqs.map((faq, index) => (
-            <motion.div
-              key={index}
-              variants={{
-                hidden: { opacity: 0, y: 20 },
-                visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-              }}
-              className="border border-zinc-200 rounded-2xl overflow-hidden"
+            <video
+              controls
+              preload="metadata"
+              playsInline
+              muted
+              poster="/images/delivery-process-poster.jpg"
+              className="mt-5 aspect-[9/16] w-full object-cover object-center rounded-2xl border border-zinc-200/80 bg-zinc-900 shadow-lg"
             >
-              <button
-                onClick={() => setActiveIndex(activeIndex === index ? null : index)}
-                className="w-full flex items-center justify-between p-6 text-left hover:bg-zinc-50 transition-colors"
+              <source src="/videos/delivery-process-pwuk.mp4" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+
+            <ul className="mt-5 space-y-2">
+              {[
+                'Start with Foundation Sprint',
+                'Choose the monthly capacity that fits your roadmap',
+                'Add optional specialist support only when needed',
+                'Move to Maintenance Mode when priorities slow down',
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2 text-sm text-zinc-700">
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+
+          <div>
+            <div className="mb-7">
+              <motion.h2
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="text-3xl font-bold tracking-tight text-zinc-900 md:text-4xl"
               >
-                <span className="text-lg font-bold text-zinc-900">{faq.question}</span>
-                {activeIndex === index ? (
-                  <Minus className="w-5 h-5 text-zinc-500" />
-                ) : (
-                  <Plus className="w-5 h-5 text-zinc-500" />
-                )}
-              </button>
-              <AnimatePresence>
-                {activeIndex === index && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                Common questions
+              </motion.h2>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.08 }}
+                className="mt-2 text-base text-zinc-600"
+              >
+                Everything you need to know before choosing a plan.
+              </motion.p>
+            </div>
+
+            <motion.div
+              variants={{
+                hidden: { opacity: 0 },
+                visible: {
+                  opacity: 1,
+                  transition: {
+                    staggerChildren: 0.07,
+                  },
+                },
+              }}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="space-y-3"
+            >
+              {faqs.map((faq, index) => (
+                <motion.div
+                  key={faq.question}
+                  variants={{
+                    hidden: { opacity: 0, y: 16 },
+                    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+                  }}
+                  className="overflow-hidden rounded-2xl border border-zinc-200 bg-white"
+                >
+                  <button
+                    onClick={() => setActiveIndex(activeIndex === index ? null : index)}
+                    className="flex w-full items-center justify-between p-5 text-left transition-colors hover:bg-zinc-50 sm:p-6"
                   >
-                    <div className="px-6 pb-6 text-zinc-600 leading-relaxed">
-                      {faq.answer}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    <span className="pr-4 text-base font-semibold leading-6 text-zinc-900 sm:text-lg">
+                      {faq.question}
+                    </span>
+                    {activeIndex === index ? (
+                      <Minus className="h-5 w-5 shrink-0 text-zinc-500" />
+                    ) : (
+                      <Plus className="h-5 w-5 shrink-0 text-zinc-500" />
+                    )}
+                  </button>
+                  <AnimatePresence>
+                    {activeIndex === index && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.24, ease: 'easeInOut' }}
+                      >
+                        <div className="whitespace-pre-line border-t border-zinc-100 px-5 pb-5 pt-4 text-sm leading-7 text-zinc-600 sm:px-6 sm:pb-6">
+                          {faq.answer}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              ))}
             </motion.div>
-          ))}
-        </motion.div>
+          </div>
+        </div>
       </div>
     </section>
   );
