@@ -868,9 +868,9 @@ async function startServer() {
     const distPath = path.join(process.cwd(), 'dist');
     productionTemplate = await fs.readFile(path.join(distPath, 'index.html'), 'utf-8');
     if (IS_ROOT_BASE_PATH) {
-      app.use(express.static(distPath));
+      app.use(express.static(distPath, { index: false }));
     } else {
-      app.use(APP_BASE_PATH, express.static(distPath));
+      app.use(APP_BASE_PATH, express.static(distPath, { index: false }));
       // Redirect root to app base path for convenience.
       app.get('/', (req, res) => res.redirect(APP_BASE_PATH));
     }
