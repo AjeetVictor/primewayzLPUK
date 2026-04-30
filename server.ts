@@ -11,6 +11,7 @@ import dotenv from 'dotenv';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { blogPosts } from './src/data/blogPosts.ts';
 import { extraBlogPosts } from './src/data/extraBlogPosts.ts';
+import { homepageSeoContent } from './src/content/homepageSeoContent.ts';
 
 const allBlogPosts = [...blogPosts, ...extraBlogPosts];
 const SYSTEM_INSTRUCTION = `You are the Primewayz Support Bot.
@@ -217,39 +218,24 @@ function removeSeoTags(html: string): string {
   return output;
 }
 
+function renderSeoBlocks(): string {
+  return homepageSeoContent
+    .map((block) => {
+      const headingTag = `h${block.level}`;
+      const heading = `<${headingTag}>${escapeHtml(block.heading)}</${headingTag}>`;
+      const paragraphs = (block.paragraphs || [])
+        .map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`)
+        .join('');
+
+      return `<section>${heading}${paragraphs}</section>`;
+    })
+    .join('');
+}
+
 function getSeoFallbackBody(pathname: string): string {
   if (pathname.startsWith('/admin')) return '';
 
-  return `
-    <main>
-      <h1>Software Delivery Partner for UK Businesses</h1>
-      <p>
-        Primewayz helps UK businesses plan, build, stabilise and automate software through flexible delivery partnerships.
-      </p>
-
-      <h2>Flexible Software Delivery Subscription</h2>
-      <p>
-        Start with a focused Foundation Sprint, then continue with monthly delivery capacity for development,
-        ERP workflows, B2B ecommerce, integrations, maintenance and AI-enabled automation.
-      </p>
-
-      <h2>Built for UK Businesses That Need Dependable Delivery</h2>
-      <p>
-        We support companies that need a practical software partner for web applications, internal systems,
-        workflow automation, customer portals and long-term maintenance.
-      </p>
-
-      <h2>Foundation Sprint</h2>
-      <p>
-        Use the Foundation Sprint to clarify scope, priorities, risks, delivery plan and the right monthly support model.
-      </p>
-
-      <h2>Book a 20-Minute Fit Check</h2>
-      <p>
-        Discuss your current system, bottlenecks and software priorities with Primewayz.
-      </p>
-    </main>
-  `;
+  return `<main>${renderSeoBlocks()}</main>`;
 }
 
 function withSeoTags(html: string, seo: SeoPayload, pathname = '/'): string {
