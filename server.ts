@@ -438,7 +438,11 @@ async function seedAdmin() {
 }
 
 async function startServer() {
-  await seedAdmin();
+  if (process.env.SKIP_ADMIN_SEED === 'true') {
+    backendLog('admin seed skipped by SKIP_ADMIN_SEED');
+  } else {
+    await seedAdmin();
+  }
 
   const app = express();
   let viteDevServer: Awaited<ReturnType<typeof createViteServer>> | null = null;
