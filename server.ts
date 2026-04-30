@@ -217,7 +217,42 @@ function removeSeoTags(html: string): string {
   return output;
 }
 
-function withSeoTags(html: string, seo: SeoPayload): string {
+function getSeoFallbackBody(pathname: string): string {
+  if (pathname.startsWith('/admin')) return '';
+
+  return `
+    <main>
+      <h1>Software Delivery Partner for UK Businesses</h1>
+      <p>
+        Primewayz helps UK businesses plan, build, stabilise and automate software through flexible delivery partnerships.
+      </p>
+
+      <h2>Flexible Software Delivery Subscription</h2>
+      <p>
+        Start with a focused Foundation Sprint, then continue with monthly delivery capacity for development,
+        ERP workflows, B2B ecommerce, integrations, maintenance and AI-enabled automation.
+      </p>
+
+      <h2>Built for UK Businesses That Need Dependable Delivery</h2>
+      <p>
+        We support companies that need a practical software partner for web applications, internal systems,
+        workflow automation, customer portals and long-term maintenance.
+      </p>
+
+      <h2>Foundation Sprint</h2>
+      <p>
+        Use the Foundation Sprint to clarify scope, priorities, risks, delivery plan and the right monthly support model.
+      </p>
+
+      <h2>Book a 20-Minute Fit Check</h2>
+      <p>
+        Discuss your current system, bottlenecks and software priorities with Primewayz.
+      </p>
+    </main>
+  `;
+}
+
+function withSeoTags(html: string, seo: SeoPayload, pathname = '/'): string {
   const siteTitle = `${seo.title} | ${SEO_SITE_NAME}`;
   const structuredDataJson = JSON.stringify(seo.structuredData).replace(/</g, '\\u003c');
   const headTags = `
@@ -240,7 +275,15 @@ function withSeoTags(html: string, seo: SeoPayload): string {
     <script type="application/ld+json">${structuredDataJson}</script>
   `;
 
-  return removeSeoTags(html).replace('</head>', `${headTags}\n  </head>`);
+  const htmlWithHead = removeSeoTags(html).replace('</head>', `${headTags}\n  </head>`);
+  const fallbackBody = getSeoFallbackBody(pathname);
+
+  if (!fallbackBody) return htmlWithHead;
+
+  return htmlWithHead.replace(
+    '<div id="root"></div>',
+    `<div id="root">${fallbackBody}</div>`,
+  );
 }
 
 function getOrigin(req: express.Request): string {
@@ -914,7 +957,7 @@ async function startServer() {
         htmlTemplate = productionTemplate;
       }
 
-      const html = withSeoTags(htmlTemplate, seo);
+      const html = withSeoTags(htmlTemplate, seo, appPathname);
       res.status(200).type('text/html').send(html);
     } catch (error) {
       if (viteDevServer) {
