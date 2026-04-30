@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "prebuild": "node scripts/validate-base-path.mjs",
-    "build": "vite build",
+    "build": "npm run build:client && npm run build:ssr",
     "preview": "vite preview",
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "lint": "tsc --noEmit",
@@ -16,7 +16,9 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:status": "prisma migrate status",
-    "data:migrate:sqlite-to-mysql": "node scripts/migrate-sqlite-to-mysql.mjs"
+    "data:migrate:sqlite-to-mysql": "node scripts/migrate-sqlite-to-mysql.mjs",
+    "build:client": "vite build --outDir dist/client",
+    "build:ssr": "vite build --ssr src/entry-server.tsx --outDir dist/server"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

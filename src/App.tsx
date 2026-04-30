@@ -1,3 +1,4 @@
+import { useEffect, useState, type ReactNode } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Navbar } from './components/Navbar';
@@ -20,12 +21,25 @@ import { LiveChat } from './components/LiveChat';
 import { AdminPanel } from './components/AdminPanel';
 import { BlogPost } from './components/BlogPost';
 
+
+const ClientOnly = ({ children }: { children: ReactNode }) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
+  return <>{children}</>;
+};
+
 const MainContent = () => (
   <main>
     <Hero />
-    
+
     <Philosophy />
-    
+
     <motion.div
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
@@ -40,11 +54,11 @@ const MainContent = () => (
     <TechStack />
 
     <Experience />
-    
+
     <Stats />
 
     <Pricing />
-    
+
     <FAQ />
 
     <SuccessStories />
@@ -52,9 +66,9 @@ const MainContent = () => (
     <Testimonials />
 
     <BlogSection />
-    
+
     <ContactForm />
-    
+
     <section className="py-24 bg-emerald-600">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <motion.h2
@@ -82,7 +96,7 @@ const MainContent = () => (
           viewport={{ once: true }}
           transition={{ delay: 0.2 }}
         >
-          <a 
+          <a
             href="#contact"
             className="inline-block bg-white text-emerald-600 px-10 py-5 rounded-full text-xl font-bold hover:bg-emerald-50 transition-all shadow-xl shadow-emerald-900/20"
           >
@@ -110,7 +124,7 @@ export default function App() {
       </Routes>
 
       {!isAdmin && <Footer />}
-      {!isAdmin && <LiveChat />}
+      {!isAdmin && <ClientOnly><LiveChat /></ClientOnly>}
     </div>
   );
 }

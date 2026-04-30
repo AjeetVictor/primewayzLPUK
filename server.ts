@@ -1,7 +1,7 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import fs from 'fs/promises';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
@@ -443,6 +443,7 @@ async function startServer() {
   const app = express();
   let viteDevServer: Awaited<ReturnType<typeof createViteServer>> | null = null;
   let productionTemplate = '';
+  let ssrRender: null | ((url: string, basePath?: string) => { html: string }) = null;
 
   app.use(express.json());
   app.use(cookieParser());
@@ -886,6 +887,7 @@ async function startServer() {
       appType: 'spa',
       base: APP_BASE_PATH
     });
+
     if (IS_ROOT_BASE_PATH) {
       app.use(viteDevServer.middlewares);
     } else {
@@ -894,8 +896,13 @@ async function startServer() {
       app.get('/', (req, res) => res.redirect(APP_BASE_PATH));
     }
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = path.join(process.cwd(), 'dist/client');
     productionTemplate = await fs.readFile(path.join(distPath, 'index.html'), 'utf-8');
+
+    const ssrEntryPath = path.join(process.cwd(), 'dist/server/entry-server.js');
+    const ssrModule = await import(pathToFileURL(ssrEntryPath).href);
+    ssrRender = ssrModule.render;
+
     if (IS_ROOT_BASE_PATH) {
       app.use(express.static(distPath, { index: false }));
     } else {
@@ -942,6 +949,22 @@ async function startServer() {
       } else {
         htmlTemplate = productionTemplate;
       }
+
+      let ssrHtml = '';
+
+      if (ssrRender && !appPathname.startsWith('/admin')) {
+        try {
+          const rendered = ssrRender(appPathname, APP_BASE_PATH);
+          ssrHtml = rendered?.html || '';
+        } catch (e) {
+          backendLog('ssr render failed; using SEO fallback body', {
+            path: appPathname,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      }
+
+      htmlTemplate = htmlTemplate.replace('<!--app-html-->', ssrHtml);
 
       const html = withSeoTags(htmlTemplate, seo, appPathname);
       res.status(200).type('text/html').send(html);

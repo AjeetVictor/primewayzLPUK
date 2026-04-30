@@ -57,7 +57,7 @@ export const SuccessStories = () => {
               transition={{ delay: 0.1 }}
               className="text-lg text-zinc-600"
             >
-              We don't just write code; we build business value. Explore how we've 
+              We don't just write code; we build business value. Explore how we've
               helped our partners achieve their most ambitious goals.
             </motion.p>
           </div>
@@ -85,8 +85,8 @@ export const SuccessStories = () => {
               className="group cursor-pointer"
             >
               <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden mb-6">
-                <img 
-                  src={story.image} 
+                <img
+                  src={story.image}
                   alt={story.title}
                   loading="lazy"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -99,25 +99,25 @@ export const SuccessStories = () => {
                   </span>
                 </div>
                 <div className="absolute top-4 right-4">
-                  <ShareButton 
-                    title={story.title} 
-                    url={window.location.href} 
+                  <ShareButton
+                    title={story.title}
+                    url={(typeof window !== 'undefined' ? window.location.href : 'https://uk.primewayz.com/')}
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <motion.div 
+                  <motion.div
                     whileHover={{ y: -5 }}
                     transition={{ type: "spring", stiffness: 400, damping: 10 }}
                     className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      story.color === 'emerald' ? 'bg-emerald-100' : 
+                      story.color === 'emerald' ? 'bg-emerald-100' :
                       story.color === 'indigo' ? 'bg-indigo-100' : 'bg-amber-100'
                     }`}
                   >
                     <story.icon className={`w-5 h-5 ${
-                      story.color === 'emerald' ? 'text-emerald-600' : 
+                      story.color === 'emerald' ? 'text-emerald-600' :
                       story.color === 'indigo' ? 'text-indigo-600' : 'text-amber-600'
                     }`} />
                   </motion.div>
