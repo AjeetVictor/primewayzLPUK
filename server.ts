@@ -174,8 +174,8 @@ async function verifyRecaptchaToken(token: unknown): Promise<boolean> {
   }
 }
 const SEO_SITE_NAME = 'Primewayz';
-const SEO_DEFAULT_OG_IMAGE = 'https://picsum.photos/seed/software/1200/630';
-const SEO_DEFAULT_TWITTER_HANDLE = '@software_saas';
+const SEO_DEFAULT_OG_IMAGE = 'https://uk.primewayz.com/assets/primewayz-infotech-logo-gn3jDBiM.svg';
+const SEO_DEFAULT_TWITTER_HANDLE = '@Primewayz';
 
 type SeoPayload = {
   title: string;
@@ -306,9 +306,9 @@ function getSeoPayload(pathname: string, origin: string): SeoPayload {
   const defaultDescription = 'Primewayz offers elite software development as a service with predictable pricing and high-velocity delivery.';
   const baseOrg = {
     '@type': 'Organization',
-    name: 'Primewayz Infortech Private Limited',
+    name: 'Primewayz Infotech Private Limited',
     url: joinUrl(origin, getCanonicalPath('/')),
-    logo: 'https://picsum.photos/seed/logo/200/200',
+    logo: 'https://uk.primewayz.com/assets/primewayz-infotech-logo-gn3jDBiM.svg',
   };
 
   if (pathname.startsWith('/blog/')) {

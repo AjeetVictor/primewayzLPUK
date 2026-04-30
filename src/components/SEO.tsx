@@ -14,8 +14,8 @@ export const SEO = ({
   description = 'Primewayz offers elite, productized software development as a service. Scale your business with our on-demand engineering teams and agile development services. Predictable pricing, no contracts, just high-velocity delivery.',
   canonical = 'https://ais-pre-mpuvpf5ptocgkdovjijd5p-281079166320.asia-southeast1.run.app',
   ogType = 'website',
-  ogImage = 'https://picsum.photos/seed/software/1200/630',
-  twitterHandle = '@software_saas',
+  ogImage = 'https://uk.primewayz.com/assets/primewayz-infotech-logo-gn3jDBiM.svg',
+  twitterHandle = '@Primewayz',
 }: SEOProps) => {
   const siteTitle = `${title} | Primewayz`;
 
@@ -25,7 +25,7 @@ export const SEO = ({
       <title>{siteTitle}</title>
       <meta name="description" content={description} />
       <meta name="keywords" content="software development agency, outsourcing, product engineering, agile development, software development, saas, productized software development, agile development services, on-demand engineering teams, subscription development, elite engineering, Primewayz" />
-      <meta name="author" content="Primewayz Infortech Private Limited" />
+      <meta name="author" content="Primewayz Infotech Private Limited" />
       <link rel="canonical" href={canonical} />
       <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
       <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
@@ -37,7 +37,7 @@ export const SEO = ({
       <meta name="apple-mobile-web-app-title" content="Primewayz" />
       <meta name="format-detection" content="telephone=no" />
       <meta name="msapplication-TileColor" content="#059669" />
-      <link rel="apple-touch-icon" href="https://picsum.photos/seed/logo/180/180" />
+      <link rel="apple-touch-icon" href="https://uk.primewayz.com/favicon.png" />
 
       {/* Open Graph Meta Tags */}
       <meta property="og:title" content={siteTitle} />
@@ -70,13 +70,13 @@ export const SEO = ({
           '@context': 'https://schema.org',
           '@type': 'Service',
           'serviceType': 'Software Development as a Service',
-          'name': 'Primewayz Infortech Private Limited - Elite Engineering',
+          'name': 'Primewayz Infotech Private Limited - Elite Engineering',
           'description': description,
           'provider': {
             '@type': 'Organization',
-            'name': 'Primewayz Infortech Private Limited',
+            'name': 'Primewayz Infotech Private Limited',
             'url': canonical,
-            'logo': 'https://picsum.photos/seed/logo/200/200',
+            'logo': 'https://uk.primewayz.com/assets/primewayz-infotech-logo-gn3jDBiM.svg',
             'sameAs': [
               'https://www.linkedin.com/company/primewayz',
               'https://twitter.com/primewayz'
