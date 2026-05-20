@@ -20,6 +20,7 @@ import { ScrollToTop } from './components/ScrollToTop';
 import { LiveChat } from './components/LiveChat';
 import { AdminPanel } from './components/AdminPanel';
 import { BlogPost } from './components/BlogPost';
+import AnalyticsTracker from './components/AnalyticsTracker';
 
 
 const ClientOnly = ({ children }: { children: ReactNode }) => {
@@ -114,6 +115,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-white font-sans selection:bg-emerald-100 selection:text-emerald-900">
+      <AnalyticsTracker />
       {!isAdmin && <Navbar />}
       {!isAdmin && <ScrollToTop />}
 
@@ -128,3 +130,4 @@ export default function App() {
     </div>
   );
 }
+
