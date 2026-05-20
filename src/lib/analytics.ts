@@ -14,13 +14,16 @@ export function isGaEnabled(): boolean {
 export function initGA(): void {
   if (!isGaEnabled()) return;
 
-  if (document.querySelector(`script[src*="googletagmanager.com/gtag/js?id="]`)) {
+  const scriptSelector =
+    'script[src*="googletagmanager.com/gtag/js?id=' + GA_MEASUREMENT_ID + '"]';
+
+  if (document.querySelector(scriptSelector)) {
     return;
   }
 
   const script = document.createElement('script');
   script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=`;
+  script.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_MEASUREMENT_ID;
   document.head.appendChild(script);
 
   window.dataLayer = window.dataLayer || [];
