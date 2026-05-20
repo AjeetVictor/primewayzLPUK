@@ -27,14 +27,18 @@ App URL: `http://localhost:3000/`
 
 ## 2) Build and production run
 
-1. Build frontend:
+1. Build client + SSR bundles:
    `npm run build`
-2. Start API + static server:
+2. Start API + SSR/static server:
    `npm run start`
+
+Build output:
+- `dist/client`: browser assets from `vite build --outDir dist/client`
+- `dist/server`: SSR renderer bundle from `vite build --ssr src/entry-server.tsx --outDir dist/server`
 
 ## 3) Important environment variables
 
-- `DATABASE_URL`: MySQL connection URL (DB: `primewayz_lpage_uk`)
+- `DATABASE_URL`: MySQL connection URL (DB: `primewayz-lpageuk`)
 - `APP_BASE_PATH`: router/static base path (default `/`)
 - `VITE_APP_BASE_PATH`: Vite router base path (default `/`)
 - `COOKIE_SECURE`: `true` in HTTPS production, `false` locally
@@ -51,15 +55,108 @@ This project is intentionally locked to root-hosted subdomain deployment.
 - `vite.config.ts` must keep `base: '/'`
 - `npm run build` runs a prebuild guard (`scripts/validate-base-path.mjs`) and fails if these drift
 
+Additional SEO variables used by SSR:
+- `SITE_URL`: canonical origin used by SSR metadata, schema, and production links
+
 ## 4) Apache deployment
 
 See `Docs/apache-config.md` for SPA rewrite + reverse proxy configuration.
 
 Production URLs:
-- Landing page: `https://primewayz-uk.primewayz.com/`
-- Admin panel: `https://primewayz-uk.primewayz.com/admin`
+- Landing page: `https://uk.primewayz.com/`
+- Admin panel: `https://uk.primewayz.com/admin`
 
-## 4.1) Chat architecture and logs
+## 4.1) SSR and SEO architecture (handover guide)
+
+This project now runs on a **Vite SSR foundation** with server-rendered HTML for public pages, then hydrates on the client. It is SEO-friendly because bots receive meaningful HTML + metadata directly from the server response.
+
+### Core SSR files
+
+- `server.ts`
+  - Runs Express API + SSR HTML handling in one process.
+  - In development: starts Vite middleware server and transforms `index.html` on each request.
+  - In production: serves `dist/client` static assets and imports `dist/server/entry-server.js` for rendering.
+- `src/entry-server.tsx`
+  - Exposes `render(url, basePath)` for server-side `renderToString(...)` with `MemoryRouter`.
+- `src/entry-client.tsx`
+  - Uses `hydrateRoot(...)` with `BrowserRouter` to attach React to pre-rendered HTML.
+- `index.html`
+  - SSR injection point is `<!--app-html-->` inside `<div id="root">...</div>`.
+  - Client boot script is `/src/entry-client.tsx` (rewritten to built client asset in production).
+
+### End-to-end request lifecycle (public pages)
+
+1. Browser/crawler hits a non-API route (for example `/`, `/blog/...`).
+2. `server.ts` catch-all route builds per-request SEO payload:
+   - title/description/canonical
+   - Open Graph + Twitter tags
+   - JSON-LD structured data
+3. HTML template is loaded:
+   - Dev: Vite `transformIndexHtml(...)`
+   - Prod: prebuilt `dist/client/index.html`
+4. SSR render step:
+   - For non-admin pages, server calls `ssrRender(appPathname, APP_BASE_PATH)` from `entry-server`.
+   - `entry-server` renders `<App />` to string with `MemoryRouter`.
+5. Server injects rendered markup into `<!--app-html-->`.
+6. Server injects SEO tags into `<head>` (replacing old dynamic tags safely).
+7. Final HTML is returned to client/bot with complete metadata and meaningful content.
+8. On browser load, `entry-client.tsx` hydrates existing HTML (`hydrateRoot`) so app becomes fully interactive.
+
+### Route behavior and SEO rules
+
+- API endpoints stay under `/api/*` and bypass SSR.
+- `/admin` routes are intentionally **not SSR-rendered** and use `robots: noindex,nofollow`.
+- Public routes use `robots: index,follow`.
+- Blog detail routes (`/blog/:id`) produce article-specific SEO metadata and Article JSON-LD.
+- If SSR render fails for a page, server logs the issue and falls back to SEO-safe HTML response.
+- The server blocks file-like unknown URLs (for example `/server.ts`, `/.env`) with `404` + `X-Robots-Tag: noindex, nofollow`.
+
+### Development flow (SSR mode)
+
+Run:
+- `npm run dev`
+
+What happens:
+- `tsx server.ts` starts Express.
+- Express starts Vite in middleware mode.
+- Every page request is SSR-aware and rendered via dynamic template transform.
+- APIs, auth, Prisma, and SSR all run in the same node process.
+
+### Production flow (SSR mode)
+
+Build:
+- `npm run build`
+
+Start:
+- `npm run start`
+
+What happens:
+- Node runs `server.ts` with `NODE_ENV=production`.
+- Server loads `dist/client/index.html` once.
+- Server imports `dist/server/entry-server.js` once.
+- Static assets are served from `dist/client`.
+- HTML responses are rendered server-side per request (for supported routes), then hydrated in browser.
+
+### Root base-path constraint (important)
+
+Production is locked to root hosting:
+- `APP_BASE_PATH=/`
+- `VITE_APP_BASE_PATH=/`
+- `vite.config.ts` `base: '/'`
+
+Do not change this unless explicitly requested. If changed incorrectly, SSR paths/canonical URLs/hydration can break.
+
+### Quick verification checklist for handover
+
+After any SSR/SEO change, verify:
+- `npm run build` passes.
+- `npm run start` serves SSR HTML for `/` and `/blog/:id`.
+- View page source contains populated `<title>`, `<meta name="description">`, canonical, OG/Twitter tags, and JSON-LD.
+- Browser console has no hydration mismatch warnings on key pages.
+- `/admin` returns noindex metadata.
+- API routes still return JSON as expected.
+
+## 4.2) Chat architecture and logs
 
 - Live chat calls backend endpoint `POST /api/chat/respond` (no client-side AI key).
 - Backend stores both user and bot messages in MySQL via Prisma.
