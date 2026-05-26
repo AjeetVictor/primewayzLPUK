@@ -1,3 +1,4 @@
+import { TrackedLink } from './common/TrackedLink';
 import { motion } from 'motion/react';
 import {
   ArrowRight,
@@ -313,15 +314,25 @@ const FoundationFeaturedCard = ({ plan }: { plan: PlanCard }) => (
         </p>
         <p className="mt-1 text-sm text-zinc-700">{plan.limitations?.[0]}</p>
       </div>
-      <motion.a
+      <TrackedLink
         href={plan.ctaHref}
+        ctaText={plan.cta}
+        ctaLocation="pricing_featured_plan"
+        eventType="pricing_plan_click"
+        trackingParams={{
+          plan_name: plan.name,
+          plan_launch_price: plan.launchPrice,
+          plan_original_price: plan.originalPrice,
+          plan_capacity: plan.capacity,
+          plan_discount: plan.launchDiscount,
+        }}
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
         className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 sm:w-auto"
       >
         {plan.cta}
         <ArrowRight className="h-4 w-4" />
-      </motion.a>
+      </TrackedLink>
     </div>
   </article>
 );
@@ -410,8 +421,18 @@ const PlanCardBlock = ({ plan, featured }: { plan: PlanCard; featured?: boolean 
       </div>
     )}
 
-    <motion.a
+    <TrackedLink
       href={plan.ctaHref}
+      ctaText={plan.cta}
+      ctaLocation={plan.highlight ? 'pricing_recommended_plan' : 'pricing_plan'}
+      eventType="pricing_plan_click"
+      trackingParams={{
+        plan_name: plan.name,
+        plan_launch_price: plan.launchPrice,
+        plan_original_price: plan.originalPrice,
+        plan_capacity: plan.capacity,
+        plan_discount: plan.launchDiscount,
+      }}
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
       className={`mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-colors ${
@@ -422,7 +443,7 @@ const PlanCardBlock = ({ plan, featured }: { plan: PlanCard; featured?: boolean 
     >
       {plan.cta}
       <ArrowRight className="h-4 w-4" />
-    </motion.a>
+    </TrackedLink>
   </article>
 );
 

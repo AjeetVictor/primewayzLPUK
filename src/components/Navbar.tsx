@@ -1,3 +1,4 @@
+import { TrackedLink } from './common/TrackedLink';
 import { motion, AnimatePresence } from 'motion/react';
 import { Menu, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -65,14 +66,16 @@ export const Navbar = () => {
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
-            <motion.a
-              href="#contact"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="hidden min-h-[40px] items-center rounded-md bg-slate-900 px-3 py-2 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 md:inline-flex xl:px-5 xl:text-sm"
-            >
-              Book a call
-            </motion.a>
+          <TrackedLink
+            href="#contact"
+            ctaText="Book a call"
+            ctaLocation="navbar_desktop"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="hidden min-h-[40px] items-center rounded-md bg-slate-900 px-3 py-2 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 md:inline-flex xl:px-5 xl:text-sm"
+          >
+            Book a call
+          </TrackedLink>
             <button
               type="button"
               onClick={() => setIsOpen((v) => !v)}
@@ -111,14 +114,16 @@ export const Navbar = () => {
                     {link.name}
                   </a>
                 ))}
-                <motion.a
+                <TrackedLink
                   href="#contact"
+                  ctaText="Book a call"
+                  ctaLocation="navbar_mobile"
                   onClick={() => setIsOpen(false)}
                   whileTap={{ scale: 0.99 }}
                   className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-md bg-slate-900 px-4 py-3 text-[15px] font-semibold text-white shadow-md shadow-slate-900/10"
                 >
                   Book a call
-                </motion.a>
+                </TrackedLink>
               </div>
             </div>
           </motion.div>

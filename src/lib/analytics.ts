@@ -21,7 +21,15 @@ export function initGA(): void {
 }
 
 export function trackPageView(path: string): void {
-  // Temporarily disabled while validating default GA4 page_view from index.html.
+  if (!isGaEnabled() || !window.gtag) return;
+
+  window.gtag('event', 'page_view', {
+    page_path: path,
+    page_location: window.location.href,
+    page_title: document.title,
+    service_region: 'UK',
+    business_model: 'subscription_software_delivery',
+  });
 }
 
 export function trackEvent(
@@ -30,5 +38,23 @@ export function trackEvent(
 ): void {
   if (!isGaEnabled() || !window.gtag) return;
 
-  window.gtag('event', eventName, params || {});
+  window.gtag('event', eventName, {
+    service_region: 'UK',
+    business_model: 'subscription_software_delivery',
+    page_path: window.location.pathname,
+    page_title: document.title,
+    ...params,
+  });
+}
+
+export function trackCtaClick(
+  ctaText: string,
+  ctaLocation: string,
+  extraParams?: Record<string, unknown>
+): void {
+  trackEvent('cta_click', {
+    cta_text: ctaText,
+    cta_location: ctaLocation,
+    ...extraParams,
+  });
 }

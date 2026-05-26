@@ -1,3 +1,4 @@
+import { TrackedLink } from '../common/TrackedLink';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -113,24 +114,34 @@ export const HeroSplitSlider = ({
 
               <div className="mt-7 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-                  <motion.a
-                    href={activeSlide.primaryCtaHref}
-                    whileHover={reducedMotion ? undefined : { scale: 1.01 }}
-                    whileTap={reducedMotion ? undefined : { scale: 0.99 }}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-7 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-zinc-900/15 transition-colors hover:bg-zinc-800 sm:w-auto"
-                  >
-                    {activeSlide.primaryCtaLabel}
-                    <ArrowRight className="h-4 w-4" />
-                  </motion.a>
+                <TrackedLink
+                  href={activeSlide.primaryCtaHref}
+                  ctaText={activeSlide.primaryCtaLabel}
+                  ctaLocation="hero_primary"
+                  trackingParams={{
+                    hero_slide: activeSlide.headline,
+                  }}
+                  whileHover={reducedMotion ? undefined : { scale: 1.01 }}
+                  whileTap={reducedMotion ? undefined : { scale: 0.99 }}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-7 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-zinc-900/15 transition-colors hover:bg-zinc-800 sm:w-auto"
+                >
+                  {activeSlide.primaryCtaLabel}
+                  <ArrowRight className="h-4 w-4" />
+                </TrackedLink>
 
-                  <motion.a
-                    href={activeSlide.secondaryCtaHref}
-                    whileHover={reducedMotion ? undefined : { scale: 1.01 }}
-                    whileTap={reducedMotion ? undefined : { scale: 0.99 }}
-                    className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-7 py-3.5 text-[15px] font-semibold text-zinc-900 shadow-sm transition-colors hover:border-zinc-400 sm:w-auto"
-                  >
-                    {activeSlide.secondaryCtaLabel}
-                  </motion.a>
+                <TrackedLink
+                  href={activeSlide.secondaryCtaHref}
+                  ctaText={activeSlide.secondaryCtaLabel}
+                  ctaLocation="hero_secondary"
+                  trackingParams={{
+                    hero_slide: activeSlide.headline,
+                  }}
+                  whileHover={reducedMotion ? undefined : { scale: 1.01 }}
+                  whileTap={reducedMotion ? undefined : { scale: 0.99 }}
+                  className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-7 py-3.5 text-[15px] font-semibold text-zinc-900 shadow-sm transition-colors hover:border-zinc-400 sm:w-auto"
+                >
+                  {activeSlide.secondaryCtaLabel}
+                </TrackedLink>
                 </div>
 
                 <div className="flex items-center gap-2" role="tablist" aria-label="Hero slide controls">
