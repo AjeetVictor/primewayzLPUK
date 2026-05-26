@@ -2,7 +2,7 @@ import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
 import { trackCtaClick, trackEvent } from '../../lib/analytics';
 
-type TrackingEventType = 'cta_click' | 'pricing_plan_click' | 'external_link_click';
+type TrackingEventType = 'cta_click' | 'pricing_plan_click' | 'external_link_click' | 'footer_link_click';
 
 type TrackedLinkProps = {
   href: string;

@@ -17,6 +17,10 @@ type PlanCard = {
   launchPrice: string;
   originalPrice: string;
   launchDiscount: string;
+  priceValue: number;
+  originalPriceValue: number;
+  currency: 'GBP';
+  billingPeriod: 'one_time' | 'monthly';
   capacity: string;
   description: string;
   bestFor: string[];
@@ -40,6 +44,10 @@ const foundationSprint: PlanCard = {
   launchPrice: '£722.50',
   originalPrice: '£850 one-time',
   launchDiscount: '15% Launch Discount',
+  priceValue: 722.5,
+  originalPriceValue: 850,
+  currency: 'GBP',
+  billingPeriod: 'one_time',
   capacity: '2-4 week structured launch phase',
   description:
     'A structured starting phase for discovery, planning, setup, and launch readiness.',
@@ -71,6 +79,10 @@ const activePlans: PlanCard[] = [
     launchPrice: '£741/mo',
     originalPrice: '£950/mo',
     launchDiscount: '22% Launch Discount',
+    priceValue: 741,
+    originalPriceValue: 950,
+    currency: 'GBP',
+    billingPeriod: 'monthly',
     capacity: 'Up to 40 hrs/month • 1 active workstream',
     description:
       'For websites, CMS improvements, light integrations, technical upkeep, and technical SEO foundation.',
@@ -100,6 +112,10 @@ const activePlans: PlanCard[] = [
     launchPrice: '£1,189/mo',
     originalPrice: '£1,450/mo',
     launchDiscount: '18% Launch Discount',
+    priceValue: 1189,
+    originalPriceValue: 1450,
+    currency: 'GBP',
+    billingPeriod: 'monthly',
     capacity: 'Up to 80 hrs/month',
     description:
       'For growing businesses that need ongoing digital improvement, landing pages, CRM integrations, and conversion-focused work.',
@@ -130,6 +146,10 @@ const activePlans: PlanCard[] = [
     launchPrice: '£2,100/mo',
     originalPrice: '£2,500/mo',
     launchDiscount: '16% Launch Discount',
+    priceValue: 2100,
+    originalPriceValue: 2500,
+    currency: 'GBP',
+    billingPeriod: 'monthly',
     capacity: 'Up to 120 hrs/month',
     description:
       'For portals, dashboards, workflow automation, backend/frontend coordination, and structured digital scale-up.',
@@ -160,6 +180,10 @@ const maintenancePlan: PlanCard = {
   launchPrice: '£405/mo',
   originalPrice: '£450/mo',
   launchDiscount: '10% Launch Discount',
+  priceValue: 405,
+  originalPriceValue: 450,
+  currency: 'GBP',
+  billingPeriod: 'monthly',
   capacity: '8-10 hrs/month focused continuity support',
   description:
     'For continuity, support, and stability between active build phases.',
@@ -184,6 +208,10 @@ const enterprisePlan: PlanCard = {
   launchPrice: '£3,400/mo',
   originalPrice: '£4,000/mo',
   launchDiscount: '15% Launch Discount',
+  priceValue: 3400,
+  originalPriceValue: 4000,
+  currency: 'GBP',
+  billingPeriod: 'monthly',
   capacity: 'Custom pod / advanced delivery capacity',
   description:
     'For advanced platforms, architect-led delivery, and governance-heavy engagements.',
@@ -255,8 +283,37 @@ const whySubscriptionItems = [
 ] as const;
 
 const GroupLabel = ({ label }: { label: string }) => (
-  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">{label}</p>
+  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+    {label}
+  </p>
 );
+
+const rememberSelectedPlan = (plan: PlanCard) => {
+  if (typeof window === 'undefined') return;
+
+  window.sessionStorage.setItem(
+    'primewayz_selected_plan',
+    JSON.stringify({
+      plan_name: plan.name,
+      plan_launch_price: plan.launchPrice,
+      plan_price_value: plan.priceValue,
+      currency: plan.currency,
+      billing_period: plan.billingPeriod,
+    })
+  );
+};
+
+const getPlanTrackingParams = (plan: PlanCard) => ({
+  plan_name: plan.name,
+  plan_launch_price: plan.launchPrice,
+  plan_original_price: plan.originalPrice,
+  plan_price_value: plan.priceValue,
+  plan_original_price_value: plan.originalPriceValue,
+  currency: plan.currency,
+  billing_period: plan.billingPeriod,
+  plan_capacity: plan.capacity,
+  plan_discount: plan.launchDiscount,
+});
 
 const FoundationFeaturedCard = ({ plan }: { plan: PlanCard }) => (
   <article className="rounded-3xl border border-emerald-300 bg-white p-6 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.55)] ring-1 ring-emerald-200 sm:p-7 lg:p-8">
@@ -265,7 +322,9 @@ const FoundationFeaturedCard = ({ plan }: { plan: PlanCard }) => (
         <div className="mb-4 inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
           START HERE
         </div>
+
         <h3 className="text-3xl font-semibold tracking-tight text-zinc-900">{plan.name}</h3>
+
         <div className="mt-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
             2026 Launch Price
@@ -276,11 +335,14 @@ const FoundationFeaturedCard = ({ plan }: { plan: PlanCard }) => (
             {plan.launchDiscount}
           </p>
         </div>
+
         <p className="mt-3 text-sm font-semibold text-zinc-700">{plan.capacity}</p>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600">{plan.description}</p>
 
         <div className="mt-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Best for</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+            Best for
+          </p>
           <ul className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
             {plan.bestFor.map((item) => (
               <li key={item} className="flex items-start gap-2 text-sm text-zinc-700">
@@ -314,18 +376,14 @@ const FoundationFeaturedCard = ({ plan }: { plan: PlanCard }) => (
         </p>
         <p className="mt-1 text-sm text-zinc-700">{plan.limitations?.[0]}</p>
       </div>
+
       <TrackedLink
         href={plan.ctaHref}
         ctaText={plan.cta}
         ctaLocation="pricing_featured_plan"
         eventType="pricing_plan_click"
-        trackingParams={{
-          plan_name: plan.name,
-          plan_launch_price: plan.launchPrice,
-          plan_original_price: plan.originalPrice,
-          plan_capacity: plan.capacity,
-          plan_discount: plan.launchDiscount,
-        }}
+        trackingParams={getPlanTrackingParams(plan)}
+        onClick={() => rememberSelectedPlan(plan)}
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
         className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 sm:w-auto"
@@ -358,7 +416,9 @@ const PlanCardBlock = ({ plan, featured }: { plan: PlanCard; featured?: boolean 
         {plan.highlight ? 'RECOMMENDED' : 'START HERE'}
       </div>
     )}
+
     <h3 className="text-2xl font-semibold tracking-tight text-zinc-900">{plan.name}</h3>
+
     <div className="mt-4">
       <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
         2026 Launch Price
@@ -377,8 +437,10 @@ const PlanCardBlock = ({ plan, featured }: { plan: PlanCard; featured?: boolean 
         {plan.launchDiscount}
       </p>
     </div>
+
     <p className="mt-3 text-sm font-semibold text-zinc-700">{plan.capacity}</p>
     <p className="mt-3 text-sm leading-6 text-zinc-600">{plan.description}</p>
+
     {plan.note && <p className="mt-2 text-xs font-medium text-zinc-500">{plan.note}</p>}
 
     <div className="mt-5">
@@ -409,7 +471,9 @@ const PlanCardBlock = ({ plan, featured }: { plan: PlanCard; featured?: boolean 
 
     {plan.limitations && (
       <div className="mt-5 rounded-2xl border border-amber-100 bg-amber-50/50 p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">Limitations / not ideal for</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
+          Limitations / not ideal for
+        </p>
         <ul className="mt-2 space-y-2">
           {plan.limitations.map((item) => (
             <li key={item} className="flex items-start gap-2 text-sm text-zinc-700">
@@ -426,13 +490,8 @@ const PlanCardBlock = ({ plan, featured }: { plan: PlanCard; featured?: boolean 
       ctaText={plan.cta}
       ctaLocation={plan.highlight ? 'pricing_recommended_plan' : 'pricing_plan'}
       eventType="pricing_plan_click"
-      trackingParams={{
-        plan_name: plan.name,
-        plan_launch_price: plan.launchPrice,
-        plan_original_price: plan.originalPrice,
-        plan_capacity: plan.capacity,
-        plan_discount: plan.launchDiscount,
-      }}
+      trackingParams={getPlanTrackingParams(plan)}
+      onClick={() => rememberSelectedPlan(plan)}
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
       className={`mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-colors ${
@@ -460,6 +519,7 @@ export const Pricing = () => {
           >
             Flexible delivery plans for every stage of growth
           </motion.h2>
+
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -491,7 +551,11 @@ export const Pricing = () => {
         </motion.div>
 
         <div className="mt-12 space-y-10">
-          <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
             <FoundationFeaturedCard plan={foundationSprint} />
           </motion.div>
 
@@ -541,6 +605,7 @@ export const Pricing = () => {
                 third-party vendor and operational costs.
               </p>
             </div>
+
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               {transparencyColumns.map((column) => (
                 <div
