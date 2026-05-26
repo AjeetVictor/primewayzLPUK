@@ -14,6 +14,16 @@ export function isGaEnabled(): boolean {
 export function initGA(): void {
   if (!isGaEnabled()) return;
 
+  window.dataLayer = window.dataLayer || [];
+
+  window.gtag = function gtag(...args: unknown[]) {
+    window.dataLayer?.push(args);
+  };
+
+  window.gtag('js', new Date());
+
+  window.gtag('config', GA_MEASUREMENT_ID);
+
   const scriptSelector =
     'script[src*="googletagmanager.com/gtag/js?id=' + GA_MEASUREMENT_ID + '"]';
 
@@ -23,29 +33,20 @@ export function initGA(): void {
 
   const script = document.createElement('script');
   script.async = true;
-  script.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_MEASUREMENT_ID;
+  script.src =
+    'https://www.googletagmanager.com/gtag/js?id=' + GA_MEASUREMENT_ID;
+
   document.head.appendChild(script);
-
-  window.dataLayer = window.dataLayer || [];
-  window.gtag = function gtag(...args: unknown[]) {
-    window.dataLayer?.push(args);
-  };
-
-  window.gtag('js', new Date());
-  window.gtag('config', GA_MEASUREMENT_ID, {
-    send_page_view: false,
-  });
 }
 
 export function trackPageView(path: string): void {
-  if (!isGaEnabled() || !window.gtag) return;
-
-  window.gtag('config', GA_MEASUREMENT_ID, {
-    page_path: path,
-  });
+  // Temporarily disabled while validating default GA4 page_view
 }
 
-export function trackEvent(eventName: string, params?: Record<string, unknown>): void {
+export function trackEvent(
+  eventName: string,
+  params?: Record<string, unknown>
+): void {
   if (!isGaEnabled() || !window.gtag) return;
 
   window.gtag('event', eventName, params || {});
