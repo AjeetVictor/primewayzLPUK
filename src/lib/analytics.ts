@@ -1,4 +1,4 @@
-export const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || '';
+export const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-669V6LN0B7';
 
 declare global {
   interface Window {
@@ -8,39 +8,21 @@ declare global {
 }
 
 export function isGaEnabled(): boolean {
-  return Boolean(GA_MEASUREMENT_ID && typeof window !== 'undefined');
+  return Boolean(GA_MEASUREMENT_ID && typeof window !== 'undefined' && window.gtag);
 }
 
 export function initGA(): void {
-  if (!isGaEnabled()) return;
-
-  window.dataLayer = window.dataLayer || [];
-
-  window.gtag = function gtag(...args: unknown[]) {
-    window.dataLayer?.push(args);
-  };
-
-  window.gtag('js', new Date());
-
-  window.gtag('config', GA_MEASUREMENT_ID);
-
-  const scriptSelector =
-    'script[src*="googletagmanager.com/gtag/js?id=' + GA_MEASUREMENT_ID + '"]';
-
-  if (document.querySelector(scriptSelector)) {
-    return;
-  }
-
-  const script = document.createElement('script');
-  script.async = true;
-  script.src =
-    'https://www.googletagmanager.com/gtag/js?id=' + GA_MEASUREMENT_ID;
-
-  document.head.appendChild(script);
+  // GA base script is loaded from index.html.
 }
 
 export function trackPageView(path: string): void {
-  // Temporarily disabled while validating default GA4 page_view
+  if (!isGaEnabled() || !window.gtag) return;
+
+  window.gtag('event', 'page_view', {
+    page_path: path,
+    page_location: window.location.href,
+    page_title: document.title,
+  });
 }
 
 export function trackEvent(
