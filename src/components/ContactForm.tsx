@@ -1,9 +1,8 @@
-import { useState, ChangeEvent, FormEvent, useEffect, useRef } from 'react';
+import { useState, ChangeEvent, FormEvent, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { CheckCircle, AlertCircle, PartyPopper, Linkedin, Facebook, Instagram, Twitter, Pin } from 'lucide-react';
+import { CheckCircle, AlertCircle, PartyPopper, Linkedin } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
-import ReCAPTCHA from 'react-google-recaptcha';
 import 'react-phone-number-input/style.css';
 import { apiUrl } from '../utils/apiUrl';
 import { CONTACT_SOCIAL_LINKS } from '../constants/contactSocial';
@@ -19,7 +18,6 @@ interface FormErrors {
   email?: string;
   message?: string;
   phone?: string;
-  recaptcha?: string;
 }
 
 const NAME_REGEX = /^[a-zA-Z\s.'-]+$/;
@@ -28,23 +26,12 @@ const NAME_MAX = 80;
 const MESSAGE_MIN = 10;
 const MESSAGE_MAX = 2000;
 
-const recaptchaSiteKey =
-  import.meta.env.VITE_RECAPTCHA_SITE_KEY ||
-  (import.meta.env.DEV ? '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI' : '');
 
 function SocialIcon({ label }: { label: string }) {
   const cls = 'w-4 h-4 shrink-0';
   switch (label) {
     case 'LinkedIn':
       return <Linkedin className={cls} aria-hidden />;
-    case 'Tweet Us':
-      return <Twitter className={cls} aria-hidden />;
-    case 'Like Us':
-      return <Facebook className={cls} aria-hidden />;
-    case 'Instagram':
-      return <Instagram className={cls} aria-hidden />;
-    case 'Pinterest':
-      return <Pin className={cls} aria-hidden />;
     default:
       return null;
   }
@@ -62,7 +49,6 @@ export function ContactForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const recaptchaRef = useRef<ReCAPTCHA>(null);
 
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -103,12 +89,6 @@ export function ContactForm() {
       newErrors.phone = 'Enter a valid contact number';
     }
 
-    const token = recaptchaRef.current?.getValue();
-    if (!recaptchaSiteKey) {
-      newErrors.recaptcha = 'reCAPTCHA is not configured (set VITE_RECAPTCHA_SITE_KEY).';
-    } else if (!token) {
-      newErrors.recaptcha = 'Please complete the security check';
-    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -120,11 +100,6 @@ export function ContactForm() {
 
     if (!validateForm()) return;
 
-    const recaptchaToken = recaptchaRef.current?.getValue();
-    if (!recaptchaSiteKey || !recaptchaToken) {
-      setSubmitError('Please complete the security verification.');
-      return;
-    }
 
     setIsSubmitting(true);
 
@@ -134,7 +109,6 @@ export function ContactForm() {
         email: formData.email.trim().toLowerCase(),
         message: formData.message.trim(),
         phone,
-        recaptchaToken,
       };
 
       const response = await fetch(apiUrl('/api/contact'), {
@@ -149,15 +123,12 @@ export function ContactForm() {
         setIsSubmitted(true);
         setFormData({ name: '', email: '', message: '' });
         setPhone(undefined);
-        recaptchaRef.current?.reset();
       } else {
         const data = await response.json().catch(() => null);
         setSubmitError(data?.error || 'Something went wrong. Please try again later.');
-        recaptchaRef.current?.reset();
       }
     } catch {
       setSubmitError('Failed to send message. Please check your connection.');
-      recaptchaRef.current?.reset();
     } finally {
       setIsSubmitting(false);
     }
@@ -398,33 +369,8 @@ export function ContactForm() {
                     </p>
                   )}
                 </div>
-
-                <div className="space-y-2">
-                  <span className="block text-sm font-semibold text-gray-700 sr-only">Security check</span>
-                  {recaptchaSiteKey ? (
-                    <div className="flex justify-start lg:justify-center">
-                      <ReCAPTCHA
-                        ref={recaptchaRef}
-                        sitekey={recaptchaSiteKey}
-                        onChange={() => {
-                          if (errors.recaptcha) setErrors((prev) => ({ ...prev, recaptcha: undefined }));
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <p className="text-amber-700 text-sm bg-amber-50 border border-amber-200 rounded-lg px-3 py-2" role="alert">
-                      reCAPTCHA site key is missing. Set <code className="font-mono text-xs">VITE_RECAPTCHA_SITE_KEY</code>{' '}
-                      for production.
-                    </p>
-                  )}
-                  {errors.recaptcha && (
-                    <p className="text-red-500 text-xs flex items-center gap-1" role="alert">
-                      <AlertCircle className="w-3 h-3" /> {errors.recaptcha}
-                    </p>
-                  )}
-                </div>
-              </div>
             </div>
+              </div>
 
             {submitError && (
               <div
@@ -438,12 +384,12 @@ export function ContactForm() {
             <div className="flex flex-col items-center gap-3 pt-2">
               <motion.button
                 type="submit"
-                disabled={isSubmitting || !recaptchaSiteKey}
+                disabled={isSubmitting}
                 aria-busy={isSubmitting}
                 whileHover={!isSubmitting ? { scale: 1.02 } : {}}
                 whileTap={!isSubmitting ? { scale: 0.98 } : {}}
                 className={`w-full max-w-md px-8 py-3.5 rounded-lg font-semibold text-white transition-all shadow-md ${
-                  isSubmitting || !recaptchaSiteKey
+                  isSubmitting
                     ? 'bg-slate-500 cursor-not-allowed opacity-80'
                     : 'bg-slate-800 hover:bg-slate-900 shadow-slate-900/20'
                 }`}

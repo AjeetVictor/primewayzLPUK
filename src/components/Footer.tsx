@@ -1,4 +1,4 @@
-import { Twitter, Github, Linkedin, Phone, Mail } from 'lucide-react';
+import { Linkedin, Phone, Mail } from 'lucide-react';
 
 export const Footer = () => {
   return (
@@ -33,13 +33,7 @@ export const Footer = () => {
             </div>
 
             <div className="flex items-center gap-4">
-              <a href="#" className="p-2 bg-zinc-800 rounded-full hover:bg-zinc-700 transition-colors">
-                <Twitter className="w-5 h-5" />
-              </a>
-              <a href="#" className="p-2 bg-zinc-800 rounded-full hover:bg-zinc-700 transition-colors">
-                <Github className="w-5 h-5" />
-              </a>
-              <a href="#" className="p-2 bg-zinc-800 rounded-full hover:bg-zinc-700 transition-colors">
+              <a href="https://www.linkedin.com/company/primewayz/mycompany/" target="_blank" rel="noopener noreferrer" className="p-2 bg-zinc-800 rounded-full hover:bg-zinc-700 transition-colors" aria-label="Primewayz on LinkedIn">
                 <Linkedin className="w-5 h-5" />
               </a>
             </div>
@@ -59,9 +53,9 @@ export const Footer = () => {
           <div>
             <h4 className="text-sm font-bold uppercase tracking-wider mb-6">Legal</h4>
             <ul className="space-y-4 text-zinc-400">
-              <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Cookie Policy</a></li>
+              <li><a href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</a></li>
+              <li><a href="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</a></li>
+              <li><a href="/cookie-policy" className="hover:text-white transition-colors">Cookie Policy</a></li>
               <li><a href="#contact" className="hover:text-white transition-colors">Contact Us</a></li>
             </ul>
           </div>

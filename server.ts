@@ -121,19 +121,6 @@ const CONTACT_NAME_MIN = 2;
 const CONTACT_NAME_MAX = 80;
 const CONTACT_MESSAGE_MIN = 10;
 const CONTACT_MESSAGE_MAX = 2000;
-const RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
-
-function getClientIp(req: express.Request): string {
-  const xff = req.headers['x-forwarded-for'];
-  if (typeof xff === 'string' && xff.length > 0) {
-    return xff.split(',')[0].trim();
-  }
-  const xri = req.headers['x-real-ip'];
-  if (typeof xri === 'string' && xri.length > 0) {
-    return xri.trim();
-  }
-  return req.socket.remoteAddress || '';
-}
 
 function normalizeContactPhoneE164(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
@@ -144,35 +131,6 @@ function normalizeContactPhoneE164(raw: unknown): string | null {
   return parsed.format('E.164');
 }
 
-async function verifyRecaptchaToken(token: unknown): Promise<boolean> {
-  const secret = process.env.RECAPTCHA_SECRET_KEY?.trim();
-  if (!secret) {
-    if (process.env.NODE_ENV !== 'production') {
-      backendLog('recaptcha: RECAPTCHA_SECRET_KEY not set; accepting submissions in development only');
-      return true;
-    }
-    backendLog('recaptcha: RECAPTCHA_SECRET_KEY missing in production');
-    return false;
-  }
-  if (typeof token !== 'string' || !token.trim()) {
-    return false;
-  }
-  try {
-    const params = new URLSearchParams();
-    params.set('secret', secret);
-    params.set('response', token.trim());
-    const res = await fetch(RECAPTCHA_VERIFY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
-    });
-    const data = (await res.json()) as { success?: boolean };
-    return data.success === true;
-  } catch (e) {
-    backendLog('recaptcha: verification request failed', { error: String(e) });
-    return false;
-  }
-}
 const SEO_SITE_NAME = 'Primewayz';
 const SEO_DEFAULT_OG_IMAGE = 'https://uk.primewayz.com/assets/primewayz-infotech-logo-gn3jDBiM.svg';
 const SEO_DEFAULT_TWITTER_HANDLE = '@Primewayz';
@@ -560,7 +518,6 @@ async function startServer() {
     const rawName = typeof req.body?.name === 'string' ? req.body.name : '';
     const rawEmail = typeof req.body?.email === 'string' ? req.body.email : '';
     const rawMessage = typeof req.body?.message === 'string' ? req.body.message : '';
-    const recaptchaToken = req.body?.recaptchaToken;
 
     const name = rawName.trim();
     const email = rawEmail.trim().toLowerCase();
@@ -583,13 +540,6 @@ async function startServer() {
       return res.status(400).json({ success: false, error: `Message must be between ${CONTACT_MESSAGE_MIN} and ${CONTACT_MESSAGE_MAX} characters.` });
     }
 
-    const captchaOk = await verifyRecaptchaToken(recaptchaToken);
-    if (!captchaOk) {
-      return res.status(400).json({
-        success: false,
-        error: 'Please complete the security verification (reCAPTCHA) and try again.',
-      });
-    }
 
     try {
       const response = await prisma.formResponse.create({
