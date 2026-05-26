@@ -7,7 +7,7 @@ export const SubscriptionCapabilitiesSection = () => {
 
   return (
     <section
-      id="features"
+      id="capabilities"
       className="relative mx-auto w-full py-16 sm:py-20 lg:py-24"
     >
       {/* Subtle background tint */}

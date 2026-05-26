@@ -22,6 +22,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { BlogPost } from './components/BlogPost';
 import LegalPage from './components/LegalPage';
 import AnalyticsTracker from './components/AnalyticsTracker';
+import { TrackedLink } from './components/common/TrackedLink';
 
 
 const ClientOnly = ({ children }: { children: ReactNode }) => {
@@ -98,12 +99,14 @@ const MainContent = () => (
           viewport={{ once: true }}
           transition={{ delay: 0.2 }}
         >
-          <a
+          <TrackedLink
             href="#contact"
+            ctaText="Book a UK discovery call"
+            ctaLocation="final_cta"
             className="inline-block bg-white text-emerald-600 px-10 py-5 rounded-full text-xl font-bold hover:bg-emerald-50 transition-all shadow-xl shadow-emerald-900/20"
           >
             Book a UK discovery call
-          </a>
+          </TrackedLink>
         </motion.div>
       </div>
     </section>

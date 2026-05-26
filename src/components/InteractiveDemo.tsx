@@ -12,6 +12,7 @@ import {
   Rocket
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { TrackedLink } from './common/TrackedLink';
 
 const steps = [
   {
@@ -350,15 +351,17 @@ export const InteractiveDemo = () => {
               <p className="text-zinc-500">Book a UK discovery call to see how we can transform your development.</p>
             </div>
           </div>
-          <motion.a
+          <TrackedLink
             href="#contact"
+            ctaText="Book a UK discovery call"
+            ctaLocation="interactive_demo"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="px-8 py-4 bg-emerald-600 text-white rounded-full font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-900/40 flex items-center gap-2"
           >
             Book a UK discovery call
             <ArrowRight className="w-5 h-5" />
-          </motion.a>
+          </TrackedLink>
         </motion.div>
       </div>
     </section>
