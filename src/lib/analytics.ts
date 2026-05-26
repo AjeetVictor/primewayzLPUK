@@ -1,4 +1,5 @@
-export const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-669V6LN0B7';
+export const GA_MEASUREMENT_ID =
+  import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-669V6LN0B7';
 
 declare global {
   interface Window {
@@ -8,7 +9,11 @@ declare global {
 }
 
 export function isGaEnabled(): boolean {
-  return Boolean(GA_MEASUREMENT_ID && typeof window !== 'undefined' && window.gtag);
+  return Boolean(
+    GA_MEASUREMENT_ID &&
+      typeof window !== 'undefined' &&
+      typeof window.gtag === 'function'
+  );
 }
 
 export function initGA(): void {
@@ -16,13 +21,7 @@ export function initGA(): void {
 }
 
 export function trackPageView(path: string): void {
-  if (!isGaEnabled() || !window.gtag) return;
-
-  window.gtag('event', 'page_view', {
-    page_path: path,
-    page_location: window.location.href,
-    page_title: document.title,
-  });
+  // Temporarily disabled while validating default GA4 page_view from index.html.
 }
 
 export function trackEvent(
