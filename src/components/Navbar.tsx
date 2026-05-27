@@ -70,6 +70,7 @@ export const Navbar = () => {
             href="#contact"
             ctaText="Book a call"
             ctaLocation="navbar_desktop"
+            eventType="book_call_click"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="hidden min-h-[40px] items-center rounded-md bg-slate-900 px-3 py-2 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 md:inline-flex xl:px-5 xl:text-sm"
@@ -118,6 +119,7 @@ export const Navbar = () => {
                   href="#contact"
                   ctaText="Book a call"
                   ctaLocation="navbar_mobile"
+                  eventType="book_call_click"
                   onClick={() => setIsOpen(false)}
                   whileTap={{ scale: 0.99 }}
                   className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-md bg-slate-900 px-4 py-3 text-[15px] font-semibold text-white shadow-md shadow-slate-900/10"

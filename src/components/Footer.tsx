@@ -40,7 +40,7 @@ export const Footer = () => {
                 href="tel:+919717132668"
                 ctaText="+91 97171 32668"
                 ctaLocation="footer_contact"
-                eventType="external_link_click"
+                eventType="phone_click"
                 className="flex items-center gap-3 text-zinc-400 hover:text-white transition-colors text-sm"
               >
                 <Phone className="w-4 h-4 text-emerald-500" />
@@ -51,7 +51,7 @@ export const Footer = () => {
                 href="mailto:info@primewayz.com"
                 ctaText="info@primewayz.com"
                 ctaLocation="footer_contact"
-                eventType="external_link_click"
+                eventType="email_click"
                 className="flex items-center gap-3 text-zinc-400 hover:text-white transition-colors text-sm"
               >
                 <Mail className="w-4 h-4 text-emerald-500" />

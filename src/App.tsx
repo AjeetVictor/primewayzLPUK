@@ -103,6 +103,7 @@ const MainContent = () => (
             href="#contact"
             ctaText="Book a UK discovery call"
             ctaLocation="final_cta"
+            eventType="book_call_click"
             className="inline-block bg-white text-emerald-600 px-10 py-5 rounded-full text-xl font-bold hover:bg-emerald-50 transition-all shadow-xl shadow-emerald-900/20"
           >
             Book a UK discovery call

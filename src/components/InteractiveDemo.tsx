@@ -355,6 +355,7 @@ export const InteractiveDemo = () => {
             href="#contact"
             ctaText="Book a UK discovery call"
             ctaLocation="interactive_demo"
+            eventType="book_call_click"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="px-8 py-4 bg-emerald-600 text-white rounded-full font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-900/40 flex items-center gap-2"

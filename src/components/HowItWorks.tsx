@@ -123,6 +123,7 @@ export const HowItWorks = () => {
                     href="#contact"
                     ctaText="Book a UK discovery call"
                     ctaLocation="how_it_works"
+                    eventType="book_call_click"
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                     className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
