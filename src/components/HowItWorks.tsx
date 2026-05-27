@@ -1,3 +1,4 @@
+import { TrackedLink } from './common/TrackedLink';
 import { motion } from 'motion/react';
 import { Target, Layers, BarChart } from 'lucide-react';
 
@@ -118,12 +119,16 @@ export const HowItWorks = () => {
                 </div>
 
                 <div className="mt-6 pl-[3.15rem]">
-                  <button
-                    type="button"
-                    className="inline-flex w-fit items-center rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_24px_-16px_rgba(15,23,42,0.6)] transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  <TrackedLink
+                    href="#contact"
+                    ctaText="Book a UK discovery call"
+                    ctaLocation="how_it_works"
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
                   >
                     Book a UK discovery call
-                  </button>
+                  </TrackedLink>
                 </div>
               </div>
             </div>
