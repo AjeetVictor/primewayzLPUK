@@ -4,35 +4,38 @@ import { ShareButton } from './ShareButton';
 
 const stories = [
   {
-    title: 'FinFlow: Scaling to 1M Users',
-    category: 'Fintech',
-    metric: '+400%',
-    metricLabel: 'User Growth',
-    description: 'How we rebuilt their core transaction engine to handle massive scale without downtime.',
-    image: 'https://picsum.photos/seed/finflow/800/600',
+    title: 'UK Retail Website: Faster Updates and Better Enquiries',
+    category: 'UK Retail',
+    metric: '+38%',
+    metricLabel: 'Enquiry Lift',
+    description:
+      'How a UK retail team moved from ad-hoc website requests to a monthly delivery rhythm covering updates, tracking, landing pages, and technical fixes.',
+    image: 'https://picsum.photos/seed/uk-retail-delivery/800/600',
     icon: TrendingUp,
-    color: 'emerald'
+    color: 'emerald',
   },
   {
-    title: 'Nexus AI: Rapid MVP Launch',
-    category: 'Artificial Intelligence',
-    metric: '6 Weeks',
-    metricLabel: 'Time to Market',
-    description: 'From concept to a fully functional AI-powered platform in record time.',
-    image: 'https://picsum.photos/seed/nexus/800/600',
+    title: 'Local Services Firm: CRM and Lead Flow Cleanup',
+    category: 'UK Services',
+    metric: '3 Weeks',
+    metricLabel: 'First Release',
+    description:
+      'A practical CRM and form-flow improvement sprint that helped a UK services business capture, organise, and follow up enquiries more reliably.',
+    image: 'https://picsum.photos/seed/uk-crm-support/800/600',
     icon: Zap,
-    color: 'indigo'
+    color: 'indigo',
   },
   {
-    title: 'CloudScale: Infrastructure Overhaul',
-    category: 'SaaS',
-    metric: '-60%',
-    metricLabel: 'Server Costs',
-    description: 'Optimizing cloud architecture to reduce overhead while increasing performance.',
-    image: 'https://picsum.photos/seed/cloudscale/800/600',
+    title: 'Professional Team: Maintenance Mode for Stability',
+    category: 'UK SME',
+    metric: '-42%',
+    metricLabel: 'Support Noise',
+    description:
+      'How ongoing maintenance, small fixes, and clearer monthly prioritisation helped a UK professional team keep their digital presence stable.',
+    image: 'https://picsum.photos/seed/uk-maintenance-mode/800/600',
     icon: Users,
-    color: 'amber'
-  }
+    color: 'amber',
+  },
 ];
 
 export const SuccessStories = () => {
@@ -47,8 +50,8 @@ export const SuccessStories = () => {
               viewport={{ once: true }}
               className="text-3xl md:text-5xl font-bold tracking-tight text-zinc-900 mb-6"
             >
-              Real results for <br />
-              <span className="text-emerald-600 italic">real businesses</span>
+              Practical outcomes for <br />
+              <span className="text-emerald-600 italic">UK small businesses</span>
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -57,11 +60,13 @@ export const SuccessStories = () => {
               transition={{ delay: 0.1 }}
               className="text-lg text-zinc-600"
             >
-              We don't just write code; we build business value. Explore how we've
-              helped our partners achieve their most ambitious goals.
+              Examples of the outcomes Primewayz UK is built to support: better
+              enquiry flow, cleaner website operations, CRM improvements, and
+              predictable monthly delivery.
             </motion.p>
           </div>
-          <motion.button
+          <motion.a
+            href="#contact"
             initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
@@ -69,15 +74,15 @@ export const SuccessStories = () => {
             whileTap={{ scale: 0.95 }}
             className="flex items-center gap-2 text-zinc-900 font-bold hover:text-emerald-600 transition-colors group focus:outline-none focus:ring-2 focus:ring-emerald-500/20 rounded-lg px-2"
           >
-            View all case studies
+            Discuss your UK requirements
             <ArrowUpRight className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-          </motion.button>
+          </motion.a>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {stories.map((story, index) => (
             <motion.div
-              key={index}
+              key={story.title}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -110,7 +115,7 @@ export const SuccessStories = () => {
                 <div className="flex items-center justify-between">
                   <motion.div
                     whileHover={{ y: -5 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 10 }}
                     className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                       story.color === 'emerald' ? 'bg-emerald-100' :
                       story.color === 'indigo' ? 'bg-indigo-100' : 'bg-amber-100'

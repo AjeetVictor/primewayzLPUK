@@ -2,75 +2,78 @@ import { BlogPost } from './blogPosts';
 
 export const extraBlogPosts: BlogPost[] = [
   {
-    id: 'cybersecurity-trends-2026',
-    title: 'Cybersecurity Trends to Watch in 2026',
-    excerpt: 'Protecting your digital assets in an increasingly complex threat landscape.',
+    id: 'technical-seo-basics-uk-small-business',
+    title: 'Technical SEO Basics for UK Small Business Websites',
+    excerpt:
+      'The website checks that matter before spending more on campaigns, content, or paid traffic.',
     content: `
-      <p>As we move further into 2026, the cybersecurity landscape continues to evolve at a breakneck pace. Threat actors are becoming more sophisticated, leveraging AI and automation to launch large-scale attacks.</p>
-      
-      <h3>Zero Trust Architecture</h3>
-      <p>The "trust but verify" model is dead. Zero Trust Architecture (ZTA) is now the standard for modern enterprises. Every access request, whether from inside or outside the network, must be fully authenticated, authorized, and encrypted.</p>
-      
-      <h3>AI-Powered Threat Detection</h3>
-      <p>To combat AI-driven attacks, we must use AI-driven defense. Machine learning models can now identify patterns of malicious behavior in real-time, allowing for proactive threat hunting and automated incident response.</p>
-      
-      <h3>The Human Element in Security</h3>
-      <p>Despite all the technological advancements, humans remain the weakest link in the security chain. Continuous security awareness training and a strong security culture are essential components of any robust cybersecurity strategy.</p>
-      
-      <p>At Primewayz, we integrate security into every stage of the development lifecycle, ensuring that your applications are resilient against the threats of today and tomorrow.</p>
+      <p>Before investing heavily in campaigns, UK small businesses should make sure the basics are working: page speed, headings, metadata, indexability, mobile usability, redirects, analytics, and conversion tracking.</p>
+
+      <h3>Start with crawlability and page structure</h3>
+      <p>Search engines need clear pages, clean internal links, useful titles, readable descriptions, and technical signals that match the service area and audience.</p>
+
+      <h3>Measure enquiries, not only visits</h3>
+      <p>Traffic matters, but enquiry quality matters more. GA4 events, form tracking, phone clicks, and CTA tracking help show what is actually working.</p>
+
+      <h3>Keep improving monthly</h3>
+      <p>Technical SEO is not a one-time task. Websites change, pages age, campaigns shift, and small improvements compound over time.</p>
+
+      <p>Primewayz UK supports technical SEO foundations as part of monthly digital delivery for UK SMEs.</p>
     `,
     date: 'March 10, 2026',
-    readTime: '7 min read',
-    author: 'David Vance',
-    category: 'Security',
-    image: 'https://picsum.photos/seed/security/800/500'
+    readTime: '6 min read',
+    author: 'Primewayz UK Team',
+    category: 'SEO',
+    image: 'https://picsum.photos/seed/uk-technical-seo/800/500',
   },
   {
-    id: 'cloud-native-strategies',
-    title: 'Cloud-Native Strategies for Modern Apps',
-    excerpt: 'Leveraging the full power of the cloud to build scalable, resilient, and cost-effective applications.',
+    id: 'crm-integration-for-uk-smes',
+    title: 'CRM Integration for UK SMEs: Keep Enquiries from Falling Through',
+    excerpt:
+      'How better forms, routing, and CRM workflows help small teams respond faster and work more consistently.',
     content: `
-      <p>Cloud-native is more than just running apps in the cloud. It's about designing and building applications that take full advantage of the cloud computing model.</p>
-      
-      <h3>Microservices and Containers</h3>
-      <p>Breaking down monolithic applications into smaller, independent microservices allows for greater agility and scalability. Containers provide a consistent environment for these microservices to run, from development to production.</p>
-      
-      <h3>DevOps and CI/CD</h3>
-      <p>Cloud-native development requires a strong DevOps culture and automated CI/CD pipelines. This allows for frequent, reliable releases and faster time-to-market.</p>
-      
-      <h3>Cost Optimization in the Cloud</h3>
-      <p>The cloud can be expensive if not managed correctly. Cloud-native strategies include automated scaling and resource optimization to ensure that you only pay for what you use.</p>
-      
-      <p>Our cloud-native experts can help you navigate the complexities of the cloud and build applications that are truly built for the modern era.</p>
+      <p>Many UK SMEs lose potential customers because enquiries are scattered across email, forms, spreadsheets, and inboxes. A simple CRM flow can make follow-up more reliable.</p>
+
+      <h3>Connect the form to the next action</h3>
+      <p>A website form should not simply send an email. It should capture the right data, send it to the right place, and make follow-up clear for the team.</p>
+
+      <h3>Keep workflows practical</h3>
+      <p>Small teams need simple CRM stages, useful notifications, clean customer records, and reporting that helps decision-making without creating admin burden.</p>
+
+      <h3>Improve gradually</h3>
+      <p>Start with enquiry capture, then add routing, tagging, reminders, reporting, and useful automation once the basics are stable.</p>
+
+      <p>Primewayz UK helps UK businesses connect websites, forms, CRM tools, and follow-up processes through monthly delivery support.</p>
     `,
     date: 'March 05, 2026',
-    readTime: '6 min read',
-    author: 'Sarah Chen',
-    category: 'Engineering',
-    image: 'https://picsum.photos/seed/cloud/800/500'
+    readTime: '5 min read',
+    author: 'Primewayz UK Team',
+    category: 'CRM',
+    image: 'https://picsum.photos/seed/uk-crm-integration/800/500',
   },
   {
-    id: 'the-future-of-ux-design',
-    title: 'The Future of UX Design in 2026',
-    excerpt: 'How emerging technologies are shaping the way we interact with digital products.',
+    id: 'maintenance-mode-for-uk-business-websites',
+    title: 'When Should a UK Business Move to Maintenance Mode?',
+    excerpt:
+      'A simple way to keep your digital presence stable when active development slows down.',
     content: `
-      <p>User Experience (UX) design is constantly evolving. In 2026, we're seeing a shift towards more immersive, personalized, and accessible digital experiences.</p>
-      
-      <h3>Voice and Gesture Interfaces</h3>
-      <p>As voice and gesture recognition technology improves, we're moving beyond the keyboard and mouse. UX designers must now consider how users will interact with products using their voice and natural movements.</p>
-      
-      <h3>Personalization at Scale</h3>
-      <p>AI is enabling a level of personalization that was previously impossible. Digital products can now adapt to the individual needs and preferences of each user in real-time.</p>
-      
-      <h3>Inclusive Design</h3>
-      <p>Accessibility is no longer an afterthought. Inclusive design ensures that digital products are usable by everyone, regardless of their abilities or circumstances.</p>
-      
-      <p>At Primewayz, we believe that great design is about more than just aesthetics. It's about creating meaningful, intuitive experiences that delight users and drive business results.</p>
+      <p>Not every month needs heavy development. Some months are about stability, small fixes, content updates, form checks, analytics review, and keeping the website healthy.</p>
+
+      <h3>Maintenance is not doing nothing</h3>
+      <p>Good maintenance keeps systems reliable. It reduces small issues, protects previous work, and gives the business continuity until the next active delivery phase begins.</p>
+
+      <h3>What belongs in Maintenance Mode</h3>
+      <p>Minor bug fixes, plugin or configuration checks, content changes, tracking checks, form testing, small support requests, and basic reporting are typical maintenance tasks.</p>
+
+      <h3>When to restart active delivery</h3>
+      <p>Move back into active monthly delivery when there is a new campaign, redesign, integration, CRM change, automation requirement, or wider roadmap.</p>
+
+      <p>Primewayz UK offers Maintenance Mode so UK SMEs can slow down delivery without losing continuity.</p>
     `,
     date: 'February 28, 2026',
     readTime: '5 min read',
-    author: 'Elena Rodriguez',
-    category: 'Design',
-    image: 'https://picsum.photos/seed/design/800/500'
-  }
+    author: 'Primewayz UK Team',
+    category: 'Maintenance',
+    image: 'https://picsum.photos/seed/uk-maintenance-mode-blog/800/500',
+  },
 ];

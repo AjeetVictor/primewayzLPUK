@@ -12,75 +12,78 @@ export interface BlogPost {
 
 export const blogPosts: BlogPost[] = [
   {
-    id: 'ai-driven-development',
-    title: 'The Future of AI-Driven Development',
-    excerpt: 'How machine learning is transforming the way we write, test, and deploy code in 2026.',
+    id: 'monthly-digital-support-uk-smes',
+    title: 'Why UK SMEs Need Monthly Digital Support',
+    excerpt:
+      'How a predictable monthly delivery model helps small businesses keep websites, SEO, CRM, and automation work moving.',
     content: `
-      <p>The landscape of software development is undergoing a seismic shift. As we navigate through 2026, Artificial Intelligence is no longer just a tool for code completion; it's becoming a core collaborator in the entire software lifecycle.</p>
-      
-      <h3>The Rise of Autonomous Coding Agents</h3>
-      <p>We've moved beyond simple autocomplete. Today's AI agents can understand complex requirements, architect entire systems, and even self-correct bugs before they reach production. These agents don't just write code; they reason about it.</p>
-      
-      <h3>Testing and Quality Assurance</h3>
-      <p>AI-driven testing has virtually eliminated the need for manual regression suites. Systems can now predict where bugs are likely to occur based on historical data and automatically generate edge-case tests that human developers might miss.</p>
-      
-      <h3>The Human Element</h3>
-      <p>Does this mean the end of the human developer? Far from it. The role is evolving from "writer of code" to "architect of intent." Developers now spend more time on high-level design, security architecture, and ensuring that AI-generated solutions align with business goals.</p>
-      
-      <p>At Primewayz, we're at the forefront of this revolution, integrating elite engineering talent with the most advanced AI tools to deliver software at speeds previously thought impossible.</p>
+      <p>Many UK small businesses do not need a large one-off software project. They need steady digital progress: website improvements, technical SEO fixes, CRM cleanup, landing pages, analytics, and small automations delivered in a practical monthly rhythm.</p>
+
+      <h3>The problem with one-off digital projects</h3>
+      <p>One-off projects often start well but leave the business with a long list of unresolved improvements after launch. Forms need refining, pages need updating, tracking needs fixing, and new campaign ideas appear every month.</p>
+
+      <h3>Why monthly delivery works better</h3>
+      <p>A monthly model gives UK SMEs a clear queue of priorities. Instead of repeatedly finding a new freelancer or agency, the business keeps one delivery partner who understands the website, systems, and commercial goals.</p>
+
+      <h3>What should be included</h3>
+      <p>Good monthly support should cover website updates, technical SEO foundations, CRM workflows, forms, lead tracking, landing pages, integrations, small automation tasks, maintenance, and release support.</p>
+
+      <p>Primewayz UK is built around this need: flexible monthly digital delivery for UK small businesses that want progress without hiring a full in-house team.</p>
     `,
     date: 'March 24, 2026',
     readTime: '5 min read',
-    author: 'Sarah Chen',
-    category: 'Technology',
-    image: 'https://picsum.photos/seed/ai-dev/800/500'
+    author: 'Primewayz UK Team',
+    category: 'UK SMEs',
+    image: 'https://picsum.photos/seed/uk-monthly-support/800/500',
   },
   {
-    id: 'scaling-infrastructure',
-    title: 'Scaling Infrastructure for Global Growth',
-    excerpt: 'Key strategies for building resilient systems that can handle millions of concurrent users.',
+    id: 'website-seo-crm-automation-uk',
+    title: 'Website, SEO, CRM and Automation: The Practical UK SME Stack',
+    excerpt:
+      'A simple framework for deciding what to improve first when your business needs better digital operations.',
     content: `
-      <p>In today's hyper-connected world, the ability to scale infrastructure rapidly and reliably is the difference between a successful product and a failed one. As user bases grow from thousands to millions overnight, your systems must be ready.</p>
-      
-      <h3>Serverless and Edge Computing</h3>
-      <p>The move towards serverless architectures and edge computing has decentralized the cloud. By pushing logic closer to the user, we've reduced latency and improved resilience. No longer is a single data center a point of failure.</p>
-      
-      <h3>Observability and Self-Healing</h3>
-      <p>Modern infrastructure doesn't just report errors; it anticipates them. Through advanced observability tools, we can now see bottlenecks before they impact users. Self-healing systems can automatically spin up resources or reroute traffic in response to real-time demand.</p>
-      
-      <h3>Security at Scale</h3>
-      <p>As you scale, your attack surface grows. Zero-trust architectures and automated security scanning are no longer optional. Security must be baked into the infrastructure from day one, not bolted on as an afterthought.</p>
-      
-      <p>Scaling isn't just about adding more servers; it's about building a system that can evolve with your business. Our engineering teams specialize in creating these resilient, future-proof foundations.</p>
+      <p>For many UK businesses, digital improvement becomes confusing because everything feels urgent: the website, SEO, lead forms, CRM, automation, content, analytics, and customer follow-up.</p>
+
+      <h3>Start with the customer journey</h3>
+      <p>The first step is to understand how a customer finds the business, what pages they view, which form or call-to-action they use, and what happens after the enquiry arrives.</p>
+
+      <h3>Fix the core before adding more tools</h3>
+      <p>A clean website structure, reliable contact forms, basic technical SEO, clear analytics, and a working CRM process often create more value than adding another disconnected tool.</p>
+
+      <h3>Automate only where it helps</h3>
+      <p>Automation should reduce manual follow-up, lost enquiries, repeated updates, and reporting gaps. It should not make the process harder for staff or customers.</p>
+
+      <p>Primewayz UK helps businesses prioritise these improvements through Foundation Sprint planning and monthly delivery capacity.</p>
     `,
     date: 'March 18, 2026',
-    readTime: '8 min read',
-    author: 'Marcus Thorne',
-    category: 'Engineering',
-    image: 'https://picsum.photos/seed/infra/800/500'
+    readTime: '6 min read',
+    author: 'Primewayz UK Team',
+    category: 'Digital Operations',
+    image: 'https://picsum.photos/seed/uk-digital-stack/800/500',
   },
   {
-    id: 'elite-engineering-service',
-    title: 'Why Elite Engineering as a Service is Winning',
-    excerpt: 'The shift from traditional outsourcing to high-performance, subscription-based development teams.',
+    id: 'foundation-sprint-before-monthly-delivery',
+    title: 'Why Start with a Foundation Sprint Before Monthly Delivery?',
+    excerpt:
+      'How a short planning and setup phase reduces confusion before website, SEO, CRM, or automation work begins.',
     content: `
-      <p>The traditional model of software outsourcing is broken. Long contracts, misaligned incentives, and variable quality have led many companies to look for a better way. Enter "Engineering as a Service" (EaaS).</p>
-      
-      <h3>The Problem with Traditional Outsourcing</h3>
-      <p>Traditional outsourcing often prioritizes headcount over outcomes. Projects get bloated, communication breaks down, and the final product rarely meets the original vision. It's a model built for a slower era of business.</p>
-      
-      <h3>The EaaS Advantage</h3>
-      <p>Engineering as a Service flips the script. It's a productized approach to development. You get access to elite, pre-vetted teams on a subscription basis. No long-term contracts, no hiring headaches, just high-velocity delivery.</p>
-      
-      <h3>Predictability and Velocity</h3>
-      <p>With EaaS, pricing is predictable and delivery is fast. Teams are already integrated and ready to hit the ground running. This allows companies to scale their development capacity up or down as their needs change, without the friction of traditional hiring or agency models.</p>
-      
-      <p>At Primewayz, we've pioneered this model to give businesses the engineering power they need to compete in the modern market. It's not just about writing code; it's about delivering value, predictably and at scale.</p>
+      <p>Starting monthly delivery without a clear foundation can create confusion. Priorities change, assumptions remain hidden, and small technical issues can delay visible progress.</p>
+
+      <h3>What a Foundation Sprint should clarify</h3>
+      <p>A strong Foundation Sprint confirms business goals, current website condition, tracking gaps, content needs, CRM requirements, technical risks, and the best delivery plan.</p>
+
+      <h3>Why it matters for UK SMEs</h3>
+      <p>Small businesses usually need clarity before capacity. A short setup phase helps the team decide what should be fixed first, what should wait, and what belongs in monthly delivery.</p>
+
+      <h3>Moving into monthly support</h3>
+      <p>Once the foundation is clear, monthly delivery can focus on agreed priorities: website improvements, landing pages, technical SEO, integrations, automation, maintenance, and reporting.</p>
+
+      <p>This is why Primewayz UK recommends starting with a focused Foundation Sprint before moving into Essential, Growth, Scale, or Maintenance Mode.</p>
     `,
     date: 'March 12, 2026',
-    readTime: '6 min read',
-    author: 'Elena Rodriguez',
-    category: 'Business',
-    image: 'https://picsum.photos/seed/service/800/500'
-  }
+    readTime: '5 min read',
+    author: 'Primewayz UK Team',
+    category: 'Delivery Model',
+    image: 'https://picsum.photos/seed/uk-foundation-sprint/800/500',
+  },
 ];

@@ -251,9 +251,12 @@ export function ContactForm() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 id="contact-heading" className="text-3xl md:text-5xl font-bold tracking-tight text-gray-900 mb-4">
-            Get in Touch
+            Book a UK Discovery Call
           </h2>
-          <p className="text-xl text-gray-600">Have a project in mind? Let&apos;s discuss how we can help you scale.</p>
+          <p className="text-xl text-gray-600">Tell us what your UK business needs help with - website updates, SEO, CRM, automation, integrations, or monthly digital support.</p>
+          <p className="mt-3 text-sm text-gray-500">
+            Primewayz UK currently supports UK-based small businesses and UK-facing teams only.
+          </p>
         </div>
 
         <div className="bg-gray-50 p-8 md:p-12 rounded-3xl border border-gray-100 shadow-sm">
@@ -347,7 +350,7 @@ export function ContactForm() {
               <div className="space-y-6 flex flex-col">
                 <div className="space-y-2 flex-1 flex flex-col min-h-0">
                   <label htmlFor="message" className="block text-sm font-semibold text-gray-700">
-                    Your Enquiry About?
+                    What does your UK business need help with?
                   </label>
                   <textarea
                     id="message"
@@ -355,7 +358,7 @@ export function ContactForm() {
                     value={formData.message}
                     onChange={handleChange}
                     rows={8}
-                    placeholder="Type Your Message Here..."
+                    placeholder="Tell us about your website, SEO, CRM, automation, integration, or monthly support requirement..."
                     aria-required="true"
                     aria-invalid={!!errors.message}
                     aria-describedby={errors.message ? 'message-error' : undefined}
@@ -412,7 +415,7 @@ export function ContactForm() {
                     Sending…
                   </span>
                 ) : (
-                  'Submit Your Query'
+                  'Submit UK Enquiry'
                 )}
               </motion.button>
               <p className="text-sm text-gray-500 text-center max-w-lg">

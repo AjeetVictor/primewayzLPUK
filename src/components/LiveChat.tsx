@@ -47,7 +47,7 @@ export const LiveChat = () => {
             // Default welcome message if no history
             setMessages([{
               id: '1',
-              text: 'Hi there! 👋 Welcome to Primewayz. How can we help you scale your development today?',
+              text: 'Hi there! 👋 Welcome to Primewayz UK. How can we help your UK business with website, SEO, CRM, automation, or monthly digital support?',
               sender: 'bot',
               timestamp: new Date(),
             }]);
@@ -56,7 +56,7 @@ export const LiveChat = () => {
           setApiAvailable(false);
           setMessages([{
             id: '1',
-            text: 'Hi there! 👋 Welcome to Primewayz. How can we help you scale your development today?',
+            text: 'Hi there! 👋 Welcome to Primewayz UK. How can we help your UK business with website, SEO, CRM, automation, or monthly digital support?',
             sender: 'bot',
             timestamp: new Date(),
           }]);
@@ -65,7 +65,7 @@ export const LiveChat = () => {
         setApiAvailable(false);
         setMessages([{
           id: '1',
-          text: 'Hi there! 👋 Welcome to Primewayz. How can we help you scale your development today?',
+          text: 'Hi there! 👋 Welcome to Primewayz UK. How can we help your UK business with website, SEO, CRM, automation, or monthly digital support?',
           sender: 'bot',
           timestamp: new Date(),
         }]);
@@ -344,7 +344,7 @@ export const LiveChat = () => {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Type your message..."
+                  placeholder="Tell us what your UK business needs help with..."
                   className="flex-1 bg-zinc-100 border-none rounded-2xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500/20 outline-none resize-none max-h-[120px] transition-[height] duration-100"
                 />
                 <button

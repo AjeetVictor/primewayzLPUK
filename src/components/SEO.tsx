@@ -1,122 +1,108 @@
-import { Helmet } from 'react-helmet-async';
-
 interface SEOProps {
   title?: string;
   description?: string;
   canonical?: string;
-  ogType?: string;
   ogImage?: string;
-  twitterHandle?: string;
+  noindex?: boolean;
 }
 
 export const SEO = ({
-  title = 'Predictable Software Development as a Service',
-  description = 'Primewayz offers elite, productized software development as a service. Scale your business with our on-demand engineering teams and agile development services. Predictable pricing, no contracts, just high-velocity delivery.',
-  canonical = 'https://ais-pre-mpuvpf5ptocgkdovjijd5p-281079166320.asia-southeast1.run.app',
-  ogType = 'website',
-  ogImage = 'https://uk.primewayz.com/assets/primewayz-infotech-logo-gn3jDBiM.svg',
-  twitterHandle = '@Primewayz',
+  title = 'UK Software Development Subscription for Small Businesses',
+  description = 'Primewayz UK helps UK small businesses manage websites, SEO, CRM, automation, integrations, landing pages, and ongoing digital improvements through flexible monthly software delivery.',
+  canonical = 'https://uk.primewayz.com/',
+  ogImage = 'https://uk.primewayz.com/og-primewayz-uk.jpg',
+  noindex = false,
 }: SEOProps) => {
-  const siteTitle = `${title} | Primewayz`;
+  const siteTitle = `${title} | Primewayz UK`;
+
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'ProfessionalService',
+    name: 'Primewayz UK',
+    url: canonical,
+    logo: 'https://uk.primewayz.com/favicon.png',
+    description,
+    areaServed: {
+      '@type': 'Country',
+      name: 'United Kingdom',
+    },
+    serviceArea: {
+      '@type': 'Country',
+      name: 'United Kingdom',
+    },
+    availableLanguage: 'en-GB',
+    currenciesAccepted: 'GBP',
+    priceRange: '££',
+    brand: {
+      '@type': 'Brand',
+      name: 'Primewayz',
+    },
+    parentOrganization: {
+      '@type': 'Organization',
+      name: 'Primewayz Infotech Pvt. Ltd.',
+      url: 'https://primewayz.com/',
+    },
+    serviceType: [
+      'UK Software Development Subscription',
+      'Website Maintenance for UK Small Businesses',
+      'UK SEO Support',
+      'CRM Integration',
+      'Business Automation',
+      'Landing Page Development',
+      'Digital System Maintenance',
+    ],
+    audience: {
+      '@type': 'BusinessAudience',
+      audienceType: 'UK small businesses and SMEs',
+    },
+  };
 
   return (
-    <Helmet>
-      {/* Basic Meta Tags */}
+    <>
       <title>{siteTitle}</title>
-      <meta name="description" content={description} />
-      <meta name="keywords" content="software development agency, outsourcing, product engineering, agile development, software development, saas, productized software development, agile development services, on-demand engineering teams, subscription development, elite engineering, Primewayz" />
-      <meta name="author" content="Primewayz Infotech Private Limited" />
-      <link rel="canonical" href={canonical} />
-      <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-      <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
 
-      {/* Mobile Optimization */}
-      <meta name="theme-color" content="#059669" />
-      <meta name="mobile-web-app-capable" content="yes" />
-      <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-      <meta name="apple-mobile-web-app-title" content="Primewayz" />
-      <meta name="format-detection" content="telephone=no" />
-      <meta name="msapplication-TileColor" content="#059669" />
+      <meta name="description" content={description} />
+      <meta
+        name="keywords"
+        content="UK software development subscription, website maintenance subscription UK, digital support for UK small businesses, UK SEO support, CRM integration UK, business automation UK, monthly software delivery UK, website support for UK SMEs"
+      />
+      <meta name="author" content="Primewayz Infotech Pvt. Ltd." />
+      <meta name="robots" content={noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large'} />
+      <meta name="language" content="en-GB" />
+      <meta name="geo.region" content="GB" />
+      <meta name="geo.placename" content="United Kingdom" />
+      <meta name="distribution" content="United Kingdom" />
+      <meta name="rating" content="General" />
+
+      <link rel="canonical" href={canonical} />
+      <link rel="alternate" hrefLang="en-gb" href="https://uk.primewayz.com/" />
+      <link rel="alternate" hrefLang="x-default" href="https://uk.primewayz.com/" />
       <link rel="apple-touch-icon" href="https://uk.primewayz.com/favicon.png" />
 
-      {/* Open Graph Meta Tags */}
+      <meta property="og:type" content="website" />
+      <meta property="og:locale" content="en_GB" />
+      <meta property="og:site_name" content="Primewayz UK" />
       <meta property="og:title" content={siteTitle} />
       <meta property="og:description" content={description} />
-      <meta property="og:type" content={ogType} />
       <meta property="og:url" content={canonical} />
       <meta property="og:image" content={ogImage} />
-      <meta property="og:image:width" content="1200" />
-      <meta property="og:image:height" content="630" />
-      <meta property="og:image:alt" content="Primewayz - Elite Engineering" />
-      <meta property="og:site_name" content="Primewayz" />
+      <meta
+        property="og:image:alt"
+        content="Primewayz UK monthly digital delivery for UK small businesses"
+      />
 
-      {/* Twitter Meta Tags */}
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={siteTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={ogImage} />
-      <meta name="twitter:image:alt" content="Primewayz - Elite Engineering" />
-      <meta name="twitter:site" content={twitterHandle} />
-      <meta name="twitter:creator" content={twitterHandle} />
+      <meta
+        name="twitter:image:alt"
+        content="Primewayz UK monthly digital delivery for UK small businesses"
+      />
 
-      {/* Robots and Google Search Console */}
-      <meta name="robots" content="index, follow" />
-      <meta name="googlebot" content="index, follow" />
-      <meta name="google-site-verification" content="z-1234567890abcdefghijklmnopqrstuvwxyz" />
-
-      {/* Structured Data (JSON-LD) */}
       <script type="application/ld+json">
-        {JSON.stringify({
-          '@context': 'https://schema.org',
-          '@type': 'Service',
-          'serviceType': 'Software Development as a Service',
-          'name': 'Primewayz Infotech Private Limited - Elite Engineering',
-          'description': description,
-          'provider': {
-            '@type': 'Organization',
-            'name': 'Primewayz Infotech Private Limited',
-            'url': canonical,
-            'logo': 'https://uk.primewayz.com/assets/primewayz-infotech-logo-gn3jDBiM.svg',
-            'sameAs': [
-              'https://www.linkedin.com/company/primewayz',
-              'https://twitter.com/primewayz'
-            ]
-          },
-          'areaServed': 'Global',
-          'hasOfferCatalog': {
-            '@type': 'OfferCatalog',
-            'name': 'Software Development Services',
-            'itemListElement': [
-              {
-                '@type': 'Offer',
-                'itemOffered': {
-                  '@type': 'Service',
-                  'name': 'Full-Stack Development'
-                }
-              },
-              {
-                '@type': 'Offer',
-                'itemOffered': {
-                  '@type': 'Service',
-                  'name': 'Product Engineering'
-                }
-              },
-              {
-                '@type': 'Offer',
-                'itemOffered': {
-                  '@type': 'Service',
-                  'name': 'UI/UX Design'
-                }
-              }
-            ]
-          },
-          'offers': {
-            '@type': 'Offer',
-            'priceCurrency': 'USD',
-            'availability': 'https://schema.org/InStock'
-          }
-        })}
+        {JSON.stringify(structuredData)}
       </script>
-    </Helmet>
+    </>
   );
 };

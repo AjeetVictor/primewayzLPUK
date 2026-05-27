@@ -58,8 +58,8 @@ export const BlogSection = () => {
               viewport={{ once: true }}
               className="text-3xl md:text-5xl font-bold tracking-tight text-zinc-900 mb-6"
             >
-              Insights from the <br />
-              <span className="text-emerald-600 italic">cutting edge</span>
+              UK digital support <br />
+              <span className="text-emerald-600 italic">insights for SMEs</span>
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -68,8 +68,7 @@ export const BlogSection = () => {
               transition={{ delay: 0.1 }}
               className="text-lg text-zinc-600"
             >
-              Stay ahead of the curve with our latest thoughts on technology, 
-              engineering culture, and the future of software development.
+              Practical guidance for UK small businesses on website upkeep, SEO foundations, CRM workflows, automation, and monthly digital delivery.
             </motion.p>
           </div>
           <motion.button
@@ -81,7 +80,7 @@ export const BlogSection = () => {
             onClick={() => window.scrollTo({ top: document.getElementById('blog')?.offsetTop, behavior: 'smooth' })}
             className="flex items-center gap-2 text-zinc-900 font-bold hover:text-emerald-600 transition-colors group"
           >
-            Read all articles
+            Read UK insights
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </motion.button>
         </div>
@@ -173,7 +172,7 @@ export const BlogSection = () => {
               onClick={loadMore}
               className="px-8 py-4 bg-zinc-900 text-white rounded-full font-bold hover:bg-emerald-600 transition-colors shadow-xl shadow-zinc-900/10"
             >
-              Load more insights
+              Load more UK insights
             </motion.button>
           </div>
         )}
