@@ -295,7 +295,7 @@ export function ContactForm() {
             Choose how you want to connect
           </h2>
           <p className="text-xl text-gray-600">
-            Tell us what your UK business needs help with — website updates, SEO, CRM, automation, integrations, or monthly digital support.
+            Tell us what your UK business needs help with - website updates, SEO, CRM, automation, integrations, or monthly digital support.
           </p>
           <p className="mt-3 text-sm text-gray-500">
             Primewayz UK currently supports UK-based small businesses and UK-facing teams only.

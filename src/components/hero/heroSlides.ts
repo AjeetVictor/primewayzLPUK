@@ -5,7 +5,7 @@ export const heroSlides: HeroSlide[] = [
     id: 'slide-1',
     headline: 'Subscription software delivery for UK businesses - Built for reliable monthly execution',
     subheadline:
-      'Websites, CMS platforms, integrations, and digital improvements — planned, designed, built, tested, and released through a structured monthly delivery model.',
+      'Websites, CMS platforms, integrations, and digital improvements - planned, designed, built, tested, and released through a structured monthly delivery model.',
     accentText: 'Built for reliable monthly execution',
   },
   {
@@ -19,14 +19,14 @@ export const heroSlides: HeroSlide[] = [
     id: 'slide-3',
     headline: 'A structured delivery model with clear execution rhythm - One clear workstream. Sequential execution. Predictable outcomes.',
     subheadline:
-      'Every approved workstream moves through planning, design, development, QA, and deployment in sequence — helping you stay in control of priorities, approvals, and delivery quality.',
+      'Every approved workstream moves through planning, design, development, QA, and deployment in sequence - helping you stay in control of priorities, approvals, and delivery quality.',
     accentText: 'One clear workstream. Sequential execution. Predictable outcomes.',
   },
   {
     id: 'slide-4',
-    headline: 'Clear monthly capacity. Transparent add-ons. No hidden surprises. - Know what\'s included — and what\'s billed separately',
+    headline: 'Clear monthly capacity. Transparent add-ons. No hidden surprises. - Know what\'s included - and what\'s billed separately',
     subheadline:
       'Your subscription covers Primewayz delivery capacity. Third-party services like hosting, messaging, payment gateways, and external tools are always handled transparently through clearly defined add-ons.',
-    accentText: 'Know what\'s included — and what\'s billed separately',
+    accentText: 'Know what\'s included - and what\'s billed separately',
   },
 ];

@@ -110,7 +110,7 @@ export const Experience = () => {
           className="mt-20 text-center"
         >
           <p className="text-zinc-500 text-sm max-w-2xl mx-auto">
-            Our delivery model is designed to reduce overhead, increase predictability, and adapt to your changing business needs—without the rigidity of traditional contracts.
+            Our delivery model is designed to reduce overhead, increase predictability, and adapt to your changing business needs-without the rigidity of traditional contracts.
           </p>
         </motion.div>
       </div>

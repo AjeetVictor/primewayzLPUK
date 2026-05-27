@@ -488,7 +488,7 @@ export const AdminPanel = () => {
                           </td>
                           <td className="px-6 py-4 text-sm font-bold text-zinc-900">{res.name}</td>
                           <td className="px-6 py-4 text-sm text-zinc-600">{res.email}</td>
-                          <td className="px-6 py-4 text-sm text-zinc-600 font-mono whitespace-nowrap">{res.phone || '—'}</td>
+                          <td className="px-6 py-4 text-sm text-zinc-600 font-mono whitespace-nowrap">{res.phone || '-'}</td>
                           <td className="px-6 py-4 text-sm text-zinc-500 max-w-xs truncate">{res.message}</td>
                           <td className="px-6 py-4 text-right">
                             {(user?.role === 'admin' || user?.role === 'editor') && (

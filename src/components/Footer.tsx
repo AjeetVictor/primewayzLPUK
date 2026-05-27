@@ -18,31 +18,21 @@ const legalLinks = [
 
 export const Footer = () => {
   return (
-    <footer className="py-16 bg-zinc-900 text-white">
+    <footer className="py-16 bg-[#000A2D] text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
           <div className="col-span-1 sm:col-span-2 lg:col-span-2">
             <div className="flex items-center gap-2 mb-6">
-              <div className="relative w-8 h-8">
-                <svg viewBox="0 0 40 40" className="w-full h-full">
-                  <rect x="8" y="8" width="6" height="24" rx="1" fill="#1B59A7" />
-                  <path
-                    d="M14 10C22 10 28 14 28 20C28 26 22 30 14 30"
-                    fill="none"
-                    stroke="#E61E50"
-                    strokeWidth="6"
-                    strokeLinecap="round"
-                  />
-                  <circle cx="21" cy="20" r="3" fill="#E61E50" />
-                </svg>
-              </div>
-              <span className="text-2xl font-bold tracking-tight text-white">Primewayz UK</span>
+              <img
+                  src="/primewayz-uk-dark-logo.png"
+                  alt="Primewayz UK Infotech Pvt. Ltd."
+                  className="h-20 w-auto max-w-[240px] object-contain"
+                  loading="lazy"
+              />
             </div>
 
             <p className="text-zinc-400 max-w-sm mb-6">
-              Subscription-based software delivery for UK businesses — covering websites,
-              SEO foundations, CRM integrations, automation, maintenance, and ongoing
-              digital improvements.
+              Subscription-based software delivery for UK businesses - covering websites, SEO foundations, CRM integrations, automation, maintenance, and ongoing digital improvements.
             </p>
 
             <div className="space-y-3 mb-8">
@@ -149,7 +139,7 @@ export const Footer = () => {
         </div>
 
         <div className="pt-8 border-t border-zinc-800 text-center text-zinc-500 text-sm">
-          <p>© {new Date().getFullYear()} Primewayz Infotech Pvt. Ltd. All rights reserved.</p>
+          <p> © {new Date().getFullYear()} Primewayz Infotech Pvt. Ltd. All rights reserved.</p>
         </div>
       </div>
     </footer>

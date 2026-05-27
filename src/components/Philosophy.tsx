@@ -58,7 +58,7 @@ export const Philosophy = () => {
             transition={{ delay: 0.1 }}
             className="text-lg text-zinc-600 max-w-3xl mx-auto"
           >
-            A structured monthly delivery model built for flexibility, control, and continuity — without rigid project cycles or scope friction.
+            A structured monthly delivery model built for flexibility, control, and continuity - without rigid project cycles or scope friction.
           </motion.p>
         </div>
 
