@@ -36,7 +36,7 @@ const indicators = [
 export function UKTrustStrip() {
   return (
     <section className="bg-white border-y border-slate-100" aria-labelledby="uk-trust-strip-heading">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col gap-3 text-center mb-8">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
             UK-focused delivery indicators
