@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
+import { UKTrustStrip } from './components/UKTrustStrip';
 import { Philosophy } from './components/Philosophy';
 import { HowItWorks } from './components/HowItWorks';
 import { InteractiveDemo } from './components/InteractiveDemo';
@@ -40,6 +41,8 @@ const ClientOnly = ({ children }: { children: ReactNode }) => {
 const MainContent = () => (
   <main>
     <Hero />
+
+    <UKTrustStrip />
 
     <Philosophy />
 
