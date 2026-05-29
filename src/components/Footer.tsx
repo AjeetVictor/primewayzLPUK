@@ -61,7 +61,7 @@ export const Footer = () => {
 
             <div className="flex items-center gap-4">
               <TrackedLink
-                href="https://www.linkedin.com/company/primewayz/mycompany/"
+                href="https://www.linkedin.com/company/primewayz-uk/"
                 target="_blank"
                 rel="noopener noreferrer"
                 ariaLabel="Primewayz on LinkedIn"

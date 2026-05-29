@@ -26,7 +26,7 @@ const NAME_MIN = 2;
 const NAME_MAX = 80;
 const MESSAGE_MIN = 10;
 const MESSAGE_MAX = 2000;
-const CALENDLY_URL = 'https://calendly.com/primewayz-info/30min';
+const CALENDLY_URL = 'https://calendly.com/primewayz-info/30-minute-meeting-uk';
 const CALENDLY_SCRIPT_URL = 'https://assets.calendly.com/assets/external/widget.js';
 
 function SocialIcon({ label }: { label: string }) {
