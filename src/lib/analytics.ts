@@ -43,6 +43,7 @@ export function trackEvent(
     business_model: 'subscription_software_delivery',
     page_path: window.location.pathname,
     page_title: document.title,
+    transport_type: 'beacon',
     ...params,
   });
 }
