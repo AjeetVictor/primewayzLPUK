@@ -4,44 +4,44 @@ import { useState } from 'react';
 
 const faqs = [
   {
+    question: 'Is Primewayz UK suitable for small and medium UK businesses?',
+    answer:
+      'Yes. Primewayz UK is designed for UK SMEs and UK-facing teams that need reliable monthly software delivery without hiring a full in-house technical team. We support websites, CRM improvements, automation, SEO foundations, integrations, maintenance, and ongoing digital improvements.',
+  },
+  {
     question: 'Do I need to start with Foundation Sprint?',
     answer:
-      'In most cases, yes. Foundation Sprint is the recommended starting point because it aligns priorities, confirms scope, and creates the execution plan before active monthly delivery begins.',
+      'Foundation Sprint is recommended when your requirements, priorities, risks, content, integrations, or delivery roadmap are not fully clear. It helps define what should be built first, what can wait, and which monthly support plan is most suitable.',
   },
   {
     question: 'Can I take Foundation Sprint and a monthly plan together?',
     answer:
-      'Yes. Some teams run Foundation Sprint first, then move into Essential, Growth, or Scale. Others overlap onboarding so monthly delivery starts immediately once priorities are approved.',
+      'Yes. Some UK businesses use Foundation Sprint first for discovery and planning, then continue into Essential, Growth, or Scale. If your priorities are already clear, you may start directly with a monthly plan.',
   },
   {
     question: 'How do I choose between Essential, Growth, and Scale?',
     answer:
-      'Choose based on delivery capacity and complexity.\n\nEssential fits core website/CMS improvements and lighter integrations.\nGrowth fits broader conversion-focused delivery and CRM/API work.\nScale fits heavier operational systems, portals, dashboards, and automation.\n\nIf unsure, Primewayz recommends the best-fit plan on a discovery call.',
+      'Choose based on delivery pace and volume. Essential is suitable for smaller updates and steady support. Growth is better when you need regular website, CRM, automation, or SEO foundation improvements. Scale is suitable when you need faster execution, more coordination, or broader technical support.',
   },
   {
-    question: 'Why are add-ons billed separately?',
+    question: 'What types of work can be handled under the subscription?',
     answer:
-      'Add-ons are optional specialist capability beyond core delivery capacity. Keeping them separate means you only pay for extra support when it is genuinely needed.',
+      'Typical work includes website updates, landing pages, CMS improvements, CRM setup or integration, internal workflow automation, reporting dashboards, SEO foundation improvements, maintenance, bug fixes, and controlled feature development.',
   },
   {
-    question: 'Why are third-party vendor costs separate?',
+    question: 'Why are add-ons and third-party vendor costs separate?',
     answer:
-      'Third-party costs are external charges, not Primewayz delivery fees. This includes hosting, domains, email/messaging providers, payment gateways, and SaaS tooling. Separation keeps pricing transparent and keeps vendor ownership with your team.',
+      'Your subscription covers Primewayz delivery capacity. External costs such as hosting, domains, email tools, SMS or WhatsApp providers, payment gateways, SaaS tools, and paid plugins are billed separately so pricing remains transparent and vendor ownership stays with your business.',
   },
   {
     question: 'When should I move to Maintenance Mode?',
     answer:
-      'Move to Maintenance Mode when roadmap intensity drops and you need continuity, upkeep, and minor fixes without full active delivery capacity. You can move back into an active plan when priorities increase again.',
-  },
-  {
-    question: 'When is Enterprise the right fit?',
-    answer:
-      'Enterprise is best for advanced integration-heavy systems, architect-led programmes, governance-heavy delivery, and large roadmap execution that needs custom team shape and commercial structure.',
+      'Maintenance Mode is useful when active development slows down but you still want basic support, monitoring, minor updates, and a ready team to resume work when new priorities appear.',
   },
   {
     question: 'Can I switch plans as priorities change?',
     answer:
-      'Yes. Capacity is flexible month to month. You can move between Essential, Growth, Scale, and Maintenance Mode as business priorities shift.',
+      'Yes. The subscription model is designed to stay flexible. You can increase, reduce, pause, or move into maintenance depending on workload, business priorities, and delivery needs.',
   },
 ];
 

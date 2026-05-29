@@ -15,7 +15,7 @@ export const homepageSeoContent: HomepageSeoBlock[] = [
   },
   {
     level: 2,
-    heading: 'Flexible Software Delivery Subscription',
+    heading: 'Software Development Subscription for UK SMEs',
     paragraphs: [
       'Start with a focused Foundation Sprint, then continue with monthly delivery capacity for development, ERP workflows, B2B ecommerce, integrations, maintenance and AI-enabled automation.'
     ]
@@ -31,7 +31,7 @@ export const homepageSeoContent: HomepageSeoBlock[] = [
     level: 2,
     heading: 'Foundation Sprint',
     paragraphs: [
-      'The Foundation Sprint helps clarify scope, priorities, risks, delivery plan and the most suitable monthly support model before a longer delivery subscription.'
+      'The Foundation Sprint helps UK SMEs clarify scope, priorities, risks, delivery plan, and the most suitable monthly software delivery model before moving into longer subscription support.'
     ]
   },
   {
@@ -43,7 +43,7 @@ export const homepageSeoContent: HomepageSeoBlock[] = [
   },
   {
     level: 2,
-    heading: 'Pricing and Support Options',
+    heading: 'UK SME Pricing and Support Options',
     paragraphs: [
       'Primewayz offers flexible software delivery and maintenance options including Foundation Sprint, Essential, Growth, Scale and Maintenance Mode.'
     ]
@@ -57,7 +57,7 @@ export const homepageSeoContent: HomepageSeoBlock[] = [
   },
   {
     level: 2,
-    heading: 'Frequently Asked Questions',
+    heading: 'UK Software Delivery Subscription FAQs',
     paragraphs: [
       'Primewayz can support new builds, existing systems, stabilisation, improvements, integrations, automation and long-term maintenance.'
     ]

@@ -7,7 +7,7 @@ interface SEOProps {
 }
 
 export const SEO = ({
-  title = 'UK Software Development Subscription for Small Businesses',
+  title = 'Software Development Subscription for UK SMEs | Primewayz UK',
   description = 'Primewayz UK helps UK small businesses manage websites, SEO, CRM, automation, integrations, landing pages, and ongoing digital improvements through flexible monthly software delivery.',
   canonical = 'https://uk.primewayz.com/',
   ogImage = 'https://uk.primewayz.com/og-primewayz-uk.jpg',
@@ -43,7 +43,7 @@ export const SEO = ({
       url: 'https://primewayz.com/',
     },
     serviceType: [
-      'UK Software Development Subscription',
+      'Software Development Subscription for UK SMEs',
       'Website Maintenance for UK Small Businesses',
       'UK SEO Support',
       'CRM Integration',
@@ -64,7 +64,7 @@ export const SEO = ({
       <meta name="description" content={description} />
       <meta
         name="keywords"
-        content="UK software development subscription, website maintenance subscription UK, digital support for UK small businesses, UK SEO support, CRM integration UK, business automation UK, monthly software delivery UK, website support for UK SMEs"
+        content="software development subscription UK, subscription software delivery UK, website maintenance subscription UK, digital support for UK SMEs, CRM integration support UK, business automation support UK, SEO foundation support UK, monthly software development support UK"
       />
       <meta name="author" content="Primewayz Infotech Pvt. Ltd." />
       <meta name="robots" content={noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large'} />

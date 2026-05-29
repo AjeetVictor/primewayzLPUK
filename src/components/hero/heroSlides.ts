@@ -3,7 +3,7 @@ import type { HeroSlide } from './types';
 export const heroSlides: HeroSlide[] = [
   {
     id: 'slide-1',
-    headline: 'Subscription software delivery for UK businesses - Built for reliable monthly execution',
+    headline: 'Subscription software delivery for UK SMEs - Built for reliable monthly execution',
     subheadline:
       'Websites, CMS platforms, integrations, and digital improvements - planned, designed, built, tested, and released through a structured monthly delivery model.',
     accentText: 'Built for reliable monthly execution',
@@ -26,7 +26,7 @@ export const heroSlides: HeroSlide[] = [
     id: 'slide-4',
     headline: 'Clear monthly capacity. Transparent add-ons. No hidden surprises. - Know what\'s included - and what\'s billed separately',
     subheadline:
-      'Your subscription covers Primewayz delivery capacity. Third-party services like hosting, messaging, payment gateways, and external tools are always handled transparently through clearly defined add-ons.',
+      'Your subscription covers Primewayz delivery capacity for websites, CRM integrations, automation, SEO foundations, maintenance, and ongoing digital improvements. Third-party services like hosting, messaging, payment gateways, and external tools are handled transparently through clearly defined add-ons.',
     accentText: 'Know what\'s included - and what\'s billed separately',
   },
 ];

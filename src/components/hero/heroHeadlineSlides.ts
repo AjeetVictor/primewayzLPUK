@@ -16,7 +16,7 @@ export const heroHeadlineSlides: HeroHeadlineSlide[] = [
   {
     id: 'monthly-delivery',
     badge: 'FLEXIBLE MONTHLY DELIVERY',
-    headline: 'Subscription software delivery for UK businesses',
+    headline: 'Subscription software delivery for UK SMEs',
     highlight: 'Start with Foundation Sprint, then scale monthly capacity',
     description:
       'Websites, CMS platforms, integrations, and digital improvements - planned, designed, built, tested, and released through a structured monthly delivery model.',
@@ -64,7 +64,7 @@ export const heroHeadlineSlides: HeroHeadlineSlide[] = [
     headline: 'Clear monthly capacity. Transparent add-ons. No hidden surprises.',
     highlight: "Know what's included - and what's billed separately",
     description:
-      'Your subscription covers Primewayz delivery capacity. Third-party services like hosting, messaging, payment gateways, and external tools are always handled transparently through clearly defined add-ons.',
+      'Your subscription covers Primewayz delivery capacity for websites, CRM integrations, automation, SEO foundations, maintenance, and ongoing digital improvements. Third-party services like hosting, messaging, payment gateways, and external tools are handled transparently through clearly defined add-ons.',
     primaryCtaLabel: 'See plans',
     primaryCtaHref: '#pricing',
     secondaryCtaLabel: 'Book a call',
