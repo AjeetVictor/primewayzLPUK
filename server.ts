@@ -131,7 +131,7 @@ function normalizeContactPhoneE164(raw: unknown): string | null {
   return parsed.format('E.164');
 }
 
-const SEO_SITE_NAME = 'Primewayz';
+const SEO_SITE_NAME = 'Primewayz UK';
 const SEO_DEFAULT_OG_IMAGE = 'https://uk.primewayz.com/assets/primewayz-infotech-logo-gn3jDBiM.svg';
 const SEO_DEFAULT_TWITTER_HANDLE = '@Primewayz';
 
@@ -230,6 +230,47 @@ function withSeoTags(html: string, seo: SeoPayload, pathname = '/'): string {
   );
 }
 
+
+function optimizeHeadAssetOrder(html: string): string {
+  const headMatch = html.match(/<head[\s\S]*?<\/head>/i);
+  if (!headMatch) return html;
+
+  const originalHead = headMatch[0];
+  const stylesheetRegex = /\s*<link\s+[^>]*rel=["']stylesheet["'][^>]*>\s*/gi;
+  const stylesheets = originalHead.match(stylesheetRegex) || [];
+
+  if (!stylesheets.length) return html;
+
+  let optimizedHead = originalHead;
+
+  for (const stylesheet of stylesheets) {
+    optimizedHead = optimizedHead.replace(stylesheet, '\n');
+  }
+
+  const firstModuleScript = optimizedHead.match(/\s*<script\s+[^>]*type=["']module["'][^>]*><\/script>\s*/i);
+
+  if (firstModuleScript) {
+    optimizedHead = optimizedHead.replace(
+      firstModuleScript[0],
+      `\n${stylesheets.join('\n')}\n${firstModuleScript[0]}`
+    );
+  } else {
+    optimizedHead = optimizedHead.replace('</head>', `${stylesheets.join('\n')}\n</head>`);
+  }
+
+  const firstStylesheetHref = stylesheets[0]?.match(/href=["']([^"']+)["']/i)?.[1];
+
+  if (firstStylesheetHref && !optimizedHead.includes(`rel="preload" as="style" href="${firstStylesheetHref}"`)) {
+    const preloadTag = `<link rel="preload" as="style" href="${firstStylesheetHref}" />`;
+    optimizedHead = optimizedHead.replace(
+      stylesheets[0].trim(),
+      `${preloadTag}\n  ${stylesheets[0].trim()}`
+    );
+  }
+
+  return html.replace(originalHead, optimizedHead);
+}
+
 function getOrigin(req: express.Request): string {
   const configured = process.env.SEO_SITE_URL?.trim() || process.env.PUBLIC_SITE_URL?.trim();
   if (configured) {
@@ -268,6 +309,38 @@ function getSeoPayload(pathname: string, origin: string): SeoPayload {
     url: joinUrl(origin, getCanonicalPath('/')),
     logo: 'https://uk.primewayz.com/assets/primewayz-infotech-logo-gn3jDBiM.svg',
   };
+
+
+  if (pathname === '/software-development-subscription-uk') {
+    return {
+      title: 'Software Development Subscription for UK SMEs',
+      description:
+        'Primewayz UK provides subscription-based software development for UK SMEs, covering websites, CRM integrations, automation, SEO foundations, maintenance, and ongoing monthly delivery support.',
+      canonical,
+      ogType: 'website',
+      ogImage: SEO_DEFAULT_OG_IMAGE,
+      twitterHandle: SEO_DEFAULT_TWITTER_HANDLE,
+      robots: 'index,follow',
+      structuredData: {
+        '@context': 'https://schema.org',
+        '@type': 'Service',
+        name: 'Software Development Subscription for UK SMEs',
+        serviceType: 'Subscription-based software development',
+        description:
+          'Monthly software delivery support for UK SMEs, including websites, CRM integrations, automation, SEO foundations, maintenance, and digital system improvements.',
+        provider: baseOrg,
+        areaServed: {
+          '@type': 'Country',
+          name: 'United Kingdom',
+        },
+        availableLanguage: 'en-GB',
+        audience: {
+          '@type': 'BusinessAudience',
+          audienceType: 'UK small businesses and SMEs',
+        },
+      },
+    };
+  }
 
   if (pathname.startsWith('/blog/')) {
     const postId = pathname.replace('/blog/', '').replace(/\/+$/, '');
@@ -857,10 +930,27 @@ async function startServer() {
     const ssrModule = await import(pathToFileURL(ssrEntryPath).href);
     ssrRender = ssrModule.render;
 
+    const staticOptions = {
+      index: false,
+      setHeaders: (res: any, filePath: string) => {
+        if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          return;
+        }
+
+        if (/\.(?:png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf|otf)$/i.test(filePath)) {
+          res.setHeader('Cache-Control', 'public, max-age=604800');
+          return;
+        }
+
+        res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+      },
+    };
+
     if (IS_ROOT_BASE_PATH) {
-      app.use(express.static(distPath, { index: false }));
+      app.use(express.static(distPath, staticOptions));
     } else {
-      app.use(APP_BASE_PATH, express.static(distPath, { index: false }));
+      app.use(APP_BASE_PATH, express.static(distPath, staticOptions));
       // Redirect root to app base path for convenience.
       app.get('/', (req, res) => res.redirect(APP_BASE_PATH));
     }
@@ -921,7 +1011,8 @@ async function startServer() {
       htmlTemplate = htmlTemplate.replace('<!--app-html-->', ssrHtml);
 
       const html = withSeoTags(htmlTemplate, seo, appPathname);
-      res.status(200).type('text/html').send(html);
+      const optimizedHtml = optimizeHeadAssetOrder(html);
+      res.status(200).type('text/html').send(optimizedHtml);
     } catch (error) {
       if (viteDevServer) {
         viteDevServer.ssrFixStacktrace(error as Error);
