@@ -1,9 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Layers3, ShieldCheck, Workflow, Wrench } from 'lucide-react';
-import { SEO } from './SEO';
 import { TrackedLink } from './common/TrackedLink';
-
-const SERVICE_URL = 'https://uk.primewayz.com/software-development-subscription-uk';
 
 const includedItems = [
   'Website and landing page improvements',
@@ -43,12 +40,6 @@ const steps = [
 export const SoftwareDevelopmentSubscriptionUkPage = () => {
   return (
     <>
-      <SEO
-        title="Software Development Subscription for UK SMEs"
-        description="Primewayz UK provides subscription-based software development for UK SMEs, covering websites, CRM integrations, automation, SEO foundations, maintenance, and ongoing monthly delivery support."
-        canonical={SERVICE_URL}
-      />
-
       <main className="min-h-screen bg-white text-slate-950">
         <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-20 pt-24 text-white sm:px-6 lg:px-8">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.22),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.22),transparent_34%)]" />
