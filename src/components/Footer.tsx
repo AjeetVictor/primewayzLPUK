@@ -2,6 +2,7 @@ import { Linkedin, Phone, Mail } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
 
 const productLinks = [
+  { label: 'Software Subscription', href: '/software-development-subscription-uk' },
   { label: 'How it Works', href: '#how-it-works' },
   { label: 'Features', href: '#features' },
   { label: 'Success Stories', href: '#success-stories' },

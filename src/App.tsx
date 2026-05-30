@@ -24,6 +24,7 @@ import { BlogPost } from './components/BlogPost';
 import LegalPage from './components/LegalPage';
 import AnalyticsTracker from './components/AnalyticsTracker';
 import { TrackedLink } from './components/common/TrackedLink';
+import { SoftwareDevelopmentSubscriptionUkPage } from './components/SoftwareDevelopmentSubscriptionUkPage';
 
 
 const ClientOnly = ({ children }: { children: ReactNode }) => {
@@ -131,6 +132,7 @@ export default function App() {
         <Route path="/" element={<MainContent />} />
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/blog/:id" element={<BlogPost />} />
+        <Route path="/software-development-subscription-uk" element={<SoftwareDevelopmentSubscriptionUkPage />} />
         <Route path="/privacy-policy" element={<LegalPage type="privacy" />} />
         <Route path="/terms-of-service" element={<LegalPage type="terms" />} />
         <Route path="/cookie-policy" element={<LegalPage type="cookies" />} />
