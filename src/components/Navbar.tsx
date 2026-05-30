@@ -31,7 +31,7 @@ export const Navbar = () => {
 
   return (
     <motion.nav
-      initial={{ y: -100 }}
+      initial={false}
       animate={{ y: 0 }}
       transition={{ duration: 0.45, ease: 'easeOut' }}
       className="fixed left-0 right-0 top-0 z-50 border-b border-slate-200/90 bg-white shadow-[0_1px_0_0_rgba(15,23,42,0.04)]"
@@ -67,7 +67,7 @@ export const Navbar = () => {
 
           <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
           <TrackedLink
-            href="#contact"
+            href="/#contact"
             ctaText="Book a call"
             ctaLocation="navbar_desktop"
             eventType="book_call_click"
@@ -116,7 +116,7 @@ export const Navbar = () => {
                   </a>
                 ))}
                 <TrackedLink
-                  href="#contact"
+                  href="/#contact"
                   ctaText="Book a call"
                   ctaLocation="navbar_mobile"
                   eventType="book_call_click"

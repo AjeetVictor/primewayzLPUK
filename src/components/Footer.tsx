@@ -3,18 +3,18 @@ import { TrackedLink } from './common/TrackedLink';
 
 const productLinks = [
   { label: 'Software Subscription', href: '/software-development-subscription-uk' },
-  { label: 'How it Works', href: '#how-it-works' },
-  { label: 'Features', href: '#features' },
-  { label: 'Success Stories', href: '#success-stories' },
-  { label: 'Pricing', href: '#pricing' },
-  { label: 'FAQ', href: '#faq' },
+  { label: 'How it Works', href: '/#how-it-works' },
+  { label: 'Features', href: '/#features' },
+  { label: 'Success Stories', href: '/#success-stories' },
+  { label: 'Pricing', href: '/#pricing' },
+  { label: 'FAQ', href: '/#faq' },
 ] as const;
 
 const legalLinks = [
   { label: 'Privacy Policy', href: '/privacy-policy' },
   { label: 'Terms of Service', href: '/terms-of-service' },
   { label: 'Cookie Policy', href: '/cookie-policy' },
-  { label: 'Contact Us', href: '#contact' },
+  { label: 'Contact Us', href: '/#contact' },
 ] as const;
 
 export const Footer = () => {
