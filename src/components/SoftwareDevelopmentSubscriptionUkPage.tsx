@@ -3,6 +3,8 @@ import { ArrowLeft, CheckCircle2, Layers3, ShieldCheck, Workflow, Wrench } from 
 import { SEO } from './SEO';
 import { TrackedLink } from './common/TrackedLink';
 
+const SERVICE_URL = 'https://uk.primewayz.com/software-development-subscription-uk';
+
 const includedItems = [
   'Website and landing page improvements',
   'CRM setup, workflow support, and integration planning',
