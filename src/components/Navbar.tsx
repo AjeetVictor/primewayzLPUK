@@ -11,12 +11,10 @@ export const Navbar = () => {
 
   const navLinks = [
     { name: 'How it Works', href: '/#how-it-works' },
-    { name: 'Demo', href: '/#demo' },
     { name: 'Features', href: '/#features' },
     { name: 'Success Stories', href: '/#success-stories' },
     { name: 'Subscription', href: '/software-development-subscription-uk' },
     { name: 'Pricing', href: '/#pricing' },
-    { name: 'Testimonials', href: '/#testimonials' },
     { name: 'FAQ', href: '/#faq' },
   ];
 
