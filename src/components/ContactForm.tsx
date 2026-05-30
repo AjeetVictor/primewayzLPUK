@@ -8,6 +8,19 @@ import { apiUrl } from '../utils/apiUrl';
 import { CONTACT_SOCIAL_LINKS } from '../constants/contactSocial';
 import { trackEvent } from '../lib/analytics';
 
+declare global {
+  interface Window {
+    Calendly?: {
+      initInlineWidget?: (options: {
+        url: string;
+        parentElement: HTMLElement;
+        prefill?: Record<string, unknown>;
+        utm?: Record<string, unknown>;
+      }) => void;
+    };
+  }
+}
+
 interface FormData {
   name: string;
   email: string;
@@ -51,6 +64,7 @@ export function ContactForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isCalendlyOpen, setIsCalendlyOpen] = useState(false);
 
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -156,15 +170,6 @@ export function ContactForm() {
   };
 
   useEffect(() => {
-    const existingScript = document.querySelector(`script[src="${CALENDLY_SCRIPT_URL}"]`);
-
-    if (!existingScript) {
-      const script = document.createElement('script');
-      script.src = CALENDLY_SCRIPT_URL;
-      script.async = true;
-      document.body.appendChild(script);
-    }
-
     const handleCalendlyEvent = (event: MessageEvent) => {
       if (event.origin !== 'https://calendly.com') return;
 
@@ -174,7 +179,7 @@ export function ContactForm() {
         trackEvent('calendly_event_scheduled', {
           calendly_url: CALENDLY_URL,
           lead_type: 'discovery_call',
-          cta_location: 'contact_calendly_inline',
+          cta_location: 'contact_calendly_lazy',
         });
       }
     };
@@ -185,6 +190,38 @@ export function ContactForm() {
       window.removeEventListener('message', handleCalendlyEvent);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isCalendlyOpen) return;
+
+    const initCalendly = () => {
+      const parentElement = document.getElementById('primewayz-calendly-inline');
+
+      if (!parentElement || !window.Calendly?.initInlineWidget) return;
+
+      parentElement.innerHTML = '';
+
+      window.Calendly.initInlineWidget({
+        url: CALENDLY_URL,
+        parentElement,
+      });
+    };
+
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      `script[src="${CALENDLY_SCRIPT_URL}"]`
+    );
+
+    if (existingScript) {
+      initCalendly();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = CALENDLY_SCRIPT_URL;
+    script.async = true;
+    script.onload = initCalendly;
+    document.body.appendChild(script);
+  }, [isCalendlyOpen]);
 
   useEffect(() => {
     if (isSubmitted) {
@@ -502,11 +539,39 @@ export function ContactForm() {
               <p className="mt-2 text-sm text-gray-600">Pick a convenient slot directly from our calendar.</p>
             </div>
 
-            <div
-              className="calendly-inline-widget overflow-hidden rounded-2xl border border-gray-100"
-              data-url={CALENDLY_URL}
-              style={{ minWidth: '320px', height: '700px' }}
-            />
+            {isCalendlyOpen ? (
+              <div
+                id="primewayz-calendly-inline"
+                className="overflow-hidden rounded-2xl border border-gray-100"
+                style={{ minWidth: '320px', height: '700px' }}
+              />
+            ) : (
+              <div className="rounded-2xl border border-gray-100 bg-slate-50 p-8 text-center">
+                <p className="text-base font-semibold text-slate-900">
+                  Load the calendar only when you are ready to book.
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  This keeps the page faster and avoids loading third-party booking scripts before they are needed.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    trackEvent('book_call_click', {
+                      cta_text: 'Open Calendly calendar',
+                      cta_location: 'contact_calendly_lazy_button',
+                      lead_type: 'discovery_call',
+                    });
+                    setIsCalendlyOpen(true);
+                  }}
+                  className="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-lg bg-slate-900 px-6 py-3 text-sm font-bold text-white transition hover:bg-slate-800"
+                >
+                  Open booking calendar
+                </button>
+                <p className="mt-4 text-xs text-slate-500">
+                  The calendar opens inside this page after you click.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
