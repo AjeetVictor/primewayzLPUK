@@ -1,4 +1,5 @@
 import { motion } from 'motion/react';
+import type { TargetAndTransition, VariantLabels } from 'motion/react';
 import type { ReactNode } from 'react';
 import { trackCtaClick, trackEvent } from '../../lib/analytics';
 
@@ -25,8 +26,8 @@ type TrackedLinkProps = {
   eventType?: TrackingEventType;
   trackingParams?: Record<string, unknown>;
   onClick?: () => void;
-  whileHover?: Record<string, unknown>;
-  whileTap?: Record<string, unknown>;
+  whileHover?: VariantLabels | TargetAndTransition;
+  whileTap?: VariantLabels | TargetAndTransition;
 };
 
 export function TrackedLink({

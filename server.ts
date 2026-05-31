@@ -9,11 +9,10 @@ import cookieParser from 'cookie-parser';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
-import { blogPosts } from './src/data/blogPosts.ts';
-import { extraBlogPosts } from './src/data/extraBlogPosts.ts';
+import { getAllBlogPosts, getBlogPostById } from './src/data/blog/utils.ts';
 import { homepageSeoContent } from './src/content/homepageSeoContent.ts';
 
-const allBlogPosts = [...blogPosts, ...extraBlogPosts];
+const allBlogPosts = getAllBlogPosts();
 const SYSTEM_INSTRUCTION = `You are the Primewayz Support Bot.
 Primewayz is an elite software development agency that provides Engineering as a Service.
 Key features:
@@ -129,6 +128,15 @@ function normalizeContactPhoneE164(raw: unknown): string | null {
   const parsed = parsePhoneNumberFromString(trimmed);
   if (!parsed || !parsed.isValid()) return null;
   return parsed.format('E.164');
+}
+
+function getClientIp(req: express.Request): string | null {
+  const forwardedFor = req.headers['x-forwarded-for'];
+  const firstForwardedIp = Array.isArray(forwardedFor)
+    ? forwardedFor[0]
+    : forwardedFor?.split(',')[0];
+
+  return firstForwardedIp?.trim() || req.socket.remoteAddress || req.ip || null;
 }
 
 const SEO_SITE_NAME = 'Primewayz UK';
@@ -342,13 +350,36 @@ function getSeoPayload(pathname: string, origin: string): SeoPayload {
     };
   }
 
+  if (pathname === '/blog') {
+    return {
+      title: 'Primewayz UK Insights',
+      description:
+        'Practical articles for UK SMEs on AI automation, website support, CRM, SEO, and digital operations.',
+      canonical,
+      ogType: 'website',
+      ogImage: SEO_DEFAULT_OG_IMAGE,
+      twitterHandle: SEO_DEFAULT_TWITTER_HANDLE,
+      robots: 'index,follow',
+      structuredData: {
+        '@context': 'https://schema.org',
+        '@type': 'Blog',
+        name: 'Primewayz UK Insights',
+        description:
+          'Practical articles for UK SMEs on AI automation, website support, CRM, SEO, and digital operations.',
+        url: canonical,
+        publisher: baseOrg,
+        inLanguage: 'en-GB',
+      },
+    };
+  }
+
   if (pathname.startsWith('/blog/')) {
     const postId = pathname.replace('/blog/', '').replace(/\/+$/, '');
-    const post = allBlogPosts.find((item) => item.id === postId);
+    const post = getBlogPostById(postId);
     if (post) {
       return {
-        title: post.title,
-        description: post.excerpt,
+        title: post.seoTitle || post.title,
+        description: post.seoDescription || post.description || post.excerpt,
         canonical,
         ogType: 'article',
         ogImage: post.image || SEO_DEFAULT_OG_IMAGE,
@@ -358,12 +389,12 @@ function getSeoPayload(pathname: string, origin: string): SeoPayload {
           '@context': 'https://schema.org',
           '@type': 'Article',
           headline: post.title,
-          description: post.excerpt,
+          description: post.description || post.excerpt,
           image: [post.image || SEO_DEFAULT_OG_IMAGE],
           author: { '@type': 'Person', name: post.author },
           publisher: baseOrg,
           datePublished: post.date,
-          dateModified: post.date,
+          dateModified: post.updatedDate || post.date,
           mainEntityOfPage: canonical,
         },
       };
@@ -749,7 +780,7 @@ async function startServer() {
 
   app.get('/api/blog/posts/:id', (req, res) => {
     const { id } = req.params;
-    const post = allBlogPosts.find(p => p.id === id);
+    const post = getBlogPostById(id);
     if (post) {
       res.json(post);
     } else {

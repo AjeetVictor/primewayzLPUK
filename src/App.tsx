@@ -21,6 +21,7 @@ import { ScrollToTop } from './components/ScrollToTop';
 import { LiveChat } from './components/LiveChat';
 import { AdminPanel } from './components/AdminPanel';
 import { BlogPost } from './components/BlogPost';
+import { BlogListPage } from './components/blog/BlogListPage';
 import LegalPage from './components/LegalPage';
 import AnalyticsTracker from './components/AnalyticsTracker';
 import { TrackedLink } from './components/common/TrackedLink';
@@ -131,6 +132,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<MainContent />} />
         <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/blog" element={<BlogListPage />} />
         <Route path="/blog/:id" element={<BlogPost />} />
         <Route path="/software-development-subscription-uk" element={<SoftwareDevelopmentSubscriptionUkPage />} />
         <Route path="/privacy-policy" element={<LegalPage type="privacy" />} />

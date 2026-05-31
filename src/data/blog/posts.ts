@@ -1,0 +1,183 @@
+import type { BlogPost } from './types';
+
+export const posts: BlogPost[] = [
+  {
+    id: 'monthly-digital-support-uk-smes',
+    slug: 'monthly-digital-support-uk-smes',
+    title: 'Why UK SMEs Need Monthly Digital Support',
+    description:
+      'How a predictable monthly delivery model helps small businesses keep websites, SEO, CRM, and automation work moving.',
+    excerpt:
+      'How a predictable monthly delivery model helps small businesses keep websites, SEO, CRM, and automation work moving.',
+    content: `
+      <p>Many UK small businesses do not need a large one-off software project. They need steady digital progress: website improvements, technical SEO fixes, CRM cleanup, landing pages, analytics, and small automations delivered in a practical monthly rhythm.</p>
+
+      <h3>The problem with one-off digital projects</h3>
+      <p>One-off projects often start well but leave the business with a long list of unresolved improvements after launch. Forms need refining, pages need updating, tracking needs fixing, and new campaign ideas appear every month.</p>
+
+      <h3>Why monthly delivery works better</h3>
+      <p>A monthly model gives UK SMEs a clear queue of priorities. Instead of repeatedly finding a new freelancer or agency, the business keeps one delivery partner who understands the website, systems, and commercial goals.</p>
+
+      <h3>What should be included</h3>
+      <p>Good monthly support should cover website updates, technical SEO foundations, CRM workflows, forms, lead tracking, landing pages, integrations, small automation tasks, maintenance, and release support.</p>
+
+      <p>Primewayz UK is built around this need: flexible monthly digital delivery for UK small businesses that want progress without hiring a full in-house team.</p>
+    `,
+    date: 'March 24, 2026',
+    readTime: '5 min read',
+    author: 'Primewayz UK Team',
+    category: 'UK SMEs',
+    tags: ['Monthly support', 'Digital operations', 'UK SMEs'],
+    image: 'https://picsum.photos/seed/uk-monthly-support/800/500',
+    featured: true,
+    seoTitle: 'Monthly Digital Support for UK SMEs',
+    seoDescription:
+      'Why UK SMEs benefit from predictable monthly support across websites, SEO, CRM, automation, and digital delivery.',
+  },
+  {
+    id: 'website-seo-crm-automation-uk',
+    slug: 'website-seo-crm-automation-uk',
+    title: 'Website, SEO, CRM and Automation: The Practical UK SME Stack',
+    description:
+      'A simple framework for deciding what to improve first when your business needs better digital operations.',
+    excerpt:
+      'A simple framework for deciding what to improve first when your business needs better digital operations.',
+    content: `
+      <p>For many UK businesses, digital improvement becomes confusing because everything feels urgent: the website, SEO, lead forms, CRM, automation, content, analytics, and customer follow-up.</p>
+
+      <h3>Start with the customer journey</h3>
+      <p>The first step is to understand how a customer finds the business, what pages they view, which form or call-to-action they use, and what happens after the enquiry arrives.</p>
+
+      <h3>Fix the core before adding more tools</h3>
+      <p>A clean website structure, reliable contact forms, basic technical SEO, clear analytics, and a working CRM process often create more value than adding another disconnected tool.</p>
+
+      <h3>Automate only where it helps</h3>
+      <p>Automation should reduce manual follow-up, lost enquiries, repeated updates, and reporting gaps. It should not make the process harder for staff or customers.</p>
+
+      <p>Primewayz UK helps businesses prioritise these improvements through Foundation Sprint planning and monthly delivery capacity.</p>
+    `,
+    date: 'March 18, 2026',
+    readTime: '6 min read',
+    author: 'Primewayz UK Team',
+    category: 'Digital Operations',
+    tags: ['SEO', 'CRM', 'Automation', 'Websites'],
+    image: 'https://picsum.photos/seed/uk-digital-stack/800/500',
+  },
+  {
+    id: 'foundation-sprint-before-monthly-delivery',
+    slug: 'foundation-sprint-before-monthly-delivery',
+    title: 'Why Start with a Foundation Sprint Before Monthly Delivery?',
+    description:
+      'How a short planning and setup phase reduces confusion before website, SEO, CRM, or automation work begins.',
+    excerpt:
+      'How a short planning and setup phase reduces confusion before website, SEO, CRM, or automation work begins.',
+    content: `
+      <p>Starting monthly delivery without a clear foundation can create confusion. Priorities change, assumptions remain hidden, and small technical issues can delay visible progress.</p>
+
+      <h3>What a Foundation Sprint should clarify</h3>
+      <p>A strong Foundation Sprint confirms business goals, current website condition, tracking gaps, content needs, CRM requirements, technical risks, and the best delivery plan.</p>
+
+      <h3>Why it matters for UK SMEs</h3>
+      <p>Small businesses usually need clarity before capacity. A short setup phase helps the team decide what should be fixed first, what should wait, and what belongs in monthly delivery.</p>
+
+      <h3>Moving into monthly support</h3>
+      <p>Once the foundation is clear, monthly delivery can focus on agreed priorities: website improvements, landing pages, technical SEO, integrations, automation, maintenance, and reporting.</p>
+
+      <p>This is why Primewayz UK recommends starting with a focused Foundation Sprint before moving into Essential, Growth, Scale, or Maintenance Mode.</p>
+    `,
+    date: 'March 12, 2026',
+    readTime: '5 min read',
+    author: 'Primewayz UK Team',
+    category: 'Delivery Model',
+    tags: ['Foundation Sprint', 'Planning', 'Monthly delivery'],
+    image: 'https://picsum.photos/seed/uk-foundation-sprint/800/500',
+  },
+  {
+    id: 'technical-seo-basics-uk-small-business',
+    slug: 'technical-seo-basics-uk-small-business',
+    title: 'Technical SEO Basics for UK Small Business Websites',
+    description:
+      'The website checks that matter before spending more on campaigns, content, or paid traffic.',
+    excerpt:
+      'The website checks that matter before spending more on campaigns, content, or paid traffic.',
+    content: `
+      <p>Before investing heavily in campaigns, UK small businesses should make sure the basics are working: page speed, headings, metadata, indexability, mobile usability, redirects, analytics, and conversion tracking.</p>
+
+      <h3>Start with crawlability and page structure</h3>
+      <p>Search engines need clear pages, clean internal links, useful titles, readable descriptions, and technical signals that match the service area and audience.</p>
+
+      <h3>Measure enquiries, not only visits</h3>
+      <p>Traffic matters, but enquiry quality matters more. GA4 events, form tracking, phone clicks, and CTA tracking help show what is actually working.</p>
+
+      <h3>Keep improving monthly</h3>
+      <p>Technical SEO is not a one-time task. Websites change, pages age, campaigns shift, and small improvements compound over time.</p>
+
+      <p>Primewayz UK supports technical SEO foundations as part of monthly digital delivery for UK SMEs.</p>
+    `,
+    date: 'March 10, 2026',
+    readTime: '6 min read',
+    author: 'Primewayz UK Team',
+    category: 'SEO',
+    tags: ['Technical SEO', 'Analytics', 'Small business websites'],
+    image: 'https://picsum.photos/seed/uk-technical-seo/800/500',
+  },
+  {
+    id: 'crm-integration-for-uk-smes',
+    slug: 'crm-integration-for-uk-smes',
+    title: 'CRM Integration for UK SMEs: Keep Enquiries from Falling Through',
+    description:
+      'How better forms, routing, and CRM workflows help small teams respond faster and work more consistently.',
+    excerpt:
+      'How better forms, routing, and CRM workflows help small teams respond faster and work more consistently.',
+    content: `
+      <p>Many UK SMEs lose potential customers because enquiries are scattered across email, forms, spreadsheets, and inboxes. A simple CRM flow can make follow-up more reliable.</p>
+
+      <h3>Connect the form to the next action</h3>
+      <p>A website form should not simply send an email. It should capture the right data, send it to the right place, and make follow-up clear for the team.</p>
+
+      <h3>Keep workflows practical</h3>
+      <p>Small teams need simple CRM stages, useful notifications, clean customer records, and reporting that helps decision-making without creating admin burden.</p>
+
+      <h3>Improve gradually</h3>
+      <p>Start with enquiry capture, then add routing, tagging, reminders, reporting, and useful automation once the basics are stable.</p>
+
+      <p>Primewayz UK helps UK businesses connect websites, forms, CRM tools, and follow-up processes through monthly delivery support.</p>
+    `,
+    date: 'March 05, 2026',
+    readTime: '5 min read',
+    author: 'Primewayz UK Team',
+    category: 'CRM',
+    tags: ['CRM', 'Forms', 'Lead management'],
+    image: 'https://picsum.photos/seed/uk-crm-integration/800/500',
+  },
+  {
+    id: 'maintenance-mode-for-uk-business-websites',
+    slug: 'maintenance-mode-for-uk-business-websites',
+    title: 'When Should a UK Business Move to Maintenance Mode?',
+    description:
+      'A simple way to keep your digital presence stable when active development slows down.',
+    excerpt:
+      'A simple way to keep your digital presence stable when active development slows down.',
+    content: `
+      <p>Not every month needs heavy development. Some months are about stability, small fixes, content updates, form checks, analytics review, and keeping the website healthy.</p>
+
+      <h3>Maintenance is not doing nothing</h3>
+      <p>Good maintenance keeps systems reliable. It reduces small issues, protects previous work, and gives the business continuity until the next active delivery phase begins.</p>
+
+      <h3>What belongs in Maintenance Mode</h3>
+      <p>Minor bug fixes, plugin or configuration checks, content changes, tracking checks, form testing, small support requests, and basic reporting are typical maintenance tasks.</p>
+
+      <h3>When to restart active delivery</h3>
+      <p>Move back into active monthly delivery when there is a new campaign, redesign, integration, CRM change, automation requirement, or wider roadmap.</p>
+
+      <p>Primewayz UK offers Maintenance Mode so UK SMEs can slow down delivery without losing continuity.</p>
+    `,
+    date: 'February 28, 2026',
+    readTime: '5 min read',
+    author: 'Primewayz UK Team',
+    category: 'Maintenance',
+    tags: ['Maintenance', 'Website support', 'Stability'],
+    image: 'https://picsum.photos/seed/uk-maintenance-mode-blog/800/500',
+  },
+];
+

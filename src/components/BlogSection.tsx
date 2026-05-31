@@ -1,22 +1,10 @@
 import { motion } from 'motion/react';
-import { ArrowRight, Calendar, Clock, User } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { blogPosts } from '../data/blogPosts';
-import { extraBlogPosts } from '../data/extraBlogPosts';
+import { BlogCard } from './blog/BlogCard';
+import { getAllBlogPosts } from '../data/blog/utils';
+import type { BlogPost } from '../data/blog/types';
 import { apiUrl } from '../utils/apiUrl';
-
-interface BlogPost {
-  id: string;
-  title: string;
-  excerpt: string;
-  content: string;
-  date: string;
-  readTime: string;
-  author: string;
-  category: string;
-  image: string;
-}
 
 export const BlogSection = () => {
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -34,10 +22,10 @@ export const BlogSection = () => {
         const data = await res.json();
         setPosts(data);
       } else {
-        setPosts([...blogPosts, ...extraBlogPosts]);
+        setPosts(getAllBlogPosts());
       }
     } catch (error) {
-      setPosts([...blogPosts, ...extraBlogPosts]);
+      setPosts(getAllBlogPosts());
     } finally {
       setIsLoading(false);
     }
@@ -71,18 +59,18 @@ export const BlogSection = () => {
               Practical guidance for UK small businesses on website upkeep, SEO foundations, CRM workflows, automation, and monthly digital delivery.
             </motion.p>
           </div>
-          <motion.button
+          <motion.a
             initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             whileHover={{ x: 5 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => window.scrollTo({ top: document.getElementById('blog')?.offsetTop, behavior: 'smooth' })}
+            href="/blog"
             className="flex items-center gap-2 text-zinc-900 font-bold hover:text-emerald-600 transition-colors group"
           >
             Read UK insights
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </motion.button>
+          </motion.a>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
@@ -99,67 +87,15 @@ export const BlogSection = () => {
             ))
           ) : (
             posts.slice(0, visibleCount).map((post, index) => (
-              <motion.article
+              <motion.div
                 key={post.id}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: (index % 3) * 0.1 }}
-                className="group bg-white rounded-[2.5rem] border border-zinc-100 overflow-hidden hover:shadow-2xl hover:shadow-emerald-900/5 transition-all duration-500 flex flex-col h-full"
               >
-                <Link to={`/blog/${post.id}`} className="block h-full flex flex-col">
-                  <div className="relative aspect-[16/10] overflow-hidden">
-                    <img 
-                      src={post.image} 
-                      alt={post.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute top-4 left-4">
-                      <span className="px-3 py-1 rounded-full bg-white/90 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-zinc-900">
-                        {post.category}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="p-8 flex-1 flex flex-col">
-                    <div className="flex items-center gap-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-4">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {post.date}
-                      </span>
-                      <span className="w-1 h-1 bg-zinc-200 rounded-full" />
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {post.readTime}
-                      </span>
-                    </div>
-                    
-                    <h3 className="text-xl font-bold text-zinc-900 mb-4 group-hover:text-emerald-600 transition-colors line-clamp-2">
-                      {post.title}
-                    </h3>
-                    
-                    <p className="text-zinc-500 text-sm leading-relaxed mb-8 line-clamp-3">
-                      {post.excerpt}
-                    </p>
-                    
-                    <div className="mt-auto pt-6 border-t border-zinc-50 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center">
-                          <User className="w-4 h-4 text-zinc-400" />
-                        </div>
-                        <span className="text-sm font-semibold text-zinc-700">{post.author}</span>
-                      </div>
-                      <motion.div
-                        whileHover={{ x: 3 }}
-                        className="text-emerald-600"
-                      >
-                        <ArrowRight className="w-5 h-5" />
-                      </motion.div>
-                    </div>
-                  </div>
-                </Link>
-              </motion.article>
+                <BlogCard post={post} />
+              </motion.div>
             ))
           )}
         </div>
