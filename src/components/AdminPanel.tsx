@@ -81,6 +81,25 @@ interface ChatConversation {
   unreadCount: number;
 }
 
+type ChatAvailabilityStatus = 'online' | 'away' | 'offline' | 'assistant';
+type ChatAvailabilityMode = 'auto' | 'online' | 'away' | 'offline';
+
+interface ChatAvailability {
+  status: ChatAvailabilityStatus;
+  title: string;
+  subtitle: string;
+  responseExpectation: string;
+  businessHours: string;
+  canAcceptMessages: boolean;
+  canBookCall: boolean;
+  serverTime: string;
+  mode: ChatAvailabilityMode;
+  computedStatus: ChatAvailabilityStatus;
+  hasActiveAdmin: boolean;
+  latestAdminSeenAt: string | null;
+  customMessage: string;
+}
+
 interface User {
   id: number;
   email: string;
@@ -194,9 +213,15 @@ export const AdminPanel = () => {
   const [adminReplyAttachments, setAdminReplyAttachments] = useState<ChatAttachment[]>([]);
   const [adminUploadError, setAdminUploadError] = useState('');
   const [isAdminUploading, setIsAdminUploading] = useState(false);
+  const [chatAvailability, setChatAvailability] = useState<ChatAvailability | null>(null);
+  const [availabilityMode, setAvailabilityMode] = useState<ChatAvailabilityMode>('auto');
+  const [availabilityMessage, setAvailabilityMessage] = useState('');
+  const [availabilityError, setAvailabilityError] = useState('');
+  const [isSavingAvailability, setIsSavingAvailability] = useState(false);
   const seenUserMessageIdsRef = useRef<Set<number>>(new Set());
   const hasInitializedMessageWatchRef = useRef(false);
   const adminFileInputRef = useRef<HTMLInputElement | null>(null);
+  const lastHeartbeatAtRef = useRef(0);
 
   const checkAuth = async () => {
     try {
@@ -207,6 +232,7 @@ export const AdminPanel = () => {
         setUser(data.user);
         setActiveTab(getDefaultAdminTab(data.user?.role));
         fetchData(false, data.user);
+        fetchChatAvailability();
       }
     } catch (error) {
       setIsAuthenticated(false);
@@ -223,6 +249,83 @@ export const AdminPanel = () => {
       return () => clearInterval(interval);
     }
   }, [isAuthenticated, user]);
+
+  const fetchChatAvailability = async (syncForm = true) => {
+    try {
+      const res = await fetch(apiUrl('/api/admin/chat/availability'), { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      setChatAvailability(data);
+      if (syncForm) {
+        setAvailabilityMode(data.mode || 'auto');
+        setAvailabilityMessage(data.customMessage || '');
+      }
+    } catch (error) {
+      console.error('Failed to fetch chat availability:', error);
+    }
+  };
+
+  const sendPresenceHeartbeat = async (force = false) => {
+    if (!isAuthenticated || !user) return;
+    const now = Date.now();
+    if (!force && now - lastHeartbeatAtRef.current < 30000) return;
+    lastHeartbeatAtRef.current = now;
+
+    try {
+      await fetch(apiUrl('/api/admin/presence/heartbeat'), {
+        method: 'POST',
+        credentials: 'include',
+      });
+      fetchChatAvailability(false);
+    } catch (error) {
+      console.error('Presence heartbeat failed:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    sendPresenceHeartbeat(true);
+    const interval = setInterval(() => sendPresenceHeartbeat(true), 60000);
+    const activityHandler = () => sendPresenceHeartbeat(false);
+
+    window.addEventListener('focus', activityHandler);
+    window.addEventListener('click', activityHandler);
+    window.addEventListener('keydown', activityHandler);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', activityHandler);
+      window.removeEventListener('click', activityHandler);
+      window.removeEventListener('keydown', activityHandler);
+    };
+  }, [isAuthenticated, user]);
+
+  const saveChatAvailability = async () => {
+    setAvailabilityError('');
+    setIsSavingAvailability(true);
+
+    try {
+      const res = await fetch(apiUrl('/api/admin/chat/availability'), {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: availabilityMode, message: availabilityMessage }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAvailabilityError(data.error || 'Failed to save availability');
+        return;
+      }
+      setChatAvailability(data);
+      setAvailabilityMode(data.mode || availabilityMode);
+      setAvailabilityMessage(data.customMessage || '');
+    } catch (error) {
+      setAvailabilityError('Failed to save availability');
+    } finally {
+      setIsSavingAvailability(false);
+    }
+  };
 
   const playNotificationSound = () => {
     if (typeof window === 'undefined') return;
@@ -328,6 +431,7 @@ export const AdminPanel = () => {
         setUser(data.user);
         setActiveTab(getDefaultAdminTab(data.user?.role));
         fetchData(false, data.user);
+        fetchChatAvailability();
       } else {
         setLoginError(data.error || 'Invalid credentials');
       }
@@ -346,6 +450,7 @@ export const AdminPanel = () => {
       setChatAppointments([]);
       setBlogComments([]);
       setCmsBlogPosts([]);
+      setChatAvailability(null);
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -829,6 +934,14 @@ export const AdminPanel = () => {
   }
 
   const canViewOperations = isOperationsRole(user?.role);
+  const availabilityDotClass = chatAvailability?.status === 'online'
+    ? 'bg-emerald-500'
+    : chatAvailability?.status === 'away'
+      ? 'bg-amber-400'
+      : chatAvailability?.status === 'assistant'
+        ? 'bg-indigo-400'
+        : 'bg-zinc-400';
+  const availabilityLabel = chatAvailability?.status || 'loading';
 
   return (
     <div className="min-h-screen bg-zinc-50 pt-20 pb-12 px-4 sm:px-6 lg:px-8">
@@ -877,6 +990,58 @@ export const AdminPanel = () => {
               Sign Out
             </button>
           </div>
+        </div>
+
+        <div className="mb-8 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className={`h-2.5 w-2.5 rounded-full ${availabilityDotClass}`} />
+                <p className="text-sm font-bold text-zinc-900">
+                  Chat availability: <span className="capitalize">{availabilityLabel}</span>
+                </p>
+                {chatAvailability?.mode === 'auto' && (
+                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                    Auto computed {chatAvailability.computedStatus}
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-zinc-500">
+                {chatAvailability?.subtitle || 'Loading chat availability...'}
+                {chatAvailability?.latestAdminSeenAt && (
+                  <span> Last admin heartbeat {format(new Date(chatAvailability.latestAdminSeenAt), 'MMM d, h:mm a')}.</span>
+                )}
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <select
+                value={availabilityMode}
+                onChange={(event) => setAvailabilityMode(event.target.value as ChatAvailabilityMode)}
+                className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 outline-none focus:ring-2 focus:ring-emerald-500/20"
+              >
+                <option value="auto">Auto</option>
+                <option value="online">Online</option>
+                <option value="away">Away</option>
+                <option value="offline">Offline</option>
+              </select>
+              <input
+                value={availabilityMessage}
+                onChange={(event) => setAvailabilityMessage(event.target.value)}
+                placeholder="Optional public status message"
+                maxLength={180}
+                className="min-w-0 rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 sm:w-72"
+              />
+              <button
+                type="button"
+                onClick={saveChatAvailability}
+                disabled={isSavingAvailability}
+                className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
+              >
+                {isSavingAvailability ? 'Saving...' : 'Save status'}
+              </button>
+            </div>
+          </div>
+          {availabilityError && <p className="mt-2 text-xs font-bold text-red-600">{availabilityError}</p>}
         </div>
 
         <div className="mb-8">

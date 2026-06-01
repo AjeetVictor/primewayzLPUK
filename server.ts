@@ -146,6 +146,115 @@ const BLOG_UPLOAD_MIME_TYPES: Record<string, { extension: string; kind: 'image' 
 };
 const CHAT_UPLOAD_MIME_TYPES = BLOG_UPLOAD_MIME_TYPES;
 const CHAT_APPOINTMENT_STATUSES = new Set(['pending', 'confirmed', 'completed', 'cancelled']);
+const ADMIN_AUTH_ROLES = [...CMS_ROLE_OPTIONS];
+const CHAT_PRESENCE_MODES = new Set(['auto', 'online', 'away', 'offline']);
+const CHAT_PRESENCE_ACTIVE_MS = 5 * 60 * 1000;
+const CHAT_BUSINESS_HOURS_LABEL = 'Mon-Fri, 10:00-19:00 UK time';
+const CHAT_BUSINESS_HOURS_TIME_ZONE = 'Europe/London';
+const CHAT_BUSINESS_HOURS_DAYS = new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+const CHAT_BUSINESS_HOURS_START = 10;
+const CHAT_BUSINESS_HOURS_END = 19;
+
+type ChatAvailabilityStatus = 'online' | 'away' | 'offline' | 'assistant';
+
+function getUkBusinessTimeParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: CHAT_BUSINESS_HOURS_TIME_ZONE,
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const weekday = parts.find((part) => part.type === 'weekday')?.value || '';
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value || 0);
+  return { weekday, hour };
+}
+
+function isWithinUkBusinessHours(date = new Date()) {
+  const { weekday, hour } = getUkBusinessTimeParts(date);
+  return CHAT_BUSINESS_HOURS_DAYS.has(weekday) && hour >= CHAT_BUSINESS_HOURS_START && hour < CHAT_BUSINESS_HOURS_END;
+}
+
+function getAvailabilityCopy(status: ChatAvailabilityStatus, customMessage?: string | null) {
+  const copy = {
+    online: {
+      title: 'Primewayz is online',
+      subtitle: 'Usually replies in a few minutes',
+      responseExpectation: 'Usually replies in a few minutes',
+      canBookCall: true,
+    },
+    away: {
+      title: 'Primewayz is away',
+      subtitle: "Send your message - we'll reply soon",
+      responseExpectation: "Send your message - we'll reply soon",
+      canBookCall: true,
+    },
+    offline: {
+      title: 'Primewayz is offline',
+      subtitle: `Available ${CHAT_BUSINESS_HOURS_LABEL}`,
+      responseExpectation: `Available ${CHAT_BUSINESS_HOURS_LABEL}`,
+      canBookCall: true,
+    },
+    assistant: {
+      title: 'Primewayz Assistant is active',
+      subtitle: 'Human team replies during business hours',
+      responseExpectation: 'Human team replies during business hours',
+      canBookCall: true,
+    },
+  }[status];
+
+  return {
+    ...copy,
+    subtitle: customMessage?.trim() || copy.subtitle,
+    responseExpectation: customMessage?.trim() || copy.responseExpectation,
+  };
+}
+
+async function getChatPresenceSetting() {
+  const model = (prisma as any).chatPresenceSetting;
+  let setting = await model.findFirst({ orderBy: { id: 'asc' } });
+  if (!setting) {
+    setting = await model.create({ data: { mode: 'auto' } });
+  }
+  return setting;
+}
+
+async function getLatestAdminPresence() {
+  return (prisma as any).adminPresence.findFirst({ orderBy: { lastSeenAt: 'desc' } });
+}
+
+async function computeChatAvailability() {
+  const setting = await getChatPresenceSetting();
+  const latestPresence = await getLatestAdminPresence();
+  const latestSeenAt = latestPresence?.lastSeenAt ? new Date(latestPresence.lastSeenAt) : null;
+  const hasActiveAdmin = Boolean(latestSeenAt && Date.now() - latestSeenAt.getTime() <= CHAT_PRESENCE_ACTIVE_MS);
+  const mode = CHAT_PRESENCE_MODES.has(setting.mode) ? setting.mode : 'auto';
+  const computedStatus: ChatAvailabilityStatus = hasActiveAdmin
+    ? 'online'
+    : isWithinUkBusinessHours()
+      ? 'away'
+      : 'offline';
+  const status = mode === 'auto' ? computedStatus : mode as ChatAvailabilityStatus;
+  const copy = getAvailabilityCopy(status, setting.message);
+
+  return {
+    status,
+    title: copy.title,
+    subtitle: copy.subtitle,
+    responseExpectation: copy.responseExpectation,
+    businessHours: CHAT_BUSINESS_HOURS_LABEL,
+    canAcceptMessages: true,
+    canBookCall: copy.canBookCall,
+    serverTime: new Date().toISOString(),
+    mode,
+    computedStatus,
+    hasActiveAdmin,
+    latestAdminSeenAt: latestSeenAt?.toISOString() || null,
+    customMessage: setting.message || '',
+    updatedAt: setting.updatedAt,
+  };
+}
 
 function createPasswordResetToken() {
   const token = crypto.randomBytes(32).toString('hex');
@@ -881,6 +990,29 @@ async function startServer() {
     res.json({ status: 'ok', message: 'Primewayz API is running' });
   });
 
+  app.get('/api/chat/availability', async (req, res) => {
+    try {
+      const availability = await computeChatAvailability();
+      const { mode, computedStatus, hasActiveAdmin, latestAdminSeenAt, customMessage, updatedAt, ...publicAvailability } = availability;
+      res.json(publicAvailability);
+    } catch (error) {
+      backendLog('chat availability failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      const fallback = getAvailabilityCopy('assistant');
+      res.json({
+        status: 'assistant',
+        title: fallback.title,
+        subtitle: fallback.subtitle,
+        responseExpectation: fallback.responseExpectation,
+        businessHours: CHAT_BUSINESS_HOURS_LABEL,
+        canAcceptMessages: true,
+        canBookCall: true,
+        serverTime: new Date().toISOString(),
+      });
+    }
+  });
+
   // Admin Login
   app.post('/api/admin/login', async (req, res) => {
     const { email, password } = req.body;
@@ -1002,6 +1134,69 @@ async function startServer() {
       });
     } catch (error) {
       res.json({ authenticated: false });
+    }
+  });
+
+  app.post('/api/admin/presence/heartbeat', authorize(ADMIN_AUTH_ROLES), async (req: any, res: any) => {
+    try {
+      const userId = Number(req.user?.id);
+      if (!Number.isFinite(userId)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const presence = await (prisma as any).adminPresence.upsert({
+        where: { userId },
+        update: { lastSeenAt: new Date() },
+        create: { userId, lastSeenAt: new Date() },
+      });
+
+      res.json({ success: true, lastSeenAt: presence.lastSeenAt });
+    } catch (error) {
+      backendLog('admin presence heartbeat failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      res.status(500).json({ error: 'Failed to update presence' });
+    }
+  });
+
+  app.get('/api/admin/chat/availability', authorize(ADMIN_AUTH_ROLES), async (req, res) => {
+    try {
+      const availability = await computeChatAvailability();
+      res.json(availability);
+    } catch (error) {
+      backendLog('admin chat availability failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      res.status(500).json({ error: 'Failed to load availability' });
+    }
+  });
+
+  app.patch('/api/admin/chat/availability', authorize(ADMIN_AUTH_ROLES), async (req: any, res: any) => {
+    const mode = typeof req.body?.mode === 'string' ? req.body.mode.trim().toLowerCase() : '';
+    const message = typeof req.body?.message === 'string' ? req.body.message.trim().slice(0, 180) : '';
+
+    if (!CHAT_PRESENCE_MODES.has(mode)) {
+      return res.status(400).json({ error: 'Choose auto, online, away, or offline.' });
+    }
+
+    try {
+      const existing = await getChatPresenceSetting();
+      await (prisma as any).chatPresenceSetting.update({
+        where: { id: existing.id },
+        data: {
+          mode,
+          message: message || null,
+          updatedById: Number(req.user?.id) || null,
+        },
+      });
+
+      const availability = await computeChatAvailability();
+      res.json(availability);
+    } catch (error) {
+      backendLog('admin chat availability update failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      res.status(500).json({ error: 'Failed to update availability' });
     }
   });
 

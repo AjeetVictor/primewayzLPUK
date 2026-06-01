@@ -21,14 +21,44 @@ interface Message {
   attachments?: ChatAttachment[];
 }
 
+type ChatAvailabilityStatus = 'online' | 'away' | 'offline' | 'assistant';
+
+interface ChatAvailability {
+  status: ChatAvailabilityStatus;
+  title: string;
+  subtitle: string;
+  responseExpectation: string;
+  businessHours: string;
+  canAcceptMessages: boolean;
+  canBookCall: boolean;
+  serverTime: string;
+}
+
+const defaultAvailability: ChatAvailability = {
+  status: 'assistant',
+  title: 'Primewayz Assistant is active',
+  subtitle: 'Human team replies during business hours',
+  responseExpectation: 'Human team replies during business hours',
+  businessHours: 'Mon-Fri, 10:00-19:00 UK time',
+  canAcceptMessages: true,
+  canBookCall: true,
+  serverTime: '',
+};
+
+const availabilityStyles: Record<ChatAvailabilityStatus, { dot: string; badge: string; label: string }> = {
+  online: { dot: 'bg-emerald-500', badge: 'bg-emerald-500/10 text-emerald-400', label: 'Online' },
+  away: { dot: 'bg-amber-400', badge: 'bg-amber-400/10 text-amber-300', label: 'Away' },
+  offline: { dot: 'bg-zinc-400', badge: 'bg-zinc-400/10 text-zinc-300', label: 'Offline' },
+  assistant: { dot: 'bg-indigo-400', badge: 'bg-indigo-400/10 text-indigo-300', label: 'Assistant' },
+};
+
 export const LiveChat = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [onlineCount, setOnlineCount] = useState(12);
-  const [isBotAvailable, setIsBotAvailable] = useState(true);
+  const [availability, setAvailability] = useState<ChatAvailability>(defaultAvailability);
   const [userName, setUserName] = useState(() => localStorage.getItem('chat_user_name') || '');
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem('chat_user_email') || '');
   const [showLeadForm, setShowLeadForm] = useState(!userName || !userEmail);
@@ -129,13 +159,24 @@ export const LiveChat = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Simulate real-time updates for online count
   useEffect(() => {
-    const interval = setInterval(() => {
-      setOnlineCount(prev => Math.max(5, prev + Math.floor(Math.random() * 3) - 1));
-    }, 8000);
+    const fetchAvailability = async () => {
+      try {
+        const res = await fetch(apiUrl('/api/chat/availability'));
+        if (res.ok) {
+          setAvailability(await res.json());
+        }
+      } catch {
+        setAvailability(defaultAvailability);
+      }
+    };
+
+    fetchAvailability();
+    const interval = setInterval(fetchAvailability, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  const availabilityStyle = availabilityStyles[availability.status] || availabilityStyles.assistant;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -324,21 +365,17 @@ export const LiveChat = () => {
                   <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center">
                     <Bot className="w-6 h-6 text-white" />
                   </div>
-                  <div className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-zinc-900 rounded-full ${isBotAvailable ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
+                  <div className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-zinc-900 rounded-full ${availabilityStyle.dot}`} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-sm">Primewayz Support</h3>
-                    <div className="flex items-center gap-1 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
-                      <div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" />
-                      <span className="text-[8px] text-emerald-500 font-bold uppercase tracking-tighter">{onlineCount} Online</span>
+                    <h3 className="font-bold text-sm">{availability.title}</h3>
+                    <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full ${availabilityStyle.badge}`}>
+                      <div className={`w-1 h-1 rounded-full ${availabilityStyle.dot}`} />
+                      <span className="text-[8px] font-bold uppercase tracking-tighter">{availabilityStyle.label}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-[10px] text-zinc-400 uppercase tracking-widest">Always Active</p>
-                    <span className="w-0.5 h-0.5 bg-zinc-700 rounded-full" />
-                    <p className="text-[10px] text-zinc-500 font-medium lowercase">Bot: {isBotAvailable ? 'Available' : 'Busy'}</p>
-                  </div>
+                  <p className="text-[10px] text-zinc-400">{availability.subtitle}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -470,7 +507,11 @@ export const LiveChat = () => {
                   <button
                     type="button"
                     onClick={() => setShowAppointmentForm((value) => !value)}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100"
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
+                      availability.status === 'online'
+                        ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                        : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100'
+                    }`}
                   >
                     <CalendarClock className="h-3.5 w-3.5" />
                     Book a call
@@ -520,7 +561,7 @@ export const LiveChat = () => {
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={handleKeyDown}
                     onPaste={handlePaste}
-                    placeholder="Tell us what your UK business needs help with..."
+                    placeholder={availability.status === 'offline' ? 'Leave your message...' : 'Tell us what your UK business needs help with...'}
                     className="flex-1 bg-zinc-100 border-none rounded-2xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500/20 outline-none resize-none max-h-[120px] transition-[height] duration-100"
                   />
                   <button
@@ -539,6 +580,7 @@ export const LiveChat = () => {
 
       {/* Toggle Button */}
       <motion.button
+        aria-label={`Open chat. ${availability.title}. ${availability.subtitle}`}
         onClick={() => {
           setIsOpen(true);
           setIsMinimized(false);
@@ -554,7 +596,7 @@ export const LiveChat = () => {
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full"
+            className={`absolute -top-1 -right-1 w-4 h-4 border-2 border-white rounded-full ${availabilityStyle.dot}`}
           />
         )}
       </motion.button>

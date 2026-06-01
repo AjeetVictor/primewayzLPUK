@@ -75,6 +75,23 @@ model ChatAppointmentRequest {
   updatedAt     DateTime    @updatedAt
 }
 
+model ChatPresenceSetting {
+  id          Int      @id @default(autoincrement())
+  mode        String   @default("auto") // auto / online / away / offline
+  message     String?
+  updatedById Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AdminPresence {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @unique
+  lastSeenAt DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
 model User {
   id                     Int      @id @default(autoincrement())
   email                  String   @unique
