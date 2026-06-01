@@ -1,4 +1,4 @@
-﻿-- CreateTable
+-- CreateTable
 CREATE TABLE `ChatAttachment` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `sessionId` VARCHAR(191) NOT NULL,
