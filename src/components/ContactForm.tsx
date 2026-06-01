@@ -2,8 +2,6 @@ import { useState, ChangeEvent, FormEvent, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { CheckCircle, AlertCircle, PartyPopper, Linkedin } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
-import 'react-phone-number-input/style.css';
 import { apiUrl } from '../utils/apiUrl';
 import { CONTACT_SOCIAL_LINKS } from '../constants/contactSocial';
 import { trackEvent } from '../lib/analytics';
@@ -42,6 +40,41 @@ const MESSAGE_MAX = 2000;
 const CALENDLY_URL = 'https://calendly.com/primewayz-info/30-minute-meeting-uk';
 const CALENDLY_SCRIPT_URL = 'https://assets.calendly.com/assets/external/widget.js';
 
+export function normalizeUkPhoneNumber(raw: string): string | null {
+  const compact = raw.replace(/[^\d+]/g, '');
+  const normalized = compact.startsWith('0044') ? `+44${compact.slice(4)}` : compact;
+
+  if (normalized.startsWith('+44')) {
+    const national = normalized.slice(3).replace(/\D/g, '');
+    return national.length === 10 ? `+44${national}` : null;
+  }
+
+  const digits = normalized.replace(/\D/g, '');
+  if (digits.startsWith('0') && digits.length === 11) {
+    return `+44${digits.slice(1)}`;
+  }
+
+  return null;
+}
+
+export function validateUkMobileOrLandline(e164: string): boolean {
+  return /^\+44[1-9]\d{9}$/.test(e164);
+}
+
+export function parseUkPhoneNumbers(input: string): string[] {
+  const matches = input.match(/(?:\+44|0044|0)\s*\d(?:[\s().-]*\d){9}/g) || [];
+  const normalized = matches
+    .map((match) => normalizeUkPhoneNumber(match))
+    .filter((phone): phone is string => Boolean(phone && validateUkMobileOrLandline(phone)));
+
+  return Array.from(new Set(normalized));
+}
+
+export function formatUkPhoneNumber(e164: string): string {
+  const national = e164.replace(/^\+44/, '');
+  return `+44 ${national.slice(0, 4)} ${national.slice(4, 7)} ${national.slice(7)}`.trim();
+}
+
 function SocialIcon({ label }: { label: string }) {
   const cls = 'w-4 h-4 shrink-0';
   switch (label) {
@@ -58,7 +91,7 @@ export function ContactForm() {
     email: '',
     message: '',
   });
-  const [phone, setPhone] = useState<string | undefined>(undefined);
+  const [phone, setPhone] = useState('');
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,6 +109,7 @@ export function ContactForm() {
     const name = formData.name.trim();
     const email = formData.email.trim().toLowerCase();
     const message = formData.message.trim();
+    const parsedPhoneNumbers = parseUkPhoneNumbers(phone);
 
     if (!name) {
       newErrors.name = 'Name is required';
@@ -101,8 +135,10 @@ export function ContactForm() {
       newErrors.message = `Message must be at most ${MESSAGE_MAX} characters`;
     }
 
-    if (!phone || !isValidPhoneNumber(phone)) {
-      newErrors.phone = 'Enter a valid contact number';
+    if (!phone.trim()) {
+      newErrors.phone = 'Enter a UK contact number';
+    } else if (parsedPhoneNumbers.length === 0) {
+      newErrors.phone = 'Enter a valid UK number, for example 07522 146 354 or +44 7522 146354';
     }
 
     setErrors(newErrors);
@@ -122,7 +158,8 @@ export function ContactForm() {
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
         message: formData.message.trim(),
-        phone,
+        phone: parseUkPhoneNumbers(phone)[0],
+        phoneNumbers: parseUkPhoneNumbers(phone),
       };
 
       const response = await fetch(apiUrl('/api/contact'), {
@@ -142,7 +179,7 @@ export function ContactForm() {
 
         setIsSubmitted(true);
         setFormData({ name: '', email: '', message: '' });
-        setPhone(undefined);
+        setPhone('');
       } else {
         const data = await response.json().catch(() => null);
         setSubmitError(data?.error || 'Something went wrong. Please try again later.');
@@ -168,6 +205,13 @@ export function ContactForm() {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
+
+  const handlePhoneChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setPhone(e.target.value);
+    if (errors.phone) setErrors((prev) => ({ ...prev, phone: undefined }));
+  };
+
+  const parsedPhoneNumbers = parseUkPhoneNumbers(phone);
 
   useEffect(() => {
     const handleCalendlyEvent = (event: MessageEvent) => {
@@ -409,25 +453,39 @@ export function ContactForm() {
                       Contact Number
                     </span>
                     <div
-                      className={`phone-field rounded-lg border bg-white overflow-hidden ${
+                      className={`flex rounded-lg border bg-white overflow-hidden ${
                         errors.phone ? 'border-red-500 bg-red-50' : 'border-gray-200'
                       } focus-within:ring-2 focus-within:ring-slate-400/30`}
                     >
-                      <PhoneInput
-                        defaultCountry="GB"
-                        countryCallingCodeEditable={false}
+                      <span className="inline-flex shrink-0 items-center border-r border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-700">
+                        United Kingdom +44
+                      </span>
+                      <input
+                        id="phone"
+                        name="phone"
+                        type="tel"
                         value={phone}
-                        onChange={(v) => {
-                          setPhone(v);
-                          if (errors.phone) setErrors((prev) => ({ ...prev, phone: undefined }));
-                        }}
-                        placeholder="Contact Number"
+                        onChange={handlePhoneChange}
+                        placeholder="07522 146 354 or multiple numbers"
+                        autoComplete="tel"
                         aria-labelledby="phone-label"
                         aria-invalid={!!errors.phone}
                         aria-describedby={errors.phone ? 'phone-error' : undefined}
-                        className="phone-input-custom w-full"
+                        className="min-w-0 flex-1 bg-transparent px-4 py-3 text-base outline-none"
                       />
                     </div>
+                    {parsedPhoneNumbers.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-1" aria-label="Parsed UK phone numbers">
+                        {parsedPhoneNumbers.map((parsedPhone) => (
+                          <span
+                            key={parsedPhone}
+                            className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
+                          >
+                            {formatUkPhoneNumber(parsedPhone)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     {errors.phone && (
                       <p id="phone-error" className="text-red-500 text-xs mt-1 flex items-center gap-1" role="alert">
                         <AlertCircle className="w-3 h-3" /> {errors.phone}

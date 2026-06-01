@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send, FileText, Save, UploadCloud, Archive, Star } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send, FileText, Save, UploadCloud, Archive, Star, Bell, BellOff } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiUrl } from '../utils/apiUrl';
 import { PasswordInput } from './ui/PasswordInput';
@@ -38,6 +38,18 @@ interface ChatSession {
     text: string;
     timestamp: string;
   }[];
+}
+
+interface ChatConversation {
+  sessionId: string;
+  name: string | null;
+  email: string | null;
+  createdAt: string | null;
+  messages: ChatMessage[];
+  lastMessage: ChatMessage | null;
+  lastMessageAt: string | null;
+  status: 'open' | 'replied' | 'bot-replied';
+  unreadCount: number;
 }
 
 interface User {
@@ -143,6 +155,14 @@ export const AdminPanel = () => {
   const [replyingToMessageId, setReplyingToMessageId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState('');
   const [activeTab, setActiveTab] = useState('forms');
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [unreadBySession, setUnreadBySession] = useState<Record<string, number>>({});
+  const [soundAlertsEnabled, setSoundAlertsEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('primewayz-admin-sound-alerts') === 'true';
+  });
+  const seenUserMessageIdsRef = useRef<Set<number>>(new Set());
+  const hasInitializedMessageWatchRef = useRef(false);
 
   const checkAuth = async () => {
     try {
@@ -165,10 +185,38 @@ export const AdminPanel = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      const interval = setInterval(() => fetchData(true), 10000); // Poll every 10s
+      const interval = setInterval(() => fetchData(true), 5000);
       return () => clearInterval(interval);
     }
   }, [isAuthenticated, user]);
+
+  const playNotificationSound = () => {
+    if (typeof window === 'undefined') return;
+    const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextCtor) return;
+
+    const audioContext = new AudioContextCtor();
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(740, audioContext.currentTime);
+    gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.08, audioContext.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.18);
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.2);
+  };
+
+  const enableSoundAlerts = () => {
+    setSoundAlertsEnabled((enabled) => {
+      const next = !enabled;
+      window.localStorage.setItem('primewayz-admin-sound-alerts', String(next));
+      if (next) playNotificationSound();
+      return next;
+    });
+  };
 
   const fetchData = async (silent = false, currentUser = user) => {
     if (!silent) setLoading(true);
@@ -442,13 +490,161 @@ export const AdminPanel = () => {
     (res.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
   );
 
-  const filteredChats = chatMessages.filter(msg => 
-    msg.sender.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    msg.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    msg.sessionId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (msg.session?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-    (msg.session?.email?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
-  );
+  const chatConversations = useMemo<ChatConversation[]>(() => {
+    const bySession = new Map<string, ChatConversation>();
+
+    chatSessions.forEach((session) => {
+      bySession.set(session.id, {
+        sessionId: session.id,
+        name: session.name,
+        email: session.email,
+        createdAt: session.createdAt,
+        messages: [],
+        lastMessage: null,
+        lastMessageAt: session.messages[0]?.timestamp || session.createdAt,
+        status: 'open',
+        unreadCount: unreadBySession[session.id] || 0,
+      });
+    });
+
+    chatMessages.forEach((message) => {
+      const existing = bySession.get(message.sessionId);
+      if (existing) {
+        existing.name = existing.name || message.session?.name || null;
+        existing.email = existing.email || message.session?.email || null;
+        existing.messages.push(message);
+        return;
+      }
+
+      bySession.set(message.sessionId, {
+        sessionId: message.sessionId,
+        name: message.session?.name || null,
+        email: message.session?.email || null,
+        createdAt: message.timestamp,
+        messages: [message],
+        lastMessage: null,
+        lastMessageAt: message.timestamp,
+        status: 'open',
+        unreadCount: unreadBySession[message.sessionId] || 0,
+      });
+    });
+
+    return Array.from(bySession.values())
+      .map((conversation) => {
+        const messages = [...conversation.messages].sort(
+          (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+        );
+        const lastMessage = messages[messages.length - 1] || null;
+        const lastSender = lastMessage?.sender?.toLowerCase();
+        const status: ChatConversation['status'] = lastSender === 'admin'
+          ? 'replied'
+          : lastSender === 'bot'
+            ? 'bot-replied'
+            : 'open';
+
+        return {
+          ...conversation,
+          messages,
+          lastMessage,
+          lastMessageAt: lastMessage?.timestamp || conversation.lastMessageAt,
+          status,
+          unreadCount: unreadBySession[conversation.sessionId] || 0,
+        };
+      })
+      .sort((a, b) => new Date(b.lastMessageAt || b.createdAt || 0).getTime() - new Date(a.lastMessageAt || a.createdAt || 0).getTime());
+  }, [chatMessages, chatSessions, unreadBySession]);
+
+  const filteredChatConversations = chatConversations.filter((conversation) => {
+    const term = searchTerm.toLowerCase();
+    const lastText = conversation.lastMessage?.text || '';
+    return (
+      conversation.sessionId.toLowerCase().includes(term) ||
+      (conversation.name?.toLowerCase().includes(term) || false) ||
+      (conversation.email?.toLowerCase().includes(term) || false) ||
+      lastText.toLowerCase().includes(term)
+    );
+  });
+
+  const selectedConversation = chatConversations.find(
+    (conversation) => conversation.sessionId === selectedConversationId,
+  ) || filteredChatConversations[0] || null;
+
+  useEffect(() => {
+    if (!selectedConversationId && filteredChatConversations[0]?.sessionId && !replyText.trim()) {
+      setSelectedConversationId(filteredChatConversations[0].sessionId);
+    }
+  }, [filteredChatConversations, replyText, selectedConversationId]);
+
+  useEffect(() => {
+    if (!selectedConversationId) return;
+    setUnreadBySession((prev) => {
+      if (!prev[selectedConversationId]) return prev;
+      return { ...prev, [selectedConversationId]: 0 };
+    });
+  }, [selectedConversationId]);
+
+  useEffect(() => {
+    const currentUserMessageIds = new Set(
+      chatMessages
+        .filter((message) => message.sender?.toLowerCase() === 'user')
+        .map((message) => message.id),
+    );
+
+    if (!hasInitializedMessageWatchRef.current) {
+      seenUserMessageIdsRef.current = currentUserMessageIds;
+      hasInitializedMessageWatchRef.current = true;
+      return;
+    }
+
+    const newUserMessages = chatMessages.filter(
+      (message) => message.sender?.toLowerCase() === 'user' && !seenUserMessageIdsRef.current.has(message.id),
+    );
+
+    if (newUserMessages.length > 0) {
+      setUnreadBySession((prev) => {
+        const next = { ...prev };
+        newUserMessages.forEach((message) => {
+          if (message.sessionId !== selectedConversationId) {
+            next[message.sessionId] = (next[message.sessionId] || 0) + 1;
+          }
+        });
+        return next;
+      });
+
+      if (soundAlertsEnabled) {
+        playNotificationSound();
+      }
+    }
+
+    seenUserMessageIdsRef.current = currentUserMessageIds;
+  }, [chatMessages, selectedConversationId, soundAlertsEnabled]);
+
+  useEffect(() => {
+    if (!isAuthenticated || activeTab !== 'chats' || !selectedConversationId) return;
+
+    const refreshSelectedConversation = async () => {
+      try {
+        const response = await fetch(apiUrl(`/api/chat/${selectedConversationId}`));
+        if (!response.ok) return;
+        const sessionMessages = await response.json() as ChatMessage[];
+        setChatMessages((prev) => [
+          ...prev.filter((message) => message.sessionId !== selectedConversationId),
+          ...sessionMessages.map((message) => ({
+            ...message,
+            session: {
+              name: selectedConversation?.name || null,
+              email: selectedConversation?.email || null,
+            },
+          })),
+        ]);
+      } catch (error) {
+        console.error('Failed to refresh selected chat:', error);
+      }
+    };
+
+    const interval = setInterval(refreshSelectedConversation, 3000);
+    return () => clearInterval(interval);
+  }, [activeTab, isAuthenticated, selectedConversation?.email, selectedConversation?.name, selectedConversationId]);
 
   const filteredLeads = chatSessions.filter(session => 
     (session.name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
@@ -561,6 +757,18 @@ export const AdminPanel = () => {
               <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </button>
+            <button
+              type="button"
+              onClick={enableSoundAlerts}
+              className={`flex items-center gap-2 px-4 py-2 border rounded-xl text-sm font-medium transition-colors ${
+                soundAlertsEnabled
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                  : 'bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50'
+              }`}
+            >
+              {soundAlertsEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+              {soundAlertsEnabled ? 'Sound alerts on' : 'Enable sound alerts'}
+            </button>
             <button 
               onClick={handleLogout}
               className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-xl text-sm font-medium hover:bg-zinc-800 transition-colors"
@@ -615,7 +823,7 @@ export const AdminPanel = () => {
                   <MessageSquare className="w-4 h-4" />
                   Chat History
                   <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
-                    {filteredChats.length}
+                    {filteredChatConversations.length}
                   </span>
                 </Tabs.Trigger>
               </>
@@ -744,6 +952,7 @@ export const AdminPanel = () => {
                         <button 
                           onClick={() => {
                             setReplyingTo(session.id);
+                            setSelectedConversationId(session.id);
                             setReplyText('');
                           }}
                           className="text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors flex items-center gap-1"
@@ -755,6 +964,8 @@ export const AdminPanel = () => {
                           type="button"
                           onClick={() => {
                             setSearchTerm(session.id);
+                            setSelectedConversationId(session.id);
+                            setReplyingTo(session.id);
                             setActiveTab('chats');
                           }}
                           className="text-xs font-bold text-zinc-500 hover:text-zinc-900"
@@ -800,133 +1011,186 @@ export const AdminPanel = () => {
           </Tabs.Content>
 
           <Tabs.Content value="chats" className="outline-none">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredChats.length === 0 ? (
-                <div className="col-span-full py-12 text-center text-zinc-400 italic bg-white rounded-3xl border border-zinc-200">
-                  {searchTerm ? `No results matching "${searchTerm}"` : 'No chat history found.'}
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(280px,0.75fr)_minmax(0,1.25fr)] gap-6">
+              <div className="bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-zinc-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-zinc-900">Conversations</h3>
+                    <p className="text-xs text-zinc-500">Updates every 5 seconds</p>
+                  </div>
+                  <span className="px-2 py-1 rounded-lg bg-zinc-100 text-[10px] font-bold text-zinc-500">
+                    {filteredChatConversations.length}
+                  </span>
                 </div>
-              ) : (
-                filteredChats.map((msg) => (
-                  <motion.div 
-                    key={msg.id}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="bg-white p-6 rounded-3xl border border-zinc-200 shadow-sm flex flex-col gap-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
-                            msg.sender === 'user' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'
-                          }`}>
-                            {msg.sender}
-                          </span>
-                          <span className="text-[10px] font-mono text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded">
-                            ID: {msg.sessionId}
-                          </span>
-                        </div>
-                        {msg.session?.name && (
-                          <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-medium">
-                            <span className="text-zinc-900 font-bold">{msg.session.name}</span>
-                            <span className="w-1 h-1 bg-zinc-300 rounded-full" />
-                            <span>{msg.session.email}</span>
-                          </div>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-zinc-400">
-                        {format(new Date(msg.timestamp), 'MMM d, h:mm a')}
-                      </span>
+
+                <div className="max-h-[680px] overflow-y-auto divide-y divide-zinc-100">
+                  {filteredChatConversations.length === 0 ? (
+                    <div className="px-5 py-12 text-center text-sm text-zinc-400 italic">
+                      {searchTerm ? `No conversations matching "${searchTerm}"` : 'No chat conversations found.'}
                     </div>
-                    <p className="text-sm text-zinc-700 leading-relaxed">
-                      {msg.text}
-                    </p>
-                    {msg.replyToId && (
-                      <div className="mt-1 pl-3 border-l-2 border-emerald-200">
-                        <p className="text-[10px] text-zinc-400 font-medium">Replying to message ID: {msg.replyToId}</p>
-                      </div>
-                    )}
-                    <div className="mt-2 pt-3 border-t border-zinc-50 flex flex-col gap-3">
-                      {replyingToMessageId === msg.id ? (
-                        <div className="w-full space-y-2">
-                          <textarea 
-                            value={replyText}
-                            onChange={(e) => setReplyText(e.target.value)}
-                            placeholder={`Replying to message ${msg.id}...`}
-                            className="w-full p-3 text-sm rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none resize-none"
-                            rows={2}
-                          />
-                          <div className="flex gap-2 justify-end">
-                            <button 
-                              onClick={() => setReplyingToMessageId(null)}
-                              className="px-3 py-1.5 text-xs font-bold text-zinc-500 hover:bg-zinc-100 rounded-lg transition-colors"
-                            >
-                              Cancel
-                            </button>
-                            <button 
-                              onClick={() => handleAdminReply(msg.sessionId, msg.id)}
-                              className="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
-                            >
-                              Send Reply
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between">
-                          <button 
-                            onClick={() => {
-                              setReplyingToMessageId(msg.id);
-                              setReplyingTo(null);
-                              setReplyText('');
-                            }}
-                            className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
-                          >
-                            <Send className="w-3 h-3" />
-                            Reply to Message
-                          </button>
-                          
-                          {replyingTo === msg.sessionId ? (
-                            <div className="w-full space-y-2">
-                              <textarea 
-                                value={replyText}
-                                onChange={(e) => setReplyText(e.target.value)}
-                                placeholder="Type your reply to session..."
-                                className="w-full p-3 text-sm rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none resize-none"
-                                rows={2}
-                              />
-                              <div className="flex gap-2 justify-end">
-                                <button 
-                                  onClick={() => setReplyingTo(null)}
-                                  className="px-3 py-1.5 text-xs font-bold text-zinc-500 hover:bg-zinc-100 rounded-lg transition-colors"
-                                >
-                                  Cancel
-                                </button>
-                                <button 
-                                  onClick={() => handleAdminReply(msg.sessionId)}
-                                  className="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
-                                >
-                                  Send Reply
-                                </button>
-                              </div>
+                  ) : (
+                    filteredChatConversations.map((conversation) => (
+                      <button
+                        key={conversation.sessionId}
+                        type="button"
+                        onClick={() => {
+                          if (conversation.sessionId !== selectedConversationId) {
+                            setReplyText('');
+                          }
+                          setSelectedConversationId(conversation.sessionId);
+                          setReplyingTo(conversation.sessionId);
+                          setReplyingToMessageId(null);
+                          setActiveTab('chats');
+                        }}
+                        className={`w-full text-left px-5 py-4 transition-colors ${
+                          selectedConversation?.sessionId === conversation.sessionId
+                            ? 'bg-emerald-50'
+                            : 'bg-white hover:bg-zinc-50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="truncate text-sm font-bold text-zinc-900">
+                                {conversation.name || conversation.email || 'Anonymous visitor'}
+                              </p>
+                              {conversation.unreadCount > 0 && (
+                                <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                                  {conversation.unreadCount}
+                                </span>
+                              )}
                             </div>
-                          ) : (
-                            <button 
-                              onClick={() => {
-                                setReplyingTo(msg.sessionId);
-                                setReplyingToMessageId(null);
-                                setReplyText('');
-                              }}
-                              className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 hover:text-zinc-900 transition-colors"
-                            >
-                              <Send className="w-3 h-3" />
-                              Reply to Session
-                            </button>
-                          )}
+                            <p className="truncate text-xs text-zinc-500">
+                              {conversation.email || `Session ${conversation.sessionId.slice(0, 8)}`}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-[10px] text-zinc-400">
+                            {conversation.lastMessageAt ? format(new Date(conversation.lastMessageAt), 'MMM d, h:mm a') : '-'}
+                          </span>
                         </div>
-                      )}
+                        <p className="mt-3 line-clamp-2 text-sm text-zinc-600">
+                          {conversation.lastMessage?.text || 'No messages yet.'}
+                        </p>
+                        <div className="mt-3 flex items-center justify-between gap-3">
+                          <span className={`rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                            conversation.status === 'replied'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : conversation.status === 'bot-replied'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {conversation.status}
+                          </span>
+                          <span className="text-[10px] font-mono text-zinc-400">
+                            {conversation.messages.length} messages
+                          </span>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden min-h-[520px]">
+                {selectedConversation ? (
+                  <div className="flex h-full min-h-[520px] flex-col">
+                    <div className="px-6 py-5 border-b border-zinc-100 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <h3 className="text-xl font-bold text-zinc-900">
+                          {selectedConversation.name || selectedConversation.email || 'Anonymous visitor'}
+                        </h3>
+                        <p className="text-sm text-zinc-500">
+                          {selectedConversation.email || 'No email provided'} · {selectedConversation.sessionId}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-lg bg-zinc-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                          {selectedConversation.messages.length} messages
+                        </span>
+                        <span className={`rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                          selectedConversation.status === 'replied'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : selectedConversation.status === 'bot-replied'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {selectedConversation.status}
+                        </span>
+                      </div>
                     </div>
-                  </motion.div>
-                ))
-              )}
+
+                    <div className="flex-1 space-y-4 overflow-y-auto bg-zinc-50 px-6 py-6">
+                      {selectedConversation.messages.map((message) => {
+                        const sender = message.sender.toLowerCase();
+                        const isAdminMessage = sender === 'admin';
+                        return (
+                          <div
+                            key={message.id}
+                            className={`flex ${isAdminMessage ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div className={`max-w-[86%] rounded-2xl border px-4 py-3 shadow-sm ${
+                              isAdminMessage
+                                ? 'border-emerald-100 bg-emerald-600 text-white'
+                                : sender === 'bot'
+                                  ? 'border-blue-100 bg-blue-50 text-zinc-800'
+                                  : 'border-zinc-200 bg-white text-zinc-800'
+                            }`}>
+                              <div className="mb-1 flex items-center gap-2">
+                                <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                                  isAdminMessage ? 'text-emerald-50' : sender === 'bot' ? 'text-blue-700' : 'text-zinc-500'
+                                }`}>
+                                  {sender === 'admin' ? 'Admin' : sender === 'bot' ? 'Bot' : 'Visitor'}
+                                </span>
+                                <span className={`text-[10px] ${isAdminMessage ? 'text-emerald-50/80' : 'text-zinc-400'}`}>
+                                  {format(new Date(message.timestamp), 'MMM d, h:mm a')}
+                                </span>
+                              </div>
+                              <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.text}</p>
+                              {message.replyToId && (
+                                <p className={`mt-2 border-l-2 pl-2 text-[10px] ${
+                                  isAdminMessage ? 'border-emerald-200 text-emerald-50/80' : 'border-zinc-200 text-zinc-400'
+                                }`}>
+                                  Replying to message ID {message.replyToId}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="border-t border-zinc-100 bg-white p-5">
+                      <textarea
+                        value={replyingTo === selectedConversation.sessionId ? replyText : ''}
+                        onChange={(e) => {
+                          setReplyingTo(selectedConversation.sessionId);
+                          setReplyingToMessageId(null);
+                          setReplyText(e.target.value);
+                        }}
+                        placeholder="Type your reply to this conversation..."
+                        className="w-full rounded-xl border border-zinc-200 p-3 text-sm outline-none resize-none focus:ring-2 focus:ring-emerald-500/20"
+                        rows={3}
+                      />
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <p className="text-xs text-zinc-400">Selected thread refreshes every 3 seconds.</p>
+                        <button
+                          type="button"
+                          onClick={() => handleAdminReply(selectedConversation.sessionId)}
+                          disabled={!replyText.trim() || replyingTo !== selectedConversation.sessionId}
+                          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Send className="w-4 h-4" />
+                          Send Reply
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex min-h-[520px] items-center justify-center px-6 text-center text-sm text-zinc-400">
+                    Select a conversation to view the full thread.
+                  </div>
+                )}
+              </div>
             </div>
           </Tabs.Content>
 

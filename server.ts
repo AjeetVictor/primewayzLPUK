@@ -9,7 +9,6 @@ import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
-import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { getAllBlogPosts, getBlogPostById } from './src/data/blog/utils.ts';
 import type { BlogPost } from './src/data/blog/types.ts';
 import { homepageSeoContent } from './src/content/homepageSeoContent.ts';
@@ -290,13 +289,34 @@ async function getPublicBlogPostById(id: string): Promise<BlogPost | undefined> 
   return getBlogPostById(id);
 }
 
-function normalizeContactPhoneE164(raw: unknown): string | null {
+function normalizeUkContactPhoneE164(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  const parsed = parsePhoneNumberFromString(trimmed);
-  if (!parsed || !parsed.isValid()) return null;
-  return parsed.format('E.164');
+  const compact = raw.replace(/[^\d+]/g, '');
+  const normalized = compact.startsWith('0044') ? `+44${compact.slice(4)}` : compact;
+
+  if (normalized.startsWith('+44')) {
+    const national = normalized.slice(3).replace(/\D/g, '');
+    const e164 = national.length === 10 ? `+44${national}` : null;
+    return e164 && /^\+44[1-9]\d{9}$/.test(e164) ? e164 : null;
+  }
+
+  const digits = normalized.replace(/\D/g, '');
+  if (digits.startsWith('0') && digits.length === 11) {
+    const e164 = `+44${digits.slice(1)}`;
+    return /^\+44[1-9]\d{9}$/.test(e164) ? e164 : null;
+  }
+
+  return null;
+}
+
+function parseUkContactPhoneNumbers(raw: unknown): string[] {
+  if (typeof raw !== 'string') return [];
+  const matches = raw.match(/(?:\+44|0044|0)\s*\d(?:[\s().-]*\d){9}/g) || [];
+  const normalized = matches
+    .map(normalizeUkContactPhoneE164)
+    .filter((phone): phone is string => Boolean(phone));
+
+  return Array.from(new Set(normalized));
 }
 
 function getClientIp(req: express.Request): string | null {
@@ -866,13 +886,14 @@ async function startServer() {
     const name = rawName.trim();
     const email = rawEmail.trim().toLowerCase();
     const message = rawMessage.trim();
-    const phoneE164 = normalizeContactPhoneE164(req.body?.phone);
+    const phoneNumbers = parseUkContactPhoneNumbers(req.body?.phone);
+    const phoneE164 = phoneNumbers[0] || null;
 
     if (!name || !email || !message) {
       return res.status(400).json({ success: false, error: 'Name, email and message are required.' });
     }
     if (!phoneE164) {
-      return res.status(400).json({ success: false, error: 'Please provide a valid contact number with country code.' });
+      return res.status(400).json({ success: false, error: 'Please provide a valid UK contact number.' });
     }
     if (name.length < CONTACT_NAME_MIN || name.length > CONTACT_NAME_MAX || !CONTACT_NAME_REGEX.test(name)) {
       return res.status(400).json({ success: false, error: 'Please provide a valid full name.' });
