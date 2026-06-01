@@ -146,7 +146,6 @@ const BLOG_UPLOAD_MIME_TYPES: Record<string, { extension: string; kind: 'image' 
 };
 const CHAT_UPLOAD_MIME_TYPES = BLOG_UPLOAD_MIME_TYPES;
 const CHAT_APPOINTMENT_STATUSES = new Set(['pending', 'confirmed', 'completed', 'cancelled']);
-const ADMIN_AUTH_ROLES = [...CMS_ROLE_OPTIONS];
 const CHAT_PRESENCE_MODES = new Set(['auto', 'online', 'away', 'offline']);
 const CHAT_PRESENCE_ACTIVE_MS = 5 * 60 * 1000;
 const CHAT_BUSINESS_HOURS_LABEL = 'Mon-Fri, 10:00-19:00 UK time';
@@ -1137,7 +1136,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/admin/presence/heartbeat', authorize(ADMIN_AUTH_ROLES), async (req: any, res: any) => {
+  app.post('/api/admin/presence/heartbeat', authorize(), async (req: any, res: any) => {
     try {
       const userId = Number(req.user?.id);
       if (!Number.isFinite(userId)) {
@@ -1159,7 +1158,7 @@ async function startServer() {
     }
   });
 
-  app.get('/api/admin/chat/availability', authorize(ADMIN_AUTH_ROLES), async (req, res) => {
+  app.get('/api/admin/chat/availability', authorize(), async (req, res) => {
     try {
       const availability = await computeChatAvailability();
       res.json(availability);
@@ -1171,7 +1170,7 @@ async function startServer() {
     }
   });
 
-  app.patch('/api/admin/chat/availability', authorize(ADMIN_AUTH_ROLES), async (req: any, res: any) => {
+  app.patch('/api/admin/chat/availability', authorize(), async (req: any, res: any) => {
     const mode = typeof req.body?.mode === 'string' ? req.body.mode.trim().toLowerCase() : '';
     const message = typeof req.body?.message === 'string' ? req.body.message.trim().slice(0, 180) : '';
 

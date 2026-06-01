@@ -175,6 +175,14 @@ const isBlogAuthor = (role?: string) => isBlogEditor(role) || role === 'blog_aut
 const isOperationsRole = (role?: string) => isSuperAdmin(role) || role === 'editor' || role === 'viewer';
 const getDefaultAdminTab = (role?: string) => isOperationsRole(role) ? 'forms' : 'blog';
 
+const adminRequest = (path: string, init: RequestInit = {}) => {
+  return fetch(apiUrl(path), {
+    ...init,
+    credentials: 'include',
+    headers: init.headers,
+  });
+};
+
 interface BlogPostComment {
   id: number;
   postId: string;
@@ -252,7 +260,7 @@ export const AdminPanel = () => {
 
   const fetchChatAvailability = async (syncForm = true) => {
     try {
-      const res = await fetch(apiUrl('/api/admin/chat/availability'), { credentials: 'include' });
+      const res = await adminRequest('/api/admin/chat/availability');
       if (!res.ok) return;
       const data = await res.json();
       setChatAvailability(data);
@@ -272,9 +280,8 @@ export const AdminPanel = () => {
     lastHeartbeatAtRef.current = now;
 
     try {
-      await fetch(apiUrl('/api/admin/presence/heartbeat'), {
+      await adminRequest('/api/admin/presence/heartbeat', {
         method: 'POST',
-        credentials: 'include',
       });
       fetchChatAvailability(false);
     } catch (error) {
@@ -306,9 +313,8 @@ export const AdminPanel = () => {
     setIsSavingAvailability(true);
 
     try {
-      const res = await fetch(apiUrl('/api/admin/chat/availability'), {
+      const res = await adminRequest('/api/admin/chat/availability', {
         method: 'PATCH',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: availabilityMode, message: availabilityMessage }),
       });
