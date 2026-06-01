@@ -113,6 +113,7 @@ const isSuperAdmin = (role?: string) => role === 'super_admin' || role === 'admi
 const isBlogEditor = (role?: string) => isSuperAdmin(role) || role === 'blog_editor' || role === 'editor';
 const isBlogAuthor = (role?: string) => isBlogEditor(role) || role === 'blog_author';
 const isOperationsRole = (role?: string) => isSuperAdmin(role) || role === 'editor' || role === 'viewer';
+const getDefaultAdminTab = (role?: string) => isOperationsRole(role) ? 'forms' : 'blog';
 
 interface BlogPostComment {
   id: number;
@@ -141,6 +142,7 @@ export const AdminPanel = () => {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyingToMessageId, setReplyingToMessageId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [activeTab, setActiveTab] = useState('forms');
 
   const checkAuth = async () => {
     try {
@@ -149,6 +151,7 @@ export const AdminPanel = () => {
       setIsAuthenticated(data.authenticated);
       if (data.authenticated) {
         setUser(data.user);
+        setActiveTab(getDefaultAdminTab(data.user?.role));
         fetchData(false, data.user);
       }
     } catch (error) {
@@ -237,6 +240,7 @@ export const AdminPanel = () => {
       if (data.success) {
         setIsAuthenticated(true);
         setUser(data.user);
+        setActiveTab(getDefaultAdminTab(data.user?.role));
         fetchData(false, data.user);
       } else {
         setLoginError(data.error || 'Invalid credentials');
@@ -529,7 +533,6 @@ export const AdminPanel = () => {
   }
 
   const canViewOperations = isOperationsRole(user?.role);
-  const defaultTab = canViewOperations ? 'forms' : 'blog';
 
   return (
     <div className="min-h-screen bg-zinc-50 pt-20 pb-12 px-4 sm:px-6 lg:px-8">
@@ -581,7 +584,7 @@ export const AdminPanel = () => {
           </div>
         </div>
 
-        <Tabs.Root defaultValue={defaultTab} className="space-y-6">
+        <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <Tabs.List className="flex flex-wrap gap-2 p-1 bg-zinc-200/50 rounded-2xl w-fit">
             {canViewOperations && (
               <>
@@ -748,13 +751,16 @@ export const AdminPanel = () => {
                           <Send className="w-3 h-3" />
                           Reply
                         </button>
-                        <Tabs.Trigger 
-                          value="chats"
-                          onClick={() => setSearchTerm(session.id)}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearchTerm(session.id);
+                            setActiveTab('chats');
+                          }}
                           className="text-xs font-bold text-zinc-500 hover:text-zinc-900"
                         >
                           View Full Chat
-                        </Tabs.Trigger>
+                        </button>
                       </div>
                     </div>
 
