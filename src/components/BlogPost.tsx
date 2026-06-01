@@ -18,6 +18,7 @@ import { BlogCard } from './blog/BlogCard';
 import { getBlogPostById, getRelatedBlogPosts } from '../data/blog/utils';
 import type { BlogPost as BlogPostData } from '../data/blog/types';
 import { apiUrl } from '../utils/apiUrl';
+import { sanitizeBlogHtml } from '../utils/sanitizeHtml';
 
 interface Comment {
   id: number;
@@ -256,7 +257,7 @@ export const BlogPost = () => {
           transition={{ delay: 0.25 }}
           className="prose prose-lg prose-zinc max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-headings:text-zinc-900 prose-p:leading-relaxed prose-p:text-zinc-600 prose-strong:text-zinc-900"
         >
-          <div dangerouslySetInnerHTML={{ __html: post.content }} />
+          <div className="blog-content-preview" dangerouslySetInnerHTML={{ __html: sanitizeBlogHtml(post.content) }} />
         </motion.div>
 
         <section className="mt-16">

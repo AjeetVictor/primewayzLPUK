@@ -12,6 +12,7 @@ import dotenv from 'dotenv';
 import { getAllBlogPosts, getBlogPostById } from './src/data/blog/utils.ts';
 import type { BlogPost } from './src/data/blog/types.ts';
 import { homepageSeoContent } from './src/content/homepageSeoContent.ts';
+import { sanitizeBlogHtml } from './src/utils/sanitizeHtml.ts';
 
 const allBlogPosts = getAllBlogPosts();
 const BLOG_STATUSES = ['draft', 'submitted', 'published', 'unpublished', 'archived'] as const;
@@ -129,6 +130,20 @@ const CONTACT_MESSAGE_MIN = 10;
 const CONTACT_MESSAGE_MAX = 2000;
 const PASSWORD_RESET_EXPIRY_MINUTES = Number(process.env.PASSWORD_RESET_EXPIRY_MINUTES || 30);
 const PASSWORD_RESET_SUCCESS_MESSAGE = 'If an admin account exists for this email, reset instructions have been sent.';
+const BLOG_UPLOAD_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const BLOG_UPLOAD_DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
+const BLOG_UPLOAD_MIME_TYPES: Record<string, { extension: string; kind: 'image' | 'document'; maxBytes: number }> = {
+  'image/jpeg': { extension: 'jpg', kind: 'image', maxBytes: BLOG_UPLOAD_IMAGE_MAX_BYTES },
+  'image/png': { extension: 'png', kind: 'image', maxBytes: BLOG_UPLOAD_IMAGE_MAX_BYTES },
+  'image/webp': { extension: 'webp', kind: 'image', maxBytes: BLOG_UPLOAD_IMAGE_MAX_BYTES },
+  'application/pdf': { extension: 'pdf', kind: 'document', maxBytes: BLOG_UPLOAD_DOCUMENT_MAX_BYTES },
+  'application/msword': { extension: 'doc', kind: 'document', maxBytes: BLOG_UPLOAD_DOCUMENT_MAX_BYTES },
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { extension: 'docx', kind: 'document', maxBytes: BLOG_UPLOAD_DOCUMENT_MAX_BYTES },
+  'application/vnd.ms-excel': { extension: 'xls', kind: 'document', maxBytes: BLOG_UPLOAD_DOCUMENT_MAX_BYTES },
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { extension: 'xlsx', kind: 'document', maxBytes: BLOG_UPLOAD_DOCUMENT_MAX_BYTES },
+  'application/vnd.ms-powerpoint': { extension: 'ppt', kind: 'document', maxBytes: BLOG_UPLOAD_DOCUMENT_MAX_BYTES },
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': { extension: 'pptx', kind: 'document', maxBytes: BLOG_UPLOAD_DOCUMENT_MAX_BYTES },
+};
 
 function createPasswordResetToken() {
   const token = crypto.randomBytes(32).toString('hex');
@@ -317,6 +332,64 @@ function parseUkContactPhoneNumbers(raw: unknown): string[] {
     .filter((phone): phone is string => Boolean(phone));
 
   return Array.from(new Set(normalized));
+}
+
+function sanitizeUploadBaseName(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/[^\w.-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80) || 'upload';
+}
+
+async function readRequestBuffer(req: express.Request, maxBytes: number): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+
+  for await (const chunk of req) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += buffer.length;
+    if (total > maxBytes) {
+      throw new Error('Upload is too large.');
+    }
+    chunks.push(buffer);
+  }
+
+  return Buffer.concat(chunks);
+}
+
+function parseSingleMultipartFile(body: Buffer, contentType: string) {
+  const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
+  const boundary = boundaryMatch?.[1] || boundaryMatch?.[2];
+  if (!boundary) throw new Error('Invalid upload request.');
+
+  const boundaryText = `--${boundary}`;
+  const raw = body.toString('binary');
+  const parts = raw.split(boundaryText);
+
+  for (const part of parts) {
+    if (!part.includes('name="file"')) continue;
+
+    const headerEnd = part.indexOf('\r\n\r\n');
+    if (headerEnd === -1) throw new Error('Invalid file upload.');
+
+    const header = part.slice(0, headerEnd);
+    let fileBinary = part.slice(headerEnd + 4);
+    fileBinary = fileBinary.replace(/\r\n--$/, '').replace(/\r\n$/, '');
+
+    const filenameMatch = header.match(/filename="([^"]*)"/i);
+    const mimeMatch = header.match(/content-type:\s*([^\r\n]+)/i);
+    const originalName = filenameMatch?.[1] || 'upload';
+    const mimeType = (mimeMatch?.[1] || 'application/octet-stream').trim().toLowerCase();
+
+    return {
+      originalName,
+      mimeType,
+      buffer: Buffer.from(fileBinary, 'binary'),
+    };
+  }
+
+  throw new Error('No file was uploaded.');
 }
 
 function getClientIp(req: express.Request): string | null {
@@ -702,6 +775,13 @@ async function startServer() {
 
   app.use(express.json());
   app.use(cookieParser());
+  app.use('/uploads', express.static(path.join(process.cwd(), 'public/uploads'), {
+    index: false,
+    setHeaders: (res: any) => {
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Cache-Control', 'public, max-age=604800');
+    },
+  }));
 
   // Auth Middleware
   const authorize = (roles: string[] = []) => {
@@ -1080,11 +1160,67 @@ async function startServer() {
     }
   });
 
+  app.post('/api/admin/uploads', authorize(BLOG_AUTHOR_ROLES), async (req: any, res: any) => {
+    try {
+      const contentType = req.headers['content-type'] || '';
+      if (!contentType.toLowerCase().includes('multipart/form-data')) {
+        return res.status(400).json({ error: 'Upload must use multipart/form-data.' });
+      }
+
+      const body = await readRequestBuffer(req, BLOG_UPLOAD_DOCUMENT_MAX_BYTES + 1024 * 1024);
+      const file = parseSingleMultipartFile(body, contentType);
+      const rule = BLOG_UPLOAD_MIME_TYPES[file.mimeType];
+
+      if (!rule) {
+        return res.status(415).json({ error: 'Unsupported file type.' });
+      }
+
+      if (file.buffer.length > rule.maxBytes) {
+        return res.status(413).json({
+          error: rule.kind === 'image'
+            ? 'Images must be 5 MB or smaller.'
+            : 'Documents must be 10 MB or smaller.',
+        });
+      }
+
+      const now = new Date();
+      const year = String(now.getFullYear());
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'blog', year, month);
+      await fs.mkdir(uploadDir, { recursive: true });
+
+      const originalBase = sanitizeUploadBaseName(path.parse(file.originalName).name);
+      const fileName = `${originalBase}-${crypto.randomBytes(8).toString('hex')}.${rule.extension}`;
+      const filePath = path.join(uploadDir, fileName);
+      const resolvedUploadDir = path.resolve(uploadDir);
+      const resolvedFilePath = path.resolve(filePath);
+
+      if (!resolvedFilePath.startsWith(resolvedUploadDir + path.sep)) {
+        return res.status(400).json({ error: 'Invalid upload path.' });
+      }
+
+      await fs.writeFile(resolvedFilePath, file.buffer, { flag: 'wx' });
+
+      return res.status(201).json({
+        url: `/uploads/blog/${year}/${month}/${fileName}`,
+        originalName: file.originalName,
+        fileName,
+        mimeType: file.mimeType,
+        size: file.buffer.length,
+        kind: rule.kind,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        error: error instanceof Error ? error.message : 'Upload failed.',
+      });
+    }
+  });
+
   app.post('/api/admin/blog-posts', authorize(BLOG_AUTHOR_ROLES), async (req: any, res: any) => {
     if (!cmsBlogPostModel) return res.status(503).json({ error: 'Blog CMS is not available. Run Prisma generate after applying the schema.' });
 
     const title = String(req.body?.title || '').trim();
-    const content = String(req.body?.content || '').trim();
+    const content = sanitizeBlogHtml(String(req.body?.content || '').trim());
     const description = String(req.body?.description || req.body?.excerpt || '').trim();
     if (!title || !content || !description) {
       return res.status(400).json({ error: 'Title, description, and content are required.' });
@@ -1183,7 +1319,7 @@ async function startServer() {
         author: req.body?.author !== undefined ? String(req.body.author).trim() : existing.author,
         readTime: req.body?.readTime !== undefined ? String(req.body.readTime).trim() : existing.readTime,
         image: req.body?.image !== undefined ? (String(req.body.image).trim() || null) : existing.image,
-        content: req.body?.content !== undefined ? String(req.body.content).trim() : existing.content,
+        content: req.body?.content !== undefined ? sanitizeBlogHtml(String(req.body.content).trim()) : existing.content,
         seoTitle: req.body?.seoTitle !== undefined ? (String(req.body.seoTitle).trim() || null) : existing.seoTitle,
         seoDescription: req.body?.seoDescription !== undefined ? (String(req.body.seoDescription).trim() || null) : existing.seoDescription,
         status: requestedStatus,

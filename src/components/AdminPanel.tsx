@@ -6,6 +6,8 @@ import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshC
 import { format } from 'date-fns';
 import { apiUrl } from '../utils/apiUrl';
 import { PasswordInput } from './ui/PasswordInput';
+import { RichBlogEditor } from './admin/RichBlogEditor';
+import { sanitizeBlogHtml } from '../utils/sanitizeHtml';
 
 interface FormResponse {
   id: number;
@@ -419,6 +421,7 @@ export const AdminPanel = () => {
     setBlogError('');
     const payload = {
       ...blogForm,
+      content: sanitizeBlogHtml(blogForm.content),
       status: statusOverride || blogForm.status,
       tags: blogForm.tags,
     };
@@ -1300,13 +1303,10 @@ export const AdminPanel = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">Content HTML</label>
-                      <textarea
+                      <label className="block text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">Article Content</label>
+                      <RichBlogEditor
                         value={blogForm.content}
-                        onChange={(e) => setBlogForm(prev => ({ ...prev, content: e.target.value }))}
-                        className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 font-mono text-sm focus:ring-2 focus:ring-emerald-500/20 outline-none resize-y"
-                        rows={10}
-                        placeholder="<p>Write the article content...</p>"
+                        onChange={(content) => setBlogForm(prev => ({ ...prev, content }))}
                       />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

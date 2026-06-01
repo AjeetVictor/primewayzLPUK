@@ -8,6 +8,150 @@
 }
 
 @layer components {
+  .blog-rich-editor,
+  .blog-content-preview {
+    font-size: 1rem;
+    line-height: 1.8;
+  }
+
+  .blog-rich-editor p,
+  .blog-content-preview p {
+    margin: 0 0 1rem;
+  }
+
+  .blog-rich-editor h2,
+  .blog-content-preview h2 {
+    margin: 2rem 0 1rem;
+    font-size: 1.875rem;
+    line-height: 1.2;
+    font-weight: 800;
+    color: #18181b;
+  }
+
+  .blog-rich-editor h3,
+  .blog-content-preview h3 {
+    margin: 1.6rem 0 0.85rem;
+    font-size: 1.5rem;
+    line-height: 1.25;
+    font-weight: 800;
+    color: #18181b;
+  }
+
+  .blog-rich-editor h4,
+  .blog-content-preview h4 {
+    margin: 1.3rem 0 0.75rem;
+    font-size: 1.2rem;
+    line-height: 1.3;
+    font-weight: 800;
+    color: #27272a;
+  }
+
+  .blog-rich-editor ul,
+  .blog-content-preview ul {
+    margin: 0 0 1.25rem 1.25rem;
+    list-style: disc;
+  }
+
+  .blog-rich-editor ol,
+  .blog-content-preview ol {
+    margin: 0 0 1.25rem 1.25rem;
+    list-style: decimal;
+  }
+
+  .blog-rich-editor li,
+  .blog-content-preview li {
+    margin: 0.35rem 0;
+    padding-left: 0.2rem;
+  }
+
+  .blog-rich-editor blockquote,
+  .blog-content-preview blockquote {
+    margin: 1.5rem 0;
+    border-left: 4px solid #10b981;
+    padding: 0.25rem 0 0.25rem 1rem;
+    color: #3f3f46;
+    font-weight: 600;
+  }
+
+  .blog-rich-editor a,
+  .blog-content-preview a {
+    color: #047857;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .blog-rich-editor hr,
+  .blog-content-preview hr {
+    margin: 2rem 0;
+    border: 0;
+    border-top: 1px solid #e4e4e7;
+  }
+
+  .blog-content-image,
+  .blog-content-preview img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin: 1.5rem 0;
+    border-radius: 1rem;
+  }
+
+  .blog-callout {
+    margin: 1.5rem 0;
+    border: 1px solid #e4e4e7;
+    border-left-width: 5px;
+    border-radius: 1rem;
+    padding: 1rem 1.1rem;
+    background: #fafafa;
+  }
+
+  .blog-callout strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #18181b;
+  }
+
+  .blog-callout-info {
+    border-left-color: #0ea5e9;
+    background: #f0f9ff;
+  }
+
+  .blog-callout-tip {
+    border-left-color: #10b981;
+    background: #ecfdf5;
+  }
+
+  .blog-callout-warning {
+    border-left-color: #f59e0b;
+    background: #fffbeb;
+  }
+
+  .blog-callout-quote {
+    border-left-color: #71717a;
+    background: #f4f4f5;
+  }
+
+  .blog-attachment-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 1.25rem 0;
+    border: 1px solid #d4d4d8;
+    border-radius: 1rem;
+    padding: 1rem;
+    background: #fafafa;
+    color: #18181b;
+    text-decoration: none;
+  }
+
+  .blog-attachment-card span {
+    color: #71717a;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
   .tech-marquee-track {
     display: flex;
     min-width: max-content;
