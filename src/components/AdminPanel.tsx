@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send, FileText, Save, UploadCloud, Archive, Star } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiUrl } from '../utils/apiUrl';
+import { PasswordInput } from './ui/PasswordInput';
 
 interface FormResponse {
   id: number;
@@ -45,6 +47,73 @@ interface User {
   createdAt: string;
 }
 
+interface CurrentUser {
+  id: number;
+  email: string;
+  role: string;
+}
+
+interface CmsBlogPost {
+  id: number;
+  slug: string;
+  title: string;
+  description: string;
+  excerpt: string;
+  category: string;
+  tags: string[];
+  date: string | null;
+  author: string;
+  readTime: string;
+  image: string | null;
+  content: string;
+  featured: boolean;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  status: string;
+  createdById: number;
+  updatedAt: string;
+}
+
+type BlogFormState = {
+  id?: number;
+  title: string;
+  slug: string;
+  description: string;
+  excerpt: string;
+  category: string;
+  tags: string;
+  author: string;
+  readTime: string;
+  image: string;
+  content: string;
+  seoTitle: string;
+  seoDescription: string;
+  featured: boolean;
+  status: string;
+};
+
+const emptyBlogForm: BlogFormState = {
+  title: '',
+  slug: '',
+  description: '',
+  excerpt: '',
+  category: 'Digital Operations',
+  tags: '',
+  author: 'Primewayz UK Team',
+  readTime: '5 min read',
+  image: '',
+  content: '',
+  seoTitle: '',
+  seoDescription: '',
+  featured: false,
+  status: 'draft',
+};
+
+const isSuperAdmin = (role?: string) => role === 'super_admin' || role === 'admin';
+const isBlogEditor = (role?: string) => isSuperAdmin(role) || role === 'blog_editor' || role === 'editor';
+const isBlogAuthor = (role?: string) => isBlogEditor(role) || role === 'blog_author';
+const isOperationsRole = (role?: string) => isSuperAdmin(role) || role === 'editor' || role === 'viewer';
+
 interface BlogPostComment {
   id: number;
   postId: string;
@@ -55,7 +124,7 @@ interface BlogPostComment {
 
 export const AdminPanel = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [user, setUser] = useState<{ email: string; role: string } | null>(null);
+  const [user, setUser] = useState<CurrentUser | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -63,7 +132,10 @@ export const AdminPanel = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [blogComments, setBlogComments] = useState<BlogPostComment[]>([]);
+  const [cmsBlogPosts, setCmsBlogPosts] = useState<CmsBlogPost[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [blogForm, setBlogForm] = useState<BlogFormState>(emptyBlogForm);
+  const [blogError, setBlogError] = useState('');
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -77,7 +149,7 @@ export const AdminPanel = () => {
       setIsAuthenticated(data.authenticated);
       if (data.authenticated) {
         setUser(data.user);
-        fetchData();
+        fetchData(false, data.user);
       }
     } catch (error) {
       setIsAuthenticated(false);
@@ -93,20 +165,28 @@ export const AdminPanel = () => {
       const interval = setInterval(() => fetchData(true), 10000); // Poll every 10s
       return () => clearInterval(interval);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
-  const fetchData = async (silent = false) => {
+  const fetchData = async (silent = false, currentUser = user) => {
     if (!silent) setLoading(true);
     try {
-      const endpoints = [
-        fetch(apiUrl('/api/admin/forms')),
-        fetch(apiUrl('/api/admin/chats')),
-        fetch(apiUrl('/api/admin/sessions')),
-        fetch(apiUrl('/api/admin/blog-comments'))
-      ];
+      const endpoints = [];
 
-      // Only fetch users if admin
-      if (user?.role === 'admin') {
+      if (isOperationsRole(currentUser?.role)) {
+        endpoints.push(
+          fetch(apiUrl('/api/admin/forms')),
+          fetch(apiUrl('/api/admin/chats')),
+          fetch(apiUrl('/api/admin/sessions')),
+          fetch(apiUrl('/api/admin/blog-comments')),
+        );
+      }
+
+      if (isBlogAuthor(currentUser?.role)) {
+        endpoints.push(fetch(apiUrl('/api/admin/blog-posts')));
+      }
+
+      // Only fetch users if Super Admin
+      if (isSuperAdmin(currentUser?.role)) {
         endpoints.push(fetch(apiUrl('/api/admin/users')));
       }
 
@@ -119,11 +199,24 @@ export const AdminPanel = () => {
         return;
       }
       
-      if (results[0].ok) setFormResponses(await results[0].json());
-      if (results[1].ok) setChatMessages(await results[1].json());
-      if (results[2].ok) setChatSessions(await results[2].json());
-      if (results[3].ok) setBlogComments(await results[3].json());
-      if (results[4]?.ok) setUsers(await results[4].json());
+      let resultIndex = 0;
+      if (isOperationsRole(currentUser?.role)) {
+        if (results[resultIndex]?.ok) setFormResponses(await results[resultIndex].json());
+        resultIndex += 1;
+        if (results[resultIndex]?.ok) setChatMessages(await results[resultIndex].json());
+        resultIndex += 1;
+        if (results[resultIndex]?.ok) setChatSessions(await results[resultIndex].json());
+        resultIndex += 1;
+        if (results[resultIndex]?.ok) setBlogComments(await results[resultIndex].json());
+        resultIndex += 1;
+      }
+      if (isBlogAuthor(currentUser?.role)) {
+        if (results[resultIndex]?.ok) setCmsBlogPosts(await results[resultIndex].json());
+        resultIndex += 1;
+      }
+      if (isSuperAdmin(currentUser?.role)) {
+        if (results[resultIndex]?.ok) setUsers(await results[resultIndex].json());
+      }
     } catch (error) {
       console.error('Failed to fetch admin data:', error);
     } finally {
@@ -144,7 +237,7 @@ export const AdminPanel = () => {
       if (data.success) {
         setIsAuthenticated(true);
         setUser(data.user);
-        fetchData();
+        fetchData(false, data.user);
       } else {
         setLoginError(data.error || 'Invalid credentials');
       }
@@ -161,6 +254,7 @@ export const AdminPanel = () => {
       setFormResponses([]);
       setChatMessages([]);
       setBlogComments([]);
+      setCmsBlogPosts([]);
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -240,6 +334,81 @@ export const AdminPanel = () => {
       }
     } catch (error) {
       console.error('Create user failed:', error);
+    }
+  };
+
+  const resetBlogForm = () => {
+    setBlogForm(emptyBlogForm);
+    setBlogError('');
+  };
+
+  const editBlogPost = (post: CmsBlogPost) => {
+    setBlogForm({
+      id: post.id,
+      title: post.title,
+      slug: post.slug,
+      description: post.description,
+      excerpt: post.excerpt,
+      category: post.category,
+      tags: Array.isArray(post.tags) ? post.tags.join(', ') : '',
+      author: post.author,
+      readTime: post.readTime,
+      image: post.image || '',
+      content: post.content,
+      seoTitle: post.seoTitle || '',
+      seoDescription: post.seoDescription || '',
+      featured: post.featured,
+      status: post.status,
+    });
+    setBlogError('');
+  };
+
+  const saveBlogPost = async (statusOverride?: string) => {
+    setBlogError('');
+    const payload = {
+      ...blogForm,
+      status: statusOverride || blogForm.status,
+      tags: blogForm.tags,
+    };
+
+    try {
+      const res = await fetch(apiUrl(blogForm.id ? `/api/admin/blog-posts/${blogForm.id}` : '/api/admin/blog-posts'), {
+        method: blogForm.id ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setBlogError(data.error || 'Failed to save blog post');
+        return;
+      }
+      resetBlogForm();
+      fetchData();
+    } catch (error) {
+      setBlogError('Failed to save blog post');
+    }
+  };
+
+  const archiveBlogPost = async (id: number) => {
+    if (!confirm('Archive this blog post?')) return;
+    try {
+      const res = await fetch(apiUrl(`/api/admin/blog-posts/${id}`), { method: 'DELETE' });
+      if (res.ok) fetchData();
+    } catch (error) {
+      console.error('Archive blog post failed:', error);
+    }
+  };
+
+  const updateBlogStatus = async (id: number, status: string) => {
+    try {
+      const res = await fetch(apiUrl(`/api/admin/blog-posts/${id}`), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) fetchData();
+    } catch (error) {
+      console.error('Update blog status failed:', error);
     }
   };
 
@@ -325,15 +494,21 @@ export const AdminPanel = () => {
             <div>
               <label className="block text-sm font-semibold text-zinc-700 mb-1">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                <input 
-                  type="password"
+                <PasswordInput
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
+                  className="w-full pl-10 pr-12 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
+                  leftIcon={<Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />}
+                  toggleLabel="admin password"
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   required
                 />
+              </div>
+              <div className="mt-2 text-right">
+                <Link to="/admin/forgot-password" className="text-sm font-semibold text-emerald-700 hover:text-emerald-800">
+                  Forgot password?
+                </Link>
               </div>
             </div>
 
@@ -353,6 +528,9 @@ export const AdminPanel = () => {
     );
   }
 
+  const canViewOperations = isOperationsRole(user?.role);
+  const defaultTab = canViewOperations ? 'forms' : 'blog';
+
   return (
     <div className="min-h-screen bg-zinc-50 pt-20 pb-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -362,8 +540,8 @@ export const AdminPanel = () => {
               <h1 className="text-3xl font-bold text-zinc-900">Admin Dashboard</h1>
               {user && (
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  user.role === 'admin' ? 'bg-red-100 text-red-600' : 
-                  user.role === 'editor' ? 'bg-blue-100 text-blue-600' : 
+                  isSuperAdmin(user.role) ? 'bg-red-100 text-red-600' : 
+                  isBlogEditor(user.role) ? 'bg-blue-100 text-blue-600' : 
                   'bg-zinc-100 text-zinc-600'
                 }`}>
                   {user.role}
@@ -403,49 +581,67 @@ export const AdminPanel = () => {
           </div>
         </div>
 
-        <Tabs.Root defaultValue="forms" className="space-y-6">
-          <Tabs.List className="flex gap-2 p-1 bg-zinc-200/50 rounded-2xl w-fit">
-            <Tabs.Trigger 
-              value="forms"
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
-            >
-              <ClipboardList className="w-4 h-4" />
-              Form Responses
-              <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
-                {filteredForms.length}
-              </span>
-            </Tabs.Trigger>
-            <Tabs.Trigger 
-              value="leads"
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
-            >
-              <Users className="w-4 h-4" />
-              Chat Leads
-              <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
-                {filteredLeads.length}
-              </span>
-            </Tabs.Trigger>
-            <Tabs.Trigger 
-              value="chats"
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
-            >
-              <MessageSquare className="w-4 h-4" />
-              Chat History
-              <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
-                {filteredChats.length}
-              </span>
-            </Tabs.Trigger>
-            <Tabs.Trigger 
-              value="comments"
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
-            >
-              <MessageSquare className="w-4 h-4" />
-              Blog Comments
-              <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
-                {blogComments.length}
-              </span>
-            </Tabs.Trigger>
-            {user?.role === 'admin' && (
+        <Tabs.Root defaultValue={defaultTab} className="space-y-6">
+          <Tabs.List className="flex flex-wrap gap-2 p-1 bg-zinc-200/50 rounded-2xl w-fit">
+            {canViewOperations && (
+              <>
+                <Tabs.Trigger 
+                  value="forms"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  Form Responses
+                  <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
+                    {filteredForms.length}
+                  </span>
+                </Tabs.Trigger>
+                <Tabs.Trigger 
+                  value="leads"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
+                >
+                  <Users className="w-4 h-4" />
+                  Chat Leads
+                  <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
+                    {filteredLeads.length}
+                  </span>
+                </Tabs.Trigger>
+                <Tabs.Trigger 
+                  value="chats"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Chat History
+                  <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
+                    {filteredChats.length}
+                  </span>
+                </Tabs.Trigger>
+              </>
+            )}
+            {isBlogAuthor(user?.role) && (
+              <Tabs.Trigger 
+                value="blog"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
+              >
+                <FileText className="w-4 h-4" />
+                Blog CMS
+                <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
+                  {cmsBlogPosts.length}
+                </span>
+              </Tabs.Trigger>
+            )}
+            {canViewOperations && (
+              <Tabs.Trigger 
+                value="comments"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Blog Comments
+                <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
+                  {blogComments.length}
+                </span>
+              </Tabs.Trigger>
+            )}
+            {isSuperAdmin(user?.role) && (
               <Tabs.Trigger 
                 value="users"
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
@@ -459,6 +655,8 @@ export const AdminPanel = () => {
             )}
           </Tabs.List>
 
+          {canViewOperations && (
+            <>
           <Tabs.Content value="forms" className="outline-none">
             <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
@@ -491,7 +689,7 @@ export const AdminPanel = () => {
                           <td className="px-6 py-4 text-sm text-zinc-600 font-mono whitespace-nowrap">{res.phone || '-'}</td>
                           <td className="px-6 py-4 text-sm text-zinc-500 max-w-xs truncate">{res.message}</td>
                           <td className="px-6 py-4 text-right">
-                            {(user?.role === 'admin' || user?.role === 'editor') && (
+                            {(isSuperAdmin(user?.role) || user?.role === 'editor') && (
                               <button 
                                 onClick={() => deleteFormResponse(res.id)}
                                 className="p-2 text-zinc-400 hover:text-red-600 transition-colors"
@@ -726,6 +924,245 @@ export const AdminPanel = () => {
             </div>
           </Tabs.Content>
 
+            </>
+          )}
+
+          {isBlogAuthor(user?.role) && (
+            <Tabs.Content value="blog" className="outline-none space-y-8">
+              <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-8">
+                <div className="bg-white rounded-3xl border border-zinc-200 shadow-sm p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-6 h-6 text-emerald-600" />
+                      <h3 className="text-xl font-bold text-zinc-900">{blogForm.id ? 'Edit Blog Post' : 'Create Blog Draft'}</h3>
+                    </div>
+                    {blogForm.id && (
+                      <button onClick={resetBlogForm} className="text-xs font-bold text-zinc-500 hover:text-zinc-900">
+                        New Draft
+                      </button>
+                    )}
+                  </div>
+
+                  {blogError && <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">{blogError}</p>}
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">Title</label>
+                      <input
+                        value={blogForm.title}
+                        onChange={(e) => setBlogForm(prev => ({ ...prev, title: e.target.value }))}
+                        className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                        placeholder="Article title"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">Slug</label>
+                        <input
+                          value={blogForm.slug}
+                          onChange={(e) => setBlogForm(prev => ({ ...prev, slug: e.target.value }))}
+                          className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                          placeholder="auto-created from title"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">Category</label>
+                        <input
+                          value={blogForm.category}
+                          onChange={(e) => setBlogForm(prev => ({ ...prev, category: e.target.value }))}
+                          className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">Description</label>
+                      <textarea
+                        value={blogForm.description}
+                        onChange={(e) => setBlogForm(prev => ({ ...prev, description: e.target.value }))}
+                        className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none resize-none"
+                        rows={2}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">Excerpt</label>
+                      <textarea
+                        value={blogForm.excerpt}
+                        onChange={(e) => setBlogForm(prev => ({ ...prev, excerpt: e.target.value }))}
+                        className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none resize-none"
+                        rows={2}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">Tags</label>
+                        <input
+                          value={blogForm.tags}
+                          onChange={(e) => setBlogForm(prev => ({ ...prev, tags: e.target.value }))}
+                          className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                          placeholder="SEO, CRM, Automation"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">Read Time</label>
+                        <input
+                          value={blogForm.readTime}
+                          onChange={(e) => setBlogForm(prev => ({ ...prev, readTime: e.target.value }))}
+                          className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">Author</label>
+                        <input
+                          value={blogForm.author}
+                          onChange={(e) => setBlogForm(prev => ({ ...prev, author: e.target.value }))}
+                          className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">Image URL</label>
+                        <input
+                          value={blogForm.image}
+                          onChange={(e) => setBlogForm(prev => ({ ...prev, image: e.target.value }))}
+                          className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">Content HTML</label>
+                      <textarea
+                        value={blogForm.content}
+                        onChange={(e) => setBlogForm(prev => ({ ...prev, content: e.target.value }))}
+                        className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 font-mono text-sm focus:ring-2 focus:ring-emerald-500/20 outline-none resize-y"
+                        rows={10}
+                        placeholder="<p>Write the article content...</p>"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">SEO Title</label>
+                        <input
+                          value={blogForm.seoTitle}
+                          onChange={(e) => setBlogForm(prev => ({ ...prev, seoTitle: e.target.value }))}
+                          className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-zinc-400 mb-1">SEO Description</label>
+                        <input
+                          value={blogForm.seoDescription}
+                          onChange={(e) => setBlogForm(prev => ({ ...prev, seoDescription: e.target.value }))}
+                          className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                        />
+                      </div>
+                    </div>
+                    {isSuperAdmin(user?.role) && (
+                      <label className="flex items-center gap-2 text-sm font-bold text-zinc-700">
+                        <input
+                          type="checkbox"
+                          checked={blogForm.featured}
+                          onChange={(e) => setBlogForm(prev => ({ ...prev, featured: e.target.checked }))}
+                          className="h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        Featured article
+                      </label>
+                    )}
+                    <div className="flex flex-wrap gap-3 pt-2">
+                      <button onClick={() => saveBlogPost('draft')} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-zinc-900 text-white text-sm font-bold hover:bg-zinc-800">
+                        <Save className="w-4 h-4" />
+                        Save Draft
+                      </button>
+                      <button onClick={() => saveBlogPost('submitted')} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700">
+                        <UploadCloud className="w-4 h-4" />
+                        Submit for Review
+                      </button>
+                      {isBlogEditor(user?.role) && (
+                        <>
+                          <button onClick={() => saveBlogPost('published')} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700">
+                            <Star className="w-4 h-4" />
+                            Publish
+                          </button>
+                          <button onClick={() => saveBlogPost('unpublished')} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-zinc-100 text-zinc-700 text-sm font-bold hover:bg-zinc-200">
+                            Unpublish
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden">
+                  <div className="px-6 py-5 border-b border-zinc-100">
+                    <h3 className="text-xl font-bold text-zinc-900">Blog Workflow</h3>
+                    <p className="text-sm text-zinc-500">Authors see their own posts. Editors and Super Admins can review the queue.</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-zinc-50 border-bottom border-zinc-100">
+                          <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Post</th>
+                          <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Status</th>
+                          <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Featured</th>
+                          <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Updated</th>
+                          <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-50">
+                        {cmsBlogPosts.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-12 text-center text-zinc-400 italic">No CMS blog posts yet.</td>
+                          </tr>
+                        ) : (
+                          cmsBlogPosts.map((post) => (
+                            <tr key={post.id} className="hover:bg-zinc-50/50 transition-colors">
+                              <td className="px-6 py-4">
+                                <div className="max-w-sm">
+                                  <p className="font-bold text-zinc-900 line-clamp-1">{post.title}</p>
+                                  <p className="text-xs text-zinc-400 font-mono">/blog/{post.slug}</p>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                                  post.status === 'published' ? 'bg-emerald-100 text-emerald-700' :
+                                  post.status === 'submitted' ? 'bg-blue-100 text-blue-700' :
+                                  post.status === 'archived' ? 'bg-zinc-200 text-zinc-600' :
+                                  'bg-amber-100 text-amber-700'
+                                }`}>
+                                  {post.status}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-zinc-500">{post.featured ? 'Yes' : 'No'}</td>
+                              <td className="px-6 py-4 text-sm text-zinc-500">{format(new Date(post.updatedAt), 'MMM d, yyyy')}</td>
+                              <td className="px-6 py-4 text-right">
+                                <div className="flex justify-end gap-2">
+                                  <button onClick={() => editBlogPost(post)} className="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100">
+                                    Edit
+                                  </button>
+                                  {isBlogEditor(user?.role) && post.status !== 'published' && (
+                                    <button onClick={() => updateBlogStatus(post.id, 'published')} className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100">
+                                      Publish
+                                    </button>
+                                  )}
+                                  {isSuperAdmin(user?.role) && (
+                                    <button onClick={() => archiveBlogPost(post.id)} className="p-2 text-zinc-400 hover:text-red-600 transition-colors" title="Archive">
+                                      <Archive className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </Tabs.Content>
+          )}
+
+          {canViewOperations && (
           <Tabs.Content value="comments" className="outline-none">
             <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
@@ -756,7 +1193,7 @@ export const AdminPanel = () => {
                           <td className="px-6 py-4 text-sm font-bold text-zinc-900">{comment.name}</td>
                           <td className="px-6 py-4 text-sm text-zinc-500 max-w-xs truncate">{comment.text}</td>
                           <td className="px-6 py-4 text-right">
-                            {(user?.role === 'admin' || user?.role === 'editor') && (
+                            {isBlogEditor(user?.role) && (
                               <button 
                                 onClick={() => deleteBlogComment(comment.id)}
                                 className="p-2 text-zinc-400 hover:text-red-600 transition-colors"
@@ -773,8 +1210,9 @@ export const AdminPanel = () => {
               </div>
             </div>
           </Tabs.Content>
+          )}
 
-          {user?.role === 'admin' && (
+          {isSuperAdmin(user?.role) && (
             <Tabs.Content value="users" className="outline-none space-y-8">
               {/* Create User Form */}
               <div className="bg-white p-8 rounded-3xl border border-zinc-200 shadow-sm max-w-2xl">
@@ -796,11 +1234,12 @@ export const AdminPanel = () => {
                   </div>
                   <div className="col-span-full md:col-span-1">
                     <label className="block text-sm font-semibold text-zinc-700 mb-1">Password</label>
-                    <input 
-                      type="password"
+                    <PasswordInput
                       value={newUserPassword}
                       onChange={(e) => setNewUserPassword(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      className="w-full px-4 pr-12 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      toggleLabel="new user password"
+                      autoComplete="new-password"
                       placeholder="••••••••"
                       required
                     />
@@ -812,8 +1251,11 @@ export const AdminPanel = () => {
                       onChange={(e) => setNewUserRole(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none bg-white"
                     >
-                      <option value="admin">Admin</option>
-                      <option value="editor">Editor</option>
+                      <option value="super_admin">Super Admin</option>
+                      <option value="blog_editor">Blog Editor</option>
+                      <option value="blog_author">Blog Author</option>
+                      <option value="admin">Legacy Admin</option>
+                      <option value="editor">Legacy Editor</option>
                       <option value="viewer">Viewer</option>
                     </select>
                   </div>
@@ -858,8 +1300,11 @@ export const AdminPanel = () => {
                               disabled={u.email === user.email}
                               className="text-sm border-none bg-transparent focus:ring-0 font-medium text-zinc-600 cursor-pointer disabled:cursor-not-allowed"
                             >
-                              <option value="admin">Admin</option>
-                              <option value="editor">Editor</option>
+                              <option value="super_admin">Super Admin</option>
+                              <option value="blog_editor">Blog Editor</option>
+                              <option value="blog_author">Blog Author</option>
+                              <option value="admin">Legacy Admin</option>
+                              <option value="editor">Legacy Editor</option>
                               <option value="viewer">Viewer</option>
                             </select>
                           </td>

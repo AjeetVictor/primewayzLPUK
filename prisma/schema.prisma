@@ -40,11 +40,40 @@ model ChatMessage {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  role      String   @default("viewer") // 'admin', 'editor', 'viewer'
-  createdAt DateTime @default(now())
+  id                     Int      @id @default(autoincrement())
+  email                  String   @unique
+  password               String
+  role                   String   @default("viewer") // 'super_admin', 'blog_editor', 'blog_author', 'admin', 'editor', 'viewer'
+  resetPasswordTokenHash String?
+  resetPasswordExpiresAt DateTime?
+  createdAt              DateTime @default(now())
+}
+
+model CmsBlogPost {
+  id             Int       @id @default(autoincrement())
+  slug           String    @unique
+  title          String
+  description    String    @db.Text
+  excerpt        String    @db.Text
+  category       String
+  tags           Json
+  date           DateTime?
+  updatedDate    DateTime?
+  author         String
+  readTime       String
+  image          String?
+  content        String    @db.LongText
+  featured       Boolean   @default(false)
+  seoTitle       String?
+  seoDescription String?   @db.Text
+  status         String    @default("draft") // draft, submitted, published, unpublished, archived
+  createdById    Int
+  updatedById    Int?
+  reviewedById   Int?
+  publishedAt    DateTime?
+  archivedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model BlogPostComment {

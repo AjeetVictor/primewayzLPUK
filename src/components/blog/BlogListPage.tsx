@@ -1,13 +1,31 @@
+import { useEffect, useState } from 'react';
 import { BlogCard } from './BlogCard';
 import { BlogCTA } from './BlogCTA';
 import { BlogLayout } from './BlogLayout';
 import { getAllBlogPosts, getFeaturedBlogPost } from '../../data/blog/utils';
+import type { BlogPost } from '../../data/blog/types';
+import { apiUrl } from '../../utils/apiUrl';
 
 export const BlogListPage = () => {
-  const posts = getAllBlogPosts();
-  const featuredPost = getFeaturedBlogPost();
+  const [posts, setPosts] = useState<BlogPost[]>(getAllBlogPosts());
+  const featuredPost = posts.find((post) => post.featured) || getFeaturedBlogPost();
   const remainingPosts = posts.filter((post) => post.id !== featuredPost.id);
   const categories = Array.from(new Set(posts.map((post) => post.category)));
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const res = await fetch(apiUrl('/api/blog/posts'));
+        if (res.ok) {
+          setPosts(await res.json());
+        }
+      } catch {
+        setPosts(getAllBlogPosts());
+      }
+    };
+
+    fetchPosts();
+  }, []);
 
   return (
     <BlogLayout
@@ -48,4 +66,3 @@ export const BlogListPage = () => {
     </BlogLayout>
   );
 };
-

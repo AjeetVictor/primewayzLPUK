@@ -3,6 +3,7 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import fs from 'fs/promises';
+import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
@@ -10,9 +11,15 @@ import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { getAllBlogPosts, getBlogPostById } from './src/data/blog/utils.ts';
+import type { BlogPost } from './src/data/blog/types.ts';
 import { homepageSeoContent } from './src/content/homepageSeoContent.ts';
 
 const allBlogPosts = getAllBlogPosts();
+const BLOG_STATUSES = ['draft', 'submitted', 'published', 'unpublished', 'archived'] as const;
+const CMS_ROLE_OPTIONS = ['super_admin', 'blog_editor', 'blog_author', 'admin', 'editor', 'viewer'] as const;
+const SUPER_ADMIN_ROLES = ['super_admin', 'admin'];
+const BLOG_EDITOR_ROLES = ['super_admin', 'admin', 'blog_editor', 'editor'];
+const BLOG_AUTHOR_ROLES = ['super_admin', 'admin', 'blog_editor', 'editor', 'blog_author'];
 const SYSTEM_INSTRUCTION = `You are the Primewayz Support Bot.
 Primewayz is an elite software development agency that provides Engineering as a Service.
 Key features:
@@ -100,6 +107,7 @@ const prisma = new PrismaClient({
 });
 (prisma as any).$on('warn', (e: any) => dbLog('prisma warn', { message: e?.message }));
 (prisma as any).$on('error', (e: any) => dbLog('prisma error', { message: e?.message }));
+const cmsBlogPostModel = (prisma as any).cmsBlogPost;
 
 const JWT_SECRET = process.env.JWT_ACCESS_SECRET || 'your-secret-min-32-chars';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
@@ -120,6 +128,167 @@ const CONTACT_NAME_MIN = 2;
 const CONTACT_NAME_MAX = 80;
 const CONTACT_MESSAGE_MIN = 10;
 const CONTACT_MESSAGE_MAX = 2000;
+const PASSWORD_RESET_EXPIRY_MINUTES = Number(process.env.PASSWORD_RESET_EXPIRY_MINUTES || 30);
+const PASSWORD_RESET_SUCCESS_MESSAGE = 'If an admin account exists for this email, reset instructions have been sent.';
+
+function createPasswordResetToken() {
+  const token = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  return { token, tokenHash };
+}
+
+function getPasswordResetExpiresAt() {
+  return new Date(Date.now() + PASSWORD_RESET_EXPIRY_MINUTES * 60 * 1000);
+}
+
+function getResetBaseUrl(req: express.Request) {
+  const configuredUrl = (process.env.PUBLIC_SITE_URL || process.env.SEO_SITE_URL || '').trim();
+  if (configuredUrl) return configuredUrl.replace(/\/+$/, '');
+
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://uk.primewayz.com';
+  }
+
+  const protocol = req.headers['x-forwarded-proto']?.toString().split(',')[0] || req.protocol || 'http';
+  const host = req.get('host') || `localhost:${PORT}`;
+  return `${protocol}://${host}`;
+}
+
+function buildResetUrl(req: express.Request, token: string) {
+  return `${getResetBaseUrl(req)}/admin/reset-password?token=${encodeURIComponent(token)}`;
+}
+
+async function sendAdminPasswordResetEmail(email: string, resetUrl: string) {
+  const smtpHost = process.env.SMTP_HOST?.trim();
+  const smtpFrom = process.env.SMTP_FROM?.trim();
+
+  if (process.env.NODE_ENV !== 'production') {
+    backendLog('admin password reset URL for local testing', { email, resetUrl });
+  }
+
+  if (!smtpHost || !smtpFrom) {
+    if (process.env.NODE_ENV === 'production') {
+      backendLog('admin password reset email skipped because SMTP is not configured', { email });
+    }
+    return;
+  }
+
+  backendLog('admin password reset email transport is not configured; reset request accepted safely', {
+    email,
+    smtpHost,
+  });
+}
+
+function isSuperAdminRole(role?: string): boolean {
+  return Boolean(role && SUPER_ADMIN_ROLES.includes(role));
+}
+
+function isBlogEditorRole(role?: string): boolean {
+  return Boolean(role && BLOG_EDITOR_ROLES.includes(role));
+}
+
+function isBlogAuthorRole(role?: string): boolean {
+  return Boolean(role && BLOG_AUTHOR_ROLES.includes(role));
+}
+
+function normalizeRole(role: unknown): string {
+  const value = typeof role === 'string' ? role.trim() : '';
+  return CMS_ROLE_OPTIONS.includes(value as any) ? value : 'viewer';
+}
+
+function normalizeBlogStatus(status: unknown, fallback = 'draft'): string {
+  const value = typeof status === 'string' ? status.trim().toLowerCase() : '';
+  return BLOG_STATUSES.includes(value as any) ? value : fallback;
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 96);
+}
+
+function normalizeTags(tags: unknown): string[] {
+  if (Array.isArray(tags)) {
+    return tags.map((tag) => String(tag).trim()).filter(Boolean).slice(0, 12);
+  }
+
+  if (typeof tags === 'string') {
+    return tags.split(',').map((tag) => tag.trim()).filter(Boolean).slice(0, 12);
+  }
+
+  return [];
+}
+
+function cmsPostToPublicPost(post: any): BlogPost {
+  const publishedDate = post.date || post.publishedAt || post.createdAt;
+  const updatedDate = post.updatedDate || post.updatedAt;
+
+  return {
+    id: post.slug,
+    slug: post.slug,
+    title: post.title,
+    description: post.description,
+    excerpt: post.excerpt || post.description,
+    category: post.category,
+    tags: normalizeTags(post.tags),
+    date: publishedDate ? new Date(publishedDate).toLocaleDateString('en-GB', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    }) : '',
+    updatedDate: updatedDate ? new Date(updatedDate).toISOString() : undefined,
+    author: post.author,
+    readTime: post.readTime,
+    image: post.image || undefined,
+    content: post.content,
+    featured: Boolean(post.featured),
+    seoTitle: post.seoTitle || undefined,
+    seoDescription: post.seoDescription || undefined,
+  };
+}
+
+async function getPublishedCmsBlogPosts(): Promise<BlogPost[]> {
+  if (!cmsBlogPostModel) return [];
+
+  try {
+    const posts = await cmsBlogPostModel.findMany({
+      where: { status: 'published' },
+      orderBy: [{ featured: 'desc' }, { publishedAt: 'desc' }, { updatedAt: 'desc' }],
+    });
+    return posts.map(cmsPostToPublicPost);
+  } catch (error) {
+    backendLog('cms blog public fetch failed; using static posts only', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return [];
+  }
+}
+
+async function getPublicBlogPosts(): Promise<BlogPost[]> {
+  const cmsPosts = await getPublishedCmsBlogPosts();
+  return [...cmsPosts, ...allBlogPosts];
+}
+
+async function getPublicBlogPostById(id: string): Promise<BlogPost | undefined> {
+  if (cmsBlogPostModel) {
+    try {
+      const cmsPost = await cmsBlogPostModel.findFirst({
+        where: { slug: id, status: 'published' },
+      });
+      if (cmsPost) return cmsPostToPublicPost(cmsPost);
+    } catch (error) {
+      backendLog('cms blog post lookup failed; using static fallback', {
+        slug: id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return getBlogPostById(id);
+}
 
 function normalizeContactPhoneE164(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
@@ -308,7 +477,7 @@ function getCanonicalPath(pathname: string): string {
   return `${APP_BASE_PATH}${pathname}`;
 }
 
-function getSeoPayload(pathname: string, origin: string): SeoPayload {
+async function getSeoPayload(pathname: string, origin: string): Promise<SeoPayload> {
   const canonical = joinUrl(origin, getCanonicalPath(pathname));
   const defaultDescription = 'Primewayz offers elite software development as a service with predictable pricing and high-velocity delivery.';
   const baseOrg = {
@@ -375,7 +544,7 @@ function getSeoPayload(pathname: string, origin: string): SeoPayload {
 
   if (pathname.startsWith('/blog/')) {
     const postId = pathname.replace('/blog/', '').replace(/\/+$/, '');
-    const post = getBlogPostById(postId);
+    const post = await getPublicBlogPostById(postId);
     if (post) {
       return {
         title: post.seoTitle || post.title,
@@ -492,7 +661,7 @@ async function seedAdmin() {
       data: {
         email: ADMIN_EMAIL,
         password: hashedPassword,
-        role: 'admin'
+        role: 'super_admin'
       }
     });
     backendLog('default admin user seeded');
@@ -563,7 +732,7 @@ async function startServer() {
 
         return res.json({
           success: true,
-          user: { email: user.email, role: user.role }
+          user: { id: user.id, email: user.email, role: user.role }
         });
       }
     } catch (error) {
@@ -571,6 +740,77 @@ async function startServer() {
     }
 
     res.status(401).json({ error: 'Invalid credentials' });
+  });
+
+  app.post('/api/admin/forgot-password', async (req, res) => {
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+
+    try {
+      if (email) {
+        const user = await prisma.user.findUnique({ where: { email } });
+
+        if (user) {
+          const { token, tokenHash } = createPasswordResetToken();
+          const resetPasswordExpiresAt = getPasswordResetExpiresAt();
+
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              resetPasswordTokenHash: tokenHash,
+              resetPasswordExpiresAt,
+            },
+          });
+
+          await sendAdminPasswordResetEmail(user.email, buildResetUrl(req, token));
+        }
+      }
+    } catch (error) {
+      backendLog('admin password reset request failed internally', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    res.json({ success: true, message: PASSWORD_RESET_SUCCESS_MESSAGE });
+  });
+
+  app.post('/api/admin/reset-password', async (req, res) => {
+    const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+
+    if (!token || password.length < 8) {
+      return res.status(400).json({ error: 'This reset link is invalid or expired. Please request a new one.' });
+    }
+
+    try {
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+      const user = await prisma.user.findFirst({
+        where: {
+          resetPasswordTokenHash: tokenHash,
+          resetPasswordExpiresAt: { gt: new Date() },
+        },
+      });
+
+      if (!user) {
+        return res.status(400).json({ error: 'This reset link is invalid or expired. Please request a new one.' });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          password: hashedPassword,
+          resetPasswordTokenHash: null,
+          resetPasswordExpiresAt: null,
+        },
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      backendLog('admin password reset failed internally', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      res.status(500).json({ error: 'We could not reset your password. Please try again.' });
+    }
   });
 
   app.post('/api/admin/logout', (req, res) => {
@@ -586,7 +826,7 @@ async function startServer() {
       const decoded: any = jwt.verify(token, JWT_SECRET);
       res.json({
         authenticated: true,
-        user: { email: decoded.email, role: decoded.role }
+        user: { id: decoded.id, email: decoded.email, role: decoded.role }
       });
     } catch (error) {
       res.json({ authenticated: false });
@@ -774,13 +1014,14 @@ async function startServer() {
     }
   });
 
-  app.get('/api/blog/posts', (req, res) => {
-    res.json(allBlogPosts);
+  app.get('/api/blog/posts', async (req, res) => {
+    const posts = await getPublicBlogPosts();
+    res.json(posts);
   });
 
-  app.get('/api/blog/posts/:id', (req, res) => {
+  app.get('/api/blog/posts/:id', async (req, res) => {
     const { id } = req.params;
-    const post = getBlogPostById(id);
+    const post = await getPublicBlogPostById(id);
     if (post) {
       res.json(post);
     } else {
@@ -798,6 +1039,186 @@ async function startServer() {
       res.status(201).json(comment);
     } catch (error) {
       res.status(500).json({ error: 'Failed to post comment' });
+    }
+  });
+
+  app.get('/api/admin/blog-posts', authorize(BLOG_AUTHOR_ROLES), async (req: any, res: any) => {
+    if (!cmsBlogPostModel) return res.status(503).json({ error: 'Blog CMS is not available. Run Prisma generate after applying the schema.' });
+
+    try {
+      const where = isBlogEditorRole(req.user?.role)
+        ? {}
+        : { createdById: Number(req.user.id) };
+      const posts = await cmsBlogPostModel.findMany({
+        where,
+        orderBy: [{ updatedAt: 'desc' }],
+      });
+      res.json(posts);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch blog posts' });
+    }
+  });
+
+  app.post('/api/admin/blog-posts', authorize(BLOG_AUTHOR_ROLES), async (req: any, res: any) => {
+    if (!cmsBlogPostModel) return res.status(503).json({ error: 'Blog CMS is not available. Run Prisma generate after applying the schema.' });
+
+    const title = String(req.body?.title || '').trim();
+    const content = String(req.body?.content || '').trim();
+    const description = String(req.body?.description || req.body?.excerpt || '').trim();
+    if (!title || !content || !description) {
+      return res.status(400).json({ error: 'Title, description, and content are required.' });
+    }
+
+    const requestedStatus = normalizeBlogStatus(req.body?.status, 'draft');
+    const canPublish = isBlogEditorRole(req.user?.role);
+    const status = canPublish
+      ? requestedStatus
+      : requestedStatus === 'submitted' ? 'submitted' : 'draft';
+    const baseSlug = slugify(String(req.body?.slug || title)) || `post-${Date.now()}`;
+
+    try {
+      let slug = baseSlug;
+      for (let attempt = 1; attempt < 20; attempt += 1) {
+        const existing = await cmsBlogPostModel.findUnique({ where: { slug } });
+        if (!existing) break;
+        slug = `${baseSlug}-${attempt + 1}`;
+      }
+
+      const now = new Date();
+      const post = await cmsBlogPostModel.create({
+        data: {
+          slug,
+          title,
+          description,
+          excerpt: String(req.body?.excerpt || description).trim(),
+          category: String(req.body?.category || 'Digital Operations').trim(),
+          tags: normalizeTags(req.body?.tags),
+          date: req.body?.date ? new Date(req.body.date) : status === 'published' ? now : null,
+          updatedDate: req.body?.updatedDate ? new Date(req.body.updatedDate) : null,
+          author: String(req.body?.author || req.user.email || 'Primewayz UK Team').trim(),
+          readTime: String(req.body?.readTime || '5 min read').trim(),
+          image: String(req.body?.image || '').trim() || null,
+          content,
+          featured: isSuperAdminRole(req.user?.role) ? Boolean(req.body?.featured) : false,
+          seoTitle: String(req.body?.seoTitle || '').trim() || null,
+          seoDescription: String(req.body?.seoDescription || '').trim() || null,
+          status,
+          createdById: Number(req.user.id),
+          updatedById: Number(req.user.id),
+          reviewedById: canPublish && ['published', 'unpublished', 'archived'].includes(status) ? Number(req.user.id) : null,
+          publishedAt: status === 'published' ? now : null,
+          archivedAt: status === 'archived' ? now : null,
+        },
+      });
+      res.status(201).json(post);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to create blog post' });
+    }
+  });
+
+  app.patch('/api/admin/blog-posts/:id', authorize(BLOG_AUTHOR_ROLES), async (req: any, res: any) => {
+    if (!cmsBlogPostModel) return res.status(503).json({ error: 'Blog CMS is not available. Run Prisma generate after applying the schema.' });
+
+    const postId = Number(req.params.id);
+    if (!Number.isFinite(postId)) return res.status(400).json({ error: 'Invalid blog post id.' });
+
+    try {
+      const existing = await cmsBlogPostModel.findUnique({ where: { id: postId } });
+      if (!existing) return res.status(404).json({ error: 'Blog post not found.' });
+
+      const isOwner = existing.createdById === Number(req.user.id);
+      const canEditAny = isBlogEditorRole(req.user?.role);
+      const canManageAny = isSuperAdminRole(req.user?.role);
+      if (!canEditAny && !isOwner) {
+        return res.status(403).json({ error: 'You can only manage your own blog drafts.' });
+      }
+
+      const requestedStatus = req.body?.status !== undefined
+        ? normalizeBlogStatus(req.body.status, existing.status)
+        : existing.status;
+      if (!canEditAny && !['draft', 'submitted'].includes(requestedStatus)) {
+        return res.status(403).json({ error: 'Blog authors can only save drafts or submit for review.' });
+      }
+      if (!canEditAny && !['draft', 'unpublished'].includes(existing.status)) {
+        return res.status(403).json({ error: 'Submitted or published posts require editor review.' });
+      }
+      if (requestedStatus === 'archived' && !canManageAny) {
+        return res.status(403).json({ error: 'Only Super Admin can archive blog posts.' });
+      }
+
+      const nextSlug = req.body?.slug !== undefined
+        ? slugify(String(req.body.slug)) || existing.slug
+        : existing.slug;
+      const now = new Date();
+      const data: Record<string, unknown> = {
+        slug: nextSlug,
+        title: req.body?.title !== undefined ? String(req.body.title).trim() : existing.title,
+        description: req.body?.description !== undefined ? String(req.body.description).trim() : existing.description,
+        excerpt: req.body?.excerpt !== undefined ? String(req.body.excerpt).trim() : existing.excerpt,
+        category: req.body?.category !== undefined ? String(req.body.category).trim() : existing.category,
+        tags: req.body?.tags !== undefined ? normalizeTags(req.body.tags) : existing.tags,
+        date: req.body?.date !== undefined ? (req.body.date ? new Date(req.body.date) : null) : existing.date,
+        updatedDate: req.body?.updatedDate !== undefined ? (req.body.updatedDate ? new Date(req.body.updatedDate) : null) : existing.updatedDate,
+        author: req.body?.author !== undefined ? String(req.body.author).trim() : existing.author,
+        readTime: req.body?.readTime !== undefined ? String(req.body.readTime).trim() : existing.readTime,
+        image: req.body?.image !== undefined ? (String(req.body.image).trim() || null) : existing.image,
+        content: req.body?.content !== undefined ? String(req.body.content).trim() : existing.content,
+        seoTitle: req.body?.seoTitle !== undefined ? (String(req.body.seoTitle).trim() || null) : existing.seoTitle,
+        seoDescription: req.body?.seoDescription !== undefined ? (String(req.body.seoDescription).trim() || null) : existing.seoDescription,
+        status: requestedStatus,
+        updatedById: Number(req.user.id),
+      };
+
+      if (req.body?.featured !== undefined) {
+        if (!canManageAny) return res.status(403).json({ error: 'Only Super Admin can control featured articles.' });
+        data.featured = Boolean(req.body.featured);
+      }
+
+      if (requestedStatus === 'published' && existing.status !== 'published') {
+        data.publishedAt = now;
+        data.date = data.date || now;
+        data.reviewedById = Number(req.user.id);
+      }
+      if (['published', 'unpublished', 'archived'].includes(requestedStatus) && canEditAny) {
+        data.reviewedById = Number(req.user.id);
+      }
+      if (requestedStatus === 'archived' && existing.status !== 'archived') {
+        data.archivedAt = now;
+      }
+
+      const updated = await cmsBlogPostModel.update({
+        where: { id: postId },
+        data,
+      });
+      res.json(updated);
+    } catch (error: any) {
+      if (error?.code === 'P2002') {
+        return res.status(409).json({ error: 'A blog post with that slug already exists.' });
+      }
+      res.status(500).json({ error: 'Failed to update blog post' });
+    }
+  });
+
+  app.delete('/api/admin/blog-posts/:id', authorize(SUPER_ADMIN_ROLES), async (req: any, res: any) => {
+    if (!cmsBlogPostModel) return res.status(503).json({ error: 'Blog CMS is not available. Run Prisma generate after applying the schema.' });
+
+    const postId = Number(req.params.id);
+    if (!Number.isFinite(postId)) return res.status(400).json({ error: 'Invalid blog post id.' });
+
+    try {
+      const archived = await cmsBlogPostModel.update({
+        where: { id: postId },
+        data: {
+          status: 'archived',
+          featured: false,
+          archivedAt: new Date(),
+          updatedById: Number(req.user.id),
+          reviewedById: Number(req.user.id),
+        },
+      });
+      res.json(archived);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to archive blog post' });
     }
   });
 
@@ -880,7 +1301,7 @@ async function startServer() {
   });
 
   // Admin Management (Admin only)
-  app.get('/api/admin/users', authorize(['admin']), async (req: any, res: any) => {
+  app.get('/api/admin/users', authorize(SUPER_ADMIN_ROLES), async (req: any, res: any) => {
     try {
       const users = await prisma.user.findMany({
         select: { id: true, email: true, role: true, createdAt: true }
@@ -891,12 +1312,12 @@ async function startServer() {
     }
   });
 
-  app.post('/api/admin/users', authorize(['admin']), async (req: any, res: any) => {
+  app.post('/api/admin/users', authorize(SUPER_ADMIN_ROLES), async (req: any, res: any) => {
     const { email, password, role } = req.body;
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
       const user = await prisma.user.create({
-        data: { email, password: hashedPassword, role }
+        data: { email, password: hashedPassword, role: normalizeRole(role) }
       });
       res.json({ success: true, user: { email: user.email, role: user.role } });
     } catch (error) {
@@ -904,13 +1325,13 @@ async function startServer() {
     }
   });
 
-  app.patch('/api/admin/users/:id', authorize(['admin']), async (req: any, res: any) => {
+  app.patch('/api/admin/users/:id', authorize(SUPER_ADMIN_ROLES), async (req: any, res: any) => {
     const { id } = req.params;
     const { role } = req.body;
     try {
       const user = await prisma.user.update({
         where: { id: parseInt(id) },
-        data: { role },
+        data: { role: normalizeRole(role) },
         select: { id: true, email: true, role: true }
       });
       res.json({ success: true, user });
@@ -919,7 +1340,7 @@ async function startServer() {
     }
   });
 
-  app.delete('/api/admin/users/:id', authorize(['admin']), async (req: any, res: any) => {
+  app.delete('/api/admin/users/:id', authorize(SUPER_ADMIN_ROLES), async (req: any, res: any) => {
     const { id } = req.params;
     try {
       // Prevent deleting self
@@ -1014,7 +1435,7 @@ async function startServer() {
           .send('Not found');
       }
 
-      const seo = getSeoPayload(appPathname, origin);
+      const seo = await getSeoPayload(appPathname, origin);
 
       let htmlTemplate: string;
       if (viteDevServer) {

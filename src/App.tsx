@@ -20,6 +20,7 @@ import { Footer } from './components/Footer';
 import { ScrollToTop } from './components/ScrollToTop';
 import { LiveChat } from './components/LiveChat';
 import { AdminPanel } from './components/AdminPanel';
+import { AdminForgotPassword, AdminResetPassword } from './components/AdminPasswordReset';
 import { BlogPost } from './components/BlogPost';
 import { BlogListPage } from './components/blog/BlogListPage';
 import LegalPage from './components/LegalPage';
@@ -132,6 +133,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<MainContent />} />
         <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
+        <Route path="/admin/reset-password" element={<AdminResetPassword />} />
         <Route path="/blog" element={<BlogListPage />} />
         <Route path="/blog/:id" element={<BlogPost />} />
         <Route path="/software-development-subscription-uk" element={<SoftwareDevelopmentSubscriptionUkPage />} />

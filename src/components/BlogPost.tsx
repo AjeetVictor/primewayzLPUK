@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState, FormEvent } from 'react';
 import { BlogCTA } from './blog/BlogCTA';
 import { BlogCard } from './blog/BlogCard';
 import { getBlogPostById, getRelatedBlogPosts } from '../data/blog/utils';
+import type { BlogPost as BlogPostData } from '../data/blog/types';
 import { apiUrl } from '../utils/apiUrl';
 
 interface Comment {
@@ -27,7 +28,8 @@ interface Comment {
 
 export const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
-  const post = getBlogPostById(id);
+  const [post, setPost] = useState<BlogPostData | null>(() => getBlogPostById(id) || null);
+  const [isPostLoading, setIsPostLoading] = useState(Boolean(id && !getBlogPostById(id)));
   const relatedPosts = useMemo(() => (post ? getRelatedBlogPosts(post, 3) : []), [post]);
 
   const [comments, setComments] = useState<Comment[]>([]);
@@ -39,6 +41,31 @@ export const BlogPost = () => {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+  }, [id]);
+
+  useEffect(() => {
+    const localPost = getBlogPostById(id);
+    setPost(localPost || null);
+    setIsPostLoading(Boolean(id && !localPost));
+
+    if (!id) return;
+
+    const fetchPost = async () => {
+      try {
+        const res = await fetch(apiUrl(`/api/blog/posts/${id}`));
+        if (res.ok) {
+          setPost(await res.json());
+        } else {
+          setPost(localPost || null);
+        }
+      } catch {
+        setPost(localPost || null);
+      } finally {
+        setIsPostLoading(false);
+      }
+    };
+
+    fetchPost();
   }, [id]);
 
   useEffect(() => {
@@ -113,6 +140,17 @@ export const BlogPost = () => {
   const copyToClipboard = () => {
     navigator.clipboard?.writeText(window.location.href);
   };
+
+  if (isPostLoading) {
+    return (
+      <main className="min-h-screen bg-zinc-50 pt-32 pb-24">
+        <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+          <p className="font-medium text-zinc-500">Loading article...</p>
+        </div>
+      </main>
+    );
+  }
 
   if (!post) {
     return (
@@ -350,4 +388,3 @@ export const BlogPost = () => {
     </main>
   );
 };
-
