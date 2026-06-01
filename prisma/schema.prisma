@@ -20,23 +20,59 @@ model FormResponse {
 }
 
 model ChatSession {
-  id        String   @id @default(uuid())
-  name      String?
-  email     String?
-  createdAt DateTime @default(now())
-  messages  ChatMessage[]
+  id           String                   @id @default(uuid())
+  name         String?
+  email        String?
+  createdAt    DateTime                 @default(now())
+  messages     ChatMessage[]
+  attachments  ChatAttachment[]
+  appointments ChatAppointmentRequest[]
 }
 
 model ChatMessage {
-  id        Int      @id @default(autoincrement())
-  sessionId String
-  session   ChatSession @relation(fields: [sessionId], references: [id])
-  sender    String   // 'user', 'bot', 'admin'
-  text      String
-  timestamp DateTime @default(now())
-  replyToId Int?
-  replyTo   ChatMessage? @relation("Replies", fields: [replyToId], references: [id])
-  replies   ChatMessage[] @relation("Replies")
+  id          Int              @id @default(autoincrement())
+  sessionId   String
+  session     ChatSession      @relation(fields: [sessionId], references: [id])
+  sender      String           // 'user', 'bot', 'admin'
+  text        String
+  timestamp   DateTime         @default(now())
+  replyToId   Int?
+  replyTo     ChatMessage?     @relation("Replies", fields: [replyToId], references: [id])
+  replies     ChatMessage[]    @relation("Replies")
+  attachments ChatAttachment[]
+}
+
+model ChatAttachment {
+  id           Int          @id @default(autoincrement())
+  sessionId    String
+  session      ChatSession  @relation(fields: [sessionId], references: [id])
+  messageId    Int?
+  message      ChatMessage? @relation(fields: [messageId], references: [id])
+  url          String
+  originalName String
+  fileName     String
+  mimeType     String
+  size         Int
+  kind         String
+  uploadedBy   String
+  createdAt    DateTime     @default(now())
+}
+
+model ChatAppointmentRequest {
+  id            Int         @id @default(autoincrement())
+  sessionId     String
+  session       ChatSession @relation(fields: [sessionId], references: [id])
+  name          String?
+  email         String?
+  phone         String?
+  preferredDate String?
+  preferredTime String?
+  timezone      String?     @default("Europe/London")
+  message       String?
+  status        String      @default("pending") // pending/confirmed/completed/cancelled
+  adminNote     String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 model User {

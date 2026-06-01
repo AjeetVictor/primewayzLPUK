@@ -1,13 +1,24 @@
-import { useState, useEffect, useRef, FormEvent, KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent, KeyboardEvent, ClipboardEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageCircle, X, Send, User, Bot, Minus } from 'lucide-react';
+import { MessageCircle, X, Send, User, Bot, Minus, Paperclip, CalendarClock, FileText, Image as ImageIcon } from 'lucide-react';
 import { apiUrl } from '../utils/apiUrl';
+
+interface ChatAttachment {
+  id: number;
+  url: string;
+  originalName: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  kind: 'image' | 'document';
+}
 
 interface Message {
   id: string;
   text: string;
   sender: 'user' | 'bot' | 'admin';
   timestamp: Date;
+  attachments?: ChatAttachment[];
 }
 
 export const LiveChat = () => {
@@ -22,6 +33,19 @@ export const LiveChat = () => {
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem('chat_user_email') || '');
   const [showLeadForm, setShowLeadForm] = useState(!userName || !userEmail);
   const [apiAvailable, setApiAvailable] = useState(true);
+  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
+  const [uploadError, setUploadError] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [showAppointmentForm, setShowAppointmentForm] = useState(false);
+  const [appointmentForm, setAppointmentForm] = useState({
+    name: userName,
+    email: userEmail,
+    phone: '',
+    preferredDate: '',
+    preferredTime: '',
+    message: '',
+  });
+  const [appointmentError, setAppointmentError] = useState('');
   const [sessionId] = useState(() => {
     const saved = localStorage.getItem('chat_session_id');
     if (saved) return saved;
@@ -41,7 +65,8 @@ export const LiveChat = () => {
             setMessages(history.map((m: any) => ({
               ...m,
               id: m.id.toString(),
-              timestamp: new Date(m.timestamp)
+              timestamp: new Date(m.timestamp),
+              attachments: m.attachments || [],
             })));
           } else {
             // Default welcome message if no history
@@ -87,7 +112,8 @@ export const LiveChat = () => {
             setMessages(history.map((m: any) => ({
               ...m,
               id: m.id.toString(),
-              timestamp: new Date(m.timestamp)
+              timestamp: new Date(m.timestamp),
+              attachments: m.attachments || [],
             })));
           }
         }
@@ -101,6 +127,7 @@ export const LiveChat = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Simulate real-time updates for online count
   useEffect(() => {
@@ -155,19 +182,89 @@ export const LiveChat = () => {
     }
   };
 
+  const uploadChatFile = async (file: File) => {
+    setUploadError('');
+    setIsUploading(true);
+    const body = new FormData();
+    body.append('sessionId', sessionId);
+    body.append('file', file);
+
+    try {
+      const res = await fetch(apiUrl('/api/chat/uploads'), {
+        method: 'POST',
+        body,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setUploadError(data.error || 'Upload failed.');
+        return;
+      }
+      setPendingAttachments((prev) => [...prev, data]);
+    } catch {
+      setUploadError('Upload failed. Please try again.');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const file = Array.from(event.clipboardData.files).find((item) => item.type.startsWith('image/'));
+    if (file) uploadChatFile(file);
+  };
+
+  const submitAppointmentRequest = async (event: FormEvent) => {
+    event.preventDefault();
+    setAppointmentError('');
+
+    try {
+      const res = await fetch(apiUrl('/api/chat/appointments'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          ...appointmentForm,
+          name: appointmentForm.name || userName,
+          email: appointmentForm.email || userEmail,
+          timezone: 'Europe/London',
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setAppointmentError(data?.error || 'Could not send appointment request.');
+        return;
+      }
+      setShowAppointmentForm(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `appointment-${Date.now()}`,
+          text: 'Thanks, your appointment request has been received. Our team will confirm shortly.',
+          sender: 'bot',
+          timestamp: new Date(),
+        },
+      ]);
+    } catch {
+      setAppointmentError('Could not send appointment request.');
+    }
+  };
+
   const handleSend = async (e: FormEvent) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() && pendingAttachments.length === 0) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: message,
+      text: message || 'Shared an attachment',
       sender: 'user',
       timestamp: new Date(),
+      attachments: pendingAttachments,
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const attachmentIds = pendingAttachments.map((attachment) => attachment.id);
     setMessage('');
+    setPendingAttachments([]);
     setIsTyping(true);
 
     // Generate bot response via backend (also persists user+bot messages in DB)
@@ -179,6 +276,7 @@ export const LiveChat = () => {
           sessionId,
           message: userMessage.text,
           userName: userName || undefined,
+          attachmentIds,
         }),
       });
       if (!res.ok) throw new Error('Backend chat request failed');
@@ -315,6 +413,28 @@ export const LiveChat = () => {
                           <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 mb-1">Support Agent</div>
                         )}
                         {msg.text}
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <div className="mt-2 space-y-2">
+                            {msg.attachments.map((attachment) => (
+                              attachment.kind === 'image' ? (
+                                <a key={attachment.id} href={attachment.url} target="_blank" rel="noopener noreferrer">
+                                  <img src={attachment.url} alt={attachment.originalName} className="max-h-36 rounded-xl border border-white/20 object-cover" />
+                                </a>
+                              ) : (
+                                <a
+                                  key={attachment.id}
+                                  href={attachment.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 rounded-xl bg-white/10 p-2 text-xs font-bold underline-offset-2 hover:underline"
+                                >
+                                  <FileText className="h-4 w-4" />
+                                  {attachment.originalName}
+                                </a>
+                              )
+                            ))}
+                          </div>
+                        )}
                         <div className={`text-[10px] mt-1 opacity-50 ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>
                           {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
@@ -337,24 +457,81 @@ export const LiveChat = () => {
 
             {/* Input */}
             {!showLeadForm && (
-              <form onSubmit={handleSend} className="p-4 bg-white border-t border-zinc-100 flex items-end gap-2">
-                <textarea
-                  ref={textareaRef}
-                  rows={1}
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Tell us what your UK business needs help with..."
-                  className="flex-1 bg-zinc-100 border-none rounded-2xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500/20 outline-none resize-none max-h-[120px] transition-[height] duration-100"
-                />
-                <button
-                  type="submit"
-                  disabled={!message.trim()}
-                  className="w-10 h-10 bg-emerald-600 text-white rounded-full flex items-center justify-center hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-900/20 flex-shrink-0"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </form>
+              <div className="border-t border-zinc-100 bg-white p-4">
+                <div className="mb-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-bold text-zinc-600 hover:bg-zinc-200"
+                  >
+                    <Paperclip className="h-3.5 w-3.5" />
+                    Attach
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAppointmentForm((value) => !value)}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100"
+                  >
+                    <CalendarClock className="h-3.5 w-3.5" />
+                    Book a call
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/jpeg,image/png,image/webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) uploadChatFile(file);
+                    }}
+                  />
+                </div>
+                {showAppointmentForm && (
+                  <form onSubmit={submitAppointmentRequest} className="mb-3 space-y-2 rounded-2xl border border-emerald-100 bg-emerald-50 p-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input value={appointmentForm.name} onChange={(e) => setAppointmentForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Name" className="rounded-lg border border-emerald-100 px-3 py-2 text-xs outline-none" />
+                      <input value={appointmentForm.email} onChange={(e) => setAppointmentForm((prev) => ({ ...prev, email: e.target.value }))} placeholder="Email" className="rounded-lg border border-emerald-100 px-3 py-2 text-xs outline-none" />
+                      <input value={appointmentForm.phone} onChange={(e) => setAppointmentForm((prev) => ({ ...prev, phone: e.target.value }))} placeholder="Phone" className="rounded-lg border border-emerald-100 px-3 py-2 text-xs outline-none" />
+                      <input type="date" value={appointmentForm.preferredDate} onChange={(e) => setAppointmentForm((prev) => ({ ...prev, preferredDate: e.target.value }))} className="rounded-lg border border-emerald-100 px-3 py-2 text-xs outline-none" />
+                      <input type="time" value={appointmentForm.preferredTime} onChange={(e) => setAppointmentForm((prev) => ({ ...prev, preferredTime: e.target.value }))} className="rounded-lg border border-emerald-100 px-3 py-2 text-xs outline-none" />
+                    </div>
+                    <textarea value={appointmentForm.message} onChange={(e) => setAppointmentForm((prev) => ({ ...prev, message: e.target.value }))} placeholder="What would you like to discuss?" rows={2} className="w-full rounded-lg border border-emerald-100 px-3 py-2 text-xs outline-none resize-none" />
+                    {appointmentError && <p className="text-xs font-bold text-red-600">{appointmentError}</p>}
+                    <button type="submit" className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700">Send request</button>
+                  </form>
+                )}
+                {uploadError && <p className="mb-2 text-xs font-bold text-red-600">{uploadError}</p>}
+                {isUploading && <p className="mb-2 text-xs font-bold text-zinc-500">Uploading file...</p>}
+                {pendingAttachments.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {pendingAttachments.map((attachment) => (
+                      <span key={attachment.id} className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-1 text-[10px] font-bold text-zinc-600">
+                        {attachment.kind === 'image' ? <ImageIcon className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                        {attachment.originalName}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <form onSubmit={handleSend} className="flex items-end gap-2">
+                  <textarea
+                    ref={textareaRef}
+                    rows={1}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    onPaste={handlePaste}
+                    placeholder="Tell us what your UK business needs help with..."
+                    className="flex-1 bg-zinc-100 border-none rounded-2xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500/20 outline-none resize-none max-h-[120px] transition-[height] duration-100"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!message.trim() && pendingAttachments.length === 0}
+                    className="w-10 h-10 bg-emerald-600 text-white rounded-full flex items-center justify-center hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-900/20 flex-shrink-0"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </form>
+              </div>
             )}
           </motion.div>
         )}

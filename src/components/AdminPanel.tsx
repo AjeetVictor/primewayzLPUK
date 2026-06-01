@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send, FileText, Save, UploadCloud, Archive, Star, Bell, BellOff } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send, FileText, Save, UploadCloud, Archive, Star, Bell, BellOff, Paperclip, Image as ImageIcon, CalendarClock } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiUrl } from '../utils/apiUrl';
 import { PasswordInput } from './ui/PasswordInput';
@@ -29,6 +29,33 @@ interface ChatMessage {
     name: string | null;
     email: string | null;
   };
+  attachments?: ChatAttachment[];
+}
+
+interface ChatAttachment {
+  id: number;
+  url: string;
+  originalName: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  kind: 'image' | 'document';
+}
+
+interface ChatAppointmentRequest {
+  id: number;
+  sessionId: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  preferredDate: string | null;
+  preferredTime: string | null;
+  timezone: string | null;
+  message: string | null;
+  status: string;
+  adminNote: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface ChatSession {
@@ -146,6 +173,7 @@ export const AdminPanel = () => {
   const [formResponses, setFormResponses] = useState<FormResponse[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [chatAppointments, setChatAppointments] = useState<ChatAppointmentRequest[]>([]);
   const [blogComments, setBlogComments] = useState<BlogPostComment[]>([]);
   const [cmsBlogPosts, setCmsBlogPosts] = useState<CmsBlogPost[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -163,12 +191,16 @@ export const AdminPanel = () => {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem('primewayz-admin-sound-alerts') === 'true';
   });
+  const [adminReplyAttachments, setAdminReplyAttachments] = useState<ChatAttachment[]>([]);
+  const [adminUploadError, setAdminUploadError] = useState('');
+  const [isAdminUploading, setIsAdminUploading] = useState(false);
   const seenUserMessageIdsRef = useRef<Set<number>>(new Set());
   const hasInitializedMessageWatchRef = useRef(false);
+  const adminFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const checkAuth = async () => {
     try {
-      const res = await fetch(apiUrl('/api/admin/check-auth'));
+      const res = await fetch(apiUrl('/api/admin/check-auth'), { credentials: 'include' });
       const data = await res.json();
       setIsAuthenticated(data.authenticated);
       if (data.authenticated) {
@@ -227,20 +259,21 @@ export const AdminPanel = () => {
 
       if (isOperationsRole(currentUser?.role)) {
         endpoints.push(
-          fetch(apiUrl('/api/admin/forms')),
-          fetch(apiUrl('/api/admin/chats')),
-          fetch(apiUrl('/api/admin/sessions')),
-          fetch(apiUrl('/api/admin/blog-comments')),
+          fetch(apiUrl('/api/admin/forms'), { credentials: 'include' }),
+          fetch(apiUrl('/api/admin/chats'), { credentials: 'include' }),
+          fetch(apiUrl('/api/admin/sessions'), { credentials: 'include' }),
+          fetch(apiUrl('/api/admin/blog-comments'), { credentials: 'include' }),
+          fetch(apiUrl('/api/admin/chat/appointments'), { credentials: 'include' }),
         );
       }
 
       if (isBlogAuthor(currentUser?.role)) {
-        endpoints.push(fetch(apiUrl('/api/admin/blog-posts')));
+        endpoints.push(fetch(apiUrl('/api/admin/blog-posts'), { credentials: 'include' }));
       }
 
       // Only fetch users if Super Admin
       if (isSuperAdmin(currentUser?.role)) {
-        endpoints.push(fetch(apiUrl('/api/admin/users')));
+        endpoints.push(fetch(apiUrl('/api/admin/users'), { credentials: 'include' }));
       }
 
       const results = await Promise.all(endpoints);
@@ -261,6 +294,8 @@ export const AdminPanel = () => {
         if (results[resultIndex]?.ok) setChatSessions(await results[resultIndex].json());
         resultIndex += 1;
         if (results[resultIndex]?.ok) setBlogComments(await results[resultIndex].json());
+        resultIndex += 1;
+        if (results[resultIndex]?.ok) setChatAppointments(await results[resultIndex].json());
         resultIndex += 1;
       }
       if (isBlogAuthor(currentUser?.role)) {
@@ -283,6 +318,7 @@ export const AdminPanel = () => {
     try {
       const res = await fetch(apiUrl('/api/admin/login'), {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
@@ -302,11 +338,12 @@ export const AdminPanel = () => {
 
   const handleLogout = async () => {
     try {
-      await fetch(apiUrl('/api/admin/logout'), { method: 'POST' });
+      await fetch(apiUrl('/api/admin/logout'), { method: 'POST', credentials: 'include' });
       setIsAuthenticated(false);
       setUser(null);
       setFormResponses([]);
       setChatMessages([]);
+      setChatAppointments([]);
       setBlogComments([]);
       setCmsBlogPosts([]);
     } catch (error) {
@@ -317,7 +354,7 @@ export const AdminPanel = () => {
   const deleteFormResponse = async (id: number) => {
     if (!confirm('Are you sure you want to delete this response?')) return;
     try {
-      const res = await fetch(apiUrl(`/api/admin/forms/${id}`), { method: 'DELETE' });
+      const res = await fetch(apiUrl(`/api/admin/forms/${id}`), { method: 'DELETE', credentials: 'include' });
       if (res.ok) {
         setFormResponses(prev => prev.filter(r => r.id !== id));
       }
@@ -329,7 +366,7 @@ export const AdminPanel = () => {
   const deleteBlogComment = async (id: number) => {
     if (!confirm('Are you sure you want to delete this comment?')) return;
     try {
-      const res = await fetch(apiUrl(`/api/admin/blog-comments/${id}`), { method: 'DELETE' });
+      const res = await fetch(apiUrl(`/api/admin/blog-comments/${id}`), { method: 'DELETE', credentials: 'include' });
       if (res.ok) {
         setBlogComments(prev => prev.filter(c => c.id !== id));
       }
@@ -342,6 +379,7 @@ export const AdminPanel = () => {
     try {
       const res = await fetch(apiUrl(`/api/admin/users/${id}`), {
         method: 'PATCH',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role })
       });
@@ -356,7 +394,7 @@ export const AdminPanel = () => {
   const deleteUser = async (id: number) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     try {
-      const res = await fetch(apiUrl(`/api/admin/users/${id}`), { method: 'DELETE' });
+      const res = await fetch(apiUrl(`/api/admin/users/${id}`), { method: 'DELETE', credentials: 'include' });
       if (res.ok) {
         setUsers(prev => prev.filter(u => u.id !== id));
       } else {
@@ -377,6 +415,7 @@ export const AdminPanel = () => {
     try {
       const res = await fetch(apiUrl('/api/admin/users'), {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: newUserEmail, password: newUserPassword, role: newUserRole })
       });
@@ -429,6 +468,7 @@ export const AdminPanel = () => {
     try {
       const res = await fetch(apiUrl(blogForm.id ? `/api/admin/blog-posts/${blogForm.id}` : '/api/admin/blog-posts'), {
         method: blogForm.id ? 'PATCH' : 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
@@ -447,7 +487,7 @@ export const AdminPanel = () => {
   const archiveBlogPost = async (id: number) => {
     if (!confirm('Archive this blog post?')) return;
     try {
-      const res = await fetch(apiUrl(`/api/admin/blog-posts/${id}`), { method: 'DELETE' });
+      const res = await fetch(apiUrl(`/api/admin/blog-posts/${id}`), { method: 'DELETE', credentials: 'include' });
       if (res.ok) fetchData();
     } catch (error) {
       console.error('Archive blog post failed:', error);
@@ -458,6 +498,7 @@ export const AdminPanel = () => {
     try {
       const res = await fetch(apiUrl(`/api/admin/blog-posts/${id}`), {
         method: 'PATCH',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
@@ -468,21 +509,74 @@ export const AdminPanel = () => {
   };
 
   const handleAdminReply = async (sessionId: string, replyToId?: number) => {
-    if (!replyText.trim()) return;
+    if (!replyText.trim() && adminReplyAttachments.length === 0) return;
     try {
       const res = await fetch(apiUrl('/api/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sender: 'admin', text: replyText, sessionId, replyToId })
+        body: JSON.stringify({
+          sender: 'admin',
+          text: replyText,
+          sessionId,
+          replyToId,
+          attachmentIds: adminReplyAttachments.map((attachment) => attachment.id),
+        })
       });
       if (res.ok) {
         setReplyText('');
+        setAdminReplyAttachments([]);
         setReplyingTo(null);
         setReplyingToMessageId(null);
         fetchData();
       }
     } catch (error) {
       console.error('Admin reply failed:', error);
+    }
+  };
+
+  const uploadAdminChatFile = async (file: File | undefined) => {
+    if (!file || !selectedConversation?.sessionId) return;
+    setAdminUploadError('');
+    setIsAdminUploading(true);
+
+    const body = new FormData();
+    body.append('sessionId', selectedConversation.sessionId);
+    body.append('file', file);
+
+    try {
+      const res = await fetch(apiUrl('/api/admin/chat/uploads'), {
+        method: 'POST',
+        credentials: 'include',
+        body,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAdminUploadError(data.error || 'Upload failed.');
+        return;
+      }
+      setAdminReplyAttachments((prev) => [...prev, data]);
+    } catch {
+      setAdminUploadError('Upload failed. Please try again.');
+    } finally {
+      setIsAdminUploading(false);
+      if (adminFileInputRef.current) adminFileInputRef.current.value = '';
+    }
+  };
+
+  const updateAppointment = async (id: number, status: string, adminNote?: string) => {
+    try {
+      const res = await fetch(apiUrl(`/api/admin/chat/appointments/${id}`), {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, adminNote }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setChatAppointments((prev) => prev.map((appointment) => appointment.id === id ? updated : appointment));
+      }
+    } catch (error) {
+      console.error('Appointment update failed:', error);
     }
   };
 
@@ -571,6 +665,9 @@ export const AdminPanel = () => {
   const selectedConversation = chatConversations.find(
     (conversation) => conversation.sessionId === selectedConversationId,
   ) || filteredChatConversations[0] || null;
+  const selectedAppointments = chatAppointments.filter(
+    (appointment) => appointment.sessionId === selectedConversation?.sessionId,
+  );
 
   useEffect(() => {
     if (!selectedConversationId && filteredChatConversations[0]?.sessionId && !replyText.trim()) {
@@ -1037,9 +1134,10 @@ export const AdminPanel = () => {
                         key={conversation.sessionId}
                         type="button"
                         onClick={() => {
-                          if (conversation.sessionId !== selectedConversationId) {
-                            setReplyText('');
-                          }
+          if (conversation.sessionId !== selectedConversationId) {
+            setReplyText('');
+            setAdminReplyAttachments([]);
+          }
                           setSelectedConversationId(conversation.sessionId);
                           setReplyingTo(conversation.sessionId);
                           setReplyingToMessageId(null);
@@ -1086,6 +1184,7 @@ export const AdminPanel = () => {
                           </span>
                           <span className="text-[10px] font-mono text-zinc-400">
                             {conversation.messages.length} messages
+                            {conversation.lastMessage?.attachments?.length ? ' · attachment' : ''}
                           </span>
                         </div>
                       </button>
@@ -1149,6 +1248,30 @@ export const AdminPanel = () => {
                                 </span>
                               </div>
                               <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.text}</p>
+                              {message.attachments && message.attachments.length > 0 && (
+                                <div className="mt-3 space-y-2">
+                                  {message.attachments.map((attachment) => (
+                                    attachment.kind === 'image' ? (
+                                      <a key={attachment.id} href={attachment.url} target="_blank" rel="noopener noreferrer" className="block">
+                                        <img src={attachment.url} alt={attachment.originalName} className="max-h-48 rounded-xl border border-white/30 object-cover" />
+                                      </a>
+                                    ) : (
+                                      <a
+                                        key={attachment.id}
+                                        href={attachment.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`flex items-center gap-2 rounded-xl border p-3 text-xs font-bold ${
+                                          isAdminMessage ? 'border-emerald-200 bg-emerald-500 text-white' : 'border-zinc-200 bg-white text-zinc-700'
+                                        }`}
+                                      >
+                                        <FileText className="h-4 w-4" />
+                                        {attachment.originalName}
+                                      </a>
+                                    )
+                                  ))}
+                                </div>
+                              )}
                               {message.replyToId && (
                                 <p className={`mt-2 border-l-2 pl-2 text-[10px] ${
                                   isAdminMessage ? 'border-emerald-200 text-emerald-50/80' : 'border-zinc-200 text-zinc-400'
@@ -1160,9 +1283,65 @@ export const AdminPanel = () => {
                           </div>
                         );
                       })}
+                      {selectedAppointments.map((appointment) => (
+                        <div key={`appointment-${appointment.id}`} className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+                          <div className="mb-3 flex items-start justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2 text-amber-800">
+                                <CalendarClock className="h-4 w-4" />
+                                <p className="text-sm font-bold">Appointment request</p>
+                              </div>
+                              <p className="mt-1 text-xs text-amber-700">
+                                {appointment.preferredDate || 'Date flexible'} {appointment.preferredTime || ''} · {appointment.timezone || 'Europe/London'}
+                              </p>
+                            </div>
+                            <span className="rounded-lg bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-700">
+                              {appointment.status}
+                            </span>
+                          </div>
+                          <div className="grid gap-1 text-xs text-zinc-700 sm:grid-cols-2">
+                            <p><strong>Name:</strong> {appointment.name || '-'}</p>
+                            <p><strong>Email:</strong> {appointment.email || '-'}</p>
+                            <p><strong>Phone:</strong> {appointment.phone || '-'}</p>
+                            <p><strong>Requested:</strong> {format(new Date(appointment.createdAt), 'MMM d, h:mm a')}</p>
+                          </div>
+                          {appointment.message && <p className="mt-3 text-sm text-zinc-700">{appointment.message}</p>}
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {['confirmed', 'completed', 'cancelled'].map((status) => (
+                              <button
+                                key={status}
+                                type="button"
+                                onClick={() => updateAppointment(appointment.id, status)}
+                                className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-zinc-700 hover:bg-amber-100"
+                              >
+                                Mark {status}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
 
                     <div className="border-t border-zinc-100 bg-white p-5">
+                      <input
+                        ref={adminFileInputRef}
+                        type="file"
+                        className="hidden"
+                        accept="image/jpeg,image/png,image/webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                        onChange={(event) => uploadAdminChatFile(event.target.files?.[0])}
+                      />
+                      {adminUploadError && <p className="mb-2 text-xs font-bold text-red-600">{adminUploadError}</p>}
+                      {isAdminUploading && <p className="mb-2 text-xs font-bold text-zinc-500">Uploading file...</p>}
+                      {adminReplyAttachments.length > 0 && (
+                        <div className="mb-3 flex flex-wrap gap-2">
+                          {adminReplyAttachments.map((attachment) => (
+                            <span key={attachment.id} className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-1 text-[10px] font-bold text-zinc-600">
+                              {attachment.kind === 'image' ? <ImageIcon className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                              {attachment.originalName}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <textarea
                         value={replyingTo === selectedConversation.sessionId ? replyText : ''}
                         onChange={(e) => {
@@ -1176,15 +1355,25 @@ export const AdminPanel = () => {
                       />
                       <div className="mt-3 flex items-center justify-between gap-3">
                         <p className="text-xs text-zinc-400">Selected thread refreshes every 3 seconds.</p>
-                        <button
-                          type="button"
-                          onClick={() => handleAdminReply(selectedConversation.sessionId)}
-                          disabled={!replyText.trim() || replyingTo !== selectedConversation.sessionId}
-                          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <Send className="w-4 h-4" />
-                          Send Reply
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => adminFileInputRef.current?.click()}
+                            className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50"
+                          >
+                            <Paperclip className="w-4 h-4" />
+                            Attach
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAdminReply(selectedConversation.sessionId)}
+                            disabled={(!replyText.trim() && adminReplyAttachments.length === 0) || replyingTo !== selectedConversation.sessionId}
+                            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <Send className="w-4 h-4" />
+                            Send Reply
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>

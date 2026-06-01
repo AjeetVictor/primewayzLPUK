@@ -144,6 +144,8 @@ const BLOG_UPLOAD_MIME_TYPES: Record<string, { extension: string; kind: 'image' 
   'application/vnd.ms-powerpoint': { extension: 'ppt', kind: 'document', maxBytes: BLOG_UPLOAD_DOCUMENT_MAX_BYTES },
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': { extension: 'pptx', kind: 'document', maxBytes: BLOG_UPLOAD_DOCUMENT_MAX_BYTES },
 };
+const CHAT_UPLOAD_MIME_TYPES = BLOG_UPLOAD_MIME_TYPES;
+const CHAT_APPOINTMENT_STATUSES = new Set(['pending', 'confirmed', 'completed', 'cancelled']);
 
 function createPasswordResetToken() {
   const token = crypto.randomBytes(32).toString('hex');
@@ -390,6 +392,76 @@ function parseSingleMultipartFile(body: Buffer, contentType: string) {
   }
 
   throw new Error('No file was uploaded.');
+}
+
+async function handleChatUpload(req: express.Request, res: express.Response, uploadedBy: 'user' | 'admin') {
+  try {
+    const contentType = req.headers['content-type'] || '';
+    if (!contentType.toLowerCase().includes('multipart/form-data')) {
+      return res.status(400).json({ error: 'Upload must use multipart/form-data.' });
+    }
+
+    const body = await readRequestBuffer(req, BLOG_UPLOAD_DOCUMENT_MAX_BYTES + 1024 * 1024);
+    const file = parseSingleMultipartFile(body, contentType);
+    const sessionIdMatch = body.toString('utf8').match(/name="sessionId"\r\n\r\n([^\r\n]+)/);
+    const sessionId = (sessionIdMatch?.[1] || 'default').trim() || 'default';
+    const rule = CHAT_UPLOAD_MIME_TYPES[file.mimeType];
+
+    if (!rule) {
+      return res.status(415).json({ error: 'Unsupported file type.' });
+    }
+
+    if (file.buffer.length > rule.maxBytes) {
+      return res.status(413).json({
+        error: rule.kind === 'image'
+          ? 'Images must be 5 MB or smaller.'
+          : 'Documents must be 10 MB or smaller.',
+      });
+    }
+
+    await prisma.chatSession.upsert({
+      where: { id: sessionId },
+      update: {},
+      create: { id: sessionId },
+    });
+
+    const now = new Date();
+    const year = String(now.getFullYear());
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'chat', year, month);
+    await fs.mkdir(uploadDir, { recursive: true });
+
+    const originalBase = sanitizeUploadBaseName(path.parse(file.originalName).name);
+    const fileName = `${originalBase}-${crypto.randomBytes(8).toString('hex')}.${rule.extension}`;
+    const filePath = path.join(uploadDir, fileName);
+    const resolvedUploadDir = path.resolve(uploadDir);
+    const resolvedFilePath = path.resolve(filePath);
+
+    if (!resolvedFilePath.startsWith(resolvedUploadDir + path.sep)) {
+      return res.status(400).json({ error: 'Invalid upload path.' });
+    }
+
+    await fs.writeFile(resolvedFilePath, file.buffer, { flag: 'wx' });
+
+    const attachment = await prisma.chatAttachment.create({
+      data: {
+        sessionId,
+        url: `/uploads/chat/${year}/${month}/${fileName}`,
+        originalName: file.originalName.replace(/[<>]/g, ''),
+        fileName,
+        mimeType: file.mimeType,
+        size: file.buffer.length,
+        kind: rule.kind,
+        uploadedBy,
+      },
+    });
+
+    return res.status(201).json(attachment);
+  } catch (error) {
+    return res.status(400).json({
+      error: error instanceof Error ? error.message : 'Upload failed.',
+    });
+  }
 }
 
 function getClientIp(req: express.Request): string | null {
@@ -1014,26 +1086,52 @@ async function startServer() {
     }
   });
 
+  app.post('/api/chat/uploads', async (req, res) => {
+    return handleChatUpload(req, res, 'user');
+  });
+
   // Chat Message Submission
   app.post('/api/chat', async (req, res) => {
-    const { sender, text, sessionId, replyToId } = req.body;
+    const { sender, text, sessionId, replyToId, attachmentIds } = req.body;
+    const safeSessionId = sessionId || 'default';
+    const safeText = typeof text === 'string' ? text.trim() : '';
+    const safeAttachmentIds = Array.isArray(attachmentIds)
+      ? attachmentIds.map((id) => Number(id)).filter(Number.isFinite).slice(0, 5)
+      : [];
+
+    if (!safeText && safeAttachmentIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'Message or attachment is required' });
+    }
+
     try {
       // Ensure session exists
       await prisma.chatSession.upsert({
-        where: { id: sessionId || 'default' },
+        where: { id: safeSessionId },
         update: {},
-        create: { id: sessionId || 'default' }
+        create: { id: safeSessionId }
       });
 
       const message = await prisma.chatMessage.create({
         data: {
           sender,
-          text,
-          sessionId: sessionId || 'default',
+          text: safeText || 'Shared an attachment',
+          sessionId: safeSessionId,
           replyToId: replyToId ? parseInt(replyToId) : null
         }
       });
-      res.status(200).json({ success: true, data: message });
+
+      if (safeAttachmentIds.length > 0) {
+        await prisma.chatAttachment.updateMany({
+          where: { id: { in: safeAttachmentIds }, sessionId: safeSessionId, messageId: null },
+          data: { messageId: message.id },
+        });
+      }
+
+      const messageWithAttachments = await prisma.chatMessage.findUnique({
+        where: { id: message.id },
+        include: { attachments: true },
+      });
+      res.status(200).json({ success: true, data: messageWithAttachments });
     } catch (error) {
       console.error('Chat error:', error);
       res.status(500).json({ success: false, error: 'Failed to save message' });
@@ -1042,15 +1140,18 @@ async function startServer() {
 
   // Chat AI Response (server-side provider call + DB persistence)
   app.post('/api/chat/respond', async (req, res) => {
-    const { sessionId, message, userName } = req.body as { sessionId?: string; message?: string; userName?: string };
+    const { sessionId, message, userName, attachmentIds } = req.body as { sessionId?: string; message?: string; userName?: string; attachmentIds?: number[] };
     const safeSessionId = sessionId || 'default';
     const safeMessage = message?.trim();
+    const safeAttachmentIds = Array.isArray(attachmentIds)
+      ? attachmentIds.map((id) => Number(id)).filter(Number.isFinite).slice(0, 5)
+      : [];
 
-    if (!safeMessage) {
+    if (!safeMessage && safeAttachmentIds.length === 0) {
       return res.status(400).json({ success: false, error: 'Message is required' });
     }
 
-    backendLog('chat respond request', { sessionId: safeSessionId, textLength: safeMessage.length });
+    backendLog('chat respond request', { sessionId: safeSessionId, textLength: safeMessage?.length || 0 });
 
     try {
       await prisma.chatSession.upsert({
@@ -1062,12 +1163,19 @@ async function startServer() {
       const savedUserMessage = await prisma.chatMessage.create({
         data: {
           sender: 'user',
-          text: safeMessage,
+          text: safeMessage || 'Shared an attachment',
           sessionId: safeSessionId,
         },
       });
 
-      const botText = await generateBotReply(safeMessage, userName);
+      if (safeAttachmentIds.length > 0) {
+        await prisma.chatAttachment.updateMany({
+          where: { id: { in: safeAttachmentIds }, sessionId: safeSessionId, messageId: null },
+          data: { messageId: savedUserMessage.id },
+        });
+      }
+
+      const botText = await generateBotReply(safeMessage || 'The visitor shared an attachment and may need support.', userName);
       const savedBotMessage = await prisma.chatMessage.create({
         data: {
           sender: 'bot',
@@ -1079,7 +1187,7 @@ async function startServer() {
       backendLog('chat respond success', { sessionId: safeSessionId, botLength: botText.length });
       return res.status(200).json({
         success: true,
-        userMessage: savedUserMessage,
+        userMessage: await prisma.chatMessage.findUnique({ where: { id: savedUserMessage.id }, include: { attachments: true } }),
         botMessage: savedBotMessage,
       });
     } catch (error: any) {
@@ -1093,11 +1201,64 @@ async function startServer() {
     try {
       const messages = await prisma.chatMessage.findMany({
         where: { sessionId },
-        orderBy: { timestamp: 'asc' }
+        orderBy: { timestamp: 'asc' },
+        include: { attachments: true },
       });
       res.json(messages);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch chat history' });
+    }
+  });
+
+  app.post('/api/chat/appointments', async (req, res) => {
+    const sessionId = typeof req.body?.sessionId === 'string' ? req.body.sessionId.trim() : 'default';
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim().slice(0, 120) : null;
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : null;
+    const phone = typeof req.body?.phone === 'string' ? (parseUkContactPhoneNumbers(req.body.phone)[0] || req.body.phone.trim().slice(0, 40)) : null;
+    const preferredDate = typeof req.body?.preferredDate === 'string' ? req.body.preferredDate.trim().slice(0, 40) : null;
+    const preferredTime = typeof req.body?.preferredTime === 'string' ? req.body.preferredTime.trim().slice(0, 40) : null;
+    const timezone = typeof req.body?.timezone === 'string' ? req.body.timezone.trim().slice(0, 80) : 'Europe/London';
+    const message = typeof req.body?.message === 'string' ? req.body.message.trim().slice(0, 1000) : null;
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Please provide a valid email address.' });
+    }
+
+    if (!preferredDate && !preferredTime && !message) {
+      return res.status(400).json({ error: 'Please include appointment details.' });
+    }
+
+    try {
+      await prisma.chatSession.upsert({
+        where: { id: sessionId || 'default' },
+        update: { name: name || undefined, email: email || undefined },
+        create: { id: sessionId || 'default', name, email },
+      });
+
+      const appointment = await prisma.chatAppointmentRequest.create({
+        data: {
+          sessionId: sessionId || 'default',
+          name,
+          email,
+          phone,
+          preferredDate,
+          preferredTime,
+          timezone,
+          message,
+        },
+      });
+
+      await prisma.chatMessage.create({
+        data: {
+          sessionId: sessionId || 'default',
+          sender: 'user',
+          text: `Appointment request: ${preferredDate || 'date flexible'} ${preferredTime || ''}`.trim(),
+        },
+      });
+
+      return res.status(201).json(appointment);
+    } catch (error) {
+      return res.status(500).json({ error: 'Failed to create appointment request.' });
     }
   });
 
@@ -1214,6 +1375,10 @@ async function startServer() {
         error: error instanceof Error ? error.message : 'Upload failed.',
       });
     }
+  });
+
+  app.post('/api/admin/chat/uploads', authorize(['admin', 'editor', 'viewer', ...BLOG_AUTHOR_ROLES]), async (req: any, res: any) => {
+    return handleChatUpload(req, res, 'admin');
   });
 
   app.post('/api/admin/blog-posts', authorize(BLOG_AUTHOR_ROLES), async (req: any, res: any) => {
@@ -1395,7 +1560,7 @@ async function startServer() {
   app.get('/api/admin/chats', authorize(['admin', 'editor', 'viewer']), async (req: any, res: any) => {
     try {
       const messages = await prisma.chatMessage.findMany({
-        include: { session: true },
+        include: { session: true, attachments: true },
         orderBy: { timestamp: 'desc' }
       });
       res.json(messages);
@@ -1411,13 +1576,49 @@ async function startServer() {
         include: {
           messages: {
             orderBy: { timestamp: 'desc' },
-            take: 1
+            take: 1,
+            include: { attachments: true },
           }
         }
       });
       res.json(sessions);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch sessions' });
+    }
+  });
+
+  app.get('/api/admin/chat/appointments', authorize(['admin', 'editor', 'viewer']), async (req: any, res: any) => {
+    const sessionId = typeof req.query?.sessionId === 'string' ? req.query.sessionId : undefined;
+    try {
+      const appointments = await prisma.chatAppointmentRequest.findMany({
+        where: sessionId ? { sessionId } : {},
+        orderBy: { createdAt: 'desc' },
+      });
+      res.json(appointments);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch appointment requests' });
+    }
+  });
+
+  app.patch('/api/admin/chat/appointments/:id', authorize(['admin', 'editor', 'viewer']), async (req: any, res: any) => {
+    const id = Number(req.params.id);
+    const status = typeof req.body?.status === 'string' ? req.body.status : undefined;
+    const adminNote = typeof req.body?.adminNote === 'string' ? req.body.adminNote.trim().slice(0, 1000) : undefined;
+
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Invalid appointment id.' });
+    if (status && !CHAT_APPOINTMENT_STATUSES.has(status)) return res.status(400).json({ error: 'Invalid appointment status.' });
+
+    try {
+      const updated = await prisma.chatAppointmentRequest.update({
+        where: { id },
+        data: {
+          ...(status ? { status } : {}),
+          ...(adminNote !== undefined ? { adminNote } : {}),
+        },
+      });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to update appointment request' });
     }
   });
 
