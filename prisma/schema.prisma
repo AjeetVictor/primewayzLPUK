@@ -23,6 +23,7 @@ model ChatSession {
   id           String                   @id @default(uuid())
   name         String?
   email        String?
+  visitorLastSeenAt DateTime?
   createdAt    DateTime                 @default(now())
   messages     ChatMessage[]
   attachments  ChatAttachment[]

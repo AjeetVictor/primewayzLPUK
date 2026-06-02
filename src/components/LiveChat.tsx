@@ -46,9 +46,9 @@ const chatStatusTheme: Record<ChatStatusKey, {
     launcherText: 'Offline',
   },
   assistant: {
-    dot: 'bg-sky-500',
+    dot: 'bg-slate-500',
     softDot: 'bg-sky-400',
-    badge: 'border-sky-200 bg-sky-50 text-sky-700',
+    badge: 'border-slate-300 bg-slate-100 text-slate-700',
     badgeText: 'ASSISTANT',
     launcherRing: 'ring-sky-200',
     launcherText: 'Assistant',
@@ -99,28 +99,28 @@ const defaultAvailability: ChatAvailability = {
 
 const availabilityStyles: Record<ChatAvailabilityStatus, { dot: string; badge: string; label: string; launcherLabel: string }> = {
   online: {
-    dot: 'bg-emerald-500',
-    badge: 'bg-emerald-500/10 text-emerald-400',
+    dot: 'bg-green-600',
+    badge: 'border border-green-300 bg-green-100 text-green-800',
     label: 'Online',
     launcherLabel: 'Online',
   },
   away: {
-    dot: 'bg-amber-400',
-    badge: 'bg-amber-400/10 text-amber-300',
+    dot: 'bg-amber-500',
+    badge: 'border border-amber-300 bg-amber-100 text-amber-800',
     label: 'Away',
     launcherLabel: 'Away - leave a message',
   },
   offline: {
-    dot: 'bg-zinc-400',
-    badge: 'bg-zinc-400/10 text-zinc-300',
+    dot: 'bg-slate-400',
+    badge: 'border border-slate-300 bg-slate-100 text-slate-700',
     label: 'Offline',
     launcherLabel: 'Offline - leave a message',
   },
   assistant: {
-    dot: 'bg-indigo-400',
-    badge: 'bg-indigo-400/10 text-indigo-300',
+    dot: 'bg-slate-500',
+    badge: 'border border-slate-300 bg-slate-100 text-slate-700',
     label: 'Assistant',
-    launcherLabel: 'Away - leave a message',
+    launcherLabel: 'Assistant',
   },
 };
 
@@ -136,6 +136,9 @@ export const LiveChat = () => {
   const currentStatusTheme = chatStatusTheme[chatStatusKey];
   const [userName, setUserName] = useState(() => localStorage.getItem('chat_user_name') || '');
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem('chat_user_email') || '');
+
+
+
   const [showLeadForm, setShowLeadForm] = useState(!userName || !userEmail);
   const [apiAvailable, setApiAvailable] = useState(true);
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
@@ -158,6 +161,40 @@ export const LiveChat = () => {
     localStorage.setItem('chat_session_id', newId);
     return newId;
   });
+
+  useEffect(() => {
+    if (!isOpen || !sessionId) return;
+
+    let cancelled = false;
+
+    const sendVisitorHeartbeat = async () => {
+      try {
+        await fetch(apiUrl('/api/chat/heartbeat'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId,
+            userName,
+            userEmail,
+          }),
+        });
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Chat heartbeat failed', error);
+        }
+      }
+    };
+
+    sendVisitorHeartbeat();
+    const heartbeatTimer = window.setInterval(sendVisitorHeartbeat, 30000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(heartbeatTimer);
+    };
+  }, [isOpen, sessionId, userName, userEmail]);
+
+
 
   // Fetch persistent chat history
   useEffect(() => {

@@ -62,6 +62,7 @@ interface ChatSession {
   id: string;
   name: string | null;
   email: string | null;
+  visitorLastSeenAt?: string | null;
   createdAt: string;
   messages: {
     text: string;
@@ -190,6 +191,79 @@ interface BlogPostComment {
   text: string;
   createdAt: string;
 }
+
+export 
+type VisitorActivityStatus = {
+  label: string;
+  dotClass: string;
+  badgeClass: string;
+  title: string;
+};
+
+const getVisitorActivityStatus = (visitorLastSeenAt?: string | null): VisitorActivityStatus => {
+  if (!visitorLastSeenAt) {
+    return {
+      label: 'Inactive',
+      dotClass: 'bg-slate-400',
+      badgeClass: 'border-slate-200 bg-slate-50 text-slate-600',
+      title: 'No recent visitor activity recorded',
+    };
+  }
+
+  const lastSeenTime = new Date(visitorLastSeenAt).getTime();
+
+  if (Number.isNaN(lastSeenTime)) {
+    return {
+      label: 'Inactive',
+      dotClass: 'bg-slate-400',
+      badgeClass: 'border-slate-200 bg-slate-50 text-slate-600',
+      title: 'Visitor activity timestamp is unavailable',
+    };
+  }
+
+  const ageMs = Date.now() - lastSeenTime;
+  const ageSeconds = Math.floor(ageMs / 1000);
+  const ageMinutes = Math.floor(ageSeconds / 60);
+
+  if (ageSeconds <= 60) {
+    return {
+      label: 'Active now',
+      dotClass: 'bg-green-500',
+      badgeClass: 'border-green-200 bg-green-50 text-green-700',
+      title: 'Visitor was active within the last minute',
+    };
+  }
+
+  if (ageMinutes <= 5) {
+    return {
+      label: 'Recently active',
+      dotClass: 'bg-amber-500',
+      badgeClass: 'border-amber-200 bg-amber-50 text-amber-700',
+      title: `Visitor was active ${ageMinutes || 1} minute(s) ago`,
+    };
+  }
+
+  return {
+    label: 'Inactive',
+    dotClass: 'bg-slate-400',
+    badgeClass: 'border-slate-200 bg-slate-50 text-slate-600',
+    title: `Visitor was last active ${ageMinutes} minute(s) ago`,
+  };
+};
+
+const renderVisitorActivityBadge = (visitorLastSeenAt?: string | null) => {
+  const activity = getVisitorActivityStatus(visitorLastSeenAt);
+
+  return (
+    <span
+      title={activity.title}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-bold ${activity.badgeClass}`}
+    >
+      <span className={`h-2 w-2 rounded-full ${activity.dotClass}`} />
+      {activity.label}
+    </span>
+  );
+};
 
 export const AdminPanel = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -1202,6 +1276,7 @@ export const AdminPanel = () => {
                       <div className="flex flex-col">
                         <h3 className="text-lg font-bold text-zinc-900">{session.name || 'Anonymous'}</h3>
                         <p className="text-sm text-zinc-500">{session.email || 'No email provided'}</p>
+                          <div className="mt-2">{renderVisitorActivityBadge(session.visitorLastSeenAt)}</div>
                       </div>
                       <span className="text-[10px] font-mono text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded">
                         {session.id.slice(0, 8)}...

@@ -990,6 +990,48 @@ async function startServer() {
     res.json({ status: 'ok', message: 'Primewayz API is running' });
   });
 
+
+  app.post('/api/chat/heartbeat', async (req: any, res: any) => {
+    try {
+      const rawSessionId = typeof req.body?.sessionId === 'string' ? req.body.sessionId.trim() : '';
+      const safeSessionId = rawSessionId.slice(0, 120);
+
+      if (!safeSessionId) {
+        return res.status(400).json({ error: 'sessionId is required' });
+      }
+
+      const safeUserName = typeof req.body?.userName === 'string' ? req.body.userName.trim().slice(0, 120) : '';
+      const safeUserEmail = typeof req.body?.userEmail === 'string' ? req.body.userEmail.trim().slice(0, 160) : '';
+      const now = new Date();
+
+      const session = await prisma.chatSession.upsert({
+        where: { id: safeSessionId },
+        update: {
+          visitorLastSeenAt: now,
+          ...(safeUserName ? { name: safeUserName } : {}),
+          ...(safeUserEmail ? { email: safeUserEmail } : {}),
+        },
+        create: {
+          id: safeSessionId,
+          name: safeUserName || null,
+          email: safeUserEmail || null,
+          visitorLastSeenAt: now,
+        },
+      });
+
+      res.json({
+        success: true,
+        sessionId: session.id,
+        visitorLastSeenAt: session.visitorLastSeenAt,
+      });
+    } catch (error) {
+      backendLog('chat visitor heartbeat failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      res.status(500).json({ error: 'Failed to update visitor activity' });
+    }
+  });
+
   app.get('/api/chat/availability', async (req, res) => {
     try {
       const availability = await computeChatAvailability();
