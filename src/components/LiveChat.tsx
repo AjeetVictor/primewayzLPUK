@@ -430,7 +430,7 @@ export const LiveChat = () => {
             initial={{ opacity: 0, y: 20, scale: 0.95, transformOrigin: 'bottom right' }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="mb-4 w-[350px] sm:w-[400px] h-[500px] bg-white rounded-3xl shadow-2xl shadow-emerald-900/20 border border-zinc-200 flex flex-col overflow-hidden"
+            className="mb-3 w-[calc(100vw-48px)] max-w-[400px] h-[min(82vh,560px)] bg-white rounded-2xl shadow-2xl shadow-emerald-900/20 border border-zinc-200 flex flex-col overflow-hidden sm:mb-4 sm:w-[400px] sm:h-[560px] sm:rounded-3xl max-[360px]:w-[calc(100vw-32px)]"
           >
             {/* Header */}
             <div className="p-4 bg-zinc-900 text-white flex items-center justify-between">
