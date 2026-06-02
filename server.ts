@@ -153,6 +153,7 @@ const CHAT_BUSINESS_HOURS_TIME_ZONE = 'Europe/London';
 const CHAT_BUSINESS_HOURS_DAYS = new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
 const CHAT_BUSINESS_HOURS_START = 10;
 const CHAT_BUSINESS_HOURS_END = 19;
+const CHAT_OFFLINE_AUTO_REPLY = 'Thanks for your message. Please share your requirement and contact details. Our representative will contact you soon.';
 
 type ChatAvailabilityStatus = 'online' | 'away' | 'offline' | 'assistant';
 
@@ -1369,20 +1370,33 @@ async function startServer() {
         });
       }
 
-      const botText = await generateBotReply(safeMessage || 'The visitor shared an attachment and may need support.', userName);
-      const savedBotMessage = await prisma.chatMessage.create({
-        data: {
-          sender: 'bot',
-          text: botText,
-          sessionId: safeSessionId,
-        },
-      });
+      const availability = await computeChatAvailability();
+      let savedBotMessage: any = null;
 
-      backendLog('chat respond success', { sessionId: safeSessionId, botLength: botText.length });
+      if (availability.status !== 'online') {
+        savedBotMessage = await prisma.chatMessage.create({
+          data: {
+            sender: 'bot',
+            text: CHAT_OFFLINE_AUTO_REPLY,
+            sessionId: safeSessionId,
+          },
+        });
+      }
+
+      backendLog('chat respond success', {
+        sessionId: safeSessionId,
+        availabilityStatus: availability.status,
+        botSent: Boolean(savedBotMessage),
+      });
       return res.status(200).json({
         success: true,
         userMessage: await prisma.chatMessage.findUnique({ where: { id: savedUserMessage.id }, include: { attachments: true } }),
         botMessage: savedBotMessage,
+        availability: {
+          status: availability.status,
+          title: availability.title,
+          subtitle: availability.subtitle,
+        },
       });
     } catch (error: any) {
       backendLog('chat respond failed', { sessionId: safeSessionId, error: error?.message || 'unknown error' });

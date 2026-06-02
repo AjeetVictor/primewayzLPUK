@@ -45,11 +45,31 @@ const defaultAvailability: ChatAvailability = {
   serverTime: '',
 };
 
-const availabilityStyles: Record<ChatAvailabilityStatus, { dot: string; badge: string; label: string }> = {
-  online: { dot: 'bg-emerald-500', badge: 'bg-emerald-500/10 text-emerald-400', label: 'Online' },
-  away: { dot: 'bg-amber-400', badge: 'bg-amber-400/10 text-amber-300', label: 'Away' },
-  offline: { dot: 'bg-zinc-400', badge: 'bg-zinc-400/10 text-zinc-300', label: 'Offline' },
-  assistant: { dot: 'bg-indigo-400', badge: 'bg-indigo-400/10 text-indigo-300', label: 'Assistant' },
+const availabilityStyles: Record<ChatAvailabilityStatus, { dot: string; badge: string; label: string; launcherLabel: string }> = {
+  online: {
+    dot: 'bg-emerald-500',
+    badge: 'bg-emerald-500/10 text-emerald-400',
+    label: 'Online',
+    launcherLabel: 'Online',
+  },
+  away: {
+    dot: 'bg-amber-400',
+    badge: 'bg-amber-400/10 text-amber-300',
+    label: 'Away',
+    launcherLabel: 'Away - leave a message',
+  },
+  offline: {
+    dot: 'bg-zinc-400',
+    badge: 'bg-zinc-400/10 text-zinc-300',
+    label: 'Offline',
+    launcherLabel: 'Offline - leave a message',
+  },
+  assistant: {
+    dot: 'bg-indigo-400',
+    badge: 'bg-indigo-400/10 text-indigo-300',
+    label: 'Assistant',
+    launcherLabel: 'Away - leave a message',
+  },
 };
 
 export const LiveChat = () => {
@@ -322,17 +342,16 @@ export const LiveChat = () => {
       });
       if (!res.ok) throw new Error('Backend chat request failed');
       const payload = await res.json();
-      const botText = payload?.botMessage?.text || '';
-      if (!botText) throw new Error('Bot response missing');
-
       setIsTyping(false);
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: botText,
-        sender: 'bot',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, botMessage]);
+      if (payload?.botMessage?.text) {
+        const botMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: payload.botMessage.text,
+          sender: 'bot',
+          timestamp: new Date(payload.botMessage.timestamp || Date.now()),
+        };
+        setMessages((prev) => [...prev, botMessage]);
+      }
     } catch (error) {
       console.error('AI Chat error:', error);
       setApiAvailable(false);
@@ -561,7 +580,7 @@ export const LiveChat = () => {
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={handleKeyDown}
                     onPaste={handlePaste}
-                    placeholder={availability.status === 'offline' ? 'Leave your message...' : 'Tell us what your UK business needs help with...'}
+                    placeholder={availability.status === 'online' ? 'Message Primewayz team...' : 'Leave your message and contact details...'}
                     className="flex-1 bg-zinc-100 border-none rounded-2xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500/20 outline-none resize-none max-h-[120px] transition-[height] duration-100"
                   />
                   <button
@@ -579,6 +598,35 @@ export const LiveChat = () => {
       </AnimatePresence>
 
       {/* Toggle Button */}
+      <div className="hidden sm:flex items-center gap-2">
+        {!isOpen && (
+          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${availabilityStyle.badge}`}>
+            <span className={`h-2 w-2 rounded-full ${availabilityStyle.dot}`} />
+            {availabilityStyle.launcherLabel}
+          </span>
+        )}
+        <motion.button
+          aria-label={`Open chat. ${availability.title}. ${availability.subtitle}`}
+          onClick={() => {
+            setIsOpen(true);
+            setIsMinimized(false);
+          }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className={`relative w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all ${
+            isOpen && !isMinimized ? 'bg-zinc-900 text-white rotate-90' : 'bg-emerald-600 text-white'
+          }`}
+        >
+          {isOpen && !isMinimized ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
+          {!isOpen && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className={`absolute -top-1 -right-1 w-4 h-4 border-2 border-white rounded-full ${availabilityStyle.dot}`}
+            />
+          )}
+        </motion.button>
+      </div>
       <motion.button
         aria-label={`Open chat. ${availability.title}. ${availability.subtitle}`}
         onClick={() => {
@@ -587,7 +635,7 @@ export const LiveChat = () => {
         }}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all ${
+        className={`sm:hidden relative w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all ${
           isOpen && !isMinimized ? 'bg-zinc-900 text-white rotate-90' : 'bg-emerald-600 text-white'
         }`}
       >
