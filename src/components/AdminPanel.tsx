@@ -1148,7 +1148,7 @@ export const AdminPanel = () => {
                   <ClipboardList className="w-4 h-4" />
                   Form Responses
                   <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
-                    {filteredForms.length}
+                    {formResponses.length}
                   </span>
                 </Tabs.Trigger>
                 <Tabs.Trigger 
@@ -1158,7 +1158,7 @@ export const AdminPanel = () => {
                   <Users className="w-4 h-4" />
                   Chat Leads
                   <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
-                    {filteredLeads.length}
+                    {chatSessions.length}
                   </span>
                 </Tabs.Trigger>
                 <Tabs.Trigger 
@@ -1168,7 +1168,7 @@ export const AdminPanel = () => {
                   <MessageSquare className="w-4 h-4" />
                   Chat History
                   <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
-                    {filteredChatConversations.length}
+                    {chatConversations.length}
                   </span>
                 </Tabs.Trigger>
               </>
@@ -1309,7 +1309,7 @@ export const AdminPanel = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            setSearchTerm(session.id);
+                            setSearchTerm('');
                             setSelectedConversationId(session.id);
                             setReplyingTo(session.id);
                             setActiveTab('chats');
@@ -1365,7 +1365,7 @@ export const AdminPanel = () => {
                     <p className="text-xs text-zinc-500">Updates every 5 seconds</p>
                   </div>
                   <span className="px-2 py-1 rounded-lg bg-zinc-100 text-[10px] font-bold text-zinc-500">
-                    {filteredChatConversations.length}
+                    {chatConversations.length}
                   </span>
                 </div>
 
