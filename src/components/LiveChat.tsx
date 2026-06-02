@@ -3,6 +3,58 @@ import { motion, AnimatePresence } from 'motion/react';
 import { MessageCircle, X, Send, User, Bot, Minus, Paperclip, CalendarClock, FileText, Image as ImageIcon } from 'lucide-react';
 import { apiUrl } from '../utils/apiUrl';
 
+
+type ChatStatusKey = 'online' | 'away' | 'offline' | 'assistant';
+
+const normalizeChatStatus = (status?: string): ChatStatusKey => {
+  if (status === 'online') return 'online';
+  if (status === 'away') return 'away';
+  if (status === 'assistant') return 'assistant';
+  return 'offline';
+};
+
+const chatStatusTheme: Record<ChatStatusKey, {
+  dot: string;
+  softDot: string;
+  badge: string;
+  badgeText: string;
+  launcherRing: string;
+  launcherText: string;
+}> = {
+  online: {
+    dot: 'bg-emerald-500',
+    softDot: 'bg-emerald-400',
+    badge: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    badgeText: 'ONLINE',
+    launcherRing: 'ring-emerald-200',
+    launcherText: 'Online',
+  },
+  away: {
+    dot: 'bg-amber-500',
+    softDot: 'bg-amber-400',
+    badge: 'border-amber-200 bg-amber-50 text-amber-700',
+    badgeText: 'AWAY',
+    launcherRing: 'ring-amber-200',
+    launcherText: 'Away',
+  },
+  offline: {
+    dot: 'bg-slate-400',
+    softDot: 'bg-slate-400',
+    badge: 'border-slate-200 bg-slate-100 text-slate-600',
+    badgeText: 'OFFLINE',
+    launcherRing: 'ring-slate-200',
+    launcherText: 'Offline',
+  },
+  assistant: {
+    dot: 'bg-sky-500',
+    softDot: 'bg-sky-400',
+    badge: 'border-sky-200 bg-sky-50 text-sky-700',
+    badgeText: 'ASSISTANT',
+    launcherRing: 'ring-sky-200',
+    launcherText: 'Assistant',
+  },
+};
+
 interface ChatAttachment {
   id: number;
   url: string;
@@ -79,6 +131,9 @@ export const LiveChat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [availability, setAvailability] = useState<ChatAvailability>(defaultAvailability);
+
+  const chatStatusKey = normalizeChatStatus(availability?.status);
+  const currentStatusTheme = chatStatusTheme[chatStatusKey];
   const [userName, setUserName] = useState(() => localStorage.getItem('chat_user_name') || '');
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem('chat_user_email') || '');
   const [showLeadForm, setShowLeadForm] = useState(!userName || !userEmail);
@@ -387,7 +442,7 @@ export const LiveChat = () => {
                   <div className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-zinc-900 rounded-full ${availabilityStyle.dot}`} />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-bold text-sm">{availability.title}</h3>
                     <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full ${availabilityStyle.badge}`}>
                       <div className={`w-1 h-1 rounded-full ${availabilityStyle.dot}`} />
@@ -482,7 +537,7 @@ export const LiveChat = () => {
                                   href={attachment.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex items-center gap-2 rounded-xl bg-white/10 p-2 text-xs font-bold underline-offset-2 hover:underline"
+                                  className="flex flex-wrap items-center gap-2 rounded-xl bg-white/10 p-2 text-xs font-bold underline-offset-2 hover:underline"
                                 >
                                   <FileText className="h-4 w-4" />
                                   {attachment.originalName}
@@ -598,7 +653,7 @@ export const LiveChat = () => {
       </AnimatePresence>
 
       {/* Toggle Button */}
-      <div className="hidden sm:flex items-center gap-2">
+      <div className="hidden sm:flex flex-wrap items-center gap-2">
         {!isOpen && (
           <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${availabilityStyle.badge}`}>
             <span className={`h-2 w-2 rounded-full ${availabilityStyle.dot}`} />
