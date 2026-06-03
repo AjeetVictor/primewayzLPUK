@@ -265,6 +265,42 @@ const renderVisitorActivityBadge = (visitorLastSeenAt?: string | null) => {
   );
 };
 
+export 
+type AdminNotificationSummary = {
+  dateKey: string;
+  generatedAt: string;
+  priority: 'high' | 'medium' | 'normal' | string;
+  counts: {
+    todayContactForms: number;
+    todayChatSessions: number;
+    todayVisitorMessages: number;
+    todayAdminReplies: number;
+    todayAppointments: number;
+    pendingAppointments: number;
+    todayUnansweredAlerts: number;
+    todayEmailSentAlerts: number;
+    todayEmailFailedAlerts: number;
+    todayEmailSkippedAlerts: number;
+    recentAlertCount: number;
+  };
+  latestAlerts?: Array<{
+    id: number;
+    sessionId: string;
+    messageId: number;
+    status: string;
+    createdAt: string;
+    sentAt?: string | null;
+  }>;
+  latestDailySummary?: {
+    id: number;
+    dateKey: string;
+    summaryType: string;
+    status: string;
+    sentAt?: string | null;
+    createdAt: string;
+  } | null;
+};
+
 export const AdminPanel = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -300,6 +336,9 @@ export const AdminPanel = () => {
   const [availabilityMessage, setAvailabilityMessage] = useState('');
   const [availabilityError, setAvailabilityError] = useState('');
   const [isSavingAvailability, setIsSavingAvailability] = useState(false);
+  const [notificationSummary, setNotificationSummary] = useState<AdminNotificationSummary | null>(null);
+  const [notificationSummaryError, setNotificationSummaryError] = useState('');
+  const [isLoadingNotificationSummary, setIsLoadingNotificationSummary] = useState(false);
   const seenUserMessageIdsRef = useRef<Set<number>>(new Set());
   const hasInitializedMessageWatchRef = useRef(false);
   const adminFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -315,6 +354,7 @@ export const AdminPanel = () => {
         setActiveTab(getDefaultAdminTab(data.user?.role));
         fetchData(false, data.user);
         fetchChatAvailability();
+        fetchNotificationSummary();
       }
     } catch (error) {
       setIsAuthenticated(false);
@@ -331,6 +371,40 @@ export const AdminPanel = () => {
       return () => clearInterval(interval);
     }
   }, [isAuthenticated, user]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    fetchNotificationSummary();
+    const interval = setInterval(fetchNotificationSummary, 30000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
+
+  const fetchNotificationSummary = async () => {
+    setIsLoadingNotificationSummary(true);
+
+    try {
+      const res = await adminRequest('/api/admin/notifications/summary');
+
+      if (!res.ok) {
+        if (res.status !== 403) {
+          setNotificationSummaryError('Unable to load notification summary.');
+        }
+        return;
+      }
+
+      const data = await res.json() as AdminNotificationSummary;
+      setNotificationSummary(data);
+      setNotificationSummaryError('');
+    } catch (error) {
+      console.error('Failed to load notification summary:', error);
+      setNotificationSummaryError('Unable to load notification summary.');
+    } finally {
+      setIsLoadingNotificationSummary(false);
+    }
+  };
 
   const fetchChatAvailability = async (syncForm = true) => {
     try {
@@ -1023,6 +1097,19 @@ export const AdminPanel = () => {
         : 'bg-zinc-400';
   const availabilityLabel = chatAvailability?.status || 'loading';
 
+  const notificationCounts = notificationSummary?.counts;
+  const notificationToneClass = notificationSummary?.priority === 'high'
+    ? 'border-red-200 bg-red-50 shadow-red-900/5'
+    : notificationSummary?.priority === 'medium'
+      ? 'border-amber-200 bg-amber-50 shadow-amber-900/5'
+      : 'border-emerald-100 bg-white shadow-emerald-900/5';
+  const notificationBadgeClass = notificationSummary?.priority === 'high'
+    ? 'bg-red-100 text-red-700'
+    : notificationSummary?.priority === 'medium'
+      ? 'bg-amber-100 text-amber-700'
+      : 'bg-emerald-100 text-emerald-700';
+  const latestDailySummaryStatus = notificationSummary?.latestDailySummary?.status || 'not_sent';
+
   return (
     <div className="min-h-screen bg-zinc-50 pt-20 pb-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -1044,7 +1131,7 @@ export const AdminPanel = () => {
           </div>
           <div className="flex items-center gap-3">
             <button 
-              onClick={() => fetchData()}
+              onClick={() => { fetchData(); fetchNotificationSummary(); }}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-200 rounded-xl text-sm font-medium hover:bg-zinc-50 transition-colors"
             >
               <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -1123,6 +1210,93 @@ export const AdminPanel = () => {
           </div>
           {availabilityError && <p className="mt-2 text-xs font-bold text-red-600">{availabilityError}</p>}
         </div>
+
+
+        {canViewOperations && (
+          <div className={`mb-8 rounded-2xl border p-4 shadow-sm ${notificationToneClass}`}>
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-bold text-zinc-900">Operational notifications</p>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${notificationBadgeClass}`}>
+                    {notificationSummary?.priority || 'loading'}
+                  </span>
+                  {isLoadingNotificationSummary && (
+                    <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                      Refreshing
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-zinc-500">
+                  {notificationSummary
+                    ? `Today ${notificationSummary.dateKey}. ${notificationCounts?.todayVisitorMessages || 0} visitor message(s), ${notificationCounts?.pendingAppointments || 0} pending appointment(s), ${notificationCounts?.todayUnansweredAlerts || 0} unanswered alert(s).`
+                    : notificationSummaryError || 'Loading notification summary...'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:min-w-[620px]">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('forms')}
+                  className="rounded-xl border border-white/70 bg-white/80 px-3 py-2 text-left shadow-sm transition hover:bg-white"
+                >
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400">Forms today</span>
+                  <span className="mt-1 block text-lg font-black text-zinc-900">{notificationCounts?.todayContactForms ?? '-'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('leads')}
+                  className="rounded-xl border border-white/70 bg-white/80 px-3 py-2 text-left shadow-sm transition hover:bg-white"
+                >
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400">New chats</span>
+                  <span className="mt-1 block text-lg font-black text-zinc-900">{notificationCounts?.todayChatSessions ?? '-'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('chats')}
+                  className="rounded-xl border border-white/70 bg-white/80 px-3 py-2 text-left shadow-sm transition hover:bg-white"
+                >
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400">Unanswered</span>
+                  <span className={`mt-1 block text-lg font-black ${(notificationCounts?.todayUnansweredAlerts || 0) > 0 ? 'text-amber-700' : 'text-zinc-900'}`}>
+                    {notificationCounts?.todayUnansweredAlerts ?? '-'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('chats')}
+                  className="rounded-xl border border-white/70 bg-white/80 px-3 py-2 text-left shadow-sm transition hover:bg-white"
+                >
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400">Email failures</span>
+                  <span className={`mt-1 block text-lg font-black ${(notificationCounts?.todayEmailFailedAlerts || 0) > 0 ? 'text-red-700' : 'text-zinc-900'}`}>
+                    {notificationCounts?.todayEmailFailedAlerts ?? '-'}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-col gap-2 border-t border-white/70 pt-3 text-xs text-zinc-600 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold">
+                  Pending appointments: {notificationCounts?.pendingAppointments ?? '-'}
+                </span>
+                <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold">
+                  Alert emails sent: {notificationCounts?.todayEmailSentAlerts ?? '-'}
+                </span>
+                <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold">
+                  Daily summary: {latestDailySummaryStatus}
+                </span>
+              </div>
+              <span className="text-[11px] text-zinc-400">
+                {notificationSummary?.generatedAt
+                  ? `Updated ${format(new Date(notificationSummary.generatedAt), 'MMM d, h:mm a')}`
+                  : 'Waiting for summary'}
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="mb-8">
           <div className="relative max-w-md">
