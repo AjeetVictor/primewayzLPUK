@@ -4,6 +4,13 @@ import { MessageCircle, X, Send, User, Bot, Minus, Paperclip, CalendarClock, Fil
 import { apiUrl } from '../utils/apiUrl';
 
 
+import {
+  trackChatAppointmentRequested,
+  trackChatAttachmentUploaded,
+  trackChatMessageSent,
+  trackChatOpen,
+} from '../lib/analytics';
+
 type ChatStatusKey = 'online' | 'away' | 'offline' | 'assistant';
 
 const normalizeChatStatus = (status?: string): ChatStatusKey => {
@@ -126,6 +133,10 @@ const availabilityStyles: Record<ChatAvailabilityStatus, { dot: string; badge: s
 
 export const LiveChat = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [hasTrackedChatOpen, setHasTrackedChatOpen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.sessionStorage.getItem('primewayz_chat_open_tracked') === 'true';
+  });
   const [isMinimized, setIsMinimized] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -290,6 +301,25 @@ export const LiveChat = () => {
 
   const availabilityStyle = availabilityStyles[availability.status] || availabilityStyles.assistant;
 
+
+  const openChatWidget = () => {
+    setIsOpen(true);
+    setIsMinimized(false);
+
+    if (!hasTrackedChatOpen) {
+      trackChatOpen({
+        chatStatus: availability.status,
+        chatTitle: availability.title,
+        ctaLocation: 'chat_launcher',
+      });
+
+      setHasTrackedChatOpen(true);
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem('primewayz_chat_open_tracked', 'true');
+      }
+    }
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -353,6 +383,12 @@ export const LiveChat = () => {
         return;
       }
       setPendingAttachments((prev) => [...prev, data]);
+      trackChatAttachmentUploaded({
+        chatStatus: availability.status,
+        attachmentKind: data?.kind,
+        sizeBytes: file.size,
+        ctaLocation: 'live_chat_attachment',
+      });
     } catch {
       setUploadError('Upload failed. Please try again.');
     } finally {
@@ -387,6 +423,11 @@ export const LiveChat = () => {
         setAppointmentError(data?.error || 'Could not send appointment request.');
         return;
       }
+      trackChatAppointmentRequested({
+        chatStatus: availability.status,
+        hasMessage: Boolean(appointmentForm.message.trim()),
+        ctaLocation: 'chat_appointment_form',
+      });
       setShowAppointmentForm(false);
       setMessages((prev) => [
         ...prev,
@@ -406,9 +447,12 @@ export const LiveChat = () => {
     e.preventDefault();
     if (!message.trim() && pendingAttachments.length === 0) return;
 
+    const outgoingMessageText = message.trim();
+    const outgoingAttachmentCount = pendingAttachments.length;
+
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: message || 'Shared an attachment',
+      text: outgoingMessageText || 'Shared an attachment',
       sender: 'user',
       timestamp: new Date(),
       attachments: pendingAttachments,
@@ -435,6 +479,13 @@ export const LiveChat = () => {
       if (!res.ok) throw new Error('Backend chat request failed');
       const payload = await res.json();
       setIsTyping(false);
+      trackChatMessageSent({
+        chatStatus: payload?.availability?.status || availability.status,
+        messageLength: outgoingMessageText.length,
+        attachmentCount: outgoingAttachmentCount,
+        botReplySent: Boolean(payload?.botMessage),
+        ctaLocation: 'live_chat',
+      });
       if (payload?.botMessage?.text) {
         const botMessage: Message = {
           id: (Date.now() + 1).toString(),
@@ -699,10 +750,7 @@ export const LiveChat = () => {
         )}
         <motion.button
           aria-label={`Open chat. ${availability.title}. ${availability.subtitle}`}
-          onClick={() => {
-            setIsOpen(true);
-            setIsMinimized(false);
-          }}
+          onClick={openChatWidget}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           className={`relative w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all ${
