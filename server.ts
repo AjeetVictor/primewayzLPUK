@@ -184,8 +184,6 @@ function getUkBusinessTimeParts(date = new Date()) {
   const weekday = parts.find((part) => part.type === 'weekday')?.value || '';
   const hour = Number(parts.find((part) => part.type === 'hour')?.value || 0);
 
-  }
-
   return { weekday, hour };
 }
 
@@ -1072,7 +1070,7 @@ async function sendUnansweredChatAlertEmail(message: any) {
   const safeSessionId = escapeEmailHtml(message.sessionId);
   const safeAdminUrl = escapeEmailHtml(adminUrl);
   const safeTimestamp = escapeEmailHtml(new Date(message.timestamp).toLocaleString('en-GB', {
-    timeZone: 'Europe/London',
+    timeZone: CHAT_BUSINESS_HOURS_TIME_ZONE,
     dateStyle: 'medium',
     timeStyle: 'short',
   }));
