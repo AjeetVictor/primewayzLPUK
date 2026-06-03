@@ -358,6 +358,24 @@ export const LiveChat = () => {
     }
   };
 
+
+  const syncAppointmentContactDetails = () => {
+    const storedName = typeof window !== 'undefined' ? window.localStorage.getItem('chat_user_name') || '' : '';
+    const storedEmail = typeof window !== 'undefined' ? window.localStorage.getItem('chat_user_email') || '' : '';
+
+    setAppointmentForm((prev) => ({
+      ...prev,
+      name: prev.name || userName || storedName,
+      email: prev.email || userEmail || storedEmail,
+    }));
+  };
+
+  const toggleAppointmentForm = () => {
+    syncAppointmentContactDetails();
+    setShowAppointmentForm((value) => !value);
+  };
+
+
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -668,7 +686,7 @@ export const LiveChat = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowAppointmentForm((value) => !value)}
+                    onClick={toggleAppointmentForm}
                     className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
                       availability.status === 'online'
                         ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
