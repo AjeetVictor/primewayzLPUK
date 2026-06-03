@@ -1097,6 +1097,29 @@ export const AdminPanel = () => {
         : 'bg-zinc-400';
   const availabilityLabel = chatAvailability?.status || 'loading';
 
+
+  const updateChatAlertStatus = async (alertId: number, status: 'reviewed' | 'resolved') => {
+    try {
+      const res = await adminRequest(`/api/admin/chat-alerts/${alertId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to update alert status');
+        return;
+      }
+
+      await fetchNotificationSummary();
+    } catch (error) {
+      console.error('Failed to update alert status:', error);
+      alert('Failed to update alert status');
+    }
+  };
+
+
   const notificationCounts = notificationSummary?.counts;
   const notificationToneClass = notificationSummary?.priority === 'high'
     ? 'border-red-200 bg-red-50 shadow-red-900/5'
@@ -1276,6 +1299,53 @@ export const AdminPanel = () => {
                 </button>
               </div>
             </div>
+
+
+            {notificationSummary?.latestAlerts && notificationSummary.latestAlerts.length > 0 && (
+              <div className="mt-3 rounded-xl border border-white/70 bg-white/70 p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-xs font-black uppercase tracking-wider text-zinc-500">Active alert queue</p>
+                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold text-zinc-500">
+                    {notificationSummary.latestAlerts.length} latest
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  {notificationSummary.latestAlerts.slice(0, 3).map((alert) => (
+                    <div key={alert.id} className="flex flex-col gap-2 rounded-lg border border-zinc-100 bg-white px-3 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-bold text-zinc-900">Session {alert.sessionId}</span>
+                          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700">
+                            {alert.status}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-[11px] text-zinc-400">
+                          Message #{alert.messageId} · {format(new Date(alert.createdAt), 'MMM d, h:mm a')}
+                        </p>
+                      </div>
+
+                      <div className="flex shrink-0 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updateChatAlertStatus(alert.id, 'reviewed')}
+                          className="rounded-lg border border-zinc-200 px-2.5 py-1 text-[11px] font-bold text-zinc-600 transition hover:bg-zinc-50"
+                        >
+                          Review
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateChatAlertStatus(alert.id, 'resolved')}
+                          className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white transition hover:bg-emerald-700"
+                        >
+                          Resolve
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="mt-3 flex flex-col gap-2 border-t border-white/70 pt-3 text-xs text-zinc-600 md:flex-row md:items-center md:justify-between">
               <div className="flex flex-wrap gap-2">

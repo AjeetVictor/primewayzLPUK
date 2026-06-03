@@ -2561,6 +2561,9 @@ async function startServer() {
   // Admin Routes (Protected)
   // Viewers can see forms and chats
 
+  const ACTIVE_CHAT_ALERT_STATUSES = ['logged', 'email_sent', 'email_failed', 'email_skipped'];
+  const ALLOWED_CHAT_ALERT_STATUSES = [...ACTIVE_CHAT_ALERT_STATUSES, 'reviewed', 'resolved'];
+
   app.get('/api/admin/notifications/summary', authorize(['admin', 'editor', 'viewer']), async (_req: any, res: any) => {
     try {
       const window = getDailyLeadSummaryWindow();
@@ -2591,13 +2594,13 @@ async function startServer() {
         prisma.chatMessage.count({ where: { sender: 'admin', timestamp: todayRange } }),
         prisma.chatAppointmentRequest.count({ where: { createdAt: todayRange } }),
         prisma.chatAppointmentRequest.count({ where: { status: 'pending' } }),
-        (prisma as any).chatAlert.count({ where: { createdAt: todayRange } }),
+        (prisma as any).chatAlert.count({ where: { createdAt: todayRange, status: { in: ACTIVE_CHAT_ALERT_STATUSES } } }),
         (prisma as any).chatAlert.count({ where: { createdAt: todayRange, status: 'email_sent' } }),
         (prisma as any).chatAlert.count({ where: { createdAt: todayRange, status: 'email_failed' } }),
         (prisma as any).chatAlert.count({ where: { createdAt: todayRange, status: 'email_skipped' } }),
-        (prisma as any).chatAlert.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
+        (prisma as any).chatAlert.count({ where: { createdAt: { gte: sevenDaysAgo }, status: { in: ACTIVE_CHAT_ALERT_STATUSES } } }),
         (prisma as any).chatAlert.findMany({
-          where: { createdAt: { gte: sevenDaysAgo } },
+          where: { createdAt: { gte: sevenDaysAgo }, status: { in: ACTIVE_CHAT_ALERT_STATUSES } },
           orderBy: { createdAt: 'desc' },
           take: 5,
         }),
@@ -2660,6 +2663,44 @@ async function startServer() {
       });
 
       res.status(500).json({ error: 'Failed to load notification summary' });
+    }
+  });
+
+
+  app.patch('/api/admin/chat-alerts/:id/status', authorize(['admin', 'editor']), async (req: any, res: any) => {
+    const alertId = Number(req.params.id);
+    const status = String(req.body?.status || '').trim();
+
+    if (!Number.isFinite(alertId) || alertId <= 0) {
+      return res.status(400).json({ error: 'Invalid alert id' });
+    }
+
+    if (!ALLOWED_CHAT_ALERT_STATUSES.includes(status)) {
+      return res.status(400).json({ error: 'Invalid alert status' });
+    }
+
+    try {
+      const updated = await (prisma as any).chatAlert.update({
+        where: { id: alertId },
+        data: { status },
+      });
+
+      backendLog('chat alert status updated', {
+        alertId,
+        status,
+        sessionId: updated.sessionId,
+        messageId: updated.messageId,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      backendLog('chat alert status update failed', {
+        alertId,
+        status,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      res.status(500).json({ error: 'Failed to update chat alert status' });
     }
   });
 
