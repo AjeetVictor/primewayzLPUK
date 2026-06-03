@@ -852,7 +852,7 @@ async function getSeoPayload(pathname: string, origin: string): Promise<SeoPaylo
 
   if (pathname === '/website-maintenance-subscription-uk') {
     return {
-      title: 'Website Maintenance Subscription UK for SMEs | Primewayz UK',
+      title: 'Website Maintenance Subscription UK for SMEs',
       description:
         'Ongoing website maintenance subscription for UK SMEs covering website updates, bug fixes, landing page improvements, technical SEO checks, analytics support, and monthly digital improvements.',
       canonical,
