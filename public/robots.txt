@@ -8,3 +8,4 @@ Disallow: /package.json
 Disallow: /vite.config.ts
 
 Sitemap: https://uk.primewayz.com/sitemap.xml
+Sitemap: https://uk.primewayz.com/sitemap-index.xml
