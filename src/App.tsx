@@ -27,6 +27,7 @@ import LegalPage from './components/LegalPage';
 import AnalyticsTracker from './components/AnalyticsTracker';
 import { TrackedLink } from './components/common/TrackedLink';
 import { SoftwareDevelopmentSubscriptionUkPage } from './components/SoftwareDevelopmentSubscriptionUkPage';
+import { WebsiteMaintenanceSubscriptionUkPage } from './components/WebsiteMaintenanceSubscriptionUkPage';
 
 
 const ClientOnly = ({ children }: { children: ReactNode }) => {
@@ -138,6 +139,7 @@ export default function App() {
         <Route path="/blog" element={<BlogListPage />} />
         <Route path="/blog/:id" element={<BlogPost />} />
         <Route path="/software-development-subscription-uk" element={<SoftwareDevelopmentSubscriptionUkPage />} />
+        <Route path="/website-maintenance-subscription-uk" element={<WebsiteMaintenanceSubscriptionUkPage />} />
         <Route path="/privacy-policy" element={<LegalPage type="privacy" />} />
         <Route path="/terms-of-service" element={<LegalPage type="terms" />} />
         <Route path="/cookie-policy" element={<LegalPage type="cookies" />} />

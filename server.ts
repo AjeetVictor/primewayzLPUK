@@ -850,6 +850,37 @@ async function getSeoPayload(pathname: string, origin: string): Promise<SeoPaylo
   };
 
 
+  if (pathname === '/website-maintenance-subscription-uk') {
+    return {
+      title: 'Website Maintenance Subscription UK for SMEs | Primewayz UK',
+      description:
+        'Ongoing website maintenance subscription for UK SMEs covering website updates, bug fixes, landing page improvements, technical SEO checks, analytics support, and monthly digital improvements.',
+      canonical,
+      ogType: 'website',
+      ogImage: SEO_DEFAULT_OG_IMAGE,
+      twitterHandle: SEO_DEFAULT_TWITTER_HANDLE,
+      robots: 'index,follow',
+      structuredData: {
+        '@context': 'https://schema.org',
+        '@type': 'Service',
+        name: 'Website Maintenance Subscription UK for SMEs',
+        serviceType: 'Website maintenance subscription',
+        description:
+          'Monthly website maintenance support for UK SMEs, including website updates, bug fixes, landing page improvements, technical SEO checks, analytics support, and conversion-focused improvements.',
+        provider: baseOrg,
+        areaServed: {
+          '@type': 'Country',
+          name: 'United Kingdom',
+        },
+        availableLanguage: 'en-GB',
+        audience: {
+          '@type': 'BusinessAudience',
+          audienceType: 'UK small businesses and SMEs',
+        },
+      },
+    };
+  }
+
   if (pathname === '/software-development-subscription-uk') {
     return {
       title: 'Software Development Subscription for UK SMEs',

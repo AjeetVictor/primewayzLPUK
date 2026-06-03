@@ -14,6 +14,7 @@ export const Navbar = () => {
     { name: 'Features', href: '/#features' },
     { name: 'Success Stories', href: '/#success-stories' },
     { name: 'Subscription', href: '/software-development-subscription-uk' },
+    { name: 'Maintenance', href: '/website-maintenance-subscription-uk' },
     { name: 'Pricing', href: '/#pricing' },
     { name: 'FAQ', href: '/#faq' },
   ];
