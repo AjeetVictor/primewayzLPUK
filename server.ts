@@ -886,7 +886,7 @@ async function getSeoPayload(pathname: string, origin: string): Promise<SeoPaylo
 
   if (pathname === '/crm-integration-support-uk') {
     return {
-      title: 'CRM Integration & Support for UK SMEs | Primewayz UK',
+      title: 'CRM Integration & Support for UK SMEs',
       description:
         'Primewayz helps UK SMEs connect CRM, ERP, websites, forms, email, support and reporting workflows with reliable CRM integration and long-term support.',
       canonical,
