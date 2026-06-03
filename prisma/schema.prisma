@@ -152,3 +152,16 @@ model ChatAlert {
   @@index([sentAt])
 }
 
+model LeadSummaryEmail {
+  id          Int       @id @default(autoincrement())
+  dateKey     String
+  summaryType String    @default("daily_lead_summary")
+  status      String    @default("pending")
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([dateKey, summaryType])
+  @@index([dateKey])
+  @@index([status])
+}
+

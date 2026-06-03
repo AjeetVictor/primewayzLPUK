@@ -120,6 +120,14 @@ const UNANSWERED_CHAT_ALERT_AFTER_MINUTES = Number(process.env.CHAT_ALERT_AFTER_
 const UNANSWERED_CHAT_ALERT_INTERVAL_MS = Number(process.env.CHAT_ALERT_INTERVAL_MS || 5 * 60 * 1000);
 const UNANSWERED_CHAT_ALERT_STARTUP_DELAY_MS = Number(process.env.CHAT_ALERT_STARTUP_DELAY_MS || 30 * 1000);
 const UNANSWERED_CHAT_ALERT_MAX_PER_RUN = Number(process.env.CHAT_ALERT_MAX_PER_RUN || 10);
+
+const DAILY_LEAD_SUMMARY_ENABLED = process.env.DAILY_LEAD_SUMMARY_ENABLED !== 'false';
+const DAILY_LEAD_SUMMARY_TIMEZONE = process.env.DAILY_LEAD_SUMMARY_TIMEZONE || 'Europe/London';
+const DAILY_LEAD_SUMMARY_HOUR = Number(process.env.DAILY_LEAD_SUMMARY_HOUR || 18);
+const DAILY_LEAD_SUMMARY_MINUTE = Number(process.env.DAILY_LEAD_SUMMARY_MINUTE || 30);
+const DAILY_LEAD_SUMMARY_INTERVAL_MS = Number(process.env.DAILY_LEAD_SUMMARY_INTERVAL_MS || 60 * 1000);
+const DAILY_LEAD_SUMMARY_STARTUP_DELAY_MS = Number(process.env.DAILY_LEAD_SUMMARY_STARTUP_DELAY_MS || 60 * 1000);
+const DAILY_LEAD_SUMMARY_TYPE = 'daily_lead_summary';
 const rawAppBasePath = process.env.APP_BASE_PATH || '/';
 const APP_BASE_PATH = rawAppBasePath === '/'
   ? '/'
@@ -1267,6 +1275,404 @@ function startUnansweredChatAlertJob() {
   });
 }
 
+
+function getTimeZoneDateParts(date = new Date(), timeZone = DAILY_LEAD_SUMMARY_TIMEZONE) {
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
+
+  const parts = formatter.formatToParts(date).reduce<Record<string, string>>((acc, part) => {
+    if (part.type !== 'literal') acc[part.type] = part.value;
+    return acc;
+  }, {});
+
+  return {
+    year: Number(parts.year),
+    month: Number(parts.month),
+    day: Number(parts.day),
+    hour: Number(parts.hour),
+    minute: Number(parts.minute),
+  };
+}
+
+function getUtcDateForTimeZoneLocalDate(year: number, month: number, day: number, hour = 0, minute = 0, timeZone = DAILY_LEAD_SUMMARY_TIMEZONE) {
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
+  const guessDate = new Date(utcGuess);
+  const guessParts = getTimeZoneDateParts(guessDate, timeZone);
+
+  const targetAsUtc = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
+  const actualAsUtc = Date.UTC(
+    guessParts.year,
+    guessParts.month - 1,
+    guessParts.day,
+    guessParts.hour,
+    guessParts.minute,
+    0,
+    0,
+  );
+
+  return new Date(utcGuess - (actualAsUtc - targetAsUtc));
+}
+
+function addDaysToDateParts(year: number, month: number, day: number, days: number) {
+  const date = new Date(Date.UTC(year, month - 1, day + days, 12, 0, 0, 0));
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+  };
+}
+
+function padDatePart(value: number) {
+  return String(value).padStart(2, '0');
+}
+
+function getDailyLeadSummaryWindow(now = new Date()) {
+  const parts = getTimeZoneDateParts(now, DAILY_LEAD_SUMMARY_TIMEZONE);
+  const nextDay = addDaysToDateParts(parts.year, parts.month, parts.day, 1);
+
+  const start = getUtcDateForTimeZoneLocalDate(parts.year, parts.month, parts.day, 0, 0, DAILY_LEAD_SUMMARY_TIMEZONE);
+  const end = getUtcDateForTimeZoneLocalDate(nextDay.year, nextDay.month, nextDay.day, 0, 0, DAILY_LEAD_SUMMARY_TIMEZONE);
+  const dateKey = `${parts.year}-${padDatePart(parts.month)}-${padDatePart(parts.day)}`;
+
+  return {
+    dateKey,
+    start,
+    end,
+    localParts: parts,
+  };
+}
+
+function hasDailyLeadSummarySchedulePassed(now = new Date()) {
+  const parts = getTimeZoneDateParts(now, DAILY_LEAD_SUMMARY_TIMEZONE);
+
+  return parts.hour > DAILY_LEAD_SUMMARY_HOUR ||
+    (parts.hour === DAILY_LEAD_SUMMARY_HOUR && parts.minute >= DAILY_LEAD_SUMMARY_MINUTE);
+}
+
+function formatUkSummaryDateTime(date?: Date | string | null) {
+  if (!date) return '-';
+
+  try {
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: DAILY_LEAD_SUMMARY_TIMEZONE,
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(date));
+  } catch {
+    return String(date);
+  }
+}
+
+function renderSummaryRows(rows: string[]) {
+  return rows.map((row) => `<li>${row}</li>`).join('');
+}
+
+async function collectDailyLeadSummary(window: { start: Date; end: Date; dateKey: string }) {
+  const range = { gte: window.start, lt: window.end };
+
+  const [
+    contactFormsToday,
+    chatSessionsToday,
+    visitorMessagesToday,
+    adminRepliesToday,
+    botRepliesToday,
+    appointmentsToday,
+    pendingAppointments,
+    unansweredAlertsToday,
+    emailSentAlertsToday,
+    emailFailedAlertsToday,
+    latestForms,
+    latestAppointments,
+    latestAlerts,
+  ] = await Promise.all([
+    prisma.formResponse.count({ where: { createdAt: range } }),
+    prisma.chatSession.count({ where: { createdAt: range } }),
+    prisma.chatMessage.count({ where: { sender: 'user', timestamp: range } }),
+    prisma.chatMessage.count({ where: { sender: 'admin', timestamp: range } }),
+    prisma.chatMessage.count({ where: { sender: 'bot', timestamp: range } }),
+    prisma.chatAppointmentRequest.count({ where: { createdAt: range } }),
+    prisma.chatAppointmentRequest.count({ where: { status: 'pending' } }),
+    (prisma as any).chatAlert.count({ where: { createdAt: range } }),
+    (prisma as any).chatAlert.count({ where: { createdAt: range, status: 'email_sent' } }),
+    (prisma as any).chatAlert.count({ where: { createdAt: range, status: 'email_failed' } }),
+    prisma.formResponse.findMany({
+      where: { createdAt: range },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    }),
+    prisma.chatAppointmentRequest.findMany({
+      where: { createdAt: range },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    }),
+    (prisma as any).chatAlert.findMany({
+      where: { createdAt: range },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    }),
+  ]);
+
+  return {
+    contactFormsToday,
+    chatSessionsToday,
+    visitorMessagesToday,
+    adminRepliesToday,
+    botRepliesToday,
+    appointmentsToday,
+    pendingAppointments,
+    unansweredAlertsToday,
+    emailSentAlertsToday,
+    emailFailedAlertsToday,
+    latestForms,
+    latestAppointments,
+    latestAlerts,
+  };
+}
+
+async function sendDailyLeadSummaryEmail(window: { start: Date; end: Date; dateKey: string }, summary: any) {
+  const recipients = getSmtpRecipients(
+    process.env.DAILY_LEAD_SUMMARY_EMAIL_TO ||
+      process.env.CHAT_ALERT_EMAIL_TO ||
+      process.env.ADMIN_EMAIL ||
+      process.env.SMTP_FROM
+  );
+
+  if (recipients.length === 0) {
+    backendLog('daily lead summary email skipped because no recipient is configured', {
+      dateKey: window.dateKey,
+    });
+    return { sent: false, skipped: true, reason: 'recipient_not_configured' };
+  }
+
+  const adminUrl = buildAdminChatUrl();
+  const safeAdminUrl = escapeEmailHtml(adminUrl);
+  const subject = `Primewayz UK daily lead summary - ${window.dateKey}`;
+
+  const metricRows = [
+    `Contact forms: <strong>${summary.contactFormsToday}</strong>`,
+    `New chat sessions: <strong>${summary.chatSessionsToday}</strong>`,
+    `Visitor messages: <strong>${summary.visitorMessagesToday}</strong>`,
+    `Admin replies: <strong>${summary.adminRepliesToday}</strong>`,
+    `Bot replies: <strong>${summary.botRepliesToday}</strong>`,
+    `Appointment requests: <strong>${summary.appointmentsToday}</strong>`,
+    `Pending appointments: <strong>${summary.pendingAppointments}</strong>`,
+    `Unanswered chat alerts: <strong>${summary.unansweredAlertsToday}</strong>`,
+    `Alert emails sent: <strong>${summary.emailSentAlertsToday}</strong>`,
+    `Alert email failures: <strong>${summary.emailFailedAlertsToday}</strong>`,
+  ];
+
+  const latestFormsRows = summary.latestForms.length
+    ? summary.latestForms.map((form: any) =>
+        `${escapeEmailHtml(form.name)} — ${escapeEmailHtml(form.email)} — ${escapeEmailHtml(formatUkSummaryDateTime(form.createdAt))}`
+      )
+    : ['No contact form submissions today.'];
+
+  const latestAppointmentRows = summary.latestAppointments.length
+    ? summary.latestAppointments.map((appointment: any) =>
+        `${escapeEmailHtml(appointment.name || 'Unknown')} — ${escapeEmailHtml(appointment.email || 'No email')} — ${escapeEmailHtml(appointment.status)} — ${escapeEmailHtml(formatUkSummaryDateTime(appointment.createdAt))}`
+      )
+    : ['No appointment requests today.'];
+
+  const latestAlertRows = summary.latestAlerts.length
+    ? summary.latestAlerts.map((alert: any) =>
+        `Session ${escapeEmailHtml(alert.sessionId)} — message ${escapeEmailHtml(alert.messageId)} — ${escapeEmailHtml(alert.status)} — ${escapeEmailHtml(formatUkSummaryDateTime(alert.createdAt))}`
+      )
+    : ['No unanswered chat alerts today.'];
+
+  const text = [
+    `Primewayz UK daily lead summary - ${window.dateKey}`,
+    '',
+    `Contact forms: ${summary.contactFormsToday}`,
+    `New chat sessions: ${summary.chatSessionsToday}`,
+    `Visitor messages: ${summary.visitorMessagesToday}`,
+    `Admin replies: ${summary.adminRepliesToday}`,
+    `Bot replies: ${summary.botRepliesToday}`,
+    `Appointment requests: ${summary.appointmentsToday}`,
+    `Pending appointments: ${summary.pendingAppointments}`,
+    `Unanswered chat alerts: ${summary.unansweredAlertsToday}`,
+    `Alert emails sent: ${summary.emailSentAlertsToday}`,
+    `Alert email failures: ${summary.emailFailedAlertsToday}`,
+    '',
+    `Admin panel: ${adminUrl}`,
+  ].join('\n');
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+      <h2 style="margin:0 0 12px">Primewayz UK daily lead summary</h2>
+      <p style="margin:0 0 16px;color:#6b7280">Summary for ${escapeEmailHtml(window.dateKey)} (${escapeEmailHtml(DAILY_LEAD_SUMMARY_TIMEZONE)}).</p>
+
+      <div style="margin:16px 0;padding:14px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px">
+        <h3 style="margin:0 0 8px">Key numbers</h3>
+        <ul>${renderSummaryRows(metricRows)}</ul>
+      </div>
+
+      <div style="margin:16px 0;padding:14px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px">
+        <h3 style="margin:0 0 8px">Latest contact forms</h3>
+        <ul>${renderSummaryRows(latestFormsRows)}</ul>
+      </div>
+
+      <div style="margin:16px 0;padding:14px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px">
+        <h3 style="margin:0 0 8px">Latest appointment requests</h3>
+        <ul>${renderSummaryRows(latestAppointmentRows)}</ul>
+      </div>
+
+      <div style="margin:16px 0;padding:14px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px">
+        <h3 style="margin:0 0 8px">Unanswered chat alerts</h3>
+        <ul>${renderSummaryRows(latestAlertRows)}</ul>
+      </div>
+
+      <p>
+        <a href="${safeAdminUrl}" style="display:inline-block;background:#059669;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:700">
+          Open admin panel
+        </a>
+      </p>
+    </div>
+  `;
+
+  const result = await sendSmtpEmail({
+    to: recipients.join(','),
+    subject,
+    text,
+    html,
+  });
+
+  if (result.sent) {
+    backendLog('daily lead summary email sent', {
+      dateKey: window.dateKey,
+      to: recipients.join(','),
+    });
+  }
+
+  return result;
+}
+
+async function runDailyLeadSummaryJob(source = 'interval', force = false) {
+  try {
+    if (!DAILY_LEAD_SUMMARY_ENABLED) {
+      return { checked: false, sent: false, reason: 'disabled' };
+    }
+
+    if (!(prisma as any).leadSummaryEmail) {
+      backendLog('daily lead summary job skipped: LeadSummaryEmail model unavailable. Run prisma generate.', { source });
+      return { checked: false, sent: false, reason: 'lead_summary_model_unavailable' };
+    }
+
+    const window = getDailyLeadSummaryWindow();
+
+    if (!force && !hasDailyLeadSummarySchedulePassed()) {
+      return { checked: true, sent: false, reason: 'not_due', dateKey: window.dateKey };
+    }
+
+    const summaryType = force ? `daily_lead_summary_manual_${Date.now()}` : DAILY_LEAD_SUMMARY_TYPE;
+
+    const existing = await (prisma as any).leadSummaryEmail.findFirst({
+      where: {
+        dateKey: window.dateKey,
+        summaryType,
+      },
+      select: { id: true, status: true },
+    });
+
+    if (existing) {
+      return { checked: true, sent: false, reason: 'already_sent_or_attempted', dateKey: window.dateKey, status: existing.status };
+    }
+
+    const record = await (prisma as any).leadSummaryEmail.create({
+      data: {
+        dateKey: window.dateKey,
+        summaryType,
+        status: 'pending',
+      },
+    });
+
+    const summary = await collectDailyLeadSummary(window);
+    let emailResult;
+
+    try {
+      emailResult = await sendDailyLeadSummaryEmail(window, summary);
+    } catch (emailError) {
+      await (prisma as any).leadSummaryEmail.update({
+        where: { id: record.id },
+        data: {
+          status: 'email_failed',
+          sentAt: new Date(),
+        },
+      });
+
+      backendLog('daily lead summary email failed', {
+        source,
+        dateKey: window.dateKey,
+        error: emailError instanceof Error ? emailError.message : String(emailError),
+      });
+
+      return { checked: true, sent: false, dateKey: window.dateKey, status: 'email_failed' };
+    }
+
+    const status = emailResult.sent
+      ? 'email_sent'
+      : emailResult.skipped
+        ? 'email_skipped'
+        : 'email_failed';
+
+    await (prisma as any).leadSummaryEmail.update({
+      where: { id: record.id },
+      data: {
+        status,
+        sentAt: new Date(),
+      },
+    });
+
+    backendLog('daily lead summary job completed', {
+      source,
+      dateKey: window.dateKey,
+      status,
+      contactFormsToday: summary.contactFormsToday,
+      chatSessionsToday: summary.chatSessionsToday,
+      visitorMessagesToday: summary.visitorMessagesToday,
+      appointmentsToday: summary.appointmentsToday,
+      unansweredAlertsToday: summary.unansweredAlertsToday,
+    });
+
+    return { checked: true, sent: emailResult.sent, dateKey: window.dateKey, status };
+  } catch (error) {
+    backendLog('daily lead summary job failed', {
+      source,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return { checked: false, sent: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+function startDailyLeadSummaryJob() {
+  if (!DAILY_LEAD_SUMMARY_ENABLED) {
+    backendLog('daily lead summary job disabled by DAILY_LEAD_SUMMARY_ENABLED=false');
+    return;
+  }
+
+  const run = () => {
+    void runDailyLeadSummaryJob('interval', false);
+  };
+
+  setTimeout(run, Math.max(0, DAILY_LEAD_SUMMARY_STARTUP_DELAY_MS));
+  setInterval(run, Math.max(60_000, DAILY_LEAD_SUMMARY_INTERVAL_MS));
+
+  backendLog('daily lead summary job scheduled', {
+    timezone: DAILY_LEAD_SUMMARY_TIMEZONE,
+    hour: DAILY_LEAD_SUMMARY_HOUR,
+    minute: DAILY_LEAD_SUMMARY_MINUTE,
+    intervalMs: Math.max(60_000, DAILY_LEAD_SUMMARY_INTERVAL_MS),
+  });
+}
+
+
 // Seed initial admin if not exists
 async function seedAdmin() {
   if (!ADMIN_EMAIL || !ADMIN_PASSWORD) return;
@@ -1547,6 +1953,12 @@ async function startServer() {
     }
   });
 
+
+
+  app.post('/api/admin/chat/send-daily-summary', authorize(['admin', 'editor']), async (_req: any, res: any) => {
+    const result = await runDailyLeadSummaryJob('manual', true);
+    res.json(result);
+  });
 
   app.post('/api/admin/chat/run-unanswered-alerts', authorize(['admin', 'editor']), async (_req: any, res: any) => {
     const result = await runUnansweredChatAlertJob('manual');
@@ -2434,6 +2846,7 @@ async function startServer() {
   });
 
   startUnansweredChatAlertJob();
+  startDailyLeadSummaryJob();
 
   app.listen(PORT, '0.0.0.0', () => {
     backendLog(`server running on http://localhost:${PORT}`);
