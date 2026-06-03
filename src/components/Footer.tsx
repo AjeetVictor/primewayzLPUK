@@ -38,6 +38,32 @@ export const Footer = () => {
               Subscription-based software delivery for UK businesses - covering websites, SEO foundations, CRM integrations, automation, maintenance, and ongoing digital improvements.
             </p>
 
+            <div className="mb-8">
+              <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-emerald-500">
+                Service paths
+              </p>
+              <div className="space-y-2 text-sm">
+                <a
+                  href="/software-development-subscription-uk"
+                  className="block text-zinc-400 transition-colors hover:text-white"
+                >
+                  Software Development Subscription
+                </a>
+                <a
+                  href="/website-maintenance-subscription-uk"
+                  className="block text-zinc-400 transition-colors hover:text-white"
+                >
+                  Website Maintenance Subscription
+                </a>
+                <a
+                  href="/crm-integration-support-uk"
+                  className="block text-zinc-400 transition-colors hover:text-white"
+                >
+                  CRM Integration &amp; Support
+                </a>
+              </div>
+            </div>
+
             <div className="space-y-3 mb-8">
               <TrackedLink
                 href="tel:+919717132668"
