@@ -183,6 +183,39 @@ function getUkBusinessTimeParts(date = new Date()) {
 
   const weekday = parts.find((part) => part.type === 'weekday')?.value || '';
   const hour = Number(parts.find((part) => part.type === 'hour')?.value || 0);
+
+  if (url === '/crm-integration-support-uk') {
+    return {
+      title: 'CRM Integration Support UK',
+      description: 'CRM integration support for UK SMEs. Connect your CRM with other tools, automate workflows, sync data, and improve sales processes with expert integration services.',
+      canonical: 'https://uk.primewayz.com/crm-integration-support-uk',
+      ogType: 'website',
+      twitterCard: 'summary_large_image',
+      schema: {
+        "@context": "https://schema.org",
+        "@type": "Service",
+        "name": "CRM Integration Support UK",
+        "serviceType": "CRM integration and automation",
+        "description": "Expert CRM integration services for UK SMEs, including connecting CRM with other business tools, data synchronization, workflow automation, and sales process optimization.",
+        "provider": {
+          "@type": "Organization",
+          "name": "Primewayz Infotech Private Limited",
+          "url": "https://uk.primewayz.com/",
+          "logo": "https://uk.primewayz.com/assets/primewayz-infotech-logo-gn3jDBiM.svg"
+        },
+        "areaServed": {
+          "@type": "Country",
+          "name": "United Kingdom"
+        },
+        "availableLanguage": "en-GB",
+        "audience": {
+          "@type": "BusinessAudience",
+          "audienceType": "UK small businesses and SMEs"
+        }
+      }
+    };
+  }
+
   return { weekday, hour };
 }
 
