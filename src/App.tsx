@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { UKTrustStrip } from './components/UKTrustStrip';
+import { ServicePathCards } from './components/ServicePathCards';
 import { Philosophy } from './components/Philosophy';
 import { HowItWorks } from './components/HowItWorks';
 import { InteractiveDemo } from './components/InteractiveDemo';
@@ -67,6 +68,8 @@ const MainContent = () => (
     <Experience />
 
     <Stats />
+
+    <ServicePathCards />
 
     <Pricing />
 
