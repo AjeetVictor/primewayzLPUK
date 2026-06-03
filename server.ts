@@ -2560,6 +2560,109 @@ async function startServer() {
 
   // Admin Routes (Protected)
   // Viewers can see forms and chats
+
+  app.get('/api/admin/notifications/summary', authorize(['admin', 'editor', 'viewer']), async (_req: any, res: any) => {
+    try {
+      const window = getDailyLeadSummaryWindow();
+      const todayRange = { gte: window.start, lt: window.end };
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+      const [
+        todayContactForms,
+        todayChatSessions,
+        todayVisitorMessages,
+        todayAdminReplies,
+        todayAppointments,
+        pendingAppointments,
+        todayUnansweredAlerts,
+        todayEmailSentAlerts,
+        todayEmailFailedAlerts,
+        todayEmailSkippedAlerts,
+        recentAlertCount,
+        latestAlerts,
+        latestAppointments,
+        latestForms,
+        latestSessions,
+        latestDailySummary,
+      ] = await Promise.all([
+        prisma.formResponse.count({ where: { createdAt: todayRange } }),
+        prisma.chatSession.count({ where: { createdAt: todayRange } }),
+        prisma.chatMessage.count({ where: { sender: 'user', timestamp: todayRange } }),
+        prisma.chatMessage.count({ where: { sender: 'admin', timestamp: todayRange } }),
+        prisma.chatAppointmentRequest.count({ where: { createdAt: todayRange } }),
+        prisma.chatAppointmentRequest.count({ where: { status: 'pending' } }),
+        (prisma as any).chatAlert.count({ where: { createdAt: todayRange } }),
+        (prisma as any).chatAlert.count({ where: { createdAt: todayRange, status: 'email_sent' } }),
+        (prisma as any).chatAlert.count({ where: { createdAt: todayRange, status: 'email_failed' } }),
+        (prisma as any).chatAlert.count({ where: { createdAt: todayRange, status: 'email_skipped' } }),
+        (prisma as any).chatAlert.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
+        (prisma as any).chatAlert.findMany({
+          where: { createdAt: { gte: sevenDaysAgo } },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        }),
+        prisma.chatAppointmentRequest.findMany({
+          where: { status: 'pending' },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        }),
+        prisma.formResponse.findMany({
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        }),
+        prisma.chatSession.findMany({
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          include: {
+            messages: {
+              orderBy: { timestamp: 'desc' },
+              take: 1,
+            },
+          },
+        }),
+        (prisma as any).leadSummaryEmail.findFirst({
+          orderBy: { createdAt: 'desc' },
+        }),
+      ]);
+
+      const priority = todayEmailFailedAlerts > 0 || pendingAppointments > 0
+        ? 'high'
+        : todayUnansweredAlerts > 0 || todayContactForms > 0 || todayChatSessions > 0
+          ? 'medium'
+          : 'normal';
+
+      res.json({
+        dateKey: window.dateKey,
+        generatedAt: new Date().toISOString(),
+        priority,
+        counts: {
+          todayContactForms,
+          todayChatSessions,
+          todayVisitorMessages,
+          todayAdminReplies,
+          todayAppointments,
+          pendingAppointments,
+          todayUnansweredAlerts,
+          todayEmailSentAlerts,
+          todayEmailFailedAlerts,
+          todayEmailSkippedAlerts,
+          recentAlertCount,
+        },
+        latestAlerts,
+        latestAppointments,
+        latestForms,
+        latestSessions,
+        latestDailySummary,
+      });
+    } catch (error) {
+      backendLog('admin notification summary failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      res.status(500).json({ error: 'Failed to load notification summary' });
+    }
+  });
+
   app.get('/api/admin/forms', authorize(['admin', 'editor', 'viewer']), async (req: any, res: any) => {
     try {
       const responses = await prisma.formResponse.findMany({
