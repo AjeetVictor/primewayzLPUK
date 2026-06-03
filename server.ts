@@ -14,6 +14,7 @@ import type { BlogPost } from './src/data/blog/types.ts';
 import { homepageSeoContent } from './src/content/homepageSeoContent.ts';
 import { sanitizeBlogHtml } from './src/utils/sanitizeHtml.ts';
 
+import nodemailer from 'nodemailer';
 const allBlogPosts = getAllBlogPosts();
 const BLOG_STATUSES = ['draft', 'submitted', 'published', 'unpublished', 'archived'] as const;
 const CMS_ROLE_OPTIONS = ['super_admin', 'blog_editor', 'blog_author', 'admin', 'editor', 'viewer'] as const;
@@ -289,25 +290,98 @@ function buildResetUrl(req: express.Request, token: string) {
   return `${getResetBaseUrl(req)}/admin/reset-password?token=${encodeURIComponent(token)}`;
 }
 
-async function sendAdminPasswordResetEmail(email: string, resetUrl: string) {
+
+type SmtpEmailPayload = {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+};
+
+function getSmtpPort() {
+  const rawPort = Number(process.env.SMTP_PORT || 587);
+  return Number.isFinite(rawPort) ? rawPort : 587;
+}
+
+function getSmtpRecipients(value?: string) {
+  return (value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function escapeEmailHtml(value: unknown) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+async function sendSmtpEmail(payload: SmtpEmailPayload) {
   const smtpHost = process.env.SMTP_HOST?.trim();
   const smtpFrom = process.env.SMTP_FROM?.trim();
+  const smtpUser = process.env.SMTP_USER?.trim();
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpPort = getSmtpPort();
 
+  if (!smtpHost || !smtpFrom) {
+    backendLog('smtp email skipped because SMTP_HOST or SMTP_FROM is missing', {
+      to: payload.to,
+      subject: payload.subject,
+    });
+    return { sent: false, skipped: true, reason: 'smtp_not_configured' };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    auth: smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined,
+  });
+
+  await transporter.sendMail({
+    from: smtpFrom,
+    to: payload.to,
+    subject: payload.subject,
+    text: payload.text,
+    html: payload.html,
+  });
+
+  return { sent: true, skipped: false };
+}
+
+
+async function sendAdminPasswordResetEmail(email: string, resetUrl: string) {
   if (process.env.NODE_ENV !== 'production') {
     backendLog('admin password reset URL for local testing', { email, resetUrl });
   }
 
-  if (!smtpHost || !smtpFrom) {
-    if (process.env.NODE_ENV === 'production') {
-      backendLog('admin password reset email skipped because SMTP is not configured', { email });
-    }
-    return;
-  }
+  const subject = 'Reset your Primewayz admin password';
+  const safeResetUrl = escapeEmailHtml(resetUrl);
 
-  backendLog('admin password reset email transport is not configured; reset request accepted safely', {
-    email,
-    smtpHost,
+  const result = await sendSmtpEmail({
+    to: email,
+    subject,
+    text: `Reset your Primewayz admin password using this secure link: ${resetUrl}
+
+This link expires soon. If you did not request it, you can ignore this email.`,
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+        <h2>Reset your Primewayz admin password</h2>
+        <p>Use the secure link below to reset your admin password.</p>
+        <p><a href="${safeResetUrl}" style="display:inline-block;background:#059669;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:700">Reset password</a></p>
+        <p style="font-size:13px;color:#6b7280">If the button does not work, copy this link:</p>
+        <p style="font-size:13px;word-break:break-all;color:#374151">${safeResetUrl}</p>
+        <p style="font-size:13px;color:#6b7280">If you did not request this, you can ignore this email.</p>
+      </div>
+    `,
   });
+
+  if (result.sent) {
+    backendLog('admin password reset email sent', { email });
+  }
 }
 
 function isSuperAdminRole(role?: string): boolean {
@@ -928,6 +1002,89 @@ async function generateBotReply(userMessage: string, userName?: string) {
 }
 
 
+
+async function sendUnansweredChatAlertEmail(message: any) {
+  const recipients = getSmtpRecipients(
+    process.env.CHAT_ALERT_EMAIL_TO ||
+      process.env.ADMIN_EMAIL ||
+      process.env.SMTP_FROM
+  );
+
+  if (recipients.length === 0) {
+    backendLog('unanswered chat alert email skipped because no recipient is configured', {
+      sessionId: message.sessionId,
+      messageId: message.id,
+    });
+    return { sent: false, skipped: true, reason: 'recipient_not_configured' };
+  }
+
+  const visitorName = message.session?.name || 'Anonymous visitor';
+  const visitorEmail = message.session?.email || 'No email provided';
+  const preview = getChatAlertPreview(message.text);
+  const adminUrl = buildAdminChatUrl();
+
+  const subject = `Unanswered Primewayz chat lead: ${visitorName}`;
+  const safeVisitorName = escapeEmailHtml(visitorName);
+  const safeVisitorEmail = escapeEmailHtml(visitorEmail);
+  const safePreview = escapeEmailHtml(preview);
+  const safeSessionId = escapeEmailHtml(message.sessionId);
+  const safeAdminUrl = escapeEmailHtml(adminUrl);
+  const safeTimestamp = escapeEmailHtml(new Date(message.timestamp).toLocaleString('en-GB', {
+    timeZone: 'Europe/London',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }));
+
+  const result = await sendSmtpEmail({
+    to: recipients.join(','),
+    subject,
+    text: [
+      'New unanswered Primewayz chat lead',
+      '',
+      `Visitor: ${visitorName}`,
+      `Email: ${visitorEmail}`,
+      `Session: ${message.sessionId}`,
+      `Message time: ${safeTimestamp}`,
+      '',
+      `Message preview: ${preview}`,
+      '',
+      `Open admin panel: ${adminUrl}`,
+    ].join('\n'),
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+        <h2 style="margin:0 0 12px">New unanswered Primewayz chat lead</h2>
+        <p>A visitor message has been waiting for more than ${UNANSWERED_CHAT_ALERT_AFTER_MINUTES} minutes without an admin reply.</p>
+        <table style="border-collapse:collapse;width:100%;max-width:640px">
+          <tr><td style="padding:6px 0;color:#6b7280">Visitor</td><td style="padding:6px 0;font-weight:700">${safeVisitorName}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280">Email</td><td style="padding:6px 0">${safeVisitorEmail}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280">Session</td><td style="padding:6px 0;font-family:monospace">${safeSessionId}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280">Message time</td><td style="padding:6px 0">${safeTimestamp}</td></tr>
+        </table>
+        <div style="margin:16px 0;padding:12px 14px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px">
+          <strong>Message preview</strong>
+          <p style="margin:8px 0 0">${safePreview}</p>
+        </div>
+        <p>
+          <a href="${safeAdminUrl}" style="display:inline-block;background:#059669;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:700">
+            Open admin panel
+          </a>
+        </p>
+      </div>
+    `,
+  });
+
+  if (result.sent) {
+    backendLog('unanswered chat alert email sent', {
+      sessionId: message.sessionId,
+      messageId: message.id,
+      to: recipients.join(','),
+    });
+  }
+
+  return result;
+}
+
+
 async function findUnansweredChatMessages() {
   const threshold = new Date(Date.now() - UNANSWERED_CHAT_ALERT_AFTER_MINUTES * 60 * 1000);
 
@@ -1013,7 +1170,7 @@ async function runUnansweredChatAlertJob(source = 'interval') {
 
     for (const message of messages) {
       try {
-        await (prisma as any).chatAlert.create({
+        const alert = await (prisma as any).chatAlert.create({
           data: {
             sessionId: message.sessionId,
             messageId: message.id,
@@ -1033,6 +1190,32 @@ async function runUnansweredChatAlertJob(source = 'interval') {
           messagePreview: getChatAlertPreview(message.text),
           adminUrl: buildAdminChatUrl(),
         });
+
+        try {
+          const emailResult = await sendUnansweredChatAlertEmail(message);
+          await (prisma as any).chatAlert.update({
+            where: { id: alert.id },
+            data: {
+              status: emailResult.sent
+                ? 'email_sent'
+                : emailResult.skipped
+                  ? 'email_skipped'
+                  : 'email_failed',
+            },
+          });
+        } catch (emailError) {
+          await (prisma as any).chatAlert.update({
+            where: { id: alert.id },
+            data: { status: 'email_failed' },
+          });
+
+          backendLog('unanswered chat alert email failed', {
+            source,
+            sessionId: message.sessionId,
+            messageId: message.id,
+            error: emailError instanceof Error ? emailError.message : String(emailError),
+          });
+        }
       } catch (error: any) {
         if (error?.code === 'P2002') continue;
 
