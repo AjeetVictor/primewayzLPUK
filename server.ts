@@ -113,6 +113,12 @@ const JWT_SECRET = process.env.JWT_ACCESS_SECRET || 'your-secret-min-32-chars';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const PORT = Number(process.env.PORT || 3000);
+
+const UNANSWERED_CHAT_ALERT_TYPE = 'unanswered_chat';
+const UNANSWERED_CHAT_ALERT_AFTER_MINUTES = Number(process.env.CHAT_ALERT_AFTER_MINUTES || 5);
+const UNANSWERED_CHAT_ALERT_INTERVAL_MS = Number(process.env.CHAT_ALERT_INTERVAL_MS || 5 * 60 * 1000);
+const UNANSWERED_CHAT_ALERT_STARTUP_DELAY_MS = Number(process.env.CHAT_ALERT_STARTUP_DELAY_MS || 30 * 1000);
+const UNANSWERED_CHAT_ALERT_MAX_PER_RUN = Number(process.env.CHAT_ALERT_MAX_PER_RUN || 10);
 const rawAppBasePath = process.env.APP_BASE_PATH || '/';
 const APP_BASE_PATH = rawAppBasePath === '/'
   ? '/'
@@ -921,6 +927,163 @@ async function generateBotReply(userMessage: string, userName?: string) {
   return text.trim();
 }
 
+
+async function findUnansweredChatMessages() {
+  const threshold = new Date(Date.now() - UNANSWERED_CHAT_ALERT_AFTER_MINUTES * 60 * 1000);
+
+  const userMessages = await prisma.chatMessage.findMany({
+    where: {
+      sender: 'user',
+      timestamp: { lte: threshold },
+    },
+    orderBy: { timestamp: 'asc' },
+    take: Math.max(1, UNANSWERED_CHAT_ALERT_MAX_PER_RUN),
+    include: {
+      session: true,
+      attachments: true,
+    },
+  });
+
+  const unansweredMessages = [];
+
+  for (const message of userMessages) {
+    const existingAlert = await (prisma as any).chatAlert.findFirst({
+      where: {
+        messageId: message.id,
+        alertType: UNANSWERED_CHAT_ALERT_TYPE,
+      },
+      select: { id: true },
+    });
+
+    if (existingAlert) continue;
+
+    const laterAdminReply = await prisma.chatMessage.findFirst({
+      where: {
+        sessionId: message.sessionId,
+        sender: 'admin',
+        timestamp: { gt: message.timestamp },
+      },
+      select: { id: true },
+    });
+
+    if (laterAdminReply) continue;
+
+    const laterVisitorMessage = await prisma.chatMessage.findFirst({
+      where: {
+        sessionId: message.sessionId,
+        sender: 'user',
+        timestamp: { gt: message.timestamp },
+      },
+      select: { id: true },
+    });
+
+    // Alert only for the latest unanswered visitor message in a thread.
+    if (laterVisitorMessage) continue;
+
+    unansweredMessages.push(message);
+  }
+
+  return unansweredMessages;
+}
+
+function buildAdminChatUrl() {
+  const configuredUrl = (process.env.PUBLIC_SITE_URL || process.env.SEO_SITE_URL || '').trim();
+  const baseUrl = configuredUrl
+    ? configuredUrl.replace(/\/+$/, '')
+    : process.env.NODE_ENV === 'production'
+      ? 'https://uk.primewayz.com'
+      : `http://localhost:${PORT}`;
+
+  return `${baseUrl}/admin`;
+}
+
+function getChatAlertPreview(text: string) {
+  return text.replace(/\s+/g, ' ').trim().slice(0, 180);
+}
+
+async function runUnansweredChatAlertJob(source = 'interval') {
+  try {
+    if (!(prisma as any).chatAlert) {
+      backendLog('unanswered chat alert job skipped: ChatAlert model unavailable. Run prisma generate.', { source });
+      return { checked: false, created: 0, reason: 'chat_alert_model_unavailable' };
+    }
+
+    const messages = await findUnansweredChatMessages();
+    let created = 0;
+
+    for (const message of messages) {
+      try {
+        await (prisma as any).chatAlert.create({
+          data: {
+            sessionId: message.sessionId,
+            messageId: message.id,
+            alertType: UNANSWERED_CHAT_ALERT_TYPE,
+            status: 'logged',
+          },
+        });
+
+        created += 1;
+
+        backendLog('unanswered chat alert created', {
+          source,
+          sessionId: message.sessionId,
+          messageId: message.id,
+          visitorName: message.session?.name || 'Anonymous',
+          visitorEmail: message.session?.email || 'No email',
+          messagePreview: getChatAlertPreview(message.text),
+          adminUrl: buildAdminChatUrl(),
+        });
+      } catch (error: any) {
+        if (error?.code === 'P2002') continue;
+
+        backendLog('unanswered chat alert create failed', {
+          source,
+          sessionId: message.sessionId,
+          messageId: message.id,
+          error: error?.message || String(error),
+        });
+      }
+    }
+
+    if (created > 0 || source !== 'interval') {
+      backendLog('unanswered chat alert job completed', {
+        source,
+        candidates: messages.length,
+        created,
+      });
+    }
+
+    return { checked: true, candidates: messages.length, created };
+  } catch (error) {
+    backendLog('unanswered chat alert job failed', {
+      source,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return { checked: false, created: 0, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+function startUnansweredChatAlertJob() {
+  if (process.env.CHAT_ALERTS_ENABLED === 'false') {
+    backendLog('unanswered chat alert job disabled by CHAT_ALERTS_ENABLED=false');
+    return;
+  }
+
+  const run = () => {
+    void runUnansweredChatAlertJob('interval');
+  };
+
+  setTimeout(run, Math.max(0, UNANSWERED_CHAT_ALERT_STARTUP_DELAY_MS));
+  setInterval(run, Math.max(60_000, UNANSWERED_CHAT_ALERT_INTERVAL_MS));
+
+  backendLog('unanswered chat alert job scheduled', {
+    afterMinutes: UNANSWERED_CHAT_ALERT_AFTER_MINUTES,
+    intervalMs: Math.max(60_000, UNANSWERED_CHAT_ALERT_INTERVAL_MS),
+    startupDelayMs: Math.max(0, UNANSWERED_CHAT_ALERT_STARTUP_DELAY_MS),
+  });
+}
+
 // Seed initial admin if not exists
 async function seedAdmin() {
   if (!ADMIN_EMAIL || !ADMIN_PASSWORD) return;
@@ -1199,6 +1362,12 @@ async function startServer() {
       });
       res.status(500).json({ error: 'Failed to update presence' });
     }
+  });
+
+
+  app.post('/api/admin/chat/run-unanswered-alerts', authorize(['admin', 'editor']), async (_req: any, res: any) => {
+    const result = await runUnansweredChatAlertJob('manual');
+    res.json(result);
   });
 
   app.get('/api/admin/chat/availability', authorize(), async (req, res) => {
@@ -2080,6 +2249,8 @@ async function startServer() {
       next(error);
     }
   });
+
+  startUnansweredChatAlertJob();
 
   app.listen(PORT, '0.0.0.0', () => {
     backendLog(`server running on http://localhost:${PORT}`);

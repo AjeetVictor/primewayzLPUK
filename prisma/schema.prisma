@@ -137,3 +137,18 @@ model BlogPostComment {
   text      String
   createdAt DateTime @default(now())
 }
+
+model ChatAlert {
+  id        Int      @id @default(autoincrement())
+  sessionId String
+  messageId Int
+  alertType String   @default("unanswered_chat")
+  status    String   @default("logged")
+  sentAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, alertType])
+  @@index([sessionId])
+  @@index([sentAt])
+}
+
