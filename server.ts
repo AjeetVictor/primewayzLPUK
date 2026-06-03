@@ -882,6 +882,33 @@ async function getSeoPayload(pathname: string, origin: string): Promise<SeoPaylo
     };
   }
 
+
+
+  if (pathname === '/crm-integration-support-uk') {
+    return {
+      title: 'CRM Integration & Support for UK SMEs | Primewayz UK',
+      description:
+        'Primewayz helps UK SMEs connect CRM, ERP, websites, forms, email, support and reporting workflows with reliable CRM integration and long-term support.',
+      canonical,
+      ogType: 'website',
+      ogImage: SEO_DEFAULT_OG_IMAGE,
+      twitterHandle: SEO_DEFAULT_TWITTER_HANDLE,
+      robots: 'index,follow',
+      structuredData: {
+        '@context': 'https://schema.org',
+        '@type': 'Service',
+        name: 'CRM Integration & Support for UK SMEs',
+        serviceType: 'CRM integration and support',
+        description:
+          'CRM integration and support services for UK SMEs, including CRM workflow automation, ERP and website integration, reporting, data flow reliability and ongoing technical support.',
+        provider: baseOrg,
+        areaServed: {
+          '@type': 'Country',
+          name: 'United Kingdom',
+        },
+      },
+    };
+  }
   if (pathname === '/software-development-subscription-uk') {
     return {
       title: 'Software Development Subscription for UK SMEs',
