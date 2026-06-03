@@ -842,7 +842,7 @@ function getCanonicalPath(pathname: string): string {
 
 async function getSeoPayload(pathname: string, origin: string): Promise<SeoPayload> {
   const canonical = joinUrl(origin, getCanonicalPath(pathname));
-  const defaultDescription = 'Primewayz offers elite software development as a service with predictable pricing and high-velocity delivery.';
+  const defaultDescription = 'Primewayz UK helps UK SMEs improve websites, CRM integrations, automation, reporting, SEO foundations, and monthly software delivery through practical technology support.';
   const baseOrg = {
     '@type': 'Organization',
     name: 'Primewayz Infotech Private Limited',
@@ -1010,7 +1010,7 @@ async function getSeoPayload(pathname: string, origin: string): Promise<SeoPaylo
   }
 
   return {
-    title: 'Predictable Software Development as a Service',
+    title: 'Software Development Subscription for UK SMEs',
     description: defaultDescription,
     canonical,
     ogType: 'website',
@@ -1020,11 +1020,19 @@ async function getSeoPayload(pathname: string, origin: string): Promise<SeoPaylo
     structuredData: {
       '@context': 'https://schema.org',
       '@type': 'Service',
-      serviceType: 'Software Development as a Service',
-      name: `${SEO_SITE_NAME} - Elite Engineering`,
+      serviceType: 'Software development subscription for UK SMEs',
+      name: 'Primewayz UK - Software Development Subscription for UK SMEs',
       description: defaultDescription,
       provider: baseOrg,
-      areaServed: 'Global',
+      areaServed: {
+        '@type': 'Country',
+        name: 'United Kingdom',
+      },
+      availableLanguage: 'en-GB',
+      audience: {
+        '@type': 'BusinessAudience',
+        audienceType: 'UK small businesses and SMEs',
+      },
     },
   };
 }
