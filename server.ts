@@ -884,6 +884,41 @@ async function getSeoPayload(pathname: string, origin: string): Promise<SeoPaylo
 
 
 
+  if (pathname === '/success-stories/local-trades-lead-capture') {
+    return {
+      title: 'Local Trades Website & Lead Capture Setup for UK SMEs',
+      description:
+        'Primewayz UK helps plumbers, electricians, roofing firms, builders, cleaners, landscapers, and local service businesses improve websites, quote requests, call tracking, WhatsApp leads, CRM capture, and follow-up visibility.',
+      canonical,
+      ogType: 'website',
+      ogImage: SEO_DEFAULT_OG_IMAGE,
+      twitterHandle: SEO_DEFAULT_TWITTER_HANDLE,
+      robots: 'index,follow',
+      structuredData: {
+        '@context': 'https://schema.org',
+        '@type': 'Service',
+        name: 'Local Trades Website & Lead Capture Setup',
+        serviceType: 'Website development and lead capture setup',
+        description:
+          'Website and lead capture setup for UK local trades, including service pages, quote request forms, phone and WhatsApp tracking, CRM or email capture, GA4 conversion tracking, local service area structure, and monthly maintenance support.',
+        provider: {
+          '@type': 'Organization',
+          name: 'Primewayz Infotech Private Limited',
+          url: 'https://uk.primewayz.com/',
+          logo: 'https://uk.primewayz.com/assets/primewayz-infotech-logo-gn3jDBiM.svg',
+        },
+        areaServed: {
+          '@type': 'Country',
+          name: 'United Kingdom',
+        },
+        audience: {
+          '@type': 'BusinessAudience',
+          audienceType: 'UK local trades and small service businesses',
+        },
+      },
+    };
+  }
+
   if (pathname === '/crm-integration-support-uk') {
     return {
       title: 'CRM Integration & Support for UK SMEs',
