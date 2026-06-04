@@ -919,6 +919,71 @@ async function getSeoPayload(pathname: string, origin: string): Promise<SeoPaylo
     };
   }
 
+  if (pathname === '/success-stories/professional-services-crm-cleanup') {
+    const siteUrl = (process.env.SEO_SITE_URL?.trim() || process.env.PUBLIC_SITE_URL?.trim() || 'https://uk.primewayz.com').replace(/\/+$/, '');
+    return {
+      title: 'CRM & Lead Flow Cleanup for UK Professional Services',
+      description:
+        'Primewayz UK helps consultants, accountants, recruitment firms, advisors, and B2B service teams clean up CRM workflows, website forms, lead tracking, follow-up tasks, and reporting visibility.',
+      canonical: `${siteUrl}/success-stories/professional-services-crm-cleanup`,
+      ogImage: `${siteUrl}/images/professional-services-crm-cleanup.png`,
+      ogType: 'article',
+      robots: 'index,follow',
+      twitterHandle: SEO_DEFAULT_TWITTER_HANDLE,
+      structuredData: {
+        '@context': 'https://schema.org',
+        '@type': 'Service',
+        name: 'CRM & Lead Flow Cleanup for UK Professional Services',
+        serviceType: 'CRM and lead flow cleanup',
+        provider: {
+          '@type': 'Organization',
+          name: SEO_SITE_NAME,
+          url: `${siteUrl}`,
+        },
+        areaServed: {
+          '@type': 'Country',
+          name: 'United Kingdom',
+        },
+        description:
+          'CRM and lead-flow cleanup sprint for UK professional service teams, including website form integration, lead stages, reminders, source tagging, email notifications, weekly lead summaries, cleanup and reporting.',
+      },
+    };
+  }
+
+  if (pathname === '/success-stories/ecommerce-store-stability-support') {
+    const siteUrl = (process.env.SEO_SITE_URL?.trim() || process.env.PUBLIC_SITE_URL?.trim() || 'https://uk.primewayz.com').replace(/\/+$/, '');
+    return {
+      title: 'E-commerce Store Stability & Support for UK SMEs',
+      description:
+        'Primewayz UK supports small online stores, boutiques, specialist sellers, subscription stores, and catalogue-led businesses with stable product pages, reliable checkout journeys, clean campaign tracking, fast offer updates, and monthly website support.',
+      canonical: `${siteUrl}/success-stories/ecommerce-store-stability-support`,
+      ogImage: `${siteUrl}/images/ecommerce-store-stability-support.png`,
+      ogType: 'article',
+      robots: 'index,follow',
+      twitterHandle: SEO_DEFAULT_TWITTER_HANDLE,
+      structuredData: {
+        '@context': 'https://schema.org',
+        '@type': 'Service',
+        name: 'E-commerce Store Stability & Support for UK SMEs',
+        serviceType: 'E-commerce website stability and support',
+        provider: {
+          '@type': 'Organization',
+          name: SEO_SITE_NAME,
+          url: `${siteUrl}`,
+        },
+        areaServed: {
+          '@type': 'Country',
+          name: 'United Kingdom',
+        },
+        description:
+          'E-commerce support for UK small online stores, boutiques, specialist sellers, subscription stores, and catalogue-led businesses, including product page updates, campaign landing pages, checkout flow checks, GA4 conversion tracking, technical SEO checks, speed checks, mobile checks, backups and monthly support.',
+      },
+    };
+  }
+
+
+
+
   if (pathname === '/crm-integration-support-uk') {
     return {
       title: 'CRM Integration & Support for UK SMEs',

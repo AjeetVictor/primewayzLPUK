@@ -31,6 +31,8 @@ import { SoftwareDevelopmentSubscriptionUkPage } from './components/SoftwareDeve
 import { WebsiteMaintenanceSubscriptionUkPage } from './components/WebsiteMaintenanceSubscriptionUkPage';
 import { CrmIntegrationSupportUkPage } from './components/CrmIntegrationSupportUkPage';
 import { LocalTradesLeadCapturePage } from './components/LocalTradesLeadCapturePage';
+import { ProfessionalServicesCrmCleanupPage } from './components/ProfessionalServicesCrmCleanupPage';
+import { EcommerceStoreStabilitySupportPage } from './components/EcommerceStoreStabilitySupportPage';
 
 
 const ClientOnly = ({ children }: { children: ReactNode }) => {
@@ -147,6 +149,8 @@ export default function App() {
         <Route path="/website-maintenance-subscription-uk" element={<WebsiteMaintenanceSubscriptionUkPage />} />
         <Route path="/crm-integration-support-uk" element={<CrmIntegrationSupportUkPage />} />
         <Route path="/success-stories/local-trades-lead-capture" element={<LocalTradesLeadCapturePage />} />
+        <Route path="/success-stories/professional-services-crm-cleanup" element={<ProfessionalServicesCrmCleanupPage />} />
+        <Route path="/success-stories/ecommerce-store-stability-support" element={<EcommerceStoreStabilitySupportPage />} />
         <Route path="/privacy-policy" element={<LegalPage type="privacy" />} />
         <Route path="/terms-of-service" element={<LegalPage type="terms" />} />
         <Route path="/cookie-policy" element={<LegalPage type="cookies" />} />
