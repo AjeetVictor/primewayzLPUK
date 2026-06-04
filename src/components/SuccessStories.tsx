@@ -1,38 +1,38 @@
 import { motion } from 'motion/react';
-import { ArrowUpRight, TrendingUp, Users, Clock, Zap } from 'lucide-react';
+import { ArrowUpRight, Users, PhoneCall, Zap } from 'lucide-react';
 import { ShareButton } from './ShareButton';
 
 const stories = [
   {
-    title: 'UK Retail Website: Faster Updates and Better Enquiries',
-    category: 'UK Retail',
-    metric: '+38%',
-    metricLabel: 'Enquiry Lift',
+    title: 'Local Trades Website & Lead Capture Setup',
+    category: 'UK Local Trades',
+    metric: '84',
+    metricLabel: 'New Enquiries',
     description:
-      'How a UK retail team moved from ad-hoc website requests to a monthly delivery rhythm covering updates, tracking, landing pages, and technical fixes.',
-    image: 'https://picsum.photos/seed/uk-retail-delivery/800/600',
-    icon: TrendingUp,
+      'For plumbers, electricians, roofing firms, builders, cleaners, landscapers, and local service businesses that need clearer quote requests, call tracking, WhatsApp leads, and faster follow-ups.',
+    image: '/images/localTradesWbsite.png',
+    icon: PhoneCall,
     color: 'emerald',
   },
   {
-    title: 'Local Services Firm: CRM and Lead Flow Cleanup',
-    category: 'UK Services',
+    title: 'Professional Services: CRM & Lead Flow Cleanup',
+    category: 'UK Professional Services',
     metric: '3 Weeks',
     metricLabel: 'First Release',
     description:
-      'A practical CRM and form-flow improvement sprint that helped a UK services business capture, organise, and follow up enquiries more reliably.',
-    image: 'https://picsum.photos/seed/uk-crm-support/800/600',
+      'A practical CRM and form-flow improvement sprint for consultants, accountants, recruitment firms, advisors, and service teams that need cleaner lead tracking and follow-up visibility.',
+    image: 'https://picsum.photos/seed/uk-professional-crm-flow/800/600',
     icon: Zap,
     color: 'indigo',
   },
   {
-    title: 'Professional Team: Maintenance Mode for Stability',
+    title: 'Maintenance Mode for Stable Digital Operations',
     category: 'UK SME',
     metric: '-42%',
     metricLabel: 'Support Noise',
     description:
-      'How ongoing maintenance, small fixes, and clearer monthly prioritisation helped a UK professional team keep their digital presence stable.',
-    image: 'https://picsum.photos/seed/uk-maintenance-mode/800/600',
+      'A lightweight monthly support model for businesses that need website updates, security checks, backups, small fixes, technical SEO upkeep, and clearer maintenance ownership.',
+    image: 'https://picsum.photos/seed/uk-sme-maintenance-mode/800/600',
     icon: Users,
     color: 'amber',
   },
@@ -60,9 +60,9 @@ export const SuccessStories = () => {
               transition={{ delay: 0.1 }}
               className="text-lg text-zinc-600"
             >
-              Examples of the outcomes Primewayz UK is built to support: better
-              enquiry flow, cleaner website operations, CRM improvements, and
-              predictable monthly delivery.
+              Focused example workstreams for UK businesses that need clearer
+              enquiry flow, cleaner CRM operations, website upkeep, SEO foundations,
+              and predictable monthly delivery.
             </motion.p>
           </div>
           <motion.a
