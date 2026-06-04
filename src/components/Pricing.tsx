@@ -631,25 +631,111 @@ export const Pricing = () => {
         </section>
 
         <section className="mt-14">
-          <div className="mb-5">
-            <h3 className="text-2xl font-semibold tracking-tight text-zinc-900 md:text-3xl">
+          <div className="max-w-3xl">
+            <p className="text-sm font-bold uppercase tracking-[0.22em] text-blue-700">
               Why Subscription Works Better
+            </p>
+            <h3 className="mt-3 text-3xl font-black tracking-tight text-zinc-950 sm:text-4xl">
+              Clear reasons UK teams choose capacity-based delivery
             </h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">
-              Clear reasons UK teams choose capacity-based delivery.
+            <p className="mt-4 text-base leading-7 text-zinc-600">
+              Instead of restarting projects whenever priorities change, your monthly support can
+              scale, pause, continue, and restart around the roadmap your business actually needs.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {whySubscriptionItems.map((item) => (
-              <article key={item.title} className="rounded-2xl border border-zinc-200 bg-white p-5">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-50 text-blue-700">
-                    <item.icon className="h-4 w-4" />
-                  </span>
-                  <h4 className="text-base font-semibold text-zinc-900">{item.title}</h4>
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            {[
+              {
+                title: 'Flexibility',
+                image: '/images/subscription-flexibility.png',
+                alt: 'Minimal dashboard showing monthly delivery capacity adjusted up or down based on roadmap priorities.',
+                description:
+                  'Adjust your capacity monthly based on your roadmap and current priorities.',
+                points: [
+                  'Scale delivery up when campaigns, fixes, or new features need momentum.',
+                  'Reduce capacity when the roadmap slows down or internal priorities shift.',
+                  'Keep support aligned with real business demand instead of fixed project cycles.',
+                ],
+                label: 'Capacity control',
+              },
+              {
+                title: 'Total transparency',
+                image: '/images/subscription-total-transparency.png',
+                alt: 'Transparent subscription pricing breakdown with Primewayz service fee separated from vendor costs.',
+                description:
+                  'Clear pricing with vendor costs handled separately where applicable.',
+                points: [
+                  'See what is part of Primewayz delivery and support.',
+                  'Keep third-party costs like hosting, domain, SSL, and tools separate.',
+                  'Avoid bundled pricing confusion and keep infrastructure ownership clear.',
+                ],
+                label: 'Clear commercial model',
+              },
+              {
+                title: 'Roadmap continuity',
+                image: '/images/subscription-roadmap-continuity.png',
+                alt: 'Continuous roadmap timeline showing steady delivery phases without restarting project cycles.',
+                description:
+                  'Maintain delivery momentum without restarting procurement or project cycles.',
+                points: [
+                  'Continue from foundation to scale, optimisation, and improvements.',
+                  'Keep context, backlog, and delivery knowledge within one aligned team.',
+                  'Build compound value over time instead of repeatedly starting from zero.',
+                ],
+                label: 'Continuous delivery',
+              },
+              {
+                title: 'Seamless maintenance',
+                image: '/images/subscription-seamless-maintenance.png',
+                alt: 'Workflow showing active delivery moving into maintenance mode and restarting active delivery when needed.',
+                description:
+                  'Scale down when priorities slow, then restart active delivery when needed.',
+                points: [
+                  'Move into maintenance mode when active delivery is not required.',
+                  'Keep essential checks, updates, monitoring, and small improvements running.',
+                  'Restart active delivery quickly when new priorities return.',
+                ],
+                label: 'Stay ready',
+              },
+            ].map((item) => (
+              <article
+                key={item.title}
+                className="overflow-hidden rounded-[1.75rem] border border-zinc-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-950/10"
+              >
+                <div className="aspect-[16/9] overflow-hidden bg-blue-50">
+                  <img
+                    src={item.image}
+                    alt={item.alt}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
                 </div>
-                <p className="mt-2 text-sm leading-6 text-zinc-600">{item.description}</p>
+
+                <div className="p-6 lg:p-7">
+                  <div className="mb-4 inline-flex rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-blue-700">
+                    {item.label}
+                  </div>
+
+                  <h4 className="text-2xl font-black tracking-tight text-zinc-950">
+                    {item.title}
+                  </h4>
+
+                  <p className="mt-3 text-sm leading-7 text-zinc-600">
+                    {item.description}
+                  </p>
+
+                  <ul className="mt-5 space-y-3">
+                    {item.points.map((point) => (
+                      <li key={point} className="flex gap-3 text-sm leading-6 text-zinc-600">
+                        <span className="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-black text-blue-700">
+                          ✓
+                        </span>
+                        <span>{point}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </article>
             ))}
           </div>
