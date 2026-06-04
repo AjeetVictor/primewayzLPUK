@@ -386,7 +386,7 @@ export function ContactForm() {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
           <div className="bg-gray-50 p-8 md:p-12 rounded-3xl border border-gray-100 shadow-sm">
             <div className="mb-8">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">Option 1</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">Fill out the form</p>
               <h3 className="mt-2 text-2xl font-bold text-gray-900">Send us your enquiry</h3>
               <p className="mt-2 text-sm text-gray-600">
                 Share your requirement and we will review it before getting back to you.
@@ -458,7 +458,7 @@ export function ContactForm() {
                       } focus-within:ring-2 focus-within:ring-slate-400/30`}
                     >
                       <span className="inline-flex shrink-0 items-center border-r border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-700">
-                        United Kingdom +44
+                        UK +44
                       </span>
                       <input
                         id="phone"
@@ -592,7 +592,7 @@ export function ContactForm() {
 
           <div className="bg-white p-6 md:p-8 rounded-3xl border border-emerald-100 shadow-sm">
             <div className="mb-6">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">Option 2</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">Setup a discovery call</p>
               <h3 className="mt-2 text-2xl font-bold text-gray-900">Book a 30-minute discovery call</h3>
               <p className="mt-2 text-sm text-gray-600">Pick a convenient slot directly from our calendar.</p>
             </div>
