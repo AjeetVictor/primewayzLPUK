@@ -1,86 +1,68 @@
-import { motion } from 'motion/react';
-import { Quote } from 'lucide-react';
-
-const testimonials = [
+const supportValues = [
   {
-    quote:
-      "The monthly delivery model makes planning much easier. We can prioritise website, SEO, and CRM improvements without starting a fresh project every time.",
-    author: "UK SME Owner",
-    company: "Retail & Services Business",
-    image: "https://picsum.photos/seed/uk-owner/100/100",
+    title: 'Monthly clarity',
+    label: 'Planning clarity',
+    description:
+      'Know what to improve next across your website, CRM, forms, SEO foundations, and operational workflows without turning every need into a separate project.',
   },
   {
-    quote:
-      "Primewayz UK gives us a practical way to keep digital work moving. The focus is clear: small releases, clean communication, and visible progress.",
-    author: "Operations Lead",
-    company: "UK Professional Services Team",
-    image: "https://picsum.photos/seed/uk-ops/100/100",
+    title: 'Predictable progress',
+    label: 'Steady delivery',
+    description:
+      'Move forward through practical monthly releases instead of waiting for large projects, urgent fixes, or multiple disconnected vendors.',
   },
   {
-    quote:
-      "We needed regular technical support without hiring a full internal team. The subscription approach fits our budget and our pace.",
-    author: "Managing Director",
-    company: "UK Local Business",
-    image: "https://picsum.photos/seed/uk-md/100/100",
+    title: 'Lower operational friction',
+    label: 'Operational stability',
+    description:
+      'Reduce missed follow-ups, outdated pages, tracking blind spots, and maintenance gaps that quietly affect enquiries, campaigns, and daily delivery.',
   },
 ];
 
-export const Testimonials = () => {
-  return (
-    <section id="testimonials" className="py-24 bg-zinc-50 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-3xl md:text-5xl font-bold tracking-tight text-zinc-900 mb-4"
-          >
-            Built for <span className="text-emerald-600 italic">UK SME teams</span>
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="text-lg text-zinc-600 max-w-2xl mx-auto"
-          >
-            Primewayz UK is designed for businesses that need dependable monthly
-            digital support without the cost and complexity of building a full in-house team.
-          </motion.p>
-        </div>
+export const Testimonials = () => (
+  <section className="bg-zinc-50 py-24">
+    <div className="mx-auto max-w-7xl px-6 lg:px-8">
+      <div className="mx-auto max-w-3xl text-center">
+        <h2 className="text-4xl font-black tracking-tight text-zinc-950 sm:text-5xl">
+          Why UK SME teams choose{' '}
+          <span className="italic text-blue-800">practical ongoing support</span>
+        </h2>
+        <p className="mt-5 text-lg leading-8 text-zinc-600">
+          Focused monthly delivery for businesses that need dependable progress across websites,
+          CRM workflows, SEO foundations, and digital operations.
+        </p>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {testimonials.map((testimonial) => (
-            <motion.div
-              key={testimonial.company}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="bg-white p-8 rounded-3xl border border-zinc-200 shadow-sm hover:shadow-md transition-shadow relative"
-            >
-              <Quote className="w-10 h-10 text-emerald-100 absolute top-6 right-8" />
+      <div className="mx-auto mt-14 grid max-w-6xl gap-6 md:grid-cols-3">
+        {supportValues.map((item, index) => (
+          <article
+            key={item.title}
+            className="group relative overflow-hidden rounded-[1.75rem] border border-zinc-200 bg-white p-8 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-950/10"
+          >
+            <div className="absolute right-6 top-6 text-7xl font-black leading-none text-blue-50 transition group-hover:text-blue-100">
+              0{index + 1}
+            </div>
 
-              <p className="text-zinc-700 text-lg leading-relaxed mb-8 relative z-10">
-                "{testimonial.quote}"
+            <div className="relative">
+              <div className="mb-8 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-xl font-black text-blue-700 ring-1 ring-blue-100">
+                ✓
+              </div>
+
+              <h3 className="text-2xl font-black tracking-tight text-zinc-950">
+                {item.title}
+              </h3>
+
+              <p className="mt-4 text-sm leading-7 text-zinc-600">
+                {item.description}
               </p>
 
-              <div className="flex items-center gap-4">
-                <img
-                  src={testimonial.image}
-                  alt={testimonial.author}
-                  className="w-12 h-12 rounded-full object-cover grayscale hover:grayscale-0 transition-all"
-                  referrerPolicy="no-referrer"
-                />
-                <div>
-                  <h4 className="font-bold text-zinc-900">{testimonial.author}</h4>
-                  <p className="text-sm text-zinc-500">{testimonial.company}</p>
-                </div>
+              <div className="mt-7 inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">
+                {item.label}
               </div>
-            </motion.div>
-          ))}
-        </div>
+            </div>
+          </article>
+        ))}
       </div>
-    </section>
-  );
-};
+    </div>
+  </section>
+);
