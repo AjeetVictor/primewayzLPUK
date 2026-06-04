@@ -1,6 +1,7 @@
 import { motion } from 'motion/react';
 import { ArrowUpRight, Users, PhoneCall, Zap } from 'lucide-react';
 import { ShareButton } from './ShareButton';
+import { Link } from 'react-router-dom';
 
 const stories = [
   {
@@ -13,6 +14,7 @@ const stories = [
     image: '/images/localTradesWbsite.png',
     icon: PhoneCall,
     color: 'emerald',
+    href: '/success-stories/local-trades-lead-capture',
   },
   {
     title: 'Professional Services: CRM & Lead Flow Cleanup',
@@ -24,6 +26,7 @@ const stories = [
     image: 'https://picsum.photos/seed/uk-professional-crm-flow/800/600',
     icon: Zap,
     color: 'indigo',
+    href: '/crm-integration-support-uk',
   },
   {
     title: 'Maintenance Mode for Stable Digital Operations',
@@ -35,6 +38,7 @@ const stories = [
     image: 'https://picsum.photos/seed/uk-sme-maintenance-mode/800/600',
     icon: Users,
     color: 'amber',
+    href: '/website-maintenance-subscription-uk',
   },
 ];
 
@@ -137,6 +141,14 @@ export const SuccessStories = () => {
                 <p className="text-zinc-500 text-sm leading-relaxed">
                   {story.description}
                 </p>
+
+              <Link
+                to={story.href}
+                className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-emerald-700 transition hover:text-emerald-900"
+              >
+                View project details
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
               </div>
             </motion.div>
           ))}
