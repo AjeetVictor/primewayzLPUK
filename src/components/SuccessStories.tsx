@@ -89,12 +89,12 @@ export const SuccessStories = () => {
               transition={{ delay: index * 0.1 }}
               className="group cursor-pointer"
             >
-              <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden mb-6">
+              <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden mb-6 bg-white border border-zinc-200/80 shadow-[0_10px_28px_rgba(15,23,42,0.08)] ring-1 ring-white/70 transition-all duration-300 group-hover:shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
                 <img
                   src={story.image}
                   alt={story.title}
                   loading="lazy"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.025]"
                   referrerPolicy="no-referrer"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
