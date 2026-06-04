@@ -1,86 +1,122 @@
-import { CheckCircle2, Clock, PoundSterling, ShieldCheck, Users, Wrench } from 'lucide-react';
-
-const indicators = [
+﻿const deliveryHighlights = [
   {
-    icon: Users,
-    title: 'Built for UK SMEs',
-    description: 'Designed around small and growing UK businesses that need dependable digital delivery.',
+    title: 'Flexible monthly capacity',
+    label: 'Capacity control',
+    image: '/images/feature-flexible-monthly-capacity.png',
+    alt: 'Minimal visual showing monthly delivery capacity adjusting up and down based on changing priorities.',
+    description:
+      'Adjust delivery capacity up or down based on your roadmap, campaign needs, fixes, and current priorities.',
+    outcome: 'Stay aligned with current workload.',
   },
   {
-    icon: PoundSterling,
-    title: 'GBP-ready plans',
-    description: 'Subscription pricing and planning conversations structured for UK business budgets.',
+    title: 'Technical SEO foundation included',
+    label: 'Search-ready basics',
+    image: '/images/feature-technical-seo-foundation.png',
+    alt: 'Minimal visual showing a website dashboard, search lens, checklist, and structured technical foundation signals.',
+    description:
+      'Keep metadata, page structure, speed checks, tracking improvements, and technical SEO hygiene part of ongoing delivery.',
+    outcome: 'Keep SEO basics moving monthly.',
   },
   {
-    icon: Clock,
-    title: 'UK working-hours overlap',
-    description: 'Discovery, reviews, and delivery check-ins planned around convenient UK time windows.',
-  },
-  {
-    icon: ShieldCheck,
     title: 'Transparent add-ons',
-    description: 'Hosting, domains, paid tools, gateways, and third-party costs are discussed clearly upfront.',
+    label: 'Commercial clarity',
+    image: '/images/feature-transparent-addons.png',
+    alt: 'Minimal visual showing connected add-ons, settings, analytics, hosting, and transparent service components.',
+    description:
+      'Keep Primewayz delivery fees separate from third-party costs such as hosting, domain, SSL, tools, or specialist services.',
+    outcome: 'Know what is included and what is separate.',
   },
   {
-    icon: Wrench,
-    title: 'Remote delivery support',
-    description: 'Websites, CRM, SEO foundations, automation, integrations, and ongoing improvements.',
-  },
-  {
-    icon: CheckCircle2,
-    title: 'UK discovery calls',
-    description: 'Start with a focused call to confirm fit, priorities, risks, and the right delivery path.',
+    title: 'Move to maintenance anytime',
+    label: 'Continuity without pressure',
+    image: '/images/feature-maintenance-anytime.png',
+    alt: 'Minimal visual showing active delivery moving through maintenance and returning to stable progress.',
+    description:
+      'Scale down when priorities slow, keep essential support running, and restart active delivery when new priorities return.',
+    outcome: 'Pause intensity without losing continuity.',
   },
 ];
 
-export function UKTrustStrip() {
-  return (
-    <section className="bg-white border-y border-slate-100" aria-labelledby="uk-trust-strip-heading">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col gap-3 text-center mb-8">
-          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
-            UK-focused delivery indicators
-          </p>
-          <h2 id="uk-trust-strip-heading" className="text-2xl md:text-3xl font-bold tracking-tight text-slate-950">
-            Built for UK SMEs that need reliable digital execution
-          </h2>
-          <p className="max-w-3xl mx-auto text-sm md:text-base leading-7 text-slate-600">
-            Primewayz UK supports UK-facing businesses with practical subscription-based software delivery,
-            website improvements, CRM support, automation, SEO foundations, and ongoing digital maintenance.
-          </p>
+export const UKTrustStrip = () => (
+  <section className="bg-white py-16">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 lg:p-10">
+        <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700">
+              Built for predictable, flexible delivery
+            </p>
+            <h2 className="mt-3 max-w-3xl text-3xl font-black tracking-tight text-zinc-950 sm:text-4xl">
+              A clearer monthly support model for UK SME teams
+            </h2>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-600">
+              Keep digital work moving without restarting projects every time priorities change.
+              Scale capacity, keep SEO basics in view, separate vendor costs, and move into
+              maintenance when active delivery slows.
+            </p>
+          </div>
+
+          <div className="rounded-3xl bg-slate-950 p-6 text-white shadow-xl shadow-slate-950/15">
+            <p className="text-sm font-semibold text-blue-200">
+              What this means in practice
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {[
+                'Adjust monthly delivery effort',
+                'Keep technical foundations moving',
+                'Separate delivery and vendor costs',
+                'Pause intensity without losing continuity',
+              ].map((item) => (
+                <div
+                  key={item}
+                  className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200"
+                >
+                  <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-500 text-xs font-black text-white">
+                    ✓
+                  </span>
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {indicators.map((item) => {
-            const Icon = item.icon;
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          {deliveryHighlights.map((item) => (
+            <article
+              key={item.title}
+              className="group overflow-hidden rounded-[1.75rem] border border-zinc-200 bg-zinc-50/70 transition duration-300 hover:-translate-y-1 hover:bg-white hover:shadow-xl hover:shadow-blue-950/10"
+            >
+              <div className="aspect-[16/9] overflow-hidden border-b border-zinc-200 bg-white p-4">
+                <img
+                  src={item.image}
+                  alt={item.alt}
+                  className="h-full w-full object-contain transition duration-500 group-hover:scale-[1.02]"
+                  loading="lazy"
+                />
+              </div>
 
-            return (
-              <div
-                key={item.title}
-                className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-md"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-                    <Icon className="h-5 w-5" aria-hidden="true" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-slate-950">
-                      {item.title}
-                    </h3>
-                    <p className="mt-1.5 text-sm leading-6 text-slate-600">
-                      {item.description}
-                    </p>
-                  </div>
+              <div className="p-6">
+                <div className="mb-4 inline-flex rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-blue-700">
+                  {item.label}
+                </div>
+
+                <h3 className="text-xl font-black tracking-tight text-zinc-950">
+                  {item.title}
+                </h3>
+
+                <p className="mt-3 text-sm leading-7 text-zinc-600">
+                  {item.description}
+                </p>
+
+                <div className="mt-5 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-800">
+                  {item.outcome}
                 </div>
               </div>
-            );
-          })}
+            </article>
+          ))}
         </div>
-
-        <p className="mt-7 text-center text-xs leading-6 text-slate-500">
-          UK-focused positioning only. We do not claim a UK office address unless formally added later.
-        </p>
       </div>
-    </section>
-  );
-}
+    </div>
+  </section>
+);
