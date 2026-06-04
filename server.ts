@@ -1466,7 +1466,7 @@ async function collectDailyLeadSummary(window: { start: Date; end: Date; dateKey
     prisma.chatMessage.count({ where: { sender: 'bot', timestamp: range } }),
     prisma.chatAppointmentRequest.count({ where: { createdAt: range } }),
     prisma.chatAppointmentRequest.count({ where: { status: 'pending' } }),
-    (prisma as any).chatAlert.count({ where: { createdAt: range } }),
+    (prisma as any).chatAlert.count({ where: { createdAt: range, status: { in: DAILY_SUMMARY_ACTIVE_CHAT_ALERT_STATUSES } } }),
     (prisma as any).chatAlert.count({ where: { createdAt: range, status: 'email_sent' } }),
     (prisma as any).chatAlert.count({ where: { createdAt: range, status: 'email_failed' } }),
     prisma.formResponse.findMany({
@@ -1480,7 +1480,7 @@ async function collectDailyLeadSummary(window: { start: Date; end: Date; dateKey
       take: 5,
     }),
     (prisma as any).chatAlert.findMany({
-      where: { createdAt: range },
+      where: { createdAt: range, status: { in: DAILY_SUMMARY_ACTIVE_CHAT_ALERT_STATUSES } },
       orderBy: { createdAt: 'desc' },
       take: 5,
     }),
@@ -1502,6 +1502,8 @@ async function collectDailyLeadSummary(window: { start: Date; end: Date; dateKey
     latestAlerts,
   };
 }
+
+const DAILY_SUMMARY_ACTIVE_CHAT_ALERT_STATUSES = ['logged', 'email_sent', 'email_failed', 'email_skipped'];
 
 async function sendDailyLeadSummaryEmail(window: { start: Date; end: Date; dateKey: string }, summary: any) {
   const recipients = getSmtpRecipients(
@@ -1551,7 +1553,7 @@ async function sendDailyLeadSummaryEmail(window: { start: Date; end: Date; dateK
     ? summary.latestAlerts.map((alert: any) =>
         `Session ${escapeEmailHtml(alert.sessionId)} — message ${escapeEmailHtml(alert.messageId)} — ${escapeEmailHtml(alert.status)} — ${escapeEmailHtml(formatUkSummaryDateTime(alert.createdAt))}`
       )
-    : ['No unanswered chat alerts today.'];
+    : ['No active unanswered chat alerts today.'];
 
   const text = [
     `Primewayz UK daily lead summary - ${window.dateKey}`,
