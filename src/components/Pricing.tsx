@@ -630,94 +630,102 @@ export const Pricing = () => {
           </div>
         </section>
 
-        <section className="mt-14">
-          <div className="max-w-3xl">
-            <p className="text-sm font-bold uppercase tracking-[0.22em] text-blue-700">
-              Why Subscription Works Better
-            </p>
-            <h3 className="mt-3 text-3xl font-black tracking-tight text-zinc-950 sm:text-4xl">
-              Clear reasons UK teams choose capacity-based delivery
-            </h3>
-            <p className="mt-4 text-base leading-7 text-zinc-600">
-              Instead of restarting projects whenever priorities change, your monthly support can
-              scale, pause, continue, and restart around the roadmap your business actually needs.
-            </p>
+        <section className="mt-14 rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 lg:p-10">
+          <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700">
+                Built for predictable, flexible delivery
+              </p>
+              <h3 className="mt-3 max-w-3xl text-3xl font-black tracking-tight text-zinc-950 sm:text-4xl">
+                A clearer monthly support model for UK SME teams
+              </h3>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-600">
+                Keep digital work moving without restarting projects every time priorities change.
+                Scale capacity, keep SEO basics in view, separate vendor costs, and move into
+                maintenance when active delivery slows.
+              </p>
+            </div>
+
+            <div className="rounded-3xl bg-slate-950 p-6 text-white shadow-xl shadow-slate-950/15">
+              <p className="text-sm font-semibold text-blue-200">
+                What this means in practice
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {[
+                  'Adjust monthly delivery effort',
+                  'Keep technical foundations moving',
+                  'Separate delivery and vendor costs',
+                  'Pause intensity without losing continuity',
+                ].map((item) => (
+                  <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200">
+                    <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-500 text-xs font-black text-white">
+                      ✓
+                    </span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
             {[
               {
-                title: 'Flexibility',
-                image: '/images/subscription-flexibility.png',
-                alt: 'Minimal dashboard showing monthly delivery capacity adjusted up or down based on roadmap priorities.',
-                description:
-                  'Adjust your capacity monthly based on your roadmap and current priorities.',
-                points: [
-                  'Scale delivery up when campaigns, fixes, or new features need momentum.',
-                  'Reduce capacity when the roadmap slows down or internal priorities shift.',
-                  'Keep support aligned with real business demand instead of fixed project cycles.',
-                ],
+                title: 'Flexible monthly capacity',
                 label: 'Capacity control',
+                image: '/images/feature-flexible-monthly-capacity.png',
+                alt: 'Minimal visual showing monthly delivery capacity adjusting up and down based on changing priorities.',
+                description:
+                  'Adjust delivery capacity up or down based on your roadmap, campaign needs, fixes, and current priorities.',
+                outcome: 'Stay aligned with current workload.',
               },
               {
-                title: 'Total transparency',
-                image: '/images/subscription-total-transparency.png',
-                alt: 'Transparent subscription pricing breakdown with Primewayz service fee separated from vendor costs.',
+                title: 'Technical SEO foundation included',
+                label: 'Search-ready basics',
+                image: '/images/feature-technical-seo-foundation.png',
+                alt: 'Minimal visual showing a website dashboard, search lens, checklist, and structured technical foundation signals.',
                 description:
-                  'Clear pricing with vendor costs handled separately where applicable.',
-                points: [
-                  'See what is part of Primewayz delivery and support.',
-                  'Keep third-party costs like hosting, domain, SSL, and tools separate.',
-                  'Avoid bundled pricing confusion and keep infrastructure ownership clear.',
-                ],
-                label: 'Clear commercial model',
+                  'Keep metadata, page structure, speed checks, tracking improvements, and technical SEO hygiene part of ongoing delivery.',
+                outcome: 'Keep SEO basics moving monthly.',
               },
               {
-                title: 'Roadmap continuity',
-                image: '/images/subscription-roadmap-continuity.png',
-                alt: 'Continuous roadmap timeline showing steady delivery phases without restarting project cycles.',
+                title: 'Transparent add-ons',
+                label: 'Commercial clarity',
+                image: '/images/feature-transparent-addons.png',
+                alt: 'Minimal visual showing connected add-ons, settings, analytics, hosting, and transparent service components.',
                 description:
-                  'Maintain delivery momentum without restarting procurement or project cycles.',
-                points: [
-                  'Continue from foundation to scale, optimisation, and improvements.',
-                  'Keep context, backlog, and delivery knowledge within one aligned team.',
-                  'Build compound value over time instead of repeatedly starting from zero.',
-                ],
-                label: 'Continuous delivery',
+                  'Keep Primewayz delivery fees separate from third-party costs such as hosting, domain, SSL, tools, or specialist services.',
+                outcome: 'Know what is included and what is separate.',
               },
               {
-                title: 'Seamless maintenance',
-                image: '/images/subscription-seamless-maintenance.png',
-                alt: 'Workflow showing active delivery moving into maintenance mode and restarting active delivery when needed.',
+                title: 'Move to maintenance anytime',
+                label: 'Continuity without pressure',
+                image: '/images/feature-maintenance-anytime.png',
+                alt: 'Minimal visual showing active delivery moving through maintenance and returning to stable progress.',
                 description:
-                  'Scale down when priorities slow, then restart active delivery when needed.',
-                points: [
-                  'Move into maintenance mode when active delivery is not required.',
-                  'Keep essential checks, updates, monitoring, and small improvements running.',
-                  'Restart active delivery quickly when new priorities return.',
-                ],
-                label: 'Stay ready',
+                  'Scale down when priorities slow, keep essential support running, and restart active delivery when new priorities return.',
+                outcome: 'Pause intensity without losing continuity.',
               },
             ].map((item) => (
               <article
                 key={item.title}
-                className="overflow-hidden rounded-[1.75rem] border border-zinc-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-950/10"
+                className="group overflow-hidden rounded-[1.75rem] border border-zinc-200 bg-zinc-50/70 transition duration-300 hover:-translate-y-1 hover:bg-white hover:shadow-xl hover:shadow-blue-950/10"
               >
-                <div className="aspect-[16/9] overflow-hidden bg-blue-50">
+                <div className="aspect-[16/9] overflow-hidden border-b border-zinc-200 bg-white p-4">
                   <img
                     src={item.image}
                     alt={item.alt}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain transition duration-500 group-hover:scale-[1.02]"
                     loading="lazy"
                   />
                 </div>
 
-                <div className="p-6 lg:p-7">
-                  <div className="mb-4 inline-flex rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-blue-700">
+                <div className="p-6">
+                  <div className="mb-4 inline-flex rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-blue-700">
                     {item.label}
                   </div>
 
-                  <h4 className="text-2xl font-black tracking-tight text-zinc-950">
+                  <h4 className="text-xl font-black tracking-tight text-zinc-950">
                     {item.title}
                   </h4>
 
@@ -725,16 +733,9 @@ export const Pricing = () => {
                     {item.description}
                   </p>
 
-                  <ul className="mt-5 space-y-3">
-                    {item.points.map((point) => (
-                      <li key={point} className="flex gap-3 text-sm leading-6 text-zinc-600">
-                        <span className="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-black text-blue-700">
-                          ✓
-                        </span>
-                        <span>{point}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="mt-5 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-800">
+                    {item.outcome}
+                  </div>
                 </div>
               </article>
             ))}
