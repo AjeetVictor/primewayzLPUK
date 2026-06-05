@@ -51,3 +51,4 @@ convert-model-comparison-images-to-webp.py
 # Local source image for process delivery infographic
 image-sources/
 convert-process-delivery-image-to-webp.py
+patch-how-it-works-layout.py
