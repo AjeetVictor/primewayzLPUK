@@ -47,3 +47,7 @@ image-sources/
 convert-delivery-images-to-webp.py
 patch-uk-trust-strip-images.py
 convert-model-comparison-images-to-webp.py
+
+# Local source image for process delivery infographic
+image-sources/
+convert-process-delivery-image-to-webp.py
