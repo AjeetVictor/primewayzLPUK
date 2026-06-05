@@ -52,3 +52,4 @@ convert-model-comparison-images-to-webp.py
 image-sources/
 convert-process-delivery-image-to-webp.py
 patch-how-it-works-layout.py
+trim-process-delivery-infographic.py
