@@ -1,3 +1,4 @@
+﻿import { useState, type MouseEvent } from 'react';
 import { TrackedLink } from './common/TrackedLink';
 import { motion } from 'motion/react';
 import { Target, Layers, BarChart } from 'lucide-react';
@@ -27,6 +28,31 @@ const flowSteps = [
 ];
 
 export const HowItWorks = () => {
+  const [imagePan, setImagePan] = useState({ x: 0, y: 0, active: false });
+
+  const handleInfographicMouseMove = (event: MouseEvent<HTMLDivElement>) => {
+    if (
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      return;
+    }
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const relativeX = (event.clientX - bounds.left) / bounds.width - 0.5;
+    const relativeY = (event.clientY - bounds.top) / bounds.height - 0.5;
+
+    setImagePan({
+      x: relativeX * 18,
+      y: relativeY * -22,
+      active: true,
+    });
+  };
+
+  const handleInfographicMouseLeave = () => {
+    setImagePan({ x: 0, y: 0, active: false });
+  };
+
   return (
     <section id="how-it-works" className="bg-white py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -68,17 +94,42 @@ export const HowItWorks = () => {
         >
           <div className="grid grid-cols-1 lg:grid-cols-[0.88fr_1.12fr]">
             <div className="border-b border-zinc-200 bg-zinc-100/70 p-5 sm:p-6 lg:min-h-[520px] lg:border-b-0 lg:border-r lg:p-8">
-              <video
-                controls
-                preload="metadata"
-                playsInline
-                muted
-                poster="/images/delivery-process-poster.jpg"
-                className="mx-auto aspect-[10/16] w-full max-w-[22rem] rounded-2xl border border-zinc-200/80 bg-zinc-900 object-cover object-center shadow-[0_20px_44px_-30px_rgba(15,23,42,0.7)]"
+              <motion.div
+                initial={{ opacity: 0, x: -18 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                onMouseMove={handleInfographicMouseMove}
+                onMouseLeave={handleInfographicMouseLeave}
+                className="group relative mx-auto w-full max-w-[28rem] overflow-hidden rounded-3xl border border-zinc-200/90 bg-white shadow-[0_24px_54px_-34px_rgba(15,23,42,0.75)]"
+                aria-label="Software delivery process infographic"
               >
-                <source src="/videos/delivery-process-pwuk.mp4" type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
+                <div className="relative aspect-[4/5] overflow-hidden bg-white">
+                  <img
+                    src="/images/process-delivery/how-delivery-works-infographic.webp"
+                    alt="Infographic showing the software delivery workflow from discovery and priority alignment through delivery planning, progress review, release, support, and continuous improvement"
+                    loading="lazy"
+                    decoding="async"
+                    width={1200}
+                    height={1500}
+                    style={{
+                      transform: imagePan.active
+                        ? `scale(1.07) translate3d(${imagePan.x}px, ${imagePan.y}px, 0)`
+                        : 'scale(1) translate3d(0, 0, 0)',
+                    }}
+                    className="h-full w-full object-cover object-left-top transition-transform duration-300 ease-out"
+                  />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-blue-950/0 via-transparent to-blue-500/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                  <div className="pointer-events-none absolute inset-x-5 bottom-5 rounded-2xl border border-white/70 bg-white/85 px-4 py-3 shadow-lg backdrop-blur-sm transition-all duration-300 group-hover:-translate-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">
+                      Visual delivery flow
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-zinc-800">
+                      Prioritise, plan, deliver, review, release, and improve.
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
             </div>
 
             <div className="relative p-7 md:p-10 lg:p-12">
