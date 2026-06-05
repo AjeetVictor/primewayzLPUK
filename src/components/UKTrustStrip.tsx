@@ -2,8 +2,8 @@
   {
     title: 'Flexible monthly capacity',
     label: 'Capacity control',
-    image: '/images/feature-flexible-monthly-capacity.png',
-    alt: 'Minimal visual showing monthly delivery capacity adjusting up and down based on changing priorities.',
+    image: "/images/delivery-model/flexible-monthly-capacity.webp",
+    alt: "Monthly delivery capacity dashboard showing adjustable workload planning for UK SME teams",
     description:
       'Adjust delivery capacity up or down based on your roadmap, campaign needs, fixes, and current priorities.',
     outcome: 'Stay aligned with current workload.',
@@ -11,8 +11,8 @@
   {
     title: 'Technical SEO foundation included',
     label: 'Search-ready basics',
-    image: '/images/feature-technical-seo-foundation.png',
-    alt: 'Minimal visual showing a website dashboard, search lens, checklist, and structured technical foundation signals.',
+    image: "/images/delivery-model/technical-seo-foundation.webp",
+    alt: "Technical SEO dashboard showing site health checks metadata and performance tracking",
     description:
       'Keep metadata, page structure, speed checks, tracking improvements, and technical SEO hygiene part of ongoing delivery.',
     outcome: 'Keep SEO basics moving monthly.',
@@ -20,8 +20,8 @@
   {
     title: 'Transparent add-ons',
     label: 'Commercial clarity',
-    image: '/images/feature-transparent-addons.png',
-    alt: 'Minimal visual showing connected add-ons, settings, analytics, hosting, and transparent service components.',
+    image: "/images/delivery-model/transparent-addons.webp",
+    alt: "Transparent invoice breakdown separating Primewayz delivery from third party add on costs",
     description:
       'Keep Primewayz delivery fees separate from third-party costs such as hosting, domain, SSL, tools, or specialist services.',
     outcome: 'Know what is included and what is separate.',
@@ -29,8 +29,8 @@
   {
     title: 'Move to maintenance anytime',
     label: 'Continuity without pressure',
-    image: '/images/feature-maintenance-anytime.png',
-    alt: 'Minimal visual showing active delivery moving through maintenance and returning to stable progress.',
+    image: "/images/delivery-model/maintenance-transition.webp",
+    alt: "Workflow transition from active delivery to ongoing website maintenance support",
     description:
       'Scale down when priorities slow, keep essential support running, and restart active delivery when new priorities return.',
     outcome: 'Pause intensity without losing continuity.',
@@ -88,7 +88,7 @@ export const UKTrustStrip = () => (
               className="group overflow-hidden rounded-[1.75rem] border border-zinc-200 bg-zinc-50/70 transition duration-300 hover:-translate-y-1 hover:bg-white hover:shadow-xl hover:shadow-blue-950/10"
             >
               <div className="aspect-[16/9] overflow-hidden border-b border-zinc-200 bg-white p-4">
-                <img
+                <img decoding="async"
                   src={item.image}
                   alt={item.alt}
                   className="h-full w-full object-contain transition duration-500 group-hover:scale-[1.02]"

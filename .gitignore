@@ -36,3 +36,13 @@ Thumbs.db
 *.tmp
 *.temp
 .cache/
+
+# Local source images for generated delivery model WebP assets
+public/images/delivery-model/*.png
+public/images/delivery-model/*.jpg
+public/images/delivery-model/*.jpeg
+
+# Local source images and one-off conversion helper
+image-sources/
+convert-delivery-images-to-webp.py
+patch-uk-trust-strip-images.py
