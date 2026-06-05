@@ -3167,3 +3167,5 @@ async function startServer() {
 }
 
 startServer();
+
+export { sendDailyLeadSummary };
