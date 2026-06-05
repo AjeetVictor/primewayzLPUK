@@ -46,3 +46,4 @@ public/images/delivery-model/*.jpeg
 image-sources/
 convert-delivery-images-to-webp.py
 patch-uk-trust-strip-images.py
+convert-model-comparison-images-to-webp.py
