@@ -92,8 +92,8 @@ export const HowItWorks = () => {
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="overflow-hidden rounded-[2.25rem] border border-zinc-200 bg-zinc-50/80"
         >
-          <div className="grid grid-cols-1 lg:grid-cols-[0.88fr_1.12fr]">
-            <div className="border-b border-zinc-200 bg-zinc-100/70 p-5 sm:p-6 lg:min-h-[520px] lg:border-b-0 lg:border-r lg:p-8">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_0.92fr]">
+            <div className="border-b border-zinc-200 bg-zinc-100/70 p-5 sm:p-6 lg:border-b-0 lg:border-r lg:p-8">
               <motion.div
                 initial={{ opacity: 0, x: -18 }}
                 whileInView={{ opacity: 1, x: 0 }}
@@ -101,10 +101,10 @@ export const HowItWorks = () => {
                 transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
                 onMouseMove={handleInfographicMouseMove}
                 onMouseLeave={handleInfographicMouseLeave}
-                className="group relative mx-auto w-full max-w-[28rem] overflow-hidden rounded-3xl border border-zinc-200/90 bg-white shadow-[0_24px_54px_-34px_rgba(15,23,42,0.75)]"
+                className="group relative mx-auto w-full overflow-hidden rounded-3xl border border-zinc-200/90 bg-white shadow-[0_24px_54px_-34px_rgba(15,23,42,0.75)]"
                 aria-label="Software delivery process infographic"
               >
-                <div className="relative aspect-[4/5] overflow-hidden bg-white">
+                <div className="relative mx-auto aspect-[9/16] w-full overflow-hidden bg-white">
                   <img
                     src="/images/process-delivery/how-delivery-works-infographic.webp"
                     alt="Infographic showing the software delivery workflow from discovery and priority alignment through delivery planning, progress review, release, support, and continuous improvement"
@@ -117,7 +117,7 @@ export const HowItWorks = () => {
                         ? `scale(1.07) translate3d(${imagePan.x}px, ${imagePan.y}px, 0)`
                         : 'scale(1) translate3d(0, 0, 0)',
                     }}
-                    className="h-full w-full object-cover object-left-top transition-transform duration-300 ease-out"
+                    className="h-full w-full object-contain object-center transition-transform duration-300 ease-out"
                   />
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-blue-950/0 via-transparent to-blue-500/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                   <div className="pointer-events-none absolute inset-x-5 bottom-5 rounded-2xl border border-white/70 bg-white/85 px-4 py-3 shadow-lg backdrop-blur-sm transition-all duration-300 group-hover:-translate-y-1">
