@@ -133,7 +133,7 @@ export default function App() {
   const isAdmin = location.pathname.startsWith('/admin');
 
   return (
-    <div className="min-h-screen bg-white font-sans selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="relative min-h-screen bg-white font-sans selection:bg-emerald-100 selection:text-emerald-900">
       <AnalyticsTracker />
       {!isAdmin && <Navbar />}
       {!isAdmin && <ScrollToTop />}
