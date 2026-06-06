@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Menu, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import logo from '../assets/primewayz-infotech-logo.svg';
+const logo = '/assets/primewayz-infotech-logo.svg';
 import { SITE_CONTAINER_CLASS } from '../constants/siteLayout';
 
 export const Navbar = () => {

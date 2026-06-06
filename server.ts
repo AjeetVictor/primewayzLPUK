@@ -9,8 +9,8 @@ import type { BlogPost } from './src/data/blog/types.ts';
 import { homepageSeoContent } from './src/content/homepageSeoContent.ts';
 import { sanitizeBlogHtml } from './src/utils/sanitizeHtml.ts';
 import nodemailer from 'nodemailer';
-import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
+import { createElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { App } from './src/App'; // named export
 
@@ -47,14 +47,17 @@ app.get('/api/blog/posts/:id', (req, res) => {
 app.get('*', async (req, res) => {
   try {
     const indexHtml = await fs.readFile(path.join(__dirname, 'dist/client/index.html'), 'utf-8');
+
     const appHtml = renderToString(
       createElement(
         MemoryRouter,
         { initialEntries: [req.originalUrl] },
         createElement(App),
-      ),
+      )
     );
+
     const html = indexHtml.replace('<!--app-html-->', appHtml);
+
     res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
   } catch (err: any) {
     console.error('SSR render error:', err);

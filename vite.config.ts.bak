@@ -1,6 +1,5 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import svgr from 'vite-plugin-svgr';
 import path from 'path';
 import { defineConfig } from 'vite';
 
@@ -8,11 +7,7 @@ export default defineConfig(() => {
   const isProd = process.env.NODE_ENV === 'production';
 
   return {
-    plugins: [
-      react(),
-      tailwindcss(),
-      svgr(),
-    ],
+    plugins: [react(), tailwindcss()],
     base: '/',
     resolve: {
       alias: {
@@ -20,7 +15,7 @@ export default defineConfig(() => {
       },
     },
     server: {
-      hmr: !isProd,
+      hmr: !isProd, // HMR off in production
       allowedHosts: ['uk.primewayz.com', 'localhost', '127.0.0.1'],
     },
   };

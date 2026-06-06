@@ -15,7 +15,7 @@ const app = (
   </StrictMode>
 );
 
-if (rootElement.innerHTML.trim()) {
+if (rootElement.childElementCount > 0) {
   hydrateRoot(rootElement, app);
 } else {
   createRoot(rootElement).render(app);
