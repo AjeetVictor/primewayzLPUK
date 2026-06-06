@@ -34,85 +34,44 @@ import { LocalTradesLeadCapturePage } from './components/LocalTradesLeadCaptureP
 import { ProfessionalServicesCrmCleanupPage } from './components/ProfessionalServicesCrmCleanupPage';
 import { EcommerceStoreStabilitySupportPage } from './components/EcommerceStoreStabilitySupportPage';
 
+// SSR-safe: use static path for logo
+const logo = '/assets/primewayz-infotech-logo.svg';
 
 const ClientOnly = ({ children }: { children: ReactNode }) => {
   const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
+  useEffect(() => setMounted(true), []);
   if (!mounted) return null;
-
   return <>{children}</>;
 };
 
 const MainContent = () => (
   <main>
     <Hero />
-
     <UKTrustStrip />
-
     <Philosophy />
-
-    <motion.div
-      initial={{ opacity: 0 }}
-      whileInView={{ opacity: 1 }}
-      viewport={{ once: true, margin: "-100px" }}
-      transition={{ duration: 1 }}
-    >
+    <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 1 }}>
       <HowItWorks />
     </motion.div>
-
     <InteractiveDemo />
-
     <TechStack />
-
     <Experience />
-
     <Stats />
-
     <ServicePathCards />
-
     <Pricing />
-
     <FAQ />
-
     <SuccessStories />
-
     <Testimonials />
-
     <BlogSection />
-
     <ContactForm />
-
     <section className="py-24 bg-emerald-600">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-8"
-        >
-          Ready to plan your next <br />
-          delivery phase?
+        <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-8">
+          Ready to plan your next <br /> delivery phase?
         </motion.h2>
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.1 }}
-          className="text-xl text-emerald-50 mb-12"
-        >
-          Start with Foundation Sprint, then move into the monthly delivery capacity
-          that fits your roadmap.
+        <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="text-xl text-emerald-50 mb-12">
+          Start with Foundation Sprint, then move into the monthly delivery capacity that fits your roadmap.
         </motion.p>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.2 }}
-        >
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
           <TrackedLink
             href="#contact"
             ctaText="Book a UK discovery call"
@@ -128,7 +87,7 @@ const MainContent = () => (
   </main>
 );
 
-export default function App() {
+export const App = () => {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
 
@@ -160,5 +119,6 @@ export default function App() {
       {!isAdmin && <ClientOnly><LiveChat /></ClientOnly>}
     </div>
   );
-}
+};
 
+export default App;

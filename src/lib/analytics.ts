@@ -1,5 +1,5 @@
 export const GA_MEASUREMENT_ID =
-  import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-669V6LN0B7';
+  import.meta.env?.VITE_GA_MEASUREMENT_ID || 'G-669V6LN0B7';
 
 declare global {
   interface Window {
