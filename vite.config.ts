@@ -4,8 +4,12 @@ import svgr from 'vite-plugin-svgr';
 import path from 'path';
 import { defineConfig } from 'vite';
 
-export default defineConfig(() => {
-  const isProd = process.env.NODE_ENV === 'production';
+export default defineConfig(({ mode }) => {
+  const isProd = mode === 'production';
+
+  if (isProd) {
+    process.env.NODE_ENV = 'production';
+  }
 
   return {
     plugins: [
@@ -14,6 +18,9 @@ export default defineConfig(() => {
       svgr(),
     ],
     base: '/',
+    esbuild: {
+      jsxDev: !isProd,
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
