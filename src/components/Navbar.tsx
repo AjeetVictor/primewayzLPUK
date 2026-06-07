@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Menu, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-const logo = '/assets/primewayz-infotech-logo.svg';
 import { SITE_CONTAINER_CLASS } from '../constants/siteLayout';
+
+// SSR-safe: public folder served at root, no import needed
+const Logo = '/primewayz-infotech-logo.svg';
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -45,9 +47,9 @@ export const Navbar = () => {
             aria-label="Primewayz Home"
           >
             <img
-              src={logo}
-              alt="Primewayz Infotech logo"
-              className="h-6 w-auto max-w-[min(11rem,42vw)] object-contain object-left sm:h-7 md:h-8"
+              src={Logo}
+              alt="Primewayz Infotech"
+              style={{ height: '40px', width: 'auto' }}
             />
           </Link>
 
@@ -66,17 +68,17 @@ export const Navbar = () => {
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
-          <TrackedLink
-            href="/#contact"
-            ctaText="Book a call"
-            ctaLocation="navbar_desktop"
-            eventType="book_call_click"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="hidden min-h-[40px] items-center rounded-md bg-slate-900 px-3 py-2 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 md:inline-flex xl:px-5 xl:text-sm"
-          >
-            Book a call
-          </TrackedLink>
+            <TrackedLink
+              href="/#contact"
+              ctaText="Book a call"
+              ctaLocation="navbar_desktop"
+              eventType="book_call_click"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="hidden min-h-[40px] items-center rounded-md bg-slate-900 px-3 py-2 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 md:inline-flex xl:px-5 xl:text-sm"
+            >
+              Book a call
+            </TrackedLink>
             <button
               type="button"
               onClick={() => setIsOpen((v) => !v)}

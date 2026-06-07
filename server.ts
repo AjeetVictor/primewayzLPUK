@@ -4,34 +4,56 @@ import fs from 'fs/promises';
 import { PrismaClient } from '@prisma/client';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import { getAllBlogPosts, getBlogPostById } from './src/data/blog/utils.ts';
-import type { BlogPost } from './src/data/blog/types.ts';
-import { homepageSeoContent } from './src/content/homepageSeoContent.ts';
-import { sanitizeBlogHtml } from './src/utils/sanitizeHtml.ts';
-import { App } from './src/App';
-import { renderToString } from 'react-dom/server';
-import { createElement } from 'react';
-import { MemoryRouter } from 'react-router-dom';
 
-dotenv.config({ override: true });
+dotenv.config({ path: '.env.local', override: true });
+dotenv.config({ override: false }); // fallback to .env
 
+const isProd = process.env.NODE_ENV === 'production';
 const app = express();
 const prisma = new PrismaClient();
 const __dirname = path.resolve();
 
 const allBlogPosts = getAllBlogPosts();
-const BLOG_STATUSES = ['draft', 'submitted', 'published', 'unpublished', 'archived'] as const;
 
-// Middleware
+// --- Middleware ---
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static client assets
-app.use('/assets', express.static(path.join(__dirname, 'dist/client/assets')));
-app.use('/favicon.ico', express.static(path.join(__dirname, 'dist/client/favicon.ico')));
+// --- Static files (production only — in dev, Vite handles this) ---
+if (isProd) {
+  app.use(express.static(path.join(__dirname, 'dist/client')));
+}
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Blog APIs
+// --- Admin Login ---
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password)
+      return res.status(400).json({ success: false, message: 'Email and password required' });
+
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
+    if (!adminEmail || !adminPasswordHash)
+      return res.status(500).json({ success: false, message: 'Admin credentials not configured' });
+
+    const passwordMatches = bcrypt.compareSync(password, adminPasswordHash);
+    if (email !== adminEmail || !passwordMatches)
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+
+    const token = jwt.sign({ email }, process.env.JWT_SECRET || 'dev_secret', { expiresIn: '8h' });
+    return res.json({ success: true, token });
+  } catch (err) {
+    console.error('Admin login error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// --- Blog APIs ---
 app.get('/api/blog/posts', (req, res) => {
   const publishedPosts = allBlogPosts.filter(p => p.status === 'published');
   res.json(publishedPosts);
@@ -46,57 +68,34 @@ app.get('/api/blog/posts/:id', (req, res) => {
 // -------------------------
 // Local-safe Prisma wrappers
 // -------------------------
-
 async function seedAdmin() {
   if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) return;
-
   try {
-    const adminExists = await prisma.user.findUnique({
-      where: { email: process.env.ADMIN_EMAIL }
-    });
-
+    const adminExists = await prisma.user.findUnique({ where: { email: process.env.ADMIN_EMAIL } });
     if (!adminExists) {
       await prisma.user.create({
-        data: {
-          email: process.env.ADMIN_EMAIL,
-          password: process.env.ADMIN_PASSWORD,
-          role: 'ADMIN'
-        }
+        data: { email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD, role: 'ADMIN' }
       });
     }
-  } catch (e) {
-    console.warn('[local-safe] Skipping admin seed: DB not available', e.message);
-  }
-}
-
-async function getChatPresenceSetting() {
-  try {
-    const model = (prisma as any).chatPresenceSetting;
-    let setting = await model.findFirst();
-    return setting;
-  } catch (e) {
-    console.warn('[local-safe] Skipping chat presence fetch: DB not available', e.message);
-    return null;
+  } catch (e: any) {
+    console.warn('[local-safe] Skipping admin seed:', e.message);
   }
 }
 
 async function findUnansweredChatMessages() {
   try {
-    return await prisma.chatMessage.findMany({
-      where: { answered: false }
-    });
-  } catch (e) {
-    console.warn('[local-safe] Skipping unanswered chat messages: DB not available', e.message);
+    return await prisma.chatMessage.findMany({ where: { answered: false } });
+  } catch (e: any) {
+    console.warn('[local-safe] Skipping unanswered chat messages:', e.message);
     return [];
   }
 }
 
 // -------------------------
-// Schedule background jobs
+// Background jobs
 // -------------------------
 setInterval(async () => {
-  const messages = await findUnansweredChatMessages();
-  // handle messages...
+  await findUnansweredChatMessages();
 }, 5 * 60 * 1000);
 
 setInterval(async () => {
@@ -104,30 +103,35 @@ setInterval(async () => {
 }, 60 * 1000);
 
 // -------------------------
-// Production SSR route
+// SSR catch-all route
 // -------------------------
 app.get('*', async (req, res) => {
   try {
+    if (!isProd) {
+      // DEV: serve raw index.html — Vite/React handles rendering client-side
+      // No rebuild needed when you change components!
+      const indexHtml = await fs.readFile(path.join(__dirname, 'index.html'), 'utf-8');
+      return res.status(200).set({ 'Content-Type': 'text/html' }).end(indexHtml);
+    }
+
+    // PRODUCTION: full SSR using the built entry-server bundle
     const indexHtml = await fs.readFile(path.join(__dirname, 'dist/client/index.html'), 'utf-8');
-
-    const appHtml = renderToString(
-      createElement(
-        MemoryRouter,
-        { initialEntries: [req.originalUrl] },
-        createElement(App)
-      )
-    );
-
+    const { render } = await import('./dist/server/entry-server.js');
+    const { html: appHtml } = render(req.originalUrl);
     const html = indexHtml.replace('<!--ssr-outlet-->', appHtml);
-
-    res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
+    return res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
   } catch (err: any) {
     console.error('SSR render error:', err);
     res.status(500).send('Internal Server Error');
   }
 });
 
+// -------------------------
+// Start
+// -------------------------
+seedAdmin();
+
 const port = parseInt(process.env.PORT || '3000');
 app.listen(port, () => {
-  console.log(`[local-safe] SSR server running at http://localhost:${port}`);
+  console.log(`[${isProd ? 'production' : 'dev'}] Server running at http://localhost:${port}`);
 });

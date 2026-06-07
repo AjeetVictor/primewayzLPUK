@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,15 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- Form Responses ---
 model FormResponse {
   id        Int      @id @default(autoincrement())
   name      String
   email     String
   message   String
-  phone     String?  // E.164 when provided
+  phone     String?  // nullable
   createdAt DateTime @default(now())
 }
 
+// --- Chat System ---
 model ChatSession {
   id           String                   @id @default(uuid())
   name         String?
@@ -70,7 +69,7 @@ model ChatAppointmentRequest {
   preferredTime String?
   timezone      String?     @default("Europe/London")
   message       String?
-  status        String      @default("pending") // pending/confirmed/completed/cancelled
+  status        String      @default("pending")
   adminNote     String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -93,16 +92,18 @@ model AdminPresence {
   updatedAt  DateTime @updatedAt
 }
 
+// --- Users ---
 model User {
   id                     Int      @id @default(autoincrement())
   email                  String   @unique
   password               String
-  role                   String   @default("viewer") // 'super_admin', 'blog_editor', 'blog_author', 'admin', 'editor', 'viewer'
+  role                   String   @default("viewer")
   resetPasswordTokenHash String?
   resetPasswordExpiresAt DateTime?
   createdAt              DateTime @default(now())
 }
 
+// --- CMS / Blog ---
 model CmsBlogPost {
   id             Int       @id @default(autoincrement())
   slug           String    @unique
@@ -120,7 +121,7 @@ model CmsBlogPost {
   featured       Boolean   @default(false)
   seoTitle       String?
   seoDescription String?   @db.Text
-  status         String    @default("draft") // draft, submitted, published, unpublished, archived
+  status         String    @default("draft")
   createdById    Int
   updatedById    Int?
   reviewedById   Int?
@@ -138,6 +139,7 @@ model BlogPostComment {
   createdAt DateTime @default(now())
 }
 
+// --- Alerts / Summary ---
 model ChatAlert {
   id        Int      @id @default(autoincrement())
   sessionId String
@@ -164,4 +166,3 @@ model LeadSummaryEmail {
   @@index([dateKey])
   @@index([status])
 }
-
