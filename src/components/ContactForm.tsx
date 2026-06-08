@@ -1,6 +1,8 @@
 import { useState, ChangeEvent, FormEvent, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { CheckCircle, AlertCircle, PartyPopper, Linkedin } from 'lucide-react';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 import confetti from 'canvas-confetti';
 import { apiUrl } from '../utils/apiUrl';
 import { CONTACT_SOCIAL_LINKS } from '../constants/contactSocial';
@@ -41,11 +43,19 @@ const CALENDLY_URL = 'https://calendly.com/primewayz-info/30-minute-meeting-uk';
 const CALENDLY_SCRIPT_URL = 'https://assets.calendly.com/assets/external/widget.js';
 
 export function normalizeUkPhoneNumber(raw: string): string | null {
-  const compact = raw.replace(/[^\d+]/g, '');
-  const normalized = compact.startsWith('0044') ? `+44${compact.slice(4)}` : compact;
+  const compact = raw.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
+  let normalized = compact.startsWith('0044') ? `+44${compact.slice(4)}` : compact;
+
+  if (normalized.startsWith('+440')) {
+    normalized = `+44${normalized.slice(4)}`;
+  } else if (normalized.startsWith('00440')) {
+    normalized = `+44${normalized.slice(5)}`;
+  } else if (/^44\d{10,11}$/.test(normalized)) {
+    normalized = `+${normalized}`;
+  }
 
   if (normalized.startsWith('+44')) {
-    const national = normalized.slice(3).replace(/\D/g, '');
+    const national = normalized.slice(3).replace(/\D/g, '').replace(/^0/, '');
     return national.length === 10 ? `+44${national}` : null;
   }
 
@@ -62,12 +72,17 @@ export function validateUkMobileOrLandline(e164: string): boolean {
 }
 
 export function parseUkPhoneNumbers(input: string): string[] {
-  const matches = input.match(/(?:\+44|0044|0)\s*\d(?:[\s().-]*\d){9}/g) || [];
+  const matches = input.match(/(?:\+?44|0044|0)\s*\d(?:[\s().-]*\d){9,10}/g) || [];
   const normalized = matches
     .map((match) => normalizeUkPhoneNumber(match))
-    .filter((phone): phone is string => Boolean(phone && validateUkMobileOrLandline(phone)));
+    .filter((phone): phone is string => Boolean(phone && validateUkMobileOrLandline(phone) && isValidPhoneNumber(phone)));
 
   return Array.from(new Set(normalized));
+}
+
+export function cleanUkPhoneInput(value?: string): string {
+  if (!value) return '';
+  return normalizeUkPhoneNumber(value) || value;
 }
 
 export function formatUkPhoneNumber(e164: string): string {
@@ -154,12 +169,13 @@ export function ContactForm() {
     setIsSubmitting(true);
 
     try {
+      const parsedPhoneNumbers = parseUkPhoneNumbers(phone);
       const payload = {
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
         message: formData.message.trim(),
-        phone: parseUkPhoneNumbers(phone)[0],
-        phoneNumbers: parseUkPhoneNumbers(phone),
+        phone: parsedPhoneNumbers[0],
+        phoneNumbers: parsedPhoneNumbers,
       };
 
       const response = await fetch(apiUrl('/api/contact'), {
@@ -206,12 +222,14 @@ export function ContactForm() {
     }
   };
 
-  const handlePhoneChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setPhone(e.target.value);
+  const handlePhoneChange = (value?: string) => {
+    setPhone(cleanUkPhoneInput(value));
     if (errors.phone) setErrors((prev) => ({ ...prev, phone: undefined }));
   };
 
   const parsedPhoneNumbers = parseUkPhoneNumbers(phone);
+  const isPhoneValid = parsedPhoneNumbers.length > 0;
+  const showPhoneValidState = phone.trim().length > 0 && isPhoneValid;
 
   useEffect(() => {
     const handleCalendlyEvent = (event: MessageEvent) => {
@@ -457,33 +475,28 @@ export function ContactForm() {
                         errors.phone ? 'border-red-500 bg-red-50' : 'border-gray-200'
                       } focus-within:ring-2 focus-within:ring-slate-400/30`}
                     >
-                      <span className="inline-flex shrink-0 items-center border-r border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-700">
-                        UK +44
-                      </span>
-                      <input
+                      <PhoneInput
                         id="phone"
                         name="phone"
-                        type="tel"
+                        international={false}
+                        defaultCountry="GB"
+                        countries={['GB']}
                         value={phone}
                         onChange={handlePhoneChange}
-                        placeholder="07522 146 354 or multiple numbers"
+                        placeholder="07522 146 354"
                         autoComplete="tel"
                         aria-labelledby="phone-label"
                         aria-invalid={!!errors.phone}
-                        aria-describedby={errors.phone ? 'phone-error' : undefined}
-                        className="min-w-0 flex-1 bg-transparent px-4 py-3 text-base outline-none"
+                        aria-describedby={errors.phone ? 'phone-error' : showPhoneValidState ? 'phone-valid' : undefined}
+                        className="primewayz-phone-input min-w-0 flex-1"
                       />
                     </div>
-                    {parsedPhoneNumbers.length > 0 && (
-                      <div className="flex flex-wrap gap-2 pt-1" aria-label="Parsed UK phone numbers">
-                        {parsedPhoneNumbers.map((parsedPhone) => (
-                          <span
-                            key={parsedPhone}
-                            className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
-                          >
-                            {formatUkPhoneNumber(parsedPhone)}
-                          </span>
-                        ))}
+                    {showPhoneValidState && (
+                      <div id="phone-valid" className="flex flex-wrap gap-2 pt-1" aria-label="Validated UK phone number">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                          <CheckCircle className="h-3 w-3" aria-hidden />
+                          {formatUkPhoneNumber(parsedPhoneNumbers[0])}
+                        </span>
                       </div>
                     )}
                     {errors.phone && (
@@ -534,12 +547,12 @@ export function ContactForm() {
               <div className="flex flex-col items-center gap-3 pt-2">
                 <motion.button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !isPhoneValid}
                   aria-busy={isSubmitting}
-                  whileHover={!isSubmitting ? { scale: 1.02 } : {}}
-                  whileTap={!isSubmitting ? { scale: 0.98 } : {}}
+                  whileHover={!isSubmitting && isPhoneValid ? { scale: 1.02 } : {}}
+                  whileTap={!isSubmitting && isPhoneValid ? { scale: 0.98 } : {}}
                   className={`w-full max-w-md px-8 py-3.5 rounded-lg font-semibold text-white transition-all shadow-md ${
-                    isSubmitting
+                    isSubmitting || !isPhoneValid
                       ? 'bg-slate-500 cursor-not-allowed opacity-80'
                       : 'bg-slate-800 hover:bg-slate-900 shadow-slate-900/20'
                   }`}

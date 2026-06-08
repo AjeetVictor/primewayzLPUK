@@ -6,8 +6,12 @@ import { getAllBlogPosts, getFeaturedBlogPost } from '../../data/blog/utils';
 import type { BlogPost } from '../../data/blog/types';
 import { apiUrl } from '../../utils/apiUrl';
 
-export const BlogListPage = () => {
-  const [posts, setPosts] = useState<BlogPost[]>(getAllBlogPosts());
+type BlogListPageProps = {
+  initialPosts?: BlogPost[];
+};
+
+export const BlogListPage = ({ initialPosts }: BlogListPageProps) => {
+  const [posts, setPosts] = useState<BlogPost[]>(initialPosts?.length ? initialPosts : getAllBlogPosts());
   const featuredPost = posts.find((post) => post.featured) || getFeaturedBlogPost();
   const remainingPosts = posts.filter((post) => post.id !== featuredPost.id);
   const categories = Array.from(new Set(posts.map((post) => post.category)));

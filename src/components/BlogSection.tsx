@@ -1,44 +1,31 @@
 import { motion } from 'motion/react';
 import { ArrowRight } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { BlogCard } from './blog/BlogCard';
+import { Link } from 'react-router-dom';
 import { getAllBlogPosts } from '../data/blog/utils';
 import type { BlogPost } from '../data/blog/types';
-import { apiUrl } from '../utils/apiUrl';
+
+const insightKeywords = ['seo', 'crm', 'upkeep', 'automation', 'maintenance', 'website support'];
+
+const getPostTime = (post: BlogPost) => {
+  const timestamp = Date.parse(post.updatedDate || post.date);
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+};
+
+const matchesInsightTopic = (post: BlogPost) => {
+  const searchable = [post.category, post.title, post.description, ...post.tags].join(' ').toLowerCase();
+  return insightKeywords.some((keyword) => searchable.includes(keyword));
+};
+
+const insightPosts = getAllBlogPosts()
+  .filter(matchesInsightTopic)
+  .sort((a, b) => getPostTime(b) - getPostTime(a))
+  .slice(0, 3);
 
 export const BlogSection = () => {
-  const [posts, setPosts] = useState<BlogPost[]>([]);
-  const [visibleCount, setVisibleCount] = useState(3);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    fetchPosts();
-  }, []);
-
-  const fetchPosts = async () => {
-    try {
-      const res = await fetch(apiUrl('/api/blog/posts'));
-      if (res.ok) {
-        const data = await res.json();
-        setPosts(data);
-      } else {
-        setPosts(getAllBlogPosts());
-      }
-    } catch (error) {
-      setPosts(getAllBlogPosts());
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadMore = () => {
-    setVisibleCount(prev => prev + 3);
-  };
-
   return (
     <section id="blog" className="py-24 bg-zinc-50 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
           <div className="max-w-2xl">
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
@@ -73,45 +60,40 @@ export const BlogSection = () => {
           </motion.a>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          {isLoading ? (
-            Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-[2.5rem] border border-zinc-100 overflow-hidden animate-pulse h-[400px]">
-                <div className="aspect-[16/10] bg-zinc-100" />
-                <div className="p-8 space-y-4">
-                  <div className="h-4 bg-zinc-100 rounded w-1/2" />
-                  <div className="h-8 bg-zinc-100 rounded w-full" />
-                  <div className="h-20 bg-zinc-100 rounded w-full" />
-                </div>
-              </div>
-            ))
-          ) : (
-            posts.slice(0, visibleCount).map((post, index) => (
-              <motion.div
-                key={post.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: (index % 3) * 0.1 }}
-              >
-                <BlogCard post={post} />
-              </motion.div>
-            ))
-          )}
-        </div>
-
-        {posts.length > visibleCount && (
-          <div className="flex justify-center">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={loadMore}
-              className="px-8 py-4 bg-zinc-900 text-white rounded-full font-bold hover:bg-emerald-600 transition-colors shadow-xl shadow-zinc-900/10"
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+          {insightPosts.map((post, index) => (
+            <motion.article
+              key={post.id}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.08 }}
+              className="group flex h-full flex-col bg-white border border-gray-100 rounded-xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
             >
-              Load more UK insights
-            </motion.button>
-          </div>
-        )}
+              <span className="mb-4 inline-flex w-fit rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">
+                {post.category}
+              </span>
+
+              <h3 className="text-xl font-bold leading-tight tracking-tight text-zinc-900">
+                <Link to={`/blog/${post.id}`} className="transition-colors hover:text-emerald-600">
+                  {post.title}
+                </Link>
+              </h3>
+
+              <p className="mt-4 line-clamp-3 text-sm leading-6 text-zinc-600">
+                {post.description || post.excerpt}
+              </p>
+
+              <Link
+                to={`/blog/${post.id}`}
+                className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-zinc-900 transition-colors hover:text-emerald-600"
+                aria-label={`Read article: ${post.title}`}
+              >
+                Read Article →
+              </Link>
+            </motion.article>
+          ))}
+        </div>
       </div>
     </section>
   );

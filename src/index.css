@@ -166,6 +166,33 @@
     animation-play-state: paused;
   }
 
+  .primewayz-phone-input {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 0.75rem;
+    padding: 0 1rem;
+  }
+
+  .primewayz-phone-input .PhoneInputCountry {
+    margin: 0;
+  }
+
+  .primewayz-phone-input .PhoneInputInput {
+    min-width: 0;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    padding: 0.75rem 0;
+    font-size: 1rem;
+    color: #111827;
+    outline: none;
+  }
+
+  .primewayz-phone-input .PhoneInputInput::placeholder {
+    color: #9ca3af;
+  }
+
   .tech-marquee-track-left {
     animation-name: tech-marquee-left;
   }

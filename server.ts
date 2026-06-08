@@ -8,6 +8,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { getAllBlogPosts, getBlogPostById } from './src/data/blog/utils.ts';
 import type { NextFunction, Request, Response } from 'express';
+import type { BlogPost } from './src/data/blog/types.ts';
 
 dotenv.config({ path: '.env.local', override: false });
 dotenv.config({ override: false });
@@ -20,6 +21,7 @@ const __dirname = path.resolve();
 
 const allBlogPosts = getAllBlogPosts();
 const adminCookieName = 'primewayz_admin_token';
+const siteUrl = (process.env.SITE_URL || 'https://uk.primewayz.com').replace(/\/$/, '');
 
 function getJwtSecret() {
   return process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'dev_secret';
@@ -155,6 +157,249 @@ function publicUser(user: { id: number; email: string; role: string; createdAt?:
     email: user.email,
     role: normalizeRole(user.role),
     ...(user.createdAt ? { createdAt: user.createdAt } : {}),
+  };
+}
+
+function stripHtml(value: string) {
+  return value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function safeJson(value: unknown) {
+  return JSON.stringify(value).replace(/</g, '\\u003c');
+}
+
+function getPostTimestamp(post: BlogPost) {
+  const timestamp = Date.parse(post.updatedDate || post.date);
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function toIsoDate(value?: string) {
+  const timestamp = value ? Date.parse(value) : NaN;
+  return new Date(Number.isNaN(timestamp) ? Date.now() : timestamp).toISOString();
+}
+
+function cmsPostToBlogPost(post: any): BlogPost {
+  const date = post.date || post.publishedAt || post.createdAt;
+  const tags = Array.isArray(post.tags)
+    ? post.tags.map(String)
+    : typeof post.tags === 'string'
+      ? post.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean)
+      : [];
+
+  return {
+    id: post.slug,
+    slug: post.slug,
+    title: post.title,
+    description: post.description || post.excerpt || stripHtml(post.content || '').slice(0, 160),
+    excerpt: post.excerpt || post.description || stripHtml(post.content || '').slice(0, 220),
+    category: post.category || 'Digital Operations',
+    tags,
+    date: date ? new Date(date).toLocaleDateString('en-GB', { month: 'long', day: 'numeric', year: 'numeric' }) : '',
+    updatedDate: post.updatedDate
+      ? new Date(post.updatedDate).toLocaleDateString('en-GB', { month: 'long', day: 'numeric', year: 'numeric' })
+      : post.updatedAt
+        ? new Date(post.updatedAt).toLocaleDateString('en-GB', { month: 'long', day: 'numeric', year: 'numeric' })
+        : undefined,
+    author: post.author || 'Primewayz UK Team',
+    readTime: post.readTime || '5 min read',
+    image: post.image || undefined,
+    content: post.content || '',
+    featured: Boolean(post.featured),
+    seoTitle: post.seoTitle || undefined,
+    seoDescription: post.seoDescription || undefined,
+  };
+}
+
+async function getPublishedCmsBlogPosts() {
+  try {
+    const posts = await prisma.cmsBlogPost.findMany({
+      where: { status: 'published' },
+      orderBy: [{ publishedAt: 'desc' }, { updatedAt: 'desc' }],
+    });
+    return posts.map(cmsPostToBlogPost);
+  } catch (err) {
+    console.warn('[local-safe] Using static blog posts only:', err instanceof Error ? err.message : err);
+    return [];
+  }
+}
+
+async function getPublicBlogPosts() {
+  const cmsPosts = await getPublishedCmsBlogPosts();
+  const byId = new Map<string, BlogPost>();
+
+  [...cmsPosts, ...allBlogPosts].forEach((post) => {
+    byId.set(post.id, post);
+    byId.set(post.slug, post);
+  });
+
+  return Array.from(new Set(byId.values())).sort((a, b) => getPostTimestamp(b) - getPostTimestamp(a));
+}
+
+async function getPublicBlogPost(id?: string) {
+  if (!id) return undefined;
+  const localPost = getBlogPostById(id);
+  if (localPost) return localPost;
+
+  try {
+    const post = await prisma.cmsBlogPost.findFirst({
+      where: {
+        status: 'published',
+        OR: [{ slug: id }],
+      },
+    });
+    return post ? cmsPostToBlogPost(post) : undefined;
+  } catch (err) {
+    console.warn('[local-safe] Could not load CMS blog post:', err instanceof Error ? err.message : err);
+    return undefined;
+  }
+}
+
+function buildDefaultStructuredData(canonical: string, description: string) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ProfessionalService',
+    '@id': `${siteUrl}/#primewayz-uk`,
+    name: 'Primewayz UK',
+    url: siteUrl,
+    logo: `${siteUrl}/primewayz-uk-dark-logo.png`,
+    description,
+    areaServed: { '@type': 'Country', name: 'United Kingdom' },
+    serviceType: [
+      'Software Development Subscription',
+      'Website maintenance',
+      'CRM integration',
+      'Business automation',
+      'SEO foundation support',
+      'Ongoing digital delivery support',
+    ],
+    audience: { '@type': 'BusinessAudience', audienceType: 'UK small businesses and SMEs' },
+  };
+}
+
+function buildArticleStructuredData(post: BlogPost, canonical: string) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.title,
+    description: post.seoDescription || post.description || post.excerpt,
+    image: post.image ? [post.image] : [`${siteUrl}/og-primewayz-uk.jpg`],
+    datePublished: toIsoDate(post.date),
+    dateModified: toIsoDate(post.updatedDate || post.date),
+    author: { '@type': 'Organization', name: post.author || 'Primewayz UK Team' },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Primewayz UK',
+      logo: { '@type': 'ImageObject', url: `${siteUrl}/primewayz-uk-dark-logo.png` },
+    },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
+    articleSection: post.category,
+    keywords: post.tags.join(', '),
+  };
+}
+
+function buildSeoTags(options: {
+  title: string;
+  description: string;
+  canonical: string;
+  ogType?: 'website' | 'article';
+  image?: string;
+  structuredData: unknown;
+}) {
+  const image = options.image || `${siteUrl}/og-primewayz-uk.jpg`;
+  return `
+    <title>${escapeHtml(options.title)}</title>
+    <meta name="description" content="${escapeHtml(options.description)}" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="${escapeHtml(options.canonical)}" />
+    <meta property="og:type" content="${options.ogType || 'website'}" />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:site_name" content="Primewayz UK" />
+    <meta property="og:title" content="${escapeHtml(options.title)}" />
+    <meta property="og:description" content="${escapeHtml(options.description)}" />
+    <meta property="og:url" content="${escapeHtml(options.canonical)}" />
+    <meta property="og:image" content="${escapeHtml(image)}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${escapeHtml(options.title)}" />
+    <meta name="twitter:description" content="${escapeHtml(options.description)}" />
+    <meta name="twitter:image" content="${escapeHtml(image)}" />
+    <script type="application/ld+json">${safeJson(options.structuredData)}</script>
+  `;
+}
+
+function stripExistingSeoTags(html: string) {
+  return html
+    .replace(/<title>[\s\S]*?<\/title>/i, '')
+    .replace(/<meta\s+name=["']description["'][^>]*>/gi, '')
+    .replace(/<meta\s+name=["']robots["'][^>]*>/gi, '')
+    .replace(/<link\s+rel=["']canonical["'][^>]*>/gi, '')
+    .replace(/<meta\s+property=["']og:[^"']+["'][^>]*>/gi, '')
+    .replace(/<meta\s+name=["']twitter:[^"']+["'][^>]*>/gi, '')
+    .replace(/<script\s+type=["']application\/ld\+json["'][\s\S]*?<\/script>/gi, '');
+}
+
+async function getInitialDataAndSeo(pathname: string) {
+  const canonical = `${siteUrl}${pathname === '/' ? '/' : pathname}`;
+
+  if (pathname === '/blog') {
+    const blogPosts = await getPublicBlogPosts();
+    return {
+      initialData: { blogPosts },
+      seoTags: buildSeoTags({
+        title: 'Primewayz UK Insights | Digital Support for UK SMEs',
+        description: 'Practical UK SME guidance on websites, SEO, CRM workflows, automation, AI readiness, maintenance, and digital delivery.',
+        canonical,
+        structuredData: {
+          '@context': 'https://schema.org',
+          '@type': 'Blog',
+          name: 'Primewayz UK Insights',
+          url: canonical,
+          blogPost: blogPosts.slice(0, 10).map((post) => ({
+            '@type': 'BlogPosting',
+            headline: post.title,
+            url: `${siteUrl}/blog/${post.id}`,
+            description: post.description,
+          })),
+        },
+      }),
+    };
+  }
+
+  const blogMatch = pathname.match(/^\/blog\/([^/]+)$/);
+  if (blogMatch) {
+    const blogPost = await getPublicBlogPost(decodeURIComponent(blogMatch[1]));
+    if (blogPost) {
+      return {
+        initialData: { blogPost },
+        seoTags: buildSeoTags({
+          title: `${blogPost.seoTitle || blogPost.title} | Primewayz UK`,
+          description: blogPost.seoDescription || blogPost.description || blogPost.excerpt,
+          canonical,
+          ogType: 'article',
+          image: blogPost.image,
+          structuredData: buildArticleStructuredData(blogPost, canonical),
+        }),
+      };
+    }
+  }
+
+  const defaultDescription = 'Primewayz UK offers subscription-based software development for UK SMEs, including websites, CRM integrations, automation, SEO foundations, maintenance, and ongoing digital delivery support.';
+  return {
+    initialData: {},
+    seoTags: buildSeoTags({
+      title: 'Software Development Subscription for UK SMEs | Primewayz UK',
+      description: defaultDescription,
+      canonical,
+      structuredData: buildDefaultStructuredData(canonical, defaultDescription),
+    }),
   };
 }
 
@@ -661,14 +906,39 @@ app.post('/api/chat/appointments', async (req, res) => {
   res.status(201).json(appointment);
 });
 
-app.get('/api/blog/posts', (req, res) => {
-  const publishedPosts = allBlogPosts.filter(p => p.status === 'published');
-  res.json(publishedPosts);
+app.get('/api/blog/posts', async (_req, res) => {
+  res.json(await getPublicBlogPosts());
 });
-app.get('/api/blog/posts/:id', (req, res) => {
-  const post = getBlogPostById(req.params.id);
+app.get('/api/blog/posts/:id', async (req, res) => {
+  const post = await getPublicBlogPost(req.params.id);
   if (!post) return res.status(404).json({ error: 'Post not found' });
   res.json(post);
+});
+
+app.get('/api/blog/:id/comments', async (req, res) => {
+  const comments = await prisma.blogPostComment.findMany({
+    where: { postId: req.params.id },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json(comments);
+});
+
+app.post('/api/blog/:id/comments', async (req, res) => {
+  const { name, text } = req.body;
+  if (!name || !text) return res.status(400).json({ error: 'Name and comment are required' });
+
+  const post = await getPublicBlogPost(req.params.id);
+  if (!post) return res.status(404).json({ error: 'Post not found' });
+
+  const comment = await prisma.blogPostComment.create({
+    data: {
+      postId: post.id,
+      name,
+      text,
+    },
+  });
+
+  res.status(201).json(comment);
 });
 
 app.use('/api', (_req, res) => {
@@ -742,8 +1012,14 @@ async function createServer() {
       try {
         const indexHtml = await fs.readFile(path.join(__dirname, 'dist/client/index.html'), 'utf-8');
         const { render } = await import('./dist/server/entry-server.js');
-        const { html: appHtml } = render(req.originalUrl);
-        const html = indexHtml.replace('<!--ssr-outlet-->', appHtml);
+        const pathname = new URL(req.originalUrl, siteUrl).pathname;
+        const { initialData, seoTags } = await getInitialDataAndSeo(pathname);
+        const { html: appHtml } = render(req.originalUrl, '/', initialData);
+        const initialDataScript = `<script>window.__PRIMEWAYZ_INITIAL_DATA__=${safeJson(initialData)};</script>`;
+        const html = stripExistingSeoTags(indexHtml)
+          .replace('</head>', `${seoTags}\n</head>`)
+          .replace('<!--ssr-outlet-->', appHtml)
+          .replace('<script type="module"', `${initialDataScript}\n<script type="module"`);
         return res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
       } catch (err: any) {
         console.error('SSR render error:', err);

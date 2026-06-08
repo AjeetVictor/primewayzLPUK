@@ -1,10 +1,10 @@
 ﻿import { StrictMode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
-import App from './App.tsx';
+import App, { type InitialAppData } from './App.tsx';
 import './index.css';
 
-export function render(url: string, basePath = '/') {
+export function render(url: string, basePath = '/', initialData: InitialAppData = {}) {
   const cleanBase = basePath === '/' ? '' : basePath.replace(/\/$/, '');
   const pathForRouter =
     cleanBase && url.startsWith(cleanBase)
@@ -14,7 +14,7 @@ export function render(url: string, basePath = '/') {
   const html = renderToString(
     <StrictMode>
       <MemoryRouter initialEntries={[pathForRouter]}>
-        <App />
+        <App initialData={initialData} />
       </MemoryRouter>
     </StrictMode>,
   );

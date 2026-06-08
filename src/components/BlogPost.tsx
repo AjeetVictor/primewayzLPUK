@@ -19,6 +19,7 @@ import { getBlogPostById, getRelatedBlogPosts } from '../data/blog/utils';
 import type { BlogPost as BlogPostData } from '../data/blog/types';
 import { apiUrl } from '../utils/apiUrl';
 import { sanitizeBlogHtml } from '../utils/sanitizeHtml';
+import { trackEvent } from '../lib/analytics';
 
 interface Comment {
   id: number;
@@ -27,10 +28,14 @@ interface Comment {
   createdAt: string;
 }
 
-export const BlogPost = () => {
+type BlogPostProps = {
+  initialPost?: BlogPostData | null;
+};
+
+export const BlogPost = ({ initialPost }: BlogPostProps) => {
   const { id } = useParams<{ id: string }>();
-  const [post, setPost] = useState<BlogPostData | null>(() => getBlogPostById(id) || null);
-  const [isPostLoading, setIsPostLoading] = useState(Boolean(id && !getBlogPostById(id)));
+  const [post, setPost] = useState<BlogPostData | null>(() => initialPost || getBlogPostById(id) || null);
+  const [isPostLoading, setIsPostLoading] = useState(Boolean(id && !initialPost && !getBlogPostById(id)));
   const relatedPosts = useMemo(() => (post ? getRelatedBlogPosts(post, 3) : []), [post]);
 
   const [comments, setComments] = useState<Comment[]>([]);
@@ -45,7 +50,7 @@ export const BlogPost = () => {
   }, [id]);
 
   useEffect(() => {
-    const localPost = getBlogPostById(id);
+    const localPost = initialPost?.id === id || initialPost?.slug === id ? initialPost : getBlogPostById(id);
     setPost(localPost || null);
     setIsPostLoading(Boolean(id && !localPost));
 
@@ -67,7 +72,17 @@ export const BlogPost = () => {
     };
 
     fetchPost();
-  }, [id]);
+  }, [id, initialPost]);
+
+  useEffect(() => {
+    if (!post) return;
+    trackEvent('blog_article_view', {
+      article_id: post.id,
+      article_title: post.title,
+      article_category: post.category,
+      article_tags: post.tags.join(','),
+    });
+  }, [post?.id]);
 
   useEffect(() => {
     if (!id) {
@@ -122,23 +137,51 @@ export const BlogPost = () => {
   };
 
   const shareOnTwitter = () => {
+    if (post) {
+      trackEvent('blog_article_share', {
+        article_id: post.id,
+        article_title: post.title,
+        share_channel: 'twitter',
+      });
+    }
     const url = encodeURIComponent(window.location.href);
     const text = encodeURIComponent(`Check out this article: ${post?.title}`);
     window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, '_blank');
   };
 
   const shareOnLinkedIn = () => {
+    if (post) {
+      trackEvent('blog_article_share', {
+        article_id: post.id,
+        article_title: post.title,
+        share_channel: 'linkedin',
+      });
+    }
     const url = encodeURIComponent(window.location.href);
     window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}`, '_blank');
   };
 
   const shareViaEmail = () => {
+    if (post) {
+      trackEvent('blog_article_share', {
+        article_id: post.id,
+        article_title: post.title,
+        share_channel: 'email',
+      });
+    }
     const subject = encodeURIComponent(post?.title || '');
     const body = encodeURIComponent(`I thought you might find this interesting: ${window.location.href}`);
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
 
   const copyToClipboard = () => {
+    if (post) {
+      trackEvent('blog_article_share', {
+        article_id: post.id,
+        article_title: post.title,
+        share_channel: 'copy_link',
+      });
+    }
     navigator.clipboard?.writeText(window.location.href);
   };
 

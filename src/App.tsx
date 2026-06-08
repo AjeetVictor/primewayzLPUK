@@ -24,6 +24,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { AdminForgotPassword, AdminResetPassword } from './components/AdminPasswordReset';
 import { BlogPost } from './components/BlogPost';
 import { BlogListPage } from './components/blog/BlogListPage';
+import type { BlogPost as BlogPostData } from './data/blog/types';
 import LegalPage from './components/LegalPage';
 import AnalyticsTracker from './components/AnalyticsTracker';
 import { TrackedLink } from './components/common/TrackedLink';
@@ -87,7 +88,16 @@ const MainContent = () => (
   </main>
 );
 
-export const App = () => {
+export type InitialAppData = {
+  blogPosts?: BlogPostData[];
+  blogPost?: BlogPostData | null;
+};
+
+type AppProps = {
+  initialData?: InitialAppData;
+};
+
+export const App = ({ initialData }: AppProps) => {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
 
@@ -102,8 +112,8 @@ export const App = () => {
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
         <Route path="/admin/reset-password" element={<AdminResetPassword />} />
-        <Route path="/blog" element={<BlogListPage />} />
-        <Route path="/blog/:id" element={<BlogPost />} />
+        <Route path="/blog" element={<BlogListPage initialPosts={initialData?.blogPosts} />} />
+        <Route path="/blog/:id" element={<BlogPost initialPost={initialData?.blogPost} />} />
         <Route path="/software-development-subscription-uk" element={<SoftwareDevelopmentSubscriptionUkPage />} />
         <Route path="/website-maintenance-subscription-uk" element={<WebsiteMaintenanceSubscriptionUkPage />} />
         <Route path="/crm-integration-support-uk" element={<CrmIntegrationSupportUkPage />} />

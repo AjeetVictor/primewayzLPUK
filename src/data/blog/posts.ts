@@ -2,6 +2,139 @@ import type { BlogPost } from './types';
 
 export const posts: BlogPost[] = [
   {
+    id: 'uk-sme-digital-adoption-roadmap-2026',
+    slug: 'uk-sme-digital-adoption-roadmap-2026',
+    title: 'A Practical Digital Adoption Roadmap for UK SMEs in 2026',
+    description:
+      'How small businesses can turn digital adoption pressure into a clear website, CRM, automation, and reporting roadmap.',
+    excerpt:
+      'How small businesses can turn digital adoption pressure into a clear website, CRM, automation, and reporting roadmap.',
+    content: `
+      <p>UK SMEs are being pushed to modernise, but most do not need a big-bang transformation programme. They need a practical roadmap that connects everyday operations: enquiry capture, website upkeep, CRM usage, follow-up, analytics, reporting, and targeted automation.</p>
+
+      <p>Recent UK government research into SME technology adoption highlights that small businesses value reliable, personalised support and face information gaps as they move through the adoption journey. That matches what many small teams experience: they know digital tools matter, but choosing what to fix first is the difficult part.</p>
+
+      <h3>Start with the operating problem, not the software</h3>
+      <p>The first question is not which platform to buy. It is where time, enquiries, or revenue are leaking. A business may need better form routing, a simpler CRM stage flow, clearer service pages, improved tracking, or fewer manual updates before it needs another tool.</p>
+
+      <h3>Build a simple adoption sequence</h3>
+      <p>A useful 2026 roadmap for a UK SME should usually move through five steps: audit the current journey, fix the website and tracking basics, stabilise enquiry capture, connect CRM workflows, then automate repeatable follow-up or reporting tasks.</p>
+
+      <h3>Keep the roadmap monthly</h3>
+      <p>Digital adoption works best when improvements are manageable. A monthly delivery model helps small businesses make steady progress without overloading staff or committing to a large project before the priorities are clear.</p>
+
+      <p>For Primewayz UK clients, this usually means starting with a Foundation Sprint, then moving into monthly delivery capacity across websites, CRM, automation, SEO foundations, and maintenance.</p>
+    `,
+    date: 'June 06, 2026',
+    readTime: '6 min read',
+    author: 'Primewayz UK Team',
+    category: 'Digital Adoption',
+    tags: ['Digital adoption', 'UK SMEs', 'CRM', 'Automation'],
+    image: 'https://picsum.photos/seed/uk-sme-digital-adoption-2026/800/500',
+    featured: true,
+    seoTitle: 'Digital Adoption Roadmap for UK SMEs in 2026',
+    seoDescription:
+      'A practical roadmap for UK SMEs improving websites, CRM workflows, automation, reporting, and monthly digital delivery in 2026.',
+  },
+  {
+    id: 'ai-readiness-for-uk-small-business-operations',
+    slug: 'ai-readiness-for-uk-small-business-operations',
+    title: 'AI Readiness for UK Small Business Operations',
+    description:
+      'A grounded way to prepare your website, CRM, data, and team workflows before introducing AI tools.',
+    excerpt:
+      'A grounded way to prepare your website, CRM, data, and team workflows before introducing AI tools.',
+    content: `
+      <p>AI is becoming part of everyday business conversations, but readiness is uneven. UK government AI adoption research shows adoption is still modest across UK businesses, and that many firms face barriers around skills, cost, trust, data security, and unclear use cases.</p>
+
+      <p>For small businesses, the lesson is simple: AI works better when the operating basics are already clean. Poor data, scattered enquiries, unclear CRM stages, missing analytics, and inconsistent follow-up make AI harder to apply safely.</p>
+
+      <h3>Prepare the data layer first</h3>
+      <p>Before adding AI assistants or automated workflows, check whether your forms capture the right fields, your CRM records are usable, your website analytics are meaningful, and your team knows which enquiries need priority.</p>
+
+      <h3>Choose low-risk AI use cases</h3>
+      <p>Useful starting points include summarising enquiry details, drafting follow-up emails, grouping CRM records, generating first-draft content briefs, and spotting repeated support questions. These tasks keep humans in control while reducing admin effort.</p>
+
+      <h3>Keep human review visible</h3>
+      <p>AI should not silently make business decisions. Small teams should decide where review is required, who owns the output, and what data should never be sent into third-party tools.</p>
+
+      <p>The best AI roadmap for a UK SME is usually an operations roadmap first: clean systems, clear ownership, useful reporting, and then targeted automation.</p>
+    `,
+    date: 'May 30, 2026',
+    readTime: '7 min read',
+    author: 'Primewayz UK Team',
+    category: 'AI Operations',
+    tags: ['AI readiness', 'Automation', 'CRM', 'Data quality'],
+    image: 'https://picsum.photos/seed/uk-ai-readiness-sme-operations/800/500',
+    seoTitle: 'AI Readiness for UK Small Business Operations',
+    seoDescription:
+      'How UK small businesses can prepare websites, CRM data, workflows, and staff review before adopting practical AI tools.',
+  },
+  {
+    id: 'cyber-resilient-website-maintenance-for-uk-smes',
+    slug: 'cyber-resilient-website-maintenance-for-uk-smes',
+    title: 'Cyber-Resilient Website Maintenance for UK SMEs',
+    description:
+      'Why website upkeep, form checks, access reviews, backups, and monitoring should be part of monthly digital support.',
+    excerpt:
+      'Why website upkeep, form checks, access reviews, backups, and monitoring should be part of monthly digital support.',
+    content: `
+      <p>Website maintenance is no longer just about plugin updates or small content changes. UK cyber security reporting continues to show a resilience gap between larger organisations and SMEs, which makes routine website and access hygiene more important for small teams.</p>
+
+      <h3>Keep the basics boring and consistent</h3>
+      <p>Monthly maintenance should include checking forms, reviewing admin access, confirming backups, monitoring uptime, testing key conversion paths, and keeping dependencies or CMS plugins current.</p>
+
+      <h3>Protect enquiry flows</h3>
+      <p>For many SMEs, the website is the main lead capture system. If forms break, notifications fail, or spam overwhelms the inbox, the business loses visibility quickly. Maintenance should include test submissions and clear escalation paths.</p>
+
+      <h3>Review third-party scripts</h3>
+      <p>Analytics, chat widgets, booking embeds, maps, pixels, and CRM scripts all add value, but they should be reviewed periodically. Remove scripts that no longer support a live workflow, and document the ones that do.</p>
+
+      <p>A cyber-resilient maintenance plan is not a heavy security programme. It is a practical monthly rhythm that keeps the site, data capture, and team access under control.</p>
+    `,
+    date: 'May 22, 2026',
+    readTime: '6 min read',
+    author: 'Primewayz UK Team',
+    category: 'Maintenance',
+    tags: ['Website support', 'Cyber resilience', 'Upkeep', 'Monitoring'],
+    image: 'https://picsum.photos/seed/uk-cyber-resilient-maintenance/800/500',
+    seoTitle: 'Cyber-Resilient Website Maintenance for UK SMEs',
+    seoDescription:
+      'A monthly website maintenance approach for UK SMEs covering forms, backups, access, monitoring, scripts, and cyber resilience.',
+  },
+  {
+    id: 'crm-automation-priorities-for-uk-smes',
+    slug: 'crm-automation-priorities-for-uk-smes',
+    title: 'CRM and Automation Priorities for UK SMEs',
+    description:
+      'What to automate first when enquiries, follow-up, reporting, and customer records are becoming harder to manage.',
+    excerpt:
+      'What to automate first when enquiries, follow-up, reporting, and customer records are becoming harder to manage.',
+    content: `
+      <p>CRM and automation projects often fail when they start too broadly. UK SMEs usually get better results by improving the enquiry journey first: capture, qualification, routing, follow-up, reminders, reporting, and handover.</p>
+
+      <h3>Start with enquiry capture</h3>
+      <p>Make sure website forms collect useful information, phone numbers are validated, messages are stored, and every enquiry has a next action. This creates the base for reliable automation.</p>
+
+      <h3>Automate reminders before complex workflows</h3>
+      <p>Most teams do not need complex automation first. They need simple reminders, status changes, email templates, owner assignment, and a reliable view of what has not been answered.</p>
+
+      <h3>Connect reporting to decisions</h3>
+      <p>Useful CRM reporting should answer practical questions: which services generate enquiries, which leads need follow-up, where response time is slipping, and which campaigns are worth repeating.</p>
+
+      <p>Once these basics are stable, more advanced automation becomes safer and easier to maintain.</p>
+    `,
+    date: 'May 14, 2026',
+    readTime: '5 min read',
+    author: 'Primewayz UK Team',
+    category: 'CRM',
+    tags: ['CRM', 'Automation', 'Lead management', 'Reporting'],
+    image: 'https://picsum.photos/seed/uk-crm-automation-priorities/800/500',
+    seoTitle: 'CRM and Automation Priorities for UK SMEs',
+    seoDescription:
+      'How UK SMEs can prioritise CRM automation across enquiry capture, follow-up, reminders, ownership, and reporting.',
+  },
+  {
     id: 'monthly-digital-support-uk-smes',
     slug: 'monthly-digital-support-uk-smes',
     title: 'Why UK SMEs Need Monthly Digital Support',
