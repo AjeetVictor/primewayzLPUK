@@ -35,6 +35,7 @@ model ChatMessage {
   session     ChatSession      @relation(fields: [sessionId], references: [id])
   sender      String           // 'user', 'bot', 'admin'
   text        String
+  answered    Boolean          @default(false)
   timestamp   DateTime         @default(now())
   replyToId   Int?
   replyTo     ChatMessage?     @relation("Replies", fields: [replyToId], references: [id])

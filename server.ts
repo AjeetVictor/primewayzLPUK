@@ -18,40 +18,87 @@ const prisma = new PrismaClient();
 const __dirname = path.resolve();
 
 const allBlogPosts = getAllBlogPosts();
+const adminCookieName = 'primewayz_admin_token';
+
+function getJwtSecret() {
+  return process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'dev_secret';
+}
+
+function getCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: process.env.COOKIE_SECURE === 'true',
+    maxAge: 8 * 60 * 60 * 1000,
+  };
+}
+
+function getClearCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: process.env.COOKIE_SECURE === 'true',
+  };
+}
 
 // --- Middleware ---
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- Static files ---
-if (isProd) {
-  app.use(express.static(path.join(__dirname, 'dist/client'), { index: false }));
-}
-app.use(express.static(path.join(__dirname, 'public')));
-
-// --- Admin Login ---
+// --- API routes: keep these above static files and frontend catch-all ---
 app.post('/api/admin/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password)
-      return res.status(400).json({ success: false, message: 'Email and password required' });
-    const adminEmail = process.env.ADMIN_EMAIL;
-    const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
-    if (!adminEmail || !adminPasswordHash)
-      return res.status(500).json({ success: false, message: 'Admin credentials not configured' });
-    const passwordMatches = bcrypt.compareSync(password, adminPasswordHash);
-    if (email !== adminEmail || !passwordMatches)
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    const token = jwt.sign({ email }, process.env.JWT_SECRET || 'dev_secret', { expiresIn: '8h' });
-    return res.json({ success: true, token });
+      return res.status(400).json({ success: false, error: 'Email and password required' });
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || !bcrypt.compareSync(password, user.password))
+      return res.status(401).json({ success: false, error: 'Invalid credentials' });
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      getJwtSecret(),
+      { expiresIn: '8h' },
+    );
+
+    res.cookie(adminCookieName, token, getCookieOptions());
+    return res.json({
+      success: true,
+      user: { id: user.id, email: user.email, role: user.role },
+    });
   } catch (err) {
     console.error('Admin login error:', err);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    return res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
-// --- Blog APIs ---
+app.get('/api/admin/check-auth', async (req, res) => {
+  try {
+    const token = req.cookies?.[adminCookieName];
+    if (!token) return res.status(401).json({ success: false, error: 'Not authenticated' });
+
+    const decoded = jwt.verify(token, getJwtSecret()) as { id?: number; email?: string; role?: string };
+    if (!decoded.email) return res.status(401).json({ success: false, error: 'Invalid session' });
+
+    const user = await prisma.user.findUnique({ where: { email: decoded.email } });
+    if (!user) return res.status(401).json({ success: false, error: 'Invalid session' });
+
+    return res.json({
+      success: true,
+      user: { id: user.id, email: user.email, role: user.role },
+    });
+  } catch {
+    return res.status(401).json({ success: false, error: 'Invalid session' });
+  }
+});
+
+app.post('/api/admin/logout', (_req, res) => {
+  res.clearCookie(adminCookieName, getClearCookieOptions());
+  return res.json({ success: true });
+});
+
 app.get('/api/blog/posts', (req, res) => {
   const publishedPosts = allBlogPosts.filter(p => p.status === 'published');
   res.json(publishedPosts);
@@ -62,6 +109,16 @@ app.get('/api/blog/posts/:id', (req, res) => {
   res.json(post);
 });
 
+app.use('/api', (_req, res) => {
+  res.status(404).json({ success: false, error: 'API route not found' });
+});
+
+// --- Static files ---
+if (isProd) {
+  app.use(express.static(path.join(__dirname, 'dist/client'), { index: false }));
+}
+app.use(express.static(path.join(__dirname, 'public')));
+
 // -------------------------
 // Local-safe Prisma wrappers
 // -------------------------
@@ -70,8 +127,9 @@ async function seedAdmin() {
   try {
     const adminExists = await prisma.user.findUnique({ where: { email: process.env.ADMIN_EMAIL } });
     if (!adminExists) {
+      const hashedPassword = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 12);
       await prisma.user.create({
-        data: { email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD, role: 'ADMIN' }
+        data: { email: process.env.ADMIN_EMAIL, password: hashedPassword, role: 'admin' }
       });
     }
   } catch (e: any) {
