@@ -1,6 +1,15 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Layers3, ShieldCheck, Workflow, Wrench } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  Layers3,
+  ShieldCheck,
+  Workflow,
+  Wrench,
+} from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
+import { SEO } from './SEO';
 
 const includedItems = [
   'Website and landing page improvements',
@@ -37,12 +46,42 @@ const steps = [
   },
 ];
 
+const relatedLinks = [
+  {
+    title: 'All UK SME support services',
+    href: '/services',
+    text: 'Compare software development, website maintenance, CRM support, automation, and monthly digital delivery options.',
+  },
+  {
+    title: 'Website maintenance subscription',
+    href: '/website-maintenance-subscription-uk',
+    text: 'For UK SMEs that need regular website updates, fixes, technical SEO checks, analytics support, and monthly website care.',
+  },
+  {
+    title: 'CRM integration support',
+    href: '/crm-integration-support-uk',
+    text: 'For UK businesses that need cleaner lead capture, CRM workflows, enquiry routing, notifications, and reporting visibility.',
+  },
+  {
+    title: 'CRM cleanup success story',
+    href: '/success-stories/professional-services-crm-cleanup',
+    text: 'See how CRM and lead-flow cleanup can support professional services firms with better enquiry visibility.',
+  },
+];
+
 export const SoftwareDevelopmentSubscriptionUkPage = () => {
   return (
     <>
+      <SEO
+        title="Software Development Subscription for UK SMEs"
+        description="Monthly software development subscription for UK SMEs covering website improvements, CRM workflows, automation, integrations, dashboards, technical SEO foundations, maintenance, testing, and ongoing digital delivery support."
+        canonical="https://uk.primewayz.com/software-development-subscription-uk"
+      />
+
       <main className="min-h-screen bg-white text-slate-950">
         <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-20 pt-24 text-white sm:px-6 lg:px-8">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.22),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.22),transparent_34%)]" />
+
           <div className="relative mx-auto max-w-6xl">
             <Link
               to="/"
@@ -57,9 +96,11 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
                 <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">
                   UK SME Software Delivery
                 </p>
+
                 <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
                   Software development subscription for UK SMEs
                 </h1>
+
                 <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
                   Build, maintain, and improve your digital systems through a practical monthly delivery model.
                   Primewayz UK supports websites, CRM integrations, automation, SEO foundations, dashboards,
@@ -76,6 +117,7 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
                   >
                     Book a 30-minute discovery call
                   </TrackedLink>
+
                   <TrackedLink
                     href="/#pricing"
                     ctaText="View monthly plans"
@@ -90,6 +132,7 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
 
               <div className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl shadow-black/20 backdrop-blur">
                 <h2 className="text-xl font-bold">Best suited for</h2>
+
                 <div className="mt-5 space-y-4">
                   {fitItems.map((item) => (
                     <div key={item} className="flex gap-3">
@@ -109,9 +152,11 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
                 What the subscription covers
               </p>
+
               <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
                 Monthly software delivery capacity for the work UK SMEs actually need
               </h2>
+
               <p className="mt-4 text-lg leading-8 text-slate-600">
                 Instead of treating every improvement as a separate project, we help you maintain a steady delivery
                 rhythm across your website, CRM, automation, integrations, reporting, and system improvements.
@@ -136,9 +181,11 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
                 <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
                   Delivery rhythm
                 </p>
+
                 <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
                   A clearer alternative to scattered one-off development
                 </h2>
+
                 <p className="mt-4 text-base leading-7 text-slate-600">
                   The subscription model works best when your business needs continuous improvement, not a single
                   isolated build. We keep priorities visible and move through work in a controlled sequence.
@@ -154,6 +201,7 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
                       </div>
                       <h3 className="font-bold text-slate-950">{step.title}</h3>
                     </div>
+
                     <p className="mt-4 text-sm leading-6 text-slate-600">{step.text}</p>
                   </div>
                 ))}
@@ -171,6 +219,7 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
                 Improve websites, landing pages, CMS areas, dashboards, admin panels, and business-facing applications.
               </p>
             </div>
+
             <div className="rounded-3xl border border-slate-200 p-6">
               <Workflow className="h-8 w-8 text-emerald-600" />
               <h3 className="mt-5 text-xl font-bold">CRM and automation</h3>
@@ -178,6 +227,7 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
                 Support lead capture, enquiry routing, workflow automation, integrations, reporting, and operational visibility.
               </p>
             </div>
+
             <div className="rounded-3xl border border-slate-200 p-6">
               <Wrench className="h-8 w-8 text-emerald-600" />
               <h3 className="mt-5 text-xl font-bold">Maintenance and support</h3>
@@ -188,18 +238,59 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
           </div>
         </section>
 
+        <section className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-6xl">
+            <div className="max-w-3xl">
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
+                Related UK SME support paths
+              </p>
+
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+                Connect software delivery with the services around it
+              </h2>
+
+              <p className="mt-4 text-lg leading-8 text-slate-600">
+                Software delivery works best when website maintenance, CRM workflows, automation,
+                analytics, and operational support are connected through one practical monthly roadmap.
+              </p>
+            </div>
+
+            <div className="mt-10 grid gap-5 md:grid-cols-2">
+              {relatedLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl"
+                >
+                  <h3 className="text-xl font-bold text-slate-950">{link.title}</h3>
+
+                  <p className="mt-3 text-sm leading-7 text-slate-600">{link.text}</p>
+
+                  <div className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-emerald-700">
+                    View related page
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="bg-[#000A2D] px-4 py-20 text-white sm:px-6 lg:px-8">
           <div className="mx-auto grid max-w-6xl gap-8 rounded-3xl border border-white/10 bg-white/10 p-8 backdrop-blur lg:grid-cols-[1fr_0.7fr] lg:items-center">
             <div>
               <ShieldCheck className="h-10 w-10 text-emerald-300" />
+
               <h2 className="mt-5 text-3xl font-bold tracking-tight">
                 Start with clarity, then move into monthly delivery
               </h2>
+
               <p className="mt-4 text-base leading-7 text-slate-200">
                 If the scope is unclear, start with a Foundation Sprint. If priorities are already clear,
                 move straight into a monthly plan and begin improving the workstream.
               </p>
             </div>
+
             <TrackedLink
               href="/#contact"
               ctaText="Discuss software subscription"
