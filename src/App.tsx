@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { UKTrustStrip } from './components/UKTrustStrip';
+import { UKSmePainPoints } from './components/UKSmePainPoints';
 import { ServicePathCards } from './components/ServicePathCards';
 import { Philosophy } from './components/Philosophy';
 import { HowItWorks } from './components/HowItWorks';
@@ -49,6 +50,7 @@ const MainContent = () => (
   <main>
     <Hero />
     <UKTrustStrip />
+    <UKSmePainPoints />
     <Philosophy />
     <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 1 }}>
       <HowItWorks />
