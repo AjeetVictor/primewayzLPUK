@@ -32,6 +32,7 @@ import { TrackedLink } from './components/common/TrackedLink';
 import { SoftwareDevelopmentSubscriptionUkPage } from './components/SoftwareDevelopmentSubscriptionUkPage';
 import { WebsiteMaintenanceSubscriptionUkPage } from './components/WebsiteMaintenanceSubscriptionUkPage';
 import { CrmIntegrationSupportUkPage } from './components/CrmIntegrationSupportUkPage';
+import { ServicesPage } from './components/ServicesPage';
 import { LocalTradesLeadCapturePage } from './components/LocalTradesLeadCapturePage';
 import { ProfessionalServicesCrmCleanupPage } from './components/ProfessionalServicesCrmCleanupPage';
 import { EcommerceStoreStabilitySupportPage } from './components/EcommerceStoreStabilitySupportPage';
@@ -116,6 +117,7 @@ export const App = ({ initialData }: AppProps) => {
         <Route path="/admin/reset-password" element={<AdminResetPassword />} />
         <Route path="/blog" element={<BlogListPage initialPosts={initialData?.blogPosts} />} />
         <Route path="/blog/:id" element={<BlogPost initialPost={initialData?.blogPost} />} />
+        <Route path="/services" element={<ServicesPage />} />
         <Route path="/software-development-subscription-uk" element={<SoftwareDevelopmentSubscriptionUkPage />} />
         <Route path="/website-maintenance-subscription-uk" element={<WebsiteMaintenanceSubscriptionUkPage />} />
         <Route path="/crm-integration-support-uk" element={<CrmIntegrationSupportUkPage />} />
