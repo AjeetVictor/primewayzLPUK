@@ -14,31 +14,31 @@ export type HeroHeadlineSlide = {
 
 export const heroHeadlineSlides: HeroHeadlineSlide[] = [
   {
-    id: 'monthly-delivery',
-    badge: 'FLEXIBLE MONTHLY DELIVERY',
-    headline: 'Subscription software delivery for UK SMEs',
-    highlight: 'Start with Foundation Sprint, then scale monthly capacity',
+    id: 'monthly-uk-sme-support',
+    badge: 'MONTHLY UK SME SUPPORT',
+    headline: 'Monthly Software, Website & CRM Support for UK SMEs',
+    highlight: 'Reliable digital delivery without hiring a full-time developer',
     description:
-      'Websites, CMS platforms, integrations, and digital improvements - planned, designed, built, tested, and released through a structured monthly delivery model.',
+      'Primewayz UK helps small and growing UK businesses maintain, improve, and extend their digital systems every month — from website fixes and CRM workflows to automation, integrations, SEO foundations, and ongoing software delivery.',
     primaryCtaLabel: 'Book a UK discovery call',
     primaryCtaHref: '#contact',
-    secondaryCtaLabel: 'See plans',
+    secondaryCtaLabel: 'See monthly support plans',
     secondaryCtaHref: '#pricing',
     image:
       'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1600&q=80',
     imageAlt: 'Developer working on a laptop with code on screen',
   },
   {
-    id: 'adaptive-priorities',
-    badge: 'FLEXIBLE MONTHLY DELIVERY',
-    headline: 'Software delivery that adapts as your priorities evolve',
-    highlight: 'Scale up, slow down, or move to maintenance',
+    id: 'website-crm-automation',
+    badge: 'WEBSITE, CRM & AUTOMATION',
+    headline: 'Ongoing technical support for websites, CRM and business workflows',
+    highlight: 'Keep your digital systems moving every month',
     description:
-      'Start with your current goals, then adjust your delivery pace as your roadmap changes. Add new priorities, refine direction, or switch to maintenance mode without losing continuity.',
-    primaryCtaLabel: 'Book a UK discovery call',
+      'Whether you need regular website improvements, CRM cleanup, lead-flow automation, third-party integrations, or support for an existing platform, our monthly delivery model gives your business a practical technical team with a clear execution rhythm.',
+    primaryCtaLabel: 'Discuss your support needs',
     primaryCtaHref: '#contact',
-    secondaryCtaLabel: 'How it works',
-    secondaryCtaHref: '#how-it-works',
+    secondaryCtaLabel: 'Explore services',
+    secondaryCtaHref: '#services',
     image:
       'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1600&q=80',
     imageAlt: 'Team collaborating on software delivery',
@@ -46,10 +46,10 @@ export const heroHeadlineSlides: HeroHeadlineSlide[] = [
   {
     id: 'structured-delivery',
     badge: 'STRUCTURED DELIVERY MODEL',
-    headline: 'A structured delivery model with clear execution rhythm',
-    highlight: 'One clear workstream. Sequential execution. Predictable outcomes.',
+    headline: 'A monthly delivery model built for practical SME priorities',
+    highlight: 'Plan the work, execute clearly, review progress, then continue',
     description:
-      'Every approved workstream moves through planning, design, development, QA, and deployment in sequence - helping you stay in control of priorities, approvals, and delivery quality.',
+      'Every approved workstream moves through planning, design, development, QA, and release in sequence — helping UK business owners stay in control of priorities, approvals, delivery quality, and monthly progress.',
     primaryCtaLabel: 'Book a UK discovery call',
     primaryCtaHref: '#contact',
     secondaryCtaLabel: 'How delivery works',
@@ -61,11 +61,11 @@ export const heroHeadlineSlides: HeroHeadlineSlide[] = [
   {
     id: 'transparent-commercials',
     badge: 'TRANSPARENT COMMERCIAL MODEL',
-    headline: 'Clear monthly capacity. Transparent add-ons. No hidden surprises.',
-    highlight: "Know what's included - and what's billed separately",
+    headline: 'Clear monthly capacity, transparent add-ons, and no hidden surprises',
+    highlight: "Know what's included before work starts",
     description:
-      'Your subscription covers Primewayz delivery capacity for websites, CRM integrations, automation, SEO foundations, maintenance, and ongoing digital improvements. Third-party services like hosting, messaging, payment gateways, and external tools are handled transparently through clearly defined add-ons.',
-    primaryCtaLabel: 'See plans',
+      'Your subscription covers Primewayz delivery capacity for websites, CRM integrations, automation, SEO foundations, maintenance, and software improvements. Third-party costs such as hosting, messaging, payment gateways, and external tools are handled separately and transparently.',
+    primaryCtaLabel: 'See monthly plans',
     primaryCtaHref: '#pricing',
     secondaryCtaLabel: 'Book a call',
     secondaryCtaHref: '#contact',

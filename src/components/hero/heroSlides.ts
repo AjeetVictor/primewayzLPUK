@@ -3,30 +3,30 @@ import type { HeroSlide } from './types';
 export const heroSlides: HeroSlide[] = [
   {
     id: 'slide-1',
-    headline: 'Subscription software delivery for UK SMEs - Built for reliable monthly execution',
+    headline: 'Monthly Software, Website & CRM Support for UK SMEs - Reliable digital delivery without hiring full-time',
     subheadline:
-      'Websites, CMS platforms, integrations, and digital improvements - planned, designed, built, tested, and released through a structured monthly delivery model.',
-    accentText: 'Built for reliable monthly execution',
+      'Primewayz UK helps small and growing UK businesses maintain, improve, and extend their digital systems every month — from website fixes and CRM workflows to automation, integrations, SEO foundations, and ongoing software delivery.',
+    accentText: 'Reliable digital delivery without hiring full-time',
   },
   {
     id: 'slide-2',
-    headline: 'Software delivery that adapts as your priorities evolve - Scale up, slow down, or move to maintenance',
+    headline: 'Ongoing technical support for websites, CRM and business workflows - Keep your systems moving every month',
     subheadline:
-      'Start with your current goals, then adjust your delivery pace as your roadmap changes. Add new priorities, refine direction, or switch to maintenance mode without losing continuity.',
-    accentText: 'Scale up, slow down, or move to maintenance',
+      'Whether you need regular website improvements, CRM cleanup, lead-flow automation, third-party integrations, or support for an existing platform, our monthly delivery model gives your business a practical technical team with a clear execution rhythm.',
+    accentText: 'Keep your systems moving every month',
   },
   {
     id: 'slide-3',
-    headline: 'A structured delivery model with clear execution rhythm - One clear workstream. Sequential execution. Predictable outcomes.',
+    headline: 'A monthly delivery model built for practical SME priorities - Plan, execute, review and continue',
     subheadline:
-      'Every approved workstream moves through planning, design, development, QA, and deployment in sequence - helping you stay in control of priorities, approvals, and delivery quality.',
-    accentText: 'One clear workstream. Sequential execution. Predictable outcomes.',
+      'Every approved workstream moves through planning, design, development, QA, and release in sequence — helping UK business owners stay in control of priorities, approvals, delivery quality, and monthly progress.',
+    accentText: 'Plan, execute, review and continue',
   },
   {
     id: 'slide-4',
-    headline: 'Clear monthly capacity. Transparent add-ons. No hidden surprises. - Know what\'s included - and what\'s billed separately',
+    headline: 'Clear monthly capacity, transparent add-ons, and no hidden surprises - Know what is included before work starts',
     subheadline:
-      'Your subscription covers Primewayz delivery capacity for websites, CRM integrations, automation, SEO foundations, maintenance, and ongoing digital improvements. Third-party services like hosting, messaging, payment gateways, and external tools are handled transparently through clearly defined add-ons.',
-    accentText: 'Know what\'s included - and what\'s billed separately',
+      'Your subscription covers Primewayz delivery capacity for websites, CRM integrations, automation, SEO foundations, maintenance, and software improvements. Third-party costs such as hosting, messaging, payment gateways, and external tools are handled separately and transparently.',
+    accentText: 'Know what is included before work starts',
   },
 ];
