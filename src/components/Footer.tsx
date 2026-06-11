@@ -26,12 +26,15 @@ export const Footer = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
           <div className="col-span-1 sm:col-span-2 lg:col-span-2">
             <div className="flex items-center gap-2 mb-6">
-              <img
-                  src="/primewayz-uk-dark-logo.png"
-                  alt="Primewayz UK Infotech Pvt. Ltd."
-                  className="h-20 w-auto max-w-[240px] object-contain"
-                  loading="lazy"
-              />
+            <img
+              src="/primewayz-uk-dark-logo.png"
+              alt="Primewayz UK Infotech Pvt. Ltd."
+              width={566}
+              height={138}
+              className="h-16 w-auto max-w-[220px] object-contain sm:h-20 sm:max-w-[240px]"
+              loading="lazy"
+              decoding="async"
+            />
             </div>
 
             <p className="text-zinc-400 max-w-sm mb-6">
