@@ -648,7 +648,7 @@ export const Pricing = () => {
             {[
               {
                 title: 'Flexibility',
-                image: '/images/subscription-flexibility.png',
+                image: '/images/subscription-flexibility.webp',
                 alt: 'Minimal dashboard showing monthly delivery capacity adjusted up or down based on roadmap priorities.',
                 description:
                   'Adjust your capacity monthly based on your roadmap and current priorities.',
@@ -661,7 +661,7 @@ export const Pricing = () => {
               },
               {
                 title: 'Total transparency',
-                image: '/images/subscription-total-transparency.png',
+                image: '/images/subscription-total-transparency.webp',
                 alt: 'Transparent subscription pricing breakdown with Primewayz service fee separated from vendor costs.',
                 description:
                   'Clear pricing with vendor costs handled separately where applicable.',
@@ -674,7 +674,7 @@ export const Pricing = () => {
               },
               {
                 title: 'Roadmap continuity',
-                image: '/images/subscription-roadmap-continuity.png',
+                image: '/images/subscription-roadmap-continuity.webp',
                 alt: 'Continuous roadmap timeline showing steady delivery phases without restarting project cycles.',
                 description:
                   'Maintain delivery momentum without restarting procurement or project cycles.',
@@ -687,7 +687,7 @@ export const Pricing = () => {
               },
               {
                 title: 'Seamless maintenance',
-                image: '/images/subscription-seamless-maintenance.png',
+                image: '/images/subscription-seamless-maintenance.webp',
                 alt: 'Workflow showing active delivery moving into maintenance mode and restarting active delivery when needed.',
                 description:
                   'Scale down when priorities slow, then restart active delivery when needed.',

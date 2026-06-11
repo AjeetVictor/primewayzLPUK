@@ -151,7 +151,7 @@ export const LocalTradesLeadCapturePage = () => {
               className="rounded-[2rem] border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-900/10"
             >
               <img
-                src="/images/localTradesWbsite.png"
+                src="/images/localTradesWbsite.webp"
                 alt="Local Trades Website and Lead Capture dashboard mockup"
                 className="h-full w-full rounded-[1.5rem] object-cover"
                 loading="eager"

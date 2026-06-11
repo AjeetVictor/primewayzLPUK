@@ -73,7 +73,7 @@ export const EcommerceStoreStabilitySupportPage = () => (
           <div className="relative">
             <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-900/10">
               <img
-                src="/images/ecommerce-store-stability-support.png"
+                src="/images/ecommerce-store-stability-support.webp"
                 alt="E-commerce store stability and support dashboard showing product page reliability, checkout flow checks, campaign tracking, maintenance updates, and support for UK online stores."
                 className="aspect-[16/10] w-full rounded-[1.5rem] object-cover"
                 loading="eager"

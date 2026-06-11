@@ -73,7 +73,7 @@ export const ProfessionalServicesCrmCleanupPage = () => (
           <div className="relative">
             <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-900/10">
               <img
-                src="/images/professional-services-crm-cleanup.png"
+                src="/images/professional-services-crm-cleanup.webp"
                 alt="CRM and lead-flow cleanup dashboard for UK professional services showing website forms, lead stages, reminders, source tagging, and reporting."
                 className="aspect-[16/10] w-full rounded-[1.5rem] object-cover"
                 loading="eager"
