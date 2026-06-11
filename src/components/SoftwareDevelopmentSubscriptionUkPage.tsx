@@ -9,7 +9,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
-import { SEO } from './SEO';
+
 
 const includedItems = [
   'Website and landing page improvements',
@@ -72,11 +72,7 @@ const relatedLinks = [
 export const SoftwareDevelopmentSubscriptionUkPage = () => {
   return (
     <>
-      <SEO
-        title="Software Development Subscription for UK SMEs"
-        description="Monthly software development subscription for UK SMEs covering website improvements, CRM workflows, automation, integrations, dashboards, technical SEO foundations, maintenance, testing, and ongoing digital delivery support."
-        canonical="https://uk.primewayz.com/software-development-subscription-uk"
-      />
+      
 
       <main className="min-h-screen bg-white text-slate-950">
         <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-20 pt-24 text-white sm:px-6 lg:px-8">

@@ -391,14 +391,58 @@ async function getInitialDataAndSeo(pathname: string) {
     }
   }
 
-  const defaultDescription = 'Primewayz UK offers subscription-based software development for UK SMEs, including websites, CRM integrations, automation, SEO foundations, maintenance, and ongoing digital delivery support.';
+  const staticPageSeo: Record<string, { title: string; description: string }> = {
+    '/': {
+      title: 'Software Development Subscription for UK SMEs | Primewayz UK',
+      description:
+        'Primewayz UK helps UK SMEs with monthly software, website, CRM, automation, technical SEO foundation, maintenance, and ongoing digital delivery support.',
+    },
+    '/services': {
+      title: 'Software, Website & CRM Support Services for UK SMEs | Primewayz UK',
+      description:
+        'Explore Primewayz UK services for UK SMEs, including monthly software development support, website maintenance, CRM integration, automation, technical SEO foundations, analytics checks, and ongoing digital delivery.',
+    },
+    '/software-development-subscription-uk': {
+      title: 'Software Development Subscription for UK SMEs | Primewayz UK',
+      description:
+        'Monthly software development subscription for UK SMEs covering website improvements, CRM workflows, automation, integrations, dashboards, technical SEO foundations, maintenance, testing, and ongoing digital delivery support.',
+    },
+    '/website-maintenance-subscription-uk': {
+      title: 'Website Maintenance Subscription for UK SMEs | Primewayz UK',
+      description:
+        'Website maintenance subscription for UK SMEs covering website updates, bug fixes, landing page improvements, technical SEO checks, GA4 and Search Console reviews, form fixes, speed checks, testing, and monthly website support.',
+    },
+    '/crm-integration-support-uk': {
+      title: 'CRM Integration Support for UK SMEs | Primewayz UK',
+      description:
+        'CRM integration support for UK SMEs covering website form integration, enquiry routing, lead tracking, CRM workflow cleanup, automation, notifications, reporting, and operational visibility.',
+    },
+    '/success-stories/local-trades-lead-capture': {
+      title: 'Local Trades Lead Capture Success Story | Primewayz UK',
+      description:
+        'See how Primewayz UK supports local trades and service businesses with lead capture, enquiry routing, quote request flows, tracking, and monthly website improvements.',
+    },
+    '/success-stories/professional-services-crm-cleanup': {
+      title: 'Professional Services CRM Cleanup Success Story | Primewayz UK',
+      description:
+        'See how Primewayz UK helps professional services firms improve CRM workflows, website enquiry capture, lead tracking, reminders, and reporting visibility.',
+    },
+    '/success-stories/ecommerce-store-stability-support': {
+      title: 'E-commerce Store Stability Support Success Story | Primewayz UK',
+      description:
+        'See how Primewayz UK supports e-commerce stores with website stability, product and checkout improvements, tracking, technical fixes, and ongoing monthly support.',
+    },
+  };
+
+  const pageSeo = staticPageSeo[pathname] || staticPageSeo['/'];
+
   return {
     initialData: {},
     seoTags: buildSeoTags({
-      title: 'Software Development Subscription for UK SMEs | Primewayz UK',
-      description: defaultDescription,
+      title: pageSeo.title,
+      description: pageSeo.description,
       canonical,
-      structuredData: buildDefaultStructuredData(canonical, defaultDescription),
+      structuredData: buildDefaultStructuredData(canonical, pageSeo.description),
     }),
   };
 }
@@ -1015,10 +1059,11 @@ async function createServer() {
         const pathname = new URL(req.originalUrl, siteUrl).pathname;
         const { initialData, seoTags } = await getInitialDataAndSeo(pathname);
         const { html: appHtml } = render(req.originalUrl, '/', initialData);
+        const cleanAppHtml = stripExistingSeoTags(appHtml);
         const initialDataScript = `<script>window.__PRIMEWAYZ_INITIAL_DATA__=${safeJson(initialData)};</script>`;
         const html = stripExistingSeoTags(indexHtml)
           .replace('</head>', `${seoTags}\n</head>`)
-          .replace('<!--ssr-outlet-->', appHtml)
+          .replace('<!--ssr-outlet-->', cleanAppHtml)
           .replace('<script type="module"', `${initialDataScript}\n<script type="module"`);
         return res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
       } catch (err: any) {

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
-import { SEO } from './SEO';
+
 
 const supportItems = [
   'Website content updates, CMS edits, and landing page improvements',
@@ -63,11 +63,7 @@ const relatedLinks = [
 
 export const WebsiteMaintenanceSubscriptionUkPage = () => (
   <>
-    <SEO
-      title="Website Maintenance Subscription for UK SMEs"
-      description="Website maintenance subscription for UK SMEs covering website updates, bug fixes, landing page improvements, technical SEO checks, GA4 and Search Console reviews, form fixes, speed checks, testing, and monthly website support."
-      canonical="https://uk.primewayz.com/website-maintenance-subscription-uk"
-    />
+    
 
     <main className="min-h-screen bg-white text-slate-950">
       <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-20 pt-24 text-white sm:px-6 lg:px-8">

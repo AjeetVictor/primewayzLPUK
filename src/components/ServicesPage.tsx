@@ -1,4 +1,3 @@
-import { SEO } from './SEO';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -99,11 +98,7 @@ const reasons = [
 
 export const ServicesPage = () => (
     <>
-      <SEO
-        title="Software, Website & CRM Support Services for UK SMEs"
-        description="Explore Primewayz UK services for UK SMEs, including monthly software development support, website maintenance, CRM integration, automation, technical SEO foundations, analytics checks, and ongoing digital delivery."
-        canonical="https://uk.primewayz.com/services"
-      />
+      
   
       <main className="min-h-screen bg-white text-slate-950">
     <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-20 pt-24 text-white sm:px-6 lg:px-8">
