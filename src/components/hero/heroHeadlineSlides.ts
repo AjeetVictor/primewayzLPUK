@@ -24,8 +24,7 @@ export const heroHeadlineSlides: HeroHeadlineSlide[] = [
     primaryCtaHref: '#contact',
     secondaryCtaLabel: 'See monthly support plans',
     secondaryCtaHref: '#pricing',
-    image:
-      'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1600&q=80',
+    image: '/images/hero/software-delivery-hero.webp',
     imageAlt: 'Developer working on a laptop with code on screen',
   },
   {

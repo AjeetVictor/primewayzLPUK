@@ -62,9 +62,12 @@ export const HeroSplitSlider = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: reducedMotion ? 1 : 0 }}
               transition={{ duration: reducedMotion ? 0.05 : 0.65, ease: 'easeInOut' }}
+              width={1200}
+              height={799}
               className="absolute inset-0 h-full w-full object-cover"
-              loading="eager"
+              loading={activeIndex === 0 ? 'eager' : 'lazy'}
               decoding="async"
+              fetchPriority={activeIndex === 0 ? 'high' : 'auto'}
             />
           </AnimatePresence>
           {/* Fade into text column (reference-style soft edge) */}
