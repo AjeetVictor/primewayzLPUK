@@ -1,183 +1,291 @@
 import { Link } from 'react-router-dom';
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  DatabaseZap,
+  Network,
+  Workflow,
+  BellRing,
+  BarChart3,
+  ShieldCheck,
+} from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
 
 const services = [
   {
-    title: 'Data Synchronization',
-    description: 'Keep your CRM data in sync with accounting software, email platforms, and other business tools in real-time.',
+    title: 'Website form to CRM integration',
+    description:
+      'Connect website enquiries, landing page forms, quote requests, and campaign leads directly into your CRM with clean field mapping and source tracking.',
   },
   {
-    title: 'Workflow Automation',
-    description: 'Automate lead routing, follow-up emails, task creation, and other repetitive processes to save time and reduce errors.',
+    title: 'Lead routing and notifications',
+    description:
+      'Route enquiries to the right person or team, trigger email alerts, and reduce the risk of missed follow-ups or delayed responses.',
   },
   {
-    title: 'Third-Party Integrations',
-    description: 'Connect your CRM with marketing automation, e-commerce platforms, project management tools, and more.',
+    title: 'CRM workflow cleanup',
+    description:
+      'Improve fields, stages, tags, statuses, lead ownership, duplicate handling, and follow-up workflows so the CRM becomes easier to use.',
   },
   {
-    title: 'Sales Process Optimization',
-    description: 'Streamline your sales pipeline with custom integrations that improve visibility and accelerate deal closure.',
+    title: 'Automation and task creation',
+    description:
+      'Automate reminders, follow-up tasks, status changes, internal notifications, and repeated admin steps around your sales or service process.',
   },
   {
-    title: 'Data Migration',
-    description: 'Safely migrate your customer data from spreadsheets or legacy systems to your new CRM without data loss.',
+    title: 'CRM reporting and visibility',
+    description:
+      'Create clearer views for enquiries, pipeline stages, response times, conversion points, and operational reporting.',
   },
   {
-    title: 'Custom API Development',
-    description: 'Build custom integrations when off-the-shelf solutions do not meet your specific business requirements.',
+    title: 'Third-party integrations',
+    description:
+      'Connect CRM data with email tools, spreadsheets, booking systems, e-commerce platforms, project tools, dashboards, and other business systems.',
   },
 ];
 
-const platforms = ['Salesforce', 'HubSpot', 'Zoho CRM', 'Pipedrive', 'Monday.com', 'Freshworks'];
+const platforms = ['HubSpot', 'Zoho CRM', 'Salesforce', 'Pipedrive', 'Monday.com', 'Freshworks'];
 
 const benefits = [
   {
-    title: 'Eliminate Data Entry Duplication',
-    description: 'Stop manually entering the same data in multiple systems. Automated sync keeps everything up-to-date.',
+    title: 'Reduce missed enquiries',
+    description:
+      'Website leads, form submissions, and campaign enquiries can move into the CRM with clearer ownership, routing, and alerts.',
   },
   {
-    title: 'Improve Sales Team Productivity',
-    description: 'Sales reps spend less time on admin and more time selling with automated workflows and instant data access.',
+    title: 'Remove duplicate manual entry',
+    description:
+      'Reduce repeated copying between forms, spreadsheets, email inboxes, and CRM records through cleaner integration and automation.',
   },
   {
-    title: 'Better Customer Insights',
-    description: 'Get a 360-degree view of your customers by combining data from all your business systems.',
+    title: 'Improve follow-up consistency',
+    description:
+      'Tasks, reminders, notifications, and workflow rules help your team respond more reliably and keep opportunities moving.',
   },
   {
-    title: 'Faster Response Times',
-    description: 'Automated lead routing and notifications ensure no opportunity falls through the cracks.',
+    title: 'Clean up messy CRM data',
+    description:
+      'Better field structure, duplicate handling, stage cleanup, and source tracking make CRM data more useful for daily operations.',
   },
   {
-    title: 'Accurate Reporting',
-    description: 'Make better decisions with real-time, accurate reports that pull data from all integrated systems.',
+    title: 'Make reporting easier',
+    description:
+      'Create clearer operational visibility across leads, enquiries, pipeline stages, campaigns, and monthly performance checks.',
   },
   {
-    title: 'Scalable Solutions',
-    description: 'Integrations that grow with your business, from startup to enterprise-level operations.',
+    title: 'Support monthly improvement',
+    description:
+      'Keep CRM workflows improving over time instead of treating integration as a one-off setup that slowly becomes outdated.',
   },
 ];
 
 const processSteps = [
   {
-    title: 'Discovery',
-    description: 'We analyze your current systems, workflows, and business requirements.',
+    title: 'Review',
+    description:
+      'We review your current CRM, website forms, enquiry sources, lead stages, follow-up process, reports, and operational pain points.',
   },
   {
-    title: 'Planning',
-    description: 'We design the integration architecture and create a detailed implementation plan.',
+    title: 'Map',
+    description:
+      'We map fields, workflows, routing rules, automations, notifications, and reporting needs before implementation begins.',
   },
   {
-    title: 'Implementation',
-    description: 'We build, test, and deploy the integrations with thorough quality assurance.',
+    title: 'Integrate',
+    description:
+      'We connect approved systems, configure workflows, test data flow, validate notifications, and check CRM behaviour end to end.',
   },
   {
-    title: 'Support',
-    description: 'Ongoing monitoring, maintenance, and optimization to ensure peak performance.',
+    title: 'Improve',
+    description:
+      'We monitor what works, review gaps, clean up friction, and keep improving the CRM workflow as your business process evolves.',
+  },
+];
+
+const relatedLinks = [
+  {
+    title: 'All UK SME support services',
+    href: '/services',
+    text: 'Compare CRM integration, software delivery, website maintenance, automation, analytics checks, and monthly digital support options.',
+  },
+  {
+    title: 'Software development subscription',
+    href: '/software-development-subscription-uk',
+    text: 'For UK SMEs that need ongoing software delivery across websites, dashboards, CRM workflows, automation, integrations, and maintenance.',
+  },
+  {
+    title: 'Website maintenance subscription',
+    href: '/website-maintenance-subscription-uk',
+    text: 'For UK businesses that need website updates, form fixes, landing page improvements, technical SEO checks, analytics support, and monthly care.',
+  },
+  {
+    title: 'Professional services CRM cleanup story',
+    href: '/success-stories/professional-services-crm-cleanup',
+    text: 'See how CRM cleanup and lead-flow improvements can help professional services firms improve enquiry visibility and follow-up.',
   },
 ];
 
 export function CrmIntegrationSupportUkPage() {
   return (
-    <main className="min-h-screen bg-white">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-              CRM Integration Support UK
-            </h1>
-            <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
-              Connect your CRM with other business tools, automate workflows, and streamline your sales processes with expert integration services for UK SMEs.
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-              <TrackedLink
-                href="/#contact"
-                ctaText="Book a free CRM integration consultation"
-                ctaLocation="crm_integration_hero"
-                eventType="book_call_click"
-                className="inline-flex min-h-[48px] items-center justify-center rounded-lg bg-white px-6 py-3 text-sm font-bold text-blue-600 shadow-lg transition hover:bg-blue-50"
-              >
-                Book a Free Consultation
-              </TrackedLink>
-              <a
-                href="#services"
-                className="inline-flex min-h-[48px] items-center justify-center rounded-lg border-2 border-white px-6 py-3 text-sm font-bold text-white transition hover:border-white/40 hover:bg-white/10"
-              >
-                Learn More
-              </a>
+    <main className="min-h-screen bg-white text-slate-950">
+      <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-20 pt-24 text-white sm:px-6 lg:px-8">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.22),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.22),transparent_34%)]" />
+
+        <div className="relative mx-auto max-w-6xl">
+          <Link
+            to="/"
+            className="mb-10 inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Primewayz UK
+          </Link>
+
+          <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+            <div>
+              <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">
+                UK SME CRM Integration Support
+              </p>
+
+              <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+                CRM integration support for UK SMEs
+              </h1>
+
+              <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
+                Connect website forms, enquiry sources, CRM workflows, notifications, reporting,
+                and business tools into one clearer lead-flow process. Primewayz UK helps small
+                and growing UK businesses clean up CRM operations, reduce manual work, and improve
+                follow-up visibility through practical monthly support.
+              </p>
+
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <TrackedLink
+                  href="/#contact"
+                  ctaText="Book a CRM integration review"
+                  ctaLocation="crm_integration_hero"
+                  eventType="book_call_click"
+                  className="inline-flex min-h-[48px] items-center justify-center rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-emerald-950/20 transition hover:bg-emerald-300"
+                >
+                  Book a CRM integration review
+                </TrackedLink>
+
+                <a
+                  href="#services"
+                  className="inline-flex min-h-[48px] items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-sm font-bold text-white transition hover:border-white/40 hover:bg-white/10"
+                >
+                  View CRM support areas
+                </a>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl shadow-black/20 backdrop-blur">
+              <h2 className="text-xl font-bold">Best suited for</h2>
+
+              <div className="mt-5 space-y-4">
+                {[
+                  'Website enquiries are not flowing cleanly into your CRM.',
+                  'Leads are duplicated, missed, delayed, or poorly assigned.',
+                  'Your team still relies on spreadsheets, inboxes, and manual updates.',
+                  'You need better visibility across enquiries, follow-ups, and pipeline activity.',
+                ].map((item) => (
+                  <div key={item} className="flex gap-3 rounded-2xl bg-white/10 p-4">
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" />
+                    <p className="text-sm leading-6 text-slate-100">{item}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* What We Offer */}
-      <section id="services" className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Comprehensive CRM Integration Services
+      <section id="services" className="px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
+              What is included
+            </p>
+
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+              CRM integration services built around real enquiry and follow-up problems
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              We help UK businesses connect their CRM systems with other tools to eliminate data silos, automate repetitive tasks, and improve team productivity.
+
+            <p className="mt-4 text-lg leading-8 text-slate-600">
+              We help UK SMEs connect the practical parts of lead management: website forms,
+              CRM fields, enquiry routing, notifications, reporting, workflow automation,
+              third-party tools, and ongoing operational improvements.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {services.map((service, index) => (
-              <div key={index} className="bg-white p-8 rounded-xl shadow-md hover:shadow-lg transition-shadow">
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{service.title}</h3>
-                <p className="text-gray-600">{service.description}</p>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {services.map((service) => (
+              <div key={service.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <DatabaseZap className="h-5 w-5 text-emerald-600" />
+                <h3 className="mt-4 text-lg font-bold text-slate-950">{service.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600">{service.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Supported CRM Platforms */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              CRM Platforms We Support
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              We work with all major CRM platforms popular among UK businesses.
-            </p>
-          </div>
+      <section className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
+                CRM platforms
+              </p>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
-            {platforms.map((platform) => (
-              <div key={platform} className="text-center p-6 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors">
-                <p className="font-semibold text-gray-900">{platform}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
+                Support for common CRM platforms used by UK SMEs
+              </h2>
 
-      {/* Benefits Section */}
-      <section className="py-20 bg-gradient-to-br from-blue-50 to-indigo-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Benefits for UK SMEs
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Proper CRM integration delivers measurable improvements to your business operations.
-            </p>
-          </div>
+              <p className="mt-4 text-base leading-7 text-slate-600">
+                We can support CRM workflow cleanup, integrations, and automation planning
+                across widely used CRM tools. The exact implementation depends on available APIs,
+                permissions, account setup, and your current process.
+              </p>
+            </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            {benefits.map((benefit, index) => (
-              <div key={index} className="flex items-start space-x-4">
-                <div className="flex-shrink-0 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center mt-1">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              {platforms.map((platform) => (
+                <div key={platform} className="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
+                  <p className="font-bold text-slate-950">{platform}</p>
                 </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
+              Operational benefits
+            </p>
+
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+              Cleaner CRM workflows make lead handling easier to manage
+            </h2>
+
+            <p className="mt-4 text-lg leading-8 text-slate-600">
+              A CRM should help your team respond faster, track opportunities more clearly,
+              and understand what is happening across enquiries, sales activity, and follow-up.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-5 md:grid-cols-2">
+            {benefits.map((benefit) => (
+              <div key={benefit.title} className="flex gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{benefit.title}</h3>
-                  <p className="text-gray-600">{benefit.description}</p>
+                  <h3 className="text-xl font-bold text-slate-950">{benefit.title}</h3>
+                  <p className="mt-2 text-sm leading-7 text-slate-600">{benefit.description}</p>
                 </div>
               </div>
             ))}
@@ -185,49 +293,136 @@ export function CrmIntegrationSupportUkPage() {
         </div>
       </section>
 
-      {/* Our Process */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Our Integration Process
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              A proven methodology that ensures successful CRM integration with minimal disruption.
+      <section className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
+                Delivery rhythm
+              </p>
+
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
+                A practical CRM integration process
+              </h2>
+
+              <p className="mt-4 text-base leading-7 text-slate-600">
+                We keep CRM support controlled and measurable by reviewing the process,
+                mapping the workflow, implementing carefully, testing data flow, and improving
+                the setup through monthly delivery.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {processSteps.map((step, index) => (
+                <div key={step.title} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">
+                      {index + 1}
+                    </div>
+                    <h3 className="font-bold text-slate-950">{step.title}</h3>
+                  </div>
+
+                  <p className="mt-4 text-sm leading-6 text-slate-600">{step.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-3">
+          <div className="rounded-3xl border border-slate-200 p-6">
+            <Network className="h-8 w-8 text-emerald-600" />
+            <h3 className="mt-5 text-xl font-bold">Lead-flow integration</h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              Connect enquiry sources, website forms, campaign pages, CRM fields,
+              notifications, and lead routing into a clearer operating flow.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-4 gap-8">
-            {processSteps.map((step, index) => (
-              <div key={index} className="text-center">
-                <div className="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
-                  {index + 1}
+          <div className="rounded-3xl border border-slate-200 p-6">
+            <Workflow className="h-8 w-8 text-emerald-600" />
+            <h3 className="mt-5 text-xl font-bold">Workflow automation</h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              Improve tasks, reminders, assignments, status changes, follow-up rules,
+              and repeated CRM administration.
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 p-6">
+            <BarChart3 className="h-8 w-8 text-emerald-600" />
+            <h3 className="mt-5 text-xl font-bold">Reporting visibility</h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              Improve how enquiries, pipeline status, lead sources, response times,
+              and follow-up activity are monitored.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
+              Related UK SME support paths
+            </p>
+
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+              Connect CRM support with the services around it
+            </h2>
+
+            <p className="mt-4 text-lg leading-8 text-slate-600">
+              CRM integration becomes more valuable when website forms, software workflows,
+              automation, analytics checks, and monthly delivery planning are connected through
+              one practical roadmap.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-5 md:grid-cols-2">
+            {relatedLinks.map((link) => (
+              <Link
+                key={link.href}
+                to={link.href}
+                className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl"
+              >
+                <h3 className="text-xl font-bold text-slate-950">{link.title}</h3>
+
+                <p className="mt-3 text-sm leading-7 text-slate-600">{link.text}</p>
+
+                <div className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-emerald-700">
+                  View related page
+                  <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{step.title}</h3>
-                <p className="text-gray-600">{step.description}</p>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">
-            Ready to Streamline Your CRM?
-          </h2>
-          <p className="text-xl mb-8 text-blue-100">
-            Let us discuss how we can integrate your CRM with other business tools to improve efficiency and drive growth.
-          </p>
+      <section className="bg-[#000A2D] px-4 py-20 text-white sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-6xl gap-8 rounded-3xl border border-white/10 bg-white/10 p-8 backdrop-blur lg:grid-cols-[1fr_0.7fr] lg:items-center">
+          <div>
+            <ShieldCheck className="h-10 w-10 text-emerald-300" />
+
+            <h2 className="mt-5 text-3xl font-bold tracking-tight">
+              Start with a CRM workflow review
+            </h2>
+
+            <p className="mt-4 text-base leading-7 text-slate-200">
+              We will review your enquiry flow, CRM setup, integrations, follow-up process,
+              reporting gaps, and automation opportunities before suggesting the next practical step.
+            </p>
+          </div>
+
           <TrackedLink
             href="/#contact"
             ctaText="Book CRM integration consultation"
             ctaLocation="crm_integration_final_cta"
             eventType="book_call_click"
-            className="inline-flex min-h-[52px] items-center justify-center rounded-lg bg-white px-6 py-3 text-sm font-bold text-blue-600 transition hover:bg-blue-50"
+            className="inline-flex min-h-[52px] items-center justify-center rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-300"
           >
-            Book Your Free Consultation
+            Book CRM integration consultation
           </TrackedLink>
         </div>
       </section>
