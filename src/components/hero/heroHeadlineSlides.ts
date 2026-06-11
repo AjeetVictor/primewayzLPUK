@@ -39,7 +39,7 @@ export const heroHeadlineSlides: HeroHeadlineSlide[] = [
     secondaryCtaLabel: 'Explore services',
     secondaryCtaHref: '#services',
     image:
-      'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1600&q=80',
+      '/images/hero/team-collaboration.webp',
     imageAlt: 'Team collaborating on software delivery',
   },
   {
@@ -54,7 +54,7 @@ export const heroHeadlineSlides: HeroHeadlineSlide[] = [
     secondaryCtaLabel: 'How delivery works',
     secondaryCtaHref: '#how-it-works',
     image:
-      'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=1600&q=80',
+      '/images/hero/business-planning.webp',
     imageAlt: 'Software planning discussion between professionals',
   },
   {
@@ -69,7 +69,7 @@ export const heroHeadlineSlides: HeroHeadlineSlide[] = [
     secondaryCtaLabel: 'Book a call',
     secondaryCtaHref: '#contact',
     image:
-      'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1600&q=80',
+      '/images/hero/client-workshop.webp',
     imageAlt: 'Business team reviewing transparent software delivery plan',
   },
 ];
