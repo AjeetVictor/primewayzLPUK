@@ -2,13 +2,12 @@ import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
   ArrowRight,
+  BarChart3,
   CheckCircle2,
   DatabaseZap,
   Network,
-  Workflow,
-  BellRing,
-  BarChart3,
   ShieldCheck,
+  Workflow,
 } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
 
@@ -103,25 +102,48 @@ const processSteps = [
   },
 ];
 
+const heroLinks = [
+  {
+    label: 'All UK SME services',
+    href: '/services',
+  },
+  {
+    label: 'Software subscription',
+    href: '/software-development-subscription-uk',
+  },
+  {
+    label: 'Website maintenance',
+    href: '/website-maintenance-subscription-uk',
+  },
+  {
+    label: 'UK SME examples',
+    href: '/#success-stories',
+  },
+];
+
 const relatedLinks = [
   {
-    title: 'All UK SME support services',
+    title: 'All UK SME Support Services',
     href: '/services',
+    anchor: 'Compare all Primewayz UK SME support services',
     text: 'Compare CRM integration, software delivery, website maintenance, automation, analytics checks, and monthly digital support options.',
   },
   {
-    title: 'Software development subscription',
+    title: 'Software Development Subscription',
     href: '/software-development-subscription-uk',
+    anchor: 'Software development subscription for UK SMEs',
     text: 'For UK SMEs that need ongoing software delivery across websites, dashboards, CRM workflows, automation, integrations, and maintenance.',
   },
   {
-    title: 'Website maintenance subscription',
+    title: 'Website Maintenance Subscription',
     href: '/website-maintenance-subscription-uk',
+    anchor: 'Website maintenance subscription for UK SMEs',
     text: 'For UK businesses that need website updates, form fixes, landing page improvements, technical SEO checks, analytics support, and monthly care.',
   },
   {
-    title: 'Professional services CRM cleanup story',
+    title: 'Professional Services CRM Cleanup Story',
     href: '/success-stories/professional-services-crm-cleanup',
+    anchor: 'Professional services CRM and lead-flow cleanup example',
     text: 'See how CRM cleanup and lead-flow improvements can help professional services firms improve enquiry visibility and follow-up.',
   },
 ];
@@ -170,11 +192,23 @@ export function CrmIntegrationSupportUkPage() {
                 </TrackedLink>
 
                 <a
-                  href="#services"
+                  href="#crm-services"
                   className="inline-flex min-h-[48px] items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-sm font-bold text-white transition hover:border-white/40 hover:bg-white/10"
                 >
                   View CRM support areas
                 </a>
+              </div>
+
+              <div className="mt-7 flex flex-wrap gap-2">
+                {heroLinks.map((item) => (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold text-white/85 transition hover:border-emerald-300/50 hover:bg-white/15 hover:text-white"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
               </div>
             </div>
 
@@ -199,7 +233,7 @@ export function CrmIntegrationSupportUkPage() {
         </div>
       </section>
 
-      <section id="services" className="px-4 py-20 sm:px-6 lg:px-8">
+      <section id="crm-services" className="px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-3xl">
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
@@ -226,10 +260,38 @@ export function CrmIntegrationSupportUkPage() {
               </div>
             ))}
           </div>
+
+          <div className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-sm font-semibold leading-7 text-slate-700">
+              CRM integration works best when your website forms, tracking, support process, and monthly delivery backlog are connected.
+              Many UK SMEs combine{' '}
+              <Link
+                to="/crm-integration-support-uk"
+                className="font-black text-emerald-700 hover:text-emerald-800"
+              >
+                CRM integration support
+              </Link>
+              {' '}with{' '}
+              <Link
+                to="/website-maintenance-subscription-uk"
+                className="font-black text-emerald-700 hover:text-emerald-800"
+              >
+                website maintenance
+              </Link>
+              {' '}and a{' '}
+              <Link
+                to="/software-development-subscription-uk"
+                className="font-black text-emerald-700 hover:text-emerald-800"
+              >
+                software development subscription
+              </Link>
+              {' '}to keep lead capture, follow-up, reporting, and system improvements moving together.
+            </p>
+          </div>
         </div>
       </section>
 
-      <section className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
+      <section id="crm-platforms" className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
             <div>
@@ -259,7 +321,7 @@ export function CrmIntegrationSupportUkPage() {
         </div>
       </section>
 
-      <section className="px-4 py-20 sm:px-6 lg:px-8">
+      <section id="crm-benefits" className="px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-3xl">
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
@@ -293,7 +355,7 @@ export function CrmIntegrationSupportUkPage() {
         </div>
       </section>
 
-      <section className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
+      <section id="crm-delivery-rhythm" className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
             <div>
@@ -330,7 +392,7 @@ export function CrmIntegrationSupportUkPage() {
         </div>
       </section>
 
-      <section className="px-4 py-20 sm:px-6 lg:px-8">
+      <section id="crm-support-areas" className="px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-3">
           <div className="rounded-3xl border border-slate-200 p-6">
             <Network className="h-8 w-8 text-emerald-600" />
@@ -361,7 +423,7 @@ export function CrmIntegrationSupportUkPage() {
         </div>
       </section>
 
-      <section className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
+      <section id="crm-related-services" className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-3xl">
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
@@ -384,6 +446,7 @@ export function CrmIntegrationSupportUkPage() {
               <Link
                 key={link.href}
                 to={link.href}
+                aria-label={link.anchor}
                 className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl"
               >
                 <h3 className="text-xl font-bold text-slate-950">{link.title}</h3>
@@ -391,7 +454,7 @@ export function CrmIntegrationSupportUkPage() {
                 <p className="mt-3 text-sm leading-7 text-slate-600">{link.text}</p>
 
                 <div className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-emerald-700">
-                  View related page
+                  {link.anchor}
                   <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
                 </div>
               </Link>

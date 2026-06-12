@@ -18,6 +18,7 @@ const serviceCards = [
     title: 'Software Development Subscription',
     href: '/software-development-subscription-uk',
     icon: CodeXml,
+    anchor: 'Software development subscription for UK SMEs',
     description:
       'Monthly software delivery support for UK SMEs that need steady progress across websites, dashboards, admin panels, CRM workflows, automation, integrations, SEO foundations, maintenance, and controlled feature updates.',
     bestFor: [
@@ -30,6 +31,7 @@ const serviceCards = [
     title: 'Website Maintenance Subscription',
     href: '/website-maintenance-subscription-uk',
     icon: LifeBuoy,
+    anchor: 'Website maintenance subscription for UK SMEs',
     description:
       'Reliable website maintenance for UK small businesses, covering content updates, bug fixes, forms, CTAs, technical SEO checks, analytics support, landing page improvements, speed checks, and monthly website care.',
     bestFor: [
@@ -42,6 +44,7 @@ const serviceCards = [
     title: 'CRM Integration & Support',
     href: '/crm-integration-support-uk',
     icon: Network,
+    anchor: 'CRM integration support for UK SMEs',
     description:
       'CRM integration and lead-flow support for UK SMEs that need cleaner enquiry routing, website form connections, CRM field mapping, duplicate handling, notifications, reporting, and workflow automation.',
     bestFor: [
@@ -70,6 +73,7 @@ const industryPaths = [
     title: 'Local trades and service businesses',
     href: '/success-stories/local-trades-lead-capture',
     icon: PhoneCall,
+    anchor: 'Local trades website and lead capture example',
     text:
       'For plumbers, electricians, roofers, builders, cleaners, landscapers, and local service firms that need clearer quote requests, call tracking, WhatsApp leads, and faster follow-ups.',
   },
@@ -77,6 +81,7 @@ const industryPaths = [
     title: 'Professional services firms',
     href: '/success-stories/professional-services-crm-cleanup',
     icon: Users,
+    anchor: 'Professional services CRM and lead-flow cleanup example',
     text:
       'For consultants, accountants, recruiters, advisors, and B2B service teams that need cleaner CRM workflows, website enquiries, reminders, and reporting visibility.',
   },
@@ -84,8 +89,28 @@ const industryPaths = [
     title: 'E-commerce and online stores',
     href: '/success-stories/ecommerce-store-stability-support',
     icon: ShoppingCart,
+    anchor: 'E-commerce store stability and support example',
     text:
       'For small online stores, boutiques, specialist sellers, subscription stores, and catalogue-led businesses that need stable product pages, checkout journeys, tracking, and offer updates.',
+  },
+];
+
+const hubLinks = [
+  {
+    label: 'Software subscription',
+    href: '/software-development-subscription-uk',
+  },
+  {
+    label: 'Website maintenance',
+    href: '/website-maintenance-subscription-uk',
+  },
+  {
+    label: 'CRM integration',
+    href: '/crm-integration-support-uk',
+  },
+  {
+    label: 'UK SME examples',
+    href: '#uk-sme-use-cases',
   },
 ];
 
@@ -97,10 +122,7 @@ const reasons = [
 ];
 
 export const ServicesPage = () => (
-    <>
-      
-  
-      <main className="min-h-screen bg-white text-slate-950">
+  <main className="min-h-screen bg-white text-slate-950">
     <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-20 pt-24 text-white sm:px-6 lg:px-8">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.22),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.22),transparent_34%)]" />
 
@@ -150,6 +172,18 @@ export const ServicesPage = () => (
                 View monthly plans
               </TrackedLink>
             </div>
+
+            <div className="mt-7 flex flex-wrap gap-2">
+              {hubLinks.map((item) => (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold text-white/85 transition hover:border-emerald-300/50 hover:bg-white/15 hover:text-white"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl shadow-black/20 backdrop-blur">
@@ -168,7 +202,7 @@ export const ServicesPage = () => (
       </div>
     </section>
 
-    <section className="px-4 py-20 sm:px-6 lg:px-8">
+    <section id="core-service-paths" className="px-4 py-20 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
@@ -193,6 +227,7 @@ export const ServicesPage = () => (
               <Link
                 key={service.href}
                 to={service.href}
+                aria-label={service.anchor}
                 className="group rounded-3xl border border-slate-200 bg-slate-50 p-7 shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:bg-white hover:shadow-xl"
               >
                 <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#000A2D] text-white transition group-hover:bg-emerald-600">
@@ -213,17 +248,44 @@ export const ServicesPage = () => (
                 </ul>
 
                 <div className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-emerald-700">
-                  View service page
+                  {service.anchor}
                   <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
                 </div>
               </Link>
             );
           })}
         </div>
+
+        <div className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-sm font-semibold leading-7 text-slate-700">
+            These services can work separately or together. Many UK SMEs start with{' '}
+            <Link
+              to="/website-maintenance-subscription-uk"
+              className="font-black text-emerald-700 hover:text-emerald-800"
+            >
+              website maintenance
+            </Link>
+            , then add{' '}
+            <Link
+              to="/crm-integration-support-uk"
+              className="font-black text-emerald-700 hover:text-emerald-800"
+            >
+              CRM integration support
+            </Link>{' '}
+            or a{' '}
+            <Link
+              to="/software-development-subscription-uk"
+              className="font-black text-emerald-700 hover:text-emerald-800"
+            >
+              software development subscription
+            </Link>{' '}
+            when the monthly improvement backlog becomes clearer.
+          </p>
+        </div>
       </div>
     </section>
 
-    <section className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
+    <section id="support-areas" className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
           <div>
@@ -255,7 +317,7 @@ export const ServicesPage = () => (
       </div>
     </section>
 
-    <section className="px-4 py-20 sm:px-6 lg:px-8">
+    <section id="uk-sme-use-cases" className="px-4 py-20 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
@@ -280,6 +342,7 @@ export const ServicesPage = () => (
               <Link
                 key={path.href}
                 to={path.href}
+                aria-label={path.anchor}
                 className="group rounded-3xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl"
               >
                 <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
@@ -291,7 +354,7 @@ export const ServicesPage = () => (
                 <p className="mt-4 text-sm leading-7 text-slate-600">{path.text}</p>
 
                 <div className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-emerald-700">
-                  View related example
+                  {path.anchor}
                   <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
                 </div>
               </Link>
@@ -329,6 +392,5 @@ export const ServicesPage = () => (
         </TrackedLink>
       </div>
     </section>
-    </main>
-  </>
+  </main>
 );
