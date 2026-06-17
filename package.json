@@ -18,7 +18,8 @@
     "prisma:status": "prisma migrate status",
     "data:migrate:sqlite-to-mysql": "node scripts/migrate-sqlite-to-mysql.mjs",
     "build:client": "vite build --outDir dist/client",
-    "build:ssr": "vite build --ssr src/entry-server.tsx --outDir dist/server"
+    "build:ssr": "vite build --ssr src/entry-server.tsx --outDir dist/server",
+    "images:optimize": "node scripts/convert-images-to-webp.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
@@ -65,6 +66,7 @@
     "@types/react-dom": "19.2.3",
     "autoprefixer": "^10.4.21",
     "prisma": "^6.19.2",
+    "sharp": "0.35.1",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",

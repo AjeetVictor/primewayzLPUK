@@ -21,7 +21,7 @@ export const featuredLinkedInInsight: FeaturedInsight = {
   secondaryCta: 'View on LinkedIn',
   url: 'https://www.linkedin.com/pulse/ai-trending-clarity-still-converts-manish-mishra-keigc',
   image: {
-    src: '/images/ai-clarity-leadflow-linkedin.jpg',
+    src: '/images/ai-clarity-leadflow-linkedin.webp',
     alt: 'AI is trending but clarity still converts - lead flow from website enquiry to CRM, follow-up and reporting',
   },
   source: 'linkedin',
