@@ -3,6 +3,8 @@ import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getAllBlogPosts } from '../data/blog/utils';
 import type { BlogPost } from '../data/blog/types';
+import { FeaturedInsightCta } from './FeaturedInsightCta';
+import { featuredLinkedInInsight } from '../data/insights';
 
 const insightKeywords = ['seo', 'crm', 'upkeep', 'automation', 'maintenance', 'website support'];
 
@@ -89,11 +91,13 @@ export const BlogSection = () => {
                 className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-zinc-900 transition-colors hover:text-emerald-600"
                 aria-label={`Read article: ${post.title}`}
               >
-                Read Article →
+                Read Article
               </Link>
             </motion.article>
           ))}
         </div>
+
+        <FeaturedInsightCta insight={featuredLinkedInInsight} />
       </div>
     </section>
   );
