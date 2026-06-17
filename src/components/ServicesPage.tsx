@@ -79,11 +79,11 @@ const industryPaths = [
   },
   {
     title: 'Professional services firms',
-    href: '/success-stories/professional-services-crm-cleanup',
+    href: '/professional-services-crm-support-uk',
     icon: Users,
-    anchor: 'Professional services CRM and lead-flow cleanup example',
+    anchor: 'Professional services CRM support for UK firms',
     text:
-      'For consultants, accountants, recruiters, advisors, and B2B service teams that need cleaner CRM workflows, website enquiries, reminders, and reporting visibility.',
+      'For consultants, accountants, recruiters, advisors, and B2B service teams that need cleaner CRM workflows, website enquiry tracking, follow-up automation, and reporting visibility.',
   },
   {
     title: 'E-commerce and online stores',

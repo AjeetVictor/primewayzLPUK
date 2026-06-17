@@ -32,6 +32,7 @@ import { TrackedLink } from './components/common/TrackedLink';
 import { SoftwareDevelopmentSubscriptionUkPage } from './components/SoftwareDevelopmentSubscriptionUkPage';
 import { WebsiteMaintenanceSubscriptionUkPage } from './components/WebsiteMaintenanceSubscriptionUkPage';
 import { CrmIntegrationSupportUkPage } from './components/CrmIntegrationSupportUkPage';
+import { ProfessionalServicesCrmSupportUkPage } from './components/ProfessionalServicesCrmSupportUkPage';
 import { ServicesPage } from './components/ServicesPage';
 import { LocalTradesLeadCapturePage } from './components/LocalTradesLeadCapturePage';
 import { ProfessionalServicesCrmCleanupPage } from './components/ProfessionalServicesCrmCleanupPage';
@@ -121,6 +122,7 @@ export const App = ({ initialData }: AppProps) => {
         <Route path="/software-development-subscription-uk" element={<SoftwareDevelopmentSubscriptionUkPage />} />
         <Route path="/website-maintenance-subscription-uk" element={<WebsiteMaintenanceSubscriptionUkPage />} />
         <Route path="/crm-integration-support-uk" element={<CrmIntegrationSupportUkPage />} />
+        <Route path="/professional-services-crm-support-uk" element={<ProfessionalServicesCrmSupportUkPage />} />
         <Route path="/success-stories/local-trades-lead-capture" element={<LocalTradesLeadCapturePage />} />
         <Route path="/success-stories/professional-services-crm-cleanup" element={<ProfessionalServicesCrmCleanupPage />} />
         <Route path="/success-stories/ecommerce-store-stability-support" element={<EcommerceStoreStabilitySupportPage />} />
