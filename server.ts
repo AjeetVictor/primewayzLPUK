@@ -417,6 +417,11 @@ async function getInitialDataAndSeo(pathname: string) {
       description:
         'CRM integration support for UK SMEs covering website form integration, enquiry routing, lead tracking, CRM workflow cleanup, automation, notifications, reporting, and operational visibility.',
     },
+    '/professional-services-crm-support-uk': {
+      title: 'Professional Services CRM Support UK | Primewayz UK',
+      description:
+        'CRM integration, lead-flow cleanup, website enquiry tracking, follow-up workflows, and reporting support for UK professional services firms.',
+    },
     '/success-stories/local-trades-lead-capture': {
       title: 'Local Trades Lead Capture Success Story | Primewayz UK',
       description:
