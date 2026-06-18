@@ -88,6 +88,132 @@ function dateKey(date = new Date()) {
   return date.toISOString().slice(0, 10);
 }
 
+const CONVERSATION_STATUSES = [
+  'new',
+  'bot_replied',
+  'admin_needed',
+  'admin_replied',
+  'lead_qualified',
+  'follow_up_due',
+  'booked_call',
+  'closed',
+  'spam',
+] as const;
+
+const TERMINAL_CONVERSATION_STATUSES = new Set(['closed', 'spam']);
+
+const chatMessageInclude = {
+  attachments: true,
+  replyTo: {
+    select: {
+      id: true,
+      text: true,
+      sender: true,
+      deletedAt: true,
+      isInternalNote: true,
+    },
+  },
+};
+
+function isValidConversationStatus(status: string) {
+  return CONVERSATION_STATUSES.includes(status as (typeof CONVERSATION_STATUSES)[number]);
+}
+
+function formatVisitorMessage(message: {
+  id: number;
+  sessionId: string;
+  sender: string;
+  text: string;
+  timestamp: Date;
+  answered: boolean;
+  replyToId: number | null;
+  isInternalNote: boolean;
+  deletedAt: Date | null;
+  deletedBy: number | null;
+  editedAt: Date | null;
+  replyTo?: {
+    id: number;
+    text: string;
+    sender: string;
+    deletedAt: Date | null;
+    isInternalNote: boolean;
+  } | null;
+  attachments?: unknown[];
+}) {
+  if (message.isInternalNote) return null;
+
+  const replyTo = message.replyTo?.isInternalNote
+    ? null
+    : message.replyTo
+      ? {
+          ...message.replyTo,
+          text: message.replyTo.deletedAt ? 'Message deleted' : message.replyTo.text,
+        }
+      : null;
+
+  return {
+    ...message,
+    text: message.deletedAt ? 'Message deleted' : message.text,
+    replyTo,
+  };
+}
+
+function buildSessionSourceData(body: Record<string, unknown>) {
+  const pickString = (key: string) =>
+    typeof body[key] === 'string' && body[key] ? (body[key] as string) : undefined;
+
+  return {
+    firstLandingPage: pickString('firstLandingPage'),
+    currentPageUrl: pickString('currentPageUrl'),
+    referrer: pickString('referrer'),
+    utmSource: pickString('utmSource'),
+    utmMedium: pickString('utmMedium'),
+    utmCampaign: pickString('utmCampaign'),
+    utmContent: pickString('utmContent'),
+    deviceType: pickString('deviceType'),
+    browser: pickString('browser'),
+    serviceInterest: pickString('serviceInterest'),
+  };
+}
+
+async function getAdminUserFromRequest(req: AdminRequest) {
+  try {
+    const token = req.cookies?.[adminCookieName];
+    if (!token) return null;
+    const decoded = jwt.verify(token, getJwtSecret()) as { email?: string };
+    if (!decoded.email) return null;
+    const user = await prisma.user.findUnique({ where: { email: decoded.email } });
+    if (!user || !isOperationsRole(user.role)) return null;
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+async function updateConversationStatus(
+  sessionId: string,
+  status: string,
+  extra: Record<string, unknown> = {},
+) {
+  if (!isValidConversationStatus(status)) return;
+  await prisma.chatSession.update({
+    where: { id: sessionId },
+    data: {
+      status,
+      ...extra,
+    },
+  });
+}
+
+async function autoUpdateConversationStatus(sessionId: string, status: string) {
+  const session = await prisma.chatSession.findUnique({
+    where: { id: sessionId },
+    select: { status: true },
+  });
+  if (!session || TERMINAL_CONVERSATION_STATUSES.has(session.status)) return;
+  await updateConversationStatus(sessionId, status);
+}
+
 async function requireAdmin(req: AdminRequest, res: Response, next: NextFunction) {
   try {
     const token = req.cookies?.[adminCookieName];
@@ -528,8 +654,17 @@ app.get('/api/admin/chats', requireAdmin, requireRole(isOperationsRole), async (
   const messages = await prisma.chatMessage.findMany({
     orderBy: { timestamp: 'desc' },
     include: {
-      session: { select: { name: true, email: true } },
-      attachments: true,
+      session: {
+        select: {
+          name: true,
+          email: true,
+          status: true,
+          serviceInterest: true,
+          firstLandingPage: true,
+          currentPageUrl: true,
+        },
+      },
+      ...chatMessageInclude,
     },
   });
   res.json(messages);
@@ -542,11 +677,77 @@ app.get('/api/admin/sessions', requireAdmin, requireRole(isOperationsRole), asyn
       messages: {
         orderBy: { timestamp: 'desc' },
         take: 1,
-        select: { text: true, timestamp: true },
+        select: { text: true, timestamp: true, sender: true },
       },
     },
   });
   res.json(sessions);
+});
+
+app.patch('/api/admin/sessions/:sessionId/status', requireAdmin, requireRole(isOperationsRole), async (req: AdminRequest, res) => {
+  const { sessionId } = req.params;
+  const status = typeof req.body.status === 'string' ? req.body.status : '';
+  if (!isValidConversationStatus(status)) {
+    return res.status(400).json({ error: 'Invalid conversation status' });
+  }
+
+  const data: Record<string, unknown> = { status };
+  if (status === 'closed' || status === 'spam') {
+    data.closedAt = new Date();
+    data.closedById = req.adminUser!.id;
+  } else {
+    data.closedAt = null;
+    data.closedById = null;
+  }
+
+  const session = await prisma.chatSession.update({
+    where: { id: sessionId },
+    data,
+  });
+  res.json(session);
+});
+
+app.patch('/api/admin/chat/messages/:id', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid message id' });
+
+  const existing = await prisma.chatMessage.findUnique({ where: { id } });
+  if (!existing) return res.status(404).json({ error: 'Message not found' });
+  if (existing.sender !== 'admin') {
+    return res.status(400).json({ error: 'Only admin messages can be edited' });
+  }
+  if (existing.deletedAt) return res.status(400).json({ error: 'Deleted messages cannot be edited' });
+
+  const text = typeof req.body.text === 'string' ? req.body.text.trim() : '';
+  if (!text) return res.status(400).json({ error: 'Message text is required' });
+
+  const message = await prisma.chatMessage.update({
+    where: { id },
+    data: { text, editedAt: new Date() },
+    include: chatMessageInclude,
+  });
+  res.json(message);
+});
+
+app.delete('/api/admin/chat/messages/:id', requireAdmin, requireRole(isOperationsRole), async (req: AdminRequest, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid message id' });
+
+  const existing = await prisma.chatMessage.findUnique({ where: { id } });
+  if (!existing) return res.status(404).json({ error: 'Message not found' });
+  if (existing.sender !== 'admin') {
+    return res.status(400).json({ error: 'Only admin messages can be deleted' });
+  }
+
+  const message = await prisma.chatMessage.update({
+    where: { id },
+    data: {
+      deletedAt: new Date(),
+      deletedBy: req.adminUser!.id,
+    },
+    include: chatMessageInclude,
+  });
+  res.json(message);
 });
 
 app.get('/api/admin/blog-comments', requireAdmin, requireRole(isOperationsRole), async (_req, res) => {
@@ -811,10 +1012,30 @@ app.post('/api/chat/session', async (req, res) => {
   const { sessionId, name, email } = req.body;
   if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
 
+  const sourceData = buildSessionSourceData(req.body);
   const session = await prisma.chatSession.upsert({
     where: { id: sessionId },
-    update: { name: name || undefined, email: email || undefined },
-    create: { id: sessionId, name: name || null, email: email || null },
+    update: {
+      name: name || undefined,
+      email: email || undefined,
+      currentPageUrl: sourceData.currentPageUrl,
+      referrer: sourceData.referrer,
+      utmSource: sourceData.utmSource,
+      utmMedium: sourceData.utmMedium,
+      utmCampaign: sourceData.utmCampaign,
+      utmContent: sourceData.utmContent,
+      deviceType: sourceData.deviceType,
+      browser: sourceData.browser,
+      serviceInterest: sourceData.serviceInterest,
+      firstLandingPage: sourceData.firstLandingPage,
+    },
+    create: {
+      id: sessionId,
+      name: name || null,
+      email: email || null,
+      status: 'new',
+      ...sourceData,
+    },
   });
 
   res.json(session);
@@ -824,18 +1045,31 @@ app.post('/api/chat/heartbeat', async (req, res) => {
   const { sessionId, userName, userEmail } = req.body;
   if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
 
+  const sourceData = buildSessionSourceData(req.body);
   const session = await prisma.chatSession.upsert({
     where: { id: sessionId },
     update: {
       visitorLastSeenAt: new Date(),
       name: userName || undefined,
       email: userEmail || undefined,
+      currentPageUrl: sourceData.currentPageUrl,
+      referrer: sourceData.referrer,
+      utmSource: sourceData.utmSource,
+      utmMedium: sourceData.utmMedium,
+      utmCampaign: sourceData.utmCampaign,
+      utmContent: sourceData.utmContent,
+      deviceType: sourceData.deviceType,
+      browser: sourceData.browser,
+      serviceInterest: sourceData.serviceInterest,
+      firstLandingPage: sourceData.firstLandingPage,
     },
     create: {
       id: sessionId,
       name: userName || null,
       email: userEmail || null,
       visitorLastSeenAt: new Date(),
+      status: 'new',
+      ...sourceData,
     },
   });
 
@@ -846,19 +1080,32 @@ app.get('/api/chat/:sessionId', async (req, res) => {
   const messages = await prisma.chatMessage.findMany({
     where: { sessionId: req.params.sessionId },
     orderBy: { timestamp: 'asc' },
-    include: { attachments: true },
+    include: chatMessageInclude,
   });
-  res.json(messages);
+  res.json(
+    messages
+      .map((message) => formatVisitorMessage(message))
+      .filter(Boolean),
+  );
 });
 
-app.post('/api/chat', async (req, res) => {
-  const { sessionId, sender, text, replyToId, attachmentIds } = req.body;
+app.post('/api/chat', async (req: AdminRequest, res) => {
+  const { sessionId, sender, text, replyToId, attachmentIds, isInternalNote } = req.body;
   if (!sessionId || !sender) return res.status(400).json({ error: 'sessionId and sender are required' });
+
+  const wantsInternalNote = Boolean(isInternalNote);
+  let adminUser: { id: number } | null = null;
+  if (wantsInternalNote || sender === 'admin') {
+    adminUser = await getAdminUserFromRequest(req);
+    if (wantsInternalNote && !adminUser) {
+      return res.status(401).json({ error: 'Admin authentication required for internal notes' });
+    }
+  }
 
   await prisma.chatSession.upsert({
     where: { id: sessionId },
     update: {},
-    create: { id: sessionId },
+    create: { id: sessionId, status: 'new' },
   });
 
   const message = await prisma.chatMessage.create({
@@ -867,32 +1114,34 @@ app.post('/api/chat', async (req, res) => {
       sender,
       text: text || 'Shared an attachment',
       answered: sender === 'admin' || sender === 'bot',
+      isInternalNote: wantsInternalNote,
       replyToId: replyToId || null,
       attachments: Array.isArray(attachmentIds)
         ? { connect: attachmentIds.map((id: number) => ({ id })) }
         : undefined,
     },
-    include: { attachments: true },
+    include: chatMessageInclude,
   });
 
-  if (sender === 'admin') {
+  if (sender === 'admin' && !wantsInternalNote) {
     await prisma.chatMessage.updateMany({
       where: { sessionId, sender: 'user', answered: false },
       data: { answered: true },
     });
+    await autoUpdateConversationStatus(sessionId, 'admin_replied');
   }
 
   res.status(201).json(message);
 });
 
 app.post('/api/chat/respond', async (req, res) => {
-  const { sessionId, message, userName, attachmentIds } = req.body;
+  const { sessionId, message, userName, attachmentIds, replyToId } = req.body;
   if (!sessionId || !message) return res.status(400).json({ error: 'sessionId and message are required' });
 
   await prisma.chatSession.upsert({
     where: { id: sessionId },
     update: { name: userName || undefined, visitorLastSeenAt: new Date() },
-    create: { id: sessionId, name: userName || null, visitorLastSeenAt: new Date() },
+    create: { id: sessionId, name: userName || null, visitorLastSeenAt: new Date(), status: 'new' },
   });
 
   const userMessage = await prisma.chatMessage.create({
@@ -901,11 +1150,15 @@ app.post('/api/chat/respond', async (req, res) => {
       sender: 'user',
       text: message,
       answered: false,
+      replyToId: replyToId || null,
       attachments: Array.isArray(attachmentIds)
         ? { connect: attachmentIds.map((id: number) => ({ id })) }
         : undefined,
     },
+    include: chatMessageInclude,
   });
+
+  await autoUpdateConversationStatus(sessionId, 'admin_needed');
 
   const botText = 'Thanks for your message. We have received it and the Primewayz UK team will follow up shortly.';
   const botMessage = await prisma.chatMessage.create({
@@ -916,11 +1169,14 @@ app.post('/api/chat/respond', async (req, res) => {
       answered: true,
       replyToId: userMessage.id,
     },
+    include: chatMessageInclude,
   });
 
+  await autoUpdateConversationStatus(sessionId, 'bot_replied');
+
   res.json({
-    userMessage,
-    botMessage,
+    userMessage: formatVisitorMessage(userMessage),
+    botMessage: formatVisitorMessage(botMessage),
     availability: await getChatAvailabilityPayload(),
   });
 });
@@ -951,6 +1207,8 @@ app.post('/api/chat/appointments', async (req, res) => {
       message: message || null,
     },
   });
+
+  await autoUpdateConversationStatus(sessionId, 'booked_call');
 
   res.status(201).json(appointment);
 });
@@ -993,6 +1251,23 @@ app.post('/api/blog/:id/comments', async (req, res) => {
 app.use('/api', (_req, res) => {
   res.status(404).json({ success: false, error: 'API route not found' });
 });
+
+// Bing Webmaster Tools XML verification — must run before static files and SSR catch-all.
+const BING_SITE_AUTH_XML = `<?xml version="1.0"?>
+<users>
+\t<user>503A5E857E52D99A468198CE6BD47F45</user>
+</users>
+`;
+
+function serveBingSiteAuth(_req: Request, res: Response) {
+  res
+    .status(200)
+    .type('application/xml')
+    .set('Cache-Control', 'public, max-age=3600')
+    .send(BING_SITE_AUTH_XML);
+}
+
+app.get('/BingSiteAuth.xml', serveBingSiteAuth);
 
 // --- Static files ---
 if (isProd) {

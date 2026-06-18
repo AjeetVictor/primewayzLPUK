@@ -155,6 +155,10 @@ After any SSR/SEO change, verify:
 - Browser console has no hydration mismatch warnings on key pages.
 - `/admin` returns noindex metadata.
 - API routes still return JSON as expected.
+- Bing Webmaster Tools verification:
+  - `curl -i http://localhost:3000/BingSiteAuth.xml` returns `200` with `Content-Type: application/xml` and XML body only (no React HTML).
+  - `curl -s http://localhost:3000/ | grep msvalidate.01` shows `<meta name="msvalidate.01" content="503A5E857E52D99A468198CE6BD47F45" />`.
+  - `npm run validate:bing` (server must be running).
 
 ## 4.2) Chat architecture and logs
 
