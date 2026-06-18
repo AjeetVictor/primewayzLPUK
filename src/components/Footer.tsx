@@ -7,7 +7,7 @@ const productLinks = [
   { label: 'Website Maintenance', href: '/website-maintenance-subscription-uk' },
   { label: 'How it Works', href: '/#how-it-works' },
   { label: 'Features', href: '/#features' },
-  { label: 'Success Stories', href: '/#success-stories' },
+  { label: 'Success Stories', href: '/success-stories' },
   { label: 'Pricing', href: '/#pricing' },
   { label: 'FAQ', href: '/#faq' },
 ] as const;
