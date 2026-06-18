@@ -540,7 +540,7 @@ async function getInitialDataAndSeo(pathname: string) {
     '/software-development-subscription-uk': {
       title: 'Software Development Subscription for UK SMEs | Primewayz UK',
       description:
-        'Monthly software development subscription for UK SMEs covering website improvements, CRM workflows, automation, integrations, dashboards, technical SEO foundations, maintenance, testing, and ongoing digital delivery support.',
+        'Primewayz UK provides monthly software development subscriptions for UK SMEs, covering websites, CRM, automation, integrations, technical SEO, and support.',
     },
     '/website-maintenance-subscription-uk': {
       title: 'Website Maintenance Subscription for UK SMEs | Primewayz UK',
