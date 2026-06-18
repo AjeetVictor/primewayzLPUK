@@ -2,11 +2,12 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send, FileText, Save, UploadCloud, Archive, Star, Bell, BellOff, Paperclip, Image as ImageIcon, CalendarClock, StickyNote, Pencil, X } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send, FileText, Save, UploadCloud, Archive, Star, Bell, BellOff, Paperclip, Image as ImageIcon, CalendarClock, StickyNote, Pencil, X, Check, Reply } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiUrl } from '../utils/apiUrl';
 import { PasswordInput } from './ui/PasswordInput';
 import { RichBlogEditor } from './admin/RichBlogEditor';
+import { ChatConfirmDialog } from './admin/ChatConfirmDialog';
 import { sanitizeBlogHtml } from '../utils/sanitizeHtml';
 import {
   CHAT_STATUS_FILTERS,
@@ -371,6 +372,8 @@ export const AdminPanel = () => {
   const [isInternalNoteMode, setIsInternalNoteMode] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [editingMessageText, setEditingMessageText] = useState('');
+  const [pendingDeleteMessageId, setPendingDeleteMessageId] = useState<number | null>(null);
+  const [isDeletingMessage, setIsDeletingMessage] = useState(false);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [unreadBySession, setUnreadBySession] = useState<Record<string, number>>({});
   const [soundAlertsEnabled, setSoundAlertsEnabled] = useState(() => {
@@ -884,6 +887,11 @@ export const AdminPanel = () => {
     }
   };
 
+  const cancelEditingMessage = () => {
+    setEditingMessageId(null);
+    setEditingMessageText('');
+  };
+
   const saveEditedMessage = async (messageId: number) => {
     if (!editingMessageText.trim()) return;
     try {
@@ -893,8 +901,7 @@ export const AdminPanel = () => {
         body: JSON.stringify({ text: editingMessageText }),
       });
       if (res.ok) {
-        setEditingMessageId(null);
-        setEditingMessageText('');
+        cancelEditingMessage();
         fetchData();
       }
     } catch (error) {
@@ -902,13 +909,17 @@ export const AdminPanel = () => {
     }
   };
 
-  const softDeleteMessage = async (messageId: number) => {
-    if (!window.confirm('Delete this admin message? Visitors will see "Message deleted".')) return;
+  const confirmSoftDeleteMessage = async () => {
+    if (pendingDeleteMessageId === null) return;
+    setIsDeletingMessage(true);
     try {
-      const res = await adminRequest(`/api/admin/chat/messages/${messageId}`, { method: 'DELETE' });
+      const res = await adminRequest(`/api/admin/chat/messages/${pendingDeleteMessageId}`, { method: 'DELETE' });
       if (res.ok) fetchData();
     } catch (error) {
       console.error('Message delete failed:', error);
+    } finally {
+      setIsDeletingMessage(false);
+      setPendingDeleteMessageId(null);
     }
   };
 
@@ -1888,10 +1899,61 @@ export const AdminPanel = () => {
                         const isAdminMessage = sender === 'admin';
                         const isInternal = message.isInternalNote;
                         const isEditing = editingMessageId === message.id;
+                        const canManageAdminMessage = isAdminMessage && !isInternal && !message.deletedAt;
+                        const messageAlignment = isAdminMessage && !isInternal ? 'justify-end' : isInternal ? 'justify-center' : 'justify-start';
+                        const iconButtonClass = isAdminMessage && !isInternal
+                          ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-emerald-50/90 transition hover:bg-white/15 hover:text-white focus-visible:bg-white/15 focus-visible:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40'
+                          : 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 focus-visible:bg-zinc-100 focus-visible:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30';
+
+                        if (isEditing && canManageAdminMessage) {
+                          return (
+                            <div key={message.id} className={`flex w-full ${messageAlignment}`}>
+                              <div className="w-full min-w-0 max-w-[720px] sm:ml-auto sm:min-w-[520px]">
+                                <div className="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm">
+                                  <div className="mb-3 flex items-center gap-2">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                                      Editing admin message
+                                    </span>
+                                    <span className="text-[10px] text-zinc-400">
+                                      {format(new Date(message.timestamp), 'MMM d, h:mm a')}
+                                    </span>
+                                  </div>
+                                  <textarea
+                                    value={editingMessageText}
+                                    onChange={(e) => setEditingMessageText(e.target.value)}
+                                    className="min-h-[120px] w-full resize-y rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm leading-relaxed text-zinc-800 outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-500/20"
+                                    rows={5}
+                                  />
+                                  <div className="mt-3 flex justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={cancelEditingMessage}
+                                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30"
+                                      aria-label="Cancel editing"
+                                      title="Cancel editing"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => saveEditedMessage(message.id)}
+                                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-600 text-white transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+                                      aria-label="Save edited message"
+                                      title="Save edited message"
+                                    >
+                                      <Check className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
                         return (
                           <div
                             key={message.id}
-                            className={`flex ${isAdminMessage && !isInternal ? 'justify-end' : isInternal ? 'justify-center' : 'justify-start'}`}
+                            className={`group flex w-full ${messageAlignment}`}
                           >
                             <div className={`max-w-[86%] rounded-2xl border px-4 py-3 shadow-sm ${
                               isInternal
@@ -1919,22 +1981,7 @@ export const AdminPanel = () => {
                                 replyTo={message.replyTo}
                                 variant={isInternal ? 'internal' : isAdminMessage ? 'admin' : 'visitor'}
                               />
-                              {isEditing ? (
-                                <div className="space-y-2">
-                                  <textarea
-                                    value={editingMessageText}
-                                    onChange={(e) => setEditingMessageText(e.target.value)}
-                                    className="w-full rounded-lg border border-white/30 bg-white/10 p-2 text-sm text-white"
-                                    rows={3}
-                                  />
-                                  <div className="flex gap-2">
-                                    <button type="button" onClick={() => saveEditedMessage(message.id)} className="rounded-lg bg-white px-2 py-1 text-xs font-bold text-emerald-700">Save</button>
-                                    <button type="button" onClick={() => { setEditingMessageId(null); setEditingMessageText(''); }} className="rounded-lg bg-white/20 px-2 py-1 text-xs font-bold">Cancel</button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <p className="whitespace-pre-wrap text-sm leading-relaxed">{getMessageDisplayText(message)}</p>
-                              )}
+                              <p className="whitespace-pre-wrap text-sm leading-relaxed">{getMessageDisplayText(message)}</p>
                               {message.attachments && message.attachments.length > 0 && (
                                 <div className="mt-3 space-y-2">
                                   {message.attachments.map((attachment) => (
@@ -1959,7 +2006,7 @@ export const AdminPanel = () => {
                                   ))}
                                 </div>
                               )}
-                              <div className="mt-2 flex flex-wrap gap-2">
+                              <div className="mt-2 flex flex-wrap items-center gap-1 opacity-90 transition group-hover:opacity-100 group-focus-within:opacity-100">
                                 {sender === 'user' && (
                                   <button
                                     type="button"
@@ -1967,31 +2014,39 @@ export const AdminPanel = () => {
                                       setReplyingToMessageId(message.id);
                                       setReplyingTo(selectedConversation.sessionId);
                                     }}
-                                    className="text-[10px] font-bold underline opacity-80"
+                                    className={iconButtonClass}
+                                    aria-label="Reply to visitor message"
+                                    title="Reply to visitor message"
                                   >
-                                    Reply
+                                    <Reply className="h-3.5 w-3.5" />
                                   </button>
                                 )}
-                                {isAdminMessage && !isInternal && !message.deletedAt && (
+                                {canManageAdminMessage && (
                                   <>
                                     <button
                                       type="button"
                                       onClick={() => {
+                                        setPendingDeleteMessageId(null);
                                         setEditingMessageId(message.id);
                                         setEditingMessageText(message.text);
                                       }}
-                                      className="inline-flex items-center gap-1 text-[10px] font-bold opacity-80"
+                                      className={iconButtonClass}
+                                      aria-label="Edit admin message"
+                                      title="Edit admin message"
                                     >
-                                      <Pencil className="h-3 w-3" />
-                                      Edit
+                                      <Pencil className="h-3.5 w-3.5" />
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => softDeleteMessage(message.id)}
-                                      className="inline-flex items-center gap-1 text-[10px] font-bold opacity-80"
+                                      onClick={() => {
+                                        cancelEditingMessage();
+                                        setPendingDeleteMessageId(message.id);
+                                      }}
+                                      className={iconButtonClass}
+                                      aria-label="Delete admin message"
+                                      title="Delete admin message"
                                     >
-                                      <Trash2 className="h-3 w-3" />
-                                      Delete
+                                      <Trash2 className="h-3.5 w-3.5" />
                                     </button>
                                   </>
                                 )}
@@ -2561,6 +2616,18 @@ export const AdminPanel = () => {
           )}
         </Tabs.Root>
       </div>
+      <ChatConfirmDialog
+        open={pendingDeleteMessageId !== null}
+        title="Delete admin message?"
+        body='Visitors will see "Message deleted".'
+        cancelLabel="Cancel"
+        confirmLabel="Delete message"
+        onCancel={() => {
+          if (!isDeletingMessage) setPendingDeleteMessageId(null);
+        }}
+        onConfirm={confirmSoftDeleteMessage}
+        isConfirming={isDeletingMessage}
+      />
     </div>
   );
 };
