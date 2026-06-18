@@ -30,6 +30,20 @@ interface FormResponse {
   createdAt: string;
 }
 
+interface ToolLead {
+  id: number;
+  source: string;
+  websiteUrl: string;
+  score: number | null;
+  businessType: string | null;
+  location: string | null;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  message: string | null;
+  createdAt: string;
+}
+
 interface ChatMessage {
   id: number;
   sessionId: string;
@@ -354,6 +368,7 @@ export const AdminPanel = () => {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [formResponses, setFormResponses] = useState<FormResponse[]>([]);
+  const [toolLeads, setToolLeads] = useState<ToolLead[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [chatAppointments, setChatAppointments] = useState<ChatAppointmentRequest[]>([]);
@@ -569,6 +584,7 @@ export const AdminPanel = () => {
       if (isOperationsRole(currentUser?.role)) {
         endpoints.push(
           fetch(apiUrl('/api/admin/forms'), { credentials: 'include' }),
+          fetch(apiUrl('/api/admin/tool-leads'), { credentials: 'include' }),
           fetch(apiUrl('/api/admin/chats'), { credentials: 'include' }),
           fetch(apiUrl('/api/admin/sessions'), { credentials: 'include' }),
           fetch(apiUrl('/api/admin/blog-comments'), { credentials: 'include' }),
@@ -597,6 +613,8 @@ export const AdminPanel = () => {
       let resultIndex = 0;
       if (isOperationsRole(currentUser?.role)) {
         if (results[resultIndex]?.ok) setFormResponses(await results[resultIndex].json());
+        resultIndex += 1;
+        if (results[resultIndex]?.ok) setToolLeads(await results[resultIndex].json());
         resultIndex += 1;
         if (results[resultIndex]?.ok) setChatMessages(await results[resultIndex].json());
         resultIndex += 1;
@@ -671,6 +689,18 @@ export const AdminPanel = () => {
       }
     } catch (error) {
       console.error('Delete failed:', error);
+    }
+  };
+
+  const deleteToolLead = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this tool lead?')) return;
+    try {
+      const res = await fetch(apiUrl(`/api/admin/tool-leads/${id}`), { method: 'DELETE', credentials: 'include' });
+      if (res.ok) {
+        setToolLeads(prev => prev.filter(r => r.id !== id));
+      }
+    } catch (error) {
+      console.error('Delete tool lead failed:', error);
     }
   };
 
@@ -975,6 +1005,19 @@ export const AdminPanel = () => {
     res.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (res.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
   );
+
+  const filteredToolLeads = toolLeads.filter((lead) => {
+    const q = searchTerm.toLowerCase();
+    return (
+      lead.source.toLowerCase().includes(q) ||
+      lead.websiteUrl.toLowerCase().includes(q) ||
+      (lead.name?.toLowerCase().includes(q) ?? false) ||
+      (lead.email?.toLowerCase().includes(q) ?? false) ||
+      (lead.businessType?.toLowerCase().includes(q) ?? false) ||
+      (lead.location?.toLowerCase().includes(q) ?? false) ||
+      String(lead.score ?? '').includes(q)
+    );
+  });
 
   const chatConversations = useMemo<ChatConversation[]>(() => {
     const bySession = new Map<string, ChatConversation>();
@@ -1531,7 +1574,7 @@ export const AdminPanel = () => {
                   <ClipboardList className="w-4 h-4" />
                   Form Responses
                   <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
-                    {formResponses.length}
+                    {formResponses.length + toolLeads.length}
                   </span>
                 </Tabs.Trigger>
                 <Tabs.Trigger 
@@ -1631,6 +1674,70 @@ export const AdminPanel = () => {
                             {(isSuperAdmin(user?.role) || user?.role === 'editor') && (
                               <button 
                                 onClick={() => deleteFormResponse(res.id)}
+                                className="p-2 text-zinc-400 hover:text-red-600 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="mt-8 bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-sm">
+              <div className="border-b border-zinc-100 px-6 py-4">
+                <h3 className="text-sm font-bold text-zinc-900">Tool Leads</h3>
+                <p className="mt-1 text-xs text-zinc-500">Digital Visibility Checker and other tool submissions</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-zinc-50 border-bottom border-zinc-100">
+                      <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Date</th>
+                      <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Source</th>
+                      <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Website</th>
+                      <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Score</th>
+                      <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Name</th>
+                      <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Email</th>
+                      <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Details</th>
+                      <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-50">
+                    {filteredToolLeads.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-6 py-12 text-center text-zinc-400 italic">
+                          {searchTerm ? `No tool leads matching "${searchTerm}"` : 'No tool leads found.'}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredToolLeads.map((lead) => (
+                        <tr key={lead.id} className="hover:bg-zinc-50/50 transition-colors">
+                          <td className="px-6 py-4 text-sm text-zinc-500">
+                            {format(new Date(lead.createdAt), 'MMM d, h:mm a')}
+                          </td>
+                          <td className="px-6 py-4 text-sm font-semibold text-emerald-700">{lead.source}</td>
+                          <td className="px-6 py-4 text-sm text-zinc-600 max-w-[180px] truncate">{lead.websiteUrl}</td>
+                          <td className="px-6 py-4 text-sm font-bold text-zinc-900">{lead.score ?? '-'}</td>
+                          <td className="px-6 py-4 text-sm font-bold text-zinc-900">{lead.name || '-'}</td>
+                          <td className="px-6 py-4 text-sm text-zinc-600">{lead.email || '-'}</td>
+                          <td className="px-6 py-4 text-sm text-zinc-500 max-w-xs">
+                            <div className="space-y-1">
+                              {lead.businessType && <div>Type: {lead.businessType}</div>}
+                              {lead.location && <div>Location: {lead.location}</div>}
+                              {lead.phone && <div>Phone: {lead.phone}</div>}
+                              {lead.message && <div className="truncate">Message: {lead.message}</div>}
+                              {!lead.name && !lead.email && <div className="italic text-zinc-400">Check only (no lead form)</div>}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {(isSuperAdmin(user?.role) || user?.role === 'editor') && (
+                              <button
+                                onClick={() => deleteToolLead(lead.id)}
                                 className="p-2 text-zinc-400 hover:text-red-600 transition-colors"
                               >
                                 <Trash2 className="w-4 h-4" />

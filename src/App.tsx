@@ -38,6 +38,8 @@ import { ServicesPage } from './components/ServicesPage';
 import { LocalTradesLeadCapturePage } from './components/LocalTradesLeadCapturePage';
 import { ProfessionalServicesCrmCleanupPage } from './components/ProfessionalServicesCrmCleanupPage';
 import { EcommerceStoreStabilitySupportPage } from './components/EcommerceStoreStabilitySupportPage';
+import { DigitalVisibilityCheckerPromo } from './components/DigitalVisibilityCheckerPromo';
+import { UkSmeDigitalVisibilityCheckerPage } from './components/UkSmeDigitalVisibilityCheckerPage';
 
 // SSR-safe: use static path for logo
 const logo = '/assets/primewayz-infotech-logo.svg';
@@ -53,6 +55,7 @@ const MainContent = () => (
   <main>
     <Hero />
     <UKTrustStrip />
+    <DigitalVisibilityCheckerPromo />
     <UKSmePainPoints />
     <Philosophy />
     <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 1 }}>
@@ -122,6 +125,7 @@ export const App = ({ initialData }: AppProps) => {
         <Route path="/blog" element={<BlogListPage initialPosts={initialData?.blogPosts} />} />
         <Route path="/blog/:id" element={<BlogPost initialPost={initialData?.blogPost} />} />
         <Route path="/services" element={<ServicesPage />} />
+        <Route path="/uk-sme-digital-visibility-checker" element={<UkSmeDigitalVisibilityCheckerPage />} />
         <Route path="/software-development-subscription-uk" element={<SoftwareDevelopmentSubscriptionUkPage />} />
         <Route path="/website-maintenance-subscription-uk" element={<WebsiteMaintenanceSubscriptionUkPage />} />
         <Route path="/crm-integration-support-uk" element={<CrmIntegrationSupportUkPage />} />

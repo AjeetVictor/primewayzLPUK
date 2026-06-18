@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { getAllBlogPosts, getBlogPostById } from './src/data/blog/utils.ts';
+import { runDigitalVisibilityCheck } from './src/lib/digitalVisibilityCheck.ts';
 import type { NextFunction, Request, Response } from 'express';
 import type { BlogPost } from './src/data/blog/types.ts';
 
@@ -572,6 +573,11 @@ async function getInitialDataAndSeo(pathname: string) {
       description:
         'See how Primewayz UK helps e-commerce stores improve website stability, checkout flows, tracking, technical fixes, and monthly support.',
     },
+    '/uk-sme-digital-visibility-checker': {
+      title: 'Free UK SME Digital Visibility Checker | Primewayz UK',
+      description:
+        'Check if your UK SME website is clear, discoverable, trustworthy, and enquiry-ready with a free digital visibility score from Primewayz UK.',
+    },
   };
 
   const pageSeo = staticPageSeo[pathname] || staticPageSeo['/'];
@@ -656,6 +662,18 @@ app.delete('/api/admin/forms/:id', requireAdmin, requireRole(isOperationsRole), 
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid form id' });
   await prisma.formResponse.delete({ where: { id } });
+  res.json({ success: true });
+});
+
+app.get('/api/admin/tool-leads', requireAdmin, requireRole(isOperationsRole), async (_req, res) => {
+  const leads = await prisma.toolLead.findMany({ orderBy: { createdAt: 'desc' } });
+  res.json(leads);
+});
+
+app.delete('/api/admin/tool-leads/:id', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid tool lead id' });
+  await prisma.toolLead.delete({ where: { id } });
   res.json({ success: true });
 });
 
@@ -1010,6 +1028,56 @@ app.post('/api/contact', async (req, res) => {
   } catch (err) {
     console.error('Contact form error:', err);
     res.status(500).json({ error: 'Could not save contact request' });
+  }
+});
+
+app.post('/api/tools/digital-visibility-check', async (req, res) => {
+  try {
+    const { websiteUrl, businessType, location } = req.body;
+    if (!websiteUrl || typeof websiteUrl !== 'string') {
+      return res.status(400).json({ error: 'websiteUrl is required' });
+    }
+
+    const result = await runDigitalVisibilityCheck({
+      websiteUrl,
+      businessType: typeof businessType === 'string' ? businessType : undefined,
+      location: typeof location === 'string' ? location : undefined,
+    });
+
+    res.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Could not check this website.';
+    const status = message.includes('cannot be checked') || message.includes('valid website') ? 400 : 502;
+    console.error('Digital visibility check error:', err);
+    res.status(status).json({ error: message });
+  }
+});
+
+app.post('/api/tools/digital-visibility-check/lead', async (req, res) => {
+  try {
+    const { name, email, phone, message, websiteUrl, score, businessType, location } = req.body;
+    if (!name || !email || !websiteUrl) {
+      return res.status(400).json({ error: 'Name, email, and website URL are required' });
+    }
+
+    const lead = await prisma.toolLead.create({
+      data: {
+        source: 'Digital Visibility Checker',
+        websiteUrl: String(websiteUrl),
+        score: typeof score === 'number' ? score : Number(score) || null,
+        businessType: businessType ? String(businessType) : null,
+        location: location ? String(location) : null,
+        name: String(name),
+        email: String(email),
+        phone: phone ? String(phone) : null,
+        message: message ? String(message) : null,
+      },
+    });
+
+    res.status(201).json({ success: true, lead });
+  } catch (err) {
+    console.error('Digital visibility lead error:', err);
+    res.status(500).json({ error: 'Could not save your request' });
   }
 });
 

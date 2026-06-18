@@ -17,6 +17,24 @@ model FormResponse {
   createdAt DateTime @default(now())
 }
 
+// --- Tool Leads (visibility checker, etc.) ---
+model ToolLead {
+  id           Int      @id @default(autoincrement())
+  source       String   // e.g. "Digital Visibility Checker"
+  websiteUrl   String
+  score        Int?
+  businessType String?
+  location     String?
+  name         String?
+  email        String?
+  phone        String?
+  message      String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  @@index([source])
+  @@index([createdAt])
+}
+
 // --- Chat System ---
 model ChatSession {
   id                String                   @id @default(uuid())

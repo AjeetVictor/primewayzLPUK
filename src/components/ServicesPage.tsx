@@ -202,6 +202,24 @@ export const ServicesPage = () => (
       </div>
     </section>
 
+    <section className="border-y border-slate-200 bg-slate-50 px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-6 sm:flex-row sm:items-center sm:p-8">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-600">Free tool</p>
+          <h2 className="mt-2 text-xl font-bold text-slate-950">Check if your website is enquiry-ready</h2>
+          <p className="mt-2 max-w-2xl text-sm text-slate-600">
+            Run a free digital visibility check covering SEO, trust signals, lead capture, and local relevance.
+          </p>
+        </div>
+        <Link
+          to="/uk-sme-digital-visibility-checker"
+          className="inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-lg bg-[#000A2D] px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-700"
+        >
+          Check My Website
+        </Link>
+      </div>
+    </section>
+
     <section id="core-service-paths" className="px-4 py-20 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <div className="max-w-3xl">

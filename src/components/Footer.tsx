@@ -2,6 +2,7 @@ import { Linkedin, Phone, Mail } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
 
 const productLinks = [
+  { label: 'Digital Visibility Checker', href: '/uk-sme-digital-visibility-checker' },
   { label: 'Software Subscription', href: '/software-development-subscription-uk' },
   { label: 'Website Maintenance', href: '/website-maintenance-subscription-uk' },
   { label: 'How it Works', href: '/#how-it-works' },
