@@ -19,28 +19,52 @@ model FormResponse {
 
 // --- Chat System ---
 model ChatSession {
-  id           String                   @id @default(uuid())
-  name         String?
-  email        String?
+  id                String                   @id @default(uuid())
+  name              String?
+  email             String?
   visitorLastSeenAt DateTime?
-  createdAt    DateTime                 @default(now())
-  messages     ChatMessage[]
-  attachments  ChatAttachment[]
-  appointments ChatAppointmentRequest[]
+  status            String                   @default("new") // new, bot_replied, admin_needed, admin_replied, lead_qualified, follow_up_due, booked_call, closed, spam
+  firstLandingPage  String?
+  currentPageUrl    String?                  @db.Text
+  referrer          String?                  @db.Text
+  utmSource         String?
+  utmMedium         String?
+  utmCampaign       String?
+  utmContent        String?
+  deviceType        String?
+  browser           String?
+  serviceInterest   String?
+  closedAt          DateTime?
+  closedById        Int?
+  updatedAt         DateTime                 @updatedAt
+  createdAt         DateTime                 @default(now())
+  messages          ChatMessage[]
+  attachments       ChatAttachment[]
+  appointments      ChatAppointmentRequest[]
+
+  @@index([status])
+  @@index([createdAt])
 }
 
 model ChatMessage {
-  id          Int              @id @default(autoincrement())
-  sessionId   String
-  session     ChatSession      @relation(fields: [sessionId], references: [id])
-  sender      String           // 'user', 'bot', 'admin'
-  text        String
-  answered    Boolean          @default(false)
-  timestamp   DateTime         @default(now())
-  replyToId   Int?
-  replyTo     ChatMessage?     @relation("Replies", fields: [replyToId], references: [id])
-  replies     ChatMessage[]    @relation("Replies")
-  attachments ChatAttachment[]
+  id             Int              @id @default(autoincrement())
+  sessionId      String
+  session        ChatSession      @relation(fields: [sessionId], references: [id])
+  sender         String           // 'user', 'bot', 'admin'
+  text           String           @db.Text
+  answered       Boolean          @default(false)
+  isInternalNote Boolean          @default(false)
+  deletedAt      DateTime?
+  deletedBy      Int?
+  editedAt       DateTime?
+  timestamp      DateTime         @default(now())
+  replyToId      Int?
+  replyTo        ChatMessage?     @relation("Replies", fields: [replyToId], references: [id])
+  replies        ChatMessage[]    @relation("Replies")
+  attachments    ChatAttachment[]
+
+  @@index([sessionId, timestamp])
+  @@index([sender, answered])
 }
 
 model ChatAttachment {

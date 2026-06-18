@@ -2,12 +2,23 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send, FileText, Save, UploadCloud, Archive, Star, Bell, BellOff, Paperclip, Image as ImageIcon, CalendarClock } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send, FileText, Save, UploadCloud, Archive, Star, Bell, BellOff, Paperclip, Image as ImageIcon, CalendarClock, StickyNote, Pencil, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiUrl } from '../utils/apiUrl';
 import { PasswordInput } from './ui/PasswordInput';
 import { RichBlogEditor } from './admin/RichBlogEditor';
 import { sanitizeBlogHtml } from '../utils/sanitizeHtml';
+import {
+  CHAT_STATUS_FILTERS,
+  QUICK_REPLY_TEMPLATES,
+  formatConversationStatus,
+  getMessageDisplayText,
+  getStatusBadgeClass,
+  type ChatStatusFilterKey,
+  type ConversationStatus,
+} from '../lib/chatTypes';
+import { QuotedMessagePreview } from './chat/QuotedMessagePreview';
+import { trackAdminChatReply, trackChatLeadConverted } from '../lib/analytics';
 
 interface FormResponse {
   id: number;
@@ -25,9 +36,24 @@ interface ChatMessage {
   text: string;
   timestamp: string;
   replyToId?: number;
+  replyTo?: {
+    id: number;
+    text: string;
+    sender: string;
+    deletedAt?: string | null;
+    isInternalNote?: boolean;
+  } | null;
+  isInternalNote?: boolean;
+  deletedAt?: string | null;
+  deletedBy?: number | null;
+  editedAt?: string | null;
   session?: {
     name: string | null;
     email: string | null;
+    status?: string;
+    serviceInterest?: string | null;
+    firstLandingPage?: string | null;
+    currentPageUrl?: string | null;
   };
   attachments?: ChatAttachment[];
 }
@@ -63,10 +89,22 @@ interface ChatSession {
   name: string | null;
   email: string | null;
   visitorLastSeenAt?: string | null;
+  status?: ConversationStatus | string;
+  firstLandingPage?: string | null;
+  currentPageUrl?: string | null;
+  referrer?: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  utmContent?: string | null;
+  deviceType?: string | null;
+  browser?: string | null;
+  serviceInterest?: string | null;
   createdAt: string;
   messages: {
     text: string;
     timestamp: string;
+    sender?: string;
   }[];
 }
 
@@ -78,8 +116,15 @@ interface ChatConversation {
   messages: ChatMessage[];
   lastMessage: ChatMessage | null;
   lastMessageAt: string | null;
-  status: 'open' | 'replied' | 'bot-replied';
+  status: ConversationStatus | string;
   unreadCount: number;
+  serviceInterest?: string | null;
+  firstLandingPage?: string | null;
+  currentPageUrl?: string | null;
+  referrer?: string | null;
+  utmSource?: string | null;
+  deviceType?: string | null;
+  browser?: string | null;
 }
 
 type ChatAvailabilityStatus = 'online' | 'away' | 'offline' | 'assistant';
@@ -322,6 +367,10 @@ export const AdminPanel = () => {
   const [replyingToMessageId, setReplyingToMessageId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState('');
   const [activeTab, setActiveTab] = useState('forms');
+  const [chatStatusFilter, setChatStatusFilter] = useState<ChatStatusFilterKey>('all');
+  const [isInternalNoteMode, setIsInternalNoteMode] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [editingMessageText, setEditingMessageText] = useState('');
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [unreadBySession, setUnreadBySession] = useState<Record<string, number>>({});
   const [soundAlertsEnabled, setSoundAlertsEnabled] = useState(() => {
@@ -767,29 +816,99 @@ export const AdminPanel = () => {
     }
   };
 
-  const handleAdminReply = async (sessionId: string, replyToId?: number) => {
-    if (!replyText.trim() && adminReplyAttachments.length === 0) return;
+  const handleAdminReply = async (sessionId: string, replyToId?: number, options?: { textOverride?: string; isQuickReply?: boolean; isInternalNote?: boolean }) => {
+    const outgoingText = options?.textOverride ?? replyText;
+    const internalNote = options?.isInternalNote ?? isInternalNoteMode;
+    if (!outgoingText.trim() && adminReplyAttachments.length === 0) return;
     try {
       const res = await fetch(apiUrl('/api/chat'), {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sender: 'admin',
-          text: replyText,
+          text: outgoingText,
           sessionId,
-          replyToId,
+          replyToId: replyToId ?? replyingToMessageId ?? undefined,
+          isInternalNote: internalNote,
           attachmentIds: adminReplyAttachments.map((attachment) => attachment.id),
         })
       });
       if (res.ok) {
+        const sessionMeta = chatSessions.find((session) => session.id === sessionId);
+        trackAdminChatReply({
+          sessionId,
+          hasAttachment: adminReplyAttachments.length > 0,
+          isInternalNote: internalNote,
+          isQuickReply: options?.isQuickReply,
+          conversationStatus: sessionMeta?.status,
+        });
         setReplyText('');
         setAdminReplyAttachments([]);
         setReplyingTo(null);
         setReplyingToMessageId(null);
+        setIsInternalNoteMode(false);
         fetchData();
       }
     } catch (error) {
       console.error('Admin reply failed:', error);
+    }
+  };
+
+  const sendInternalNote = async (sessionId: string) => {
+    if (!replyText.trim()) return;
+    await handleAdminReply(sessionId, replyingToMessageId ?? undefined, { isInternalNote: true });
+  };
+
+  const updateConversationStatus = async (sessionId: string, status: ConversationStatus | string) => {
+    try {
+      const res = await adminRequest(`/api/admin/sessions/${sessionId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        if (status === 'lead_qualified' || status === 'booked_call') {
+          const sessionMeta = chatSessions.find((session) => session.id === sessionId);
+          trackChatLeadConverted({
+            sessionId,
+            conversionType: status,
+            serviceInterest: sessionMeta?.serviceInterest,
+            sourcePage: sessionMeta?.firstLandingPage,
+          });
+        }
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Conversation status update failed:', error);
+    }
+  };
+
+  const saveEditedMessage = async (messageId: number) => {
+    if (!editingMessageText.trim()) return;
+    try {
+      const res = await adminRequest(`/api/admin/chat/messages/${messageId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: editingMessageText }),
+      });
+      if (res.ok) {
+        setEditingMessageId(null);
+        setEditingMessageText('');
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Message edit failed:', error);
+    }
+  };
+
+  const softDeleteMessage = async (messageId: number) => {
+    if (!window.confirm('Delete this admin message? Visitors will see "Message deleted".')) return;
+    try {
+      const res = await adminRequest(`/api/admin/chat/messages/${messageId}`, { method: 'DELETE' });
+      if (res.ok) fetchData();
+    } catch (error) {
+      console.error('Message delete failed:', error);
     }
   };
 
@@ -858,8 +977,15 @@ export const AdminPanel = () => {
         messages: [],
         lastMessage: null,
         lastMessageAt: session.messages[0]?.timestamp || session.createdAt,
-        status: 'open',
+        status: session.status || 'new',
         unreadCount: unreadBySession[session.id] || 0,
+        serviceInterest: session.serviceInterest,
+        firstLandingPage: session.firstLandingPage,
+        currentPageUrl: session.currentPageUrl,
+        referrer: session.referrer,
+        utmSource: session.utmSource,
+        deviceType: session.deviceType,
+        browser: session.browser,
       });
     });
 
@@ -880,8 +1006,11 @@ export const AdminPanel = () => {
         messages: [message],
         lastMessage: null,
         lastMessageAt: message.timestamp,
-        status: 'open',
+        status: message.session?.status || 'new',
         unreadCount: unreadBySession[message.sessionId] || 0,
+        serviceInterest: message.session?.serviceInterest,
+        firstLandingPage: message.session?.firstLandingPage,
+        currentPageUrl: message.session?.currentPageUrl,
       });
     });
 
@@ -890,20 +1019,13 @@ export const AdminPanel = () => {
         const messages = [...conversation.messages].sort(
           (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
         );
-        const lastMessage = messages[messages.length - 1] || null;
-        const lastSender = lastMessage?.sender?.toLowerCase();
-        const status: ChatConversation['status'] = lastSender === 'admin'
-          ? 'replied'
-          : lastSender === 'bot'
-            ? 'bot-replied'
-            : 'open';
+        const lastMessage = messages.filter((message) => !message.isInternalNote).at(-1) || messages[messages.length - 1] || null;
 
         return {
           ...conversation,
           messages,
           lastMessage,
           lastMessageAt: lastMessage?.timestamp || conversation.lastMessageAt,
-          status,
           unreadCount: unreadBySession[conversation.sessionId] || 0,
         };
       })
@@ -913,12 +1035,18 @@ export const AdminPanel = () => {
   const filteredChatConversations = chatConversations.filter((conversation) => {
     const term = searchTerm.toLowerCase();
     const lastText = conversation.lastMessage?.text || '';
-    return (
+    const matchesSearch =
       conversation.sessionId.toLowerCase().includes(term) ||
       (conversation.name?.toLowerCase().includes(term) || false) ||
       (conversation.email?.toLowerCase().includes(term) || false) ||
-      lastText.toLowerCase().includes(term)
-    );
+      lastText.toLowerCase().includes(term) ||
+      (conversation.serviceInterest?.toLowerCase().includes(term) || false) ||
+      (conversation.firstLandingPage?.toLowerCase().includes(term) || false);
+
+    if (!matchesSearch) return false;
+    if (chatStatusFilter === 'all') return true;
+    if (chatStatusFilter === 'unread') return conversation.unreadCount > 0;
+    return conversation.status === chatStatusFilter;
   });
 
   const selectedConversation = chatConversations.find(
@@ -1601,6 +1729,28 @@ export const AdminPanel = () => {
           </Tabs.Content>
 
           <Tabs.Content value="chats" className="outline-none">
+            <div className="mb-4 flex flex-wrap gap-2">
+              {CHAT_STATUS_FILTERS.map((filter) => (
+                <button
+                  key={filter.key}
+                  type="button"
+                  onClick={() => setChatStatusFilter(filter.key)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                    chatStatusFilter === filter.key
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-50'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+              <Link
+                to="/admin/chat"
+                className="ml-auto rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50"
+              >
+                Open mobile chat
+              </Link>
+            </div>
             <div className="grid grid-cols-1 xl:grid-cols-[minmax(280px,0.75fr)_minmax(0,1.25fr)] gap-6">
               <div className="bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden">
                 <div className="px-5 py-4 border-b border-zinc-100 flex items-center justify-between">
@@ -1654,6 +1804,11 @@ export const AdminPanel = () => {
                             <p className="truncate text-xs text-zinc-500">
                               {conversation.email || `Session ${conversation.sessionId.slice(0, 8)}`}
                             </p>
+                            {(conversation.serviceInterest || conversation.firstLandingPage) && (
+                              <p className="truncate text-[11px] text-emerald-700">
+                                {conversation.serviceInterest || conversation.firstLandingPage}
+                              </p>
+                            )}
                           </div>
                           <span className="shrink-0 text-[10px] text-zinc-400">
                             {conversation.lastMessageAt ? format(new Date(conversation.lastMessageAt), 'MMM d, h:mm a') : '-'}
@@ -1663,14 +1818,8 @@ export const AdminPanel = () => {
                           {conversation.lastMessage?.text || 'No messages yet.'}
                         </p>
                         <div className="mt-3 flex items-center justify-between gap-3">
-                          <span className={`rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                            conversation.status === 'replied'
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : conversation.status === 'bot-replied'
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'bg-amber-100 text-amber-700'
-                          }`}>
-                            {conversation.status}
+                          <span className={`rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${getStatusBadgeClass(conversation.status)}`}>
+                            {formatConversationStatus(conversation.status)}
                           </span>
                           <span className="text-[10px] font-mono text-zinc-400">
                             {conversation.messages.length} messages
@@ -1694,19 +1843,41 @@ export const AdminPanel = () => {
                         <p className="text-sm text-zinc-500">
                           {selectedConversation.email || 'No email provided'} · {selectedConversation.sessionId}
                         </p>
+                        <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-zinc-500">
+                          {selectedConversation.serviceInterest && (
+                            <span className="rounded-lg bg-emerald-50 px-2 py-1 font-semibold text-emerald-700">
+                              {selectedConversation.serviceInterest}
+                            </span>
+                          )}
+                          {selectedConversation.firstLandingPage && (
+                            <span className="rounded-lg bg-zinc-100 px-2 py-1">Landing: {selectedConversation.firstLandingPage}</span>
+                          )}
+                          {selectedConversation.currentPageUrl && (
+                            <span className="rounded-lg bg-zinc-100 px-2 py-1 truncate max-w-full">Page: {selectedConversation.currentPageUrl}</span>
+                          )}
+                          {selectedConversation.utmSource && (
+                            <span className="rounded-lg bg-zinc-100 px-2 py-1">UTM: {selectedConversation.utmSource}</span>
+                          )}
+                          {selectedConversation.deviceType && (
+                            <span className="rounded-lg bg-zinc-100 px-2 py-1">{selectedConversation.deviceType} · {selectedConversation.browser}</span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <select
+                          value={selectedConversation.status}
+                          onChange={(e) => updateConversationStatus(selectedConversation.sessionId, e.target.value)}
+                          className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[11px] font-bold text-zinc-700"
+                        >
+                          {['new', 'bot_replied', 'admin_needed', 'admin_replied', 'lead_qualified', 'follow_up_due', 'booked_call', 'closed', 'spam'].map((status) => (
+                            <option key={status} value={status}>{formatConversationStatus(status)}</option>
+                          ))}
+                        </select>
                         <span className="rounded-lg bg-zinc-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
                           {selectedConversation.messages.length} messages
                         </span>
-                        <span className={`rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                          selectedConversation.status === 'replied'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : selectedConversation.status === 'bot-replied'
-                              ? 'bg-blue-100 text-blue-700'
-                              : 'bg-amber-100 text-amber-700'
-                        }`}>
-                          {selectedConversation.status}
+                        <span className={`rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${getStatusBadgeClass(selectedConversation.status)}`}>
+                          {formatConversationStatus(selectedConversation.status)}
                         </span>
                       </div>
                     </div>
@@ -1715,29 +1886,55 @@ export const AdminPanel = () => {
                       {selectedConversation.messages.map((message) => {
                         const sender = message.sender.toLowerCase();
                         const isAdminMessage = sender === 'admin';
+                        const isInternal = message.isInternalNote;
+                        const isEditing = editingMessageId === message.id;
                         return (
                           <div
                             key={message.id}
-                            className={`flex ${isAdminMessage ? 'justify-end' : 'justify-start'}`}
+                            className={`flex ${isAdminMessage && !isInternal ? 'justify-end' : isInternal ? 'justify-center' : 'justify-start'}`}
                           >
                             <div className={`max-w-[86%] rounded-2xl border px-4 py-3 shadow-sm ${
-                              isAdminMessage
-                                ? 'border-emerald-100 bg-emerald-600 text-white'
-                                : sender === 'bot'
-                                  ? 'border-blue-100 bg-blue-50 text-zinc-800'
-                                  : 'border-zinc-200 bg-white text-zinc-800'
+                              isInternal
+                                ? 'border-amber-200 bg-amber-50 text-amber-900'
+                                : isAdminMessage
+                                  ? 'border-emerald-100 bg-emerald-600 text-white'
+                                  : sender === 'bot'
+                                    ? 'border-blue-100 bg-blue-50 text-zinc-800'
+                                    : 'border-zinc-200 bg-white text-zinc-800'
                             }`}>
                               <div className="mb-1 flex items-center gap-2">
                                 <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                                  isAdminMessage ? 'text-emerald-50' : sender === 'bot' ? 'text-blue-700' : 'text-zinc-500'
+                                  isInternal ? 'text-amber-700' : isAdminMessage ? 'text-emerald-50' : sender === 'bot' ? 'text-blue-700' : 'text-zinc-500'
                                 }`}>
-                                  {sender === 'admin' ? 'Admin' : sender === 'bot' ? 'Bot' : 'Visitor'}
+                                  {isInternal ? 'Internal note' : sender === 'admin' ? 'Admin' : sender === 'bot' ? 'Bot' : 'Visitor'}
                                 </span>
-                                <span className={`text-[10px] ${isAdminMessage ? 'text-emerald-50/80' : 'text-zinc-400'}`}>
+                                <span className={`text-[10px] ${isAdminMessage && !isInternal ? 'text-emerald-50/80' : 'text-zinc-400'}`}>
                                   {format(new Date(message.timestamp), 'MMM d, h:mm a')}
                                 </span>
+                                {message.editedAt && !message.deletedAt && (
+                                  <span className="text-[10px] italic opacity-70">edited</span>
+                                )}
                               </div>
-                              <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.text}</p>
+                              <QuotedMessagePreview
+                                replyTo={message.replyTo}
+                                variant={isInternal ? 'internal' : isAdminMessage ? 'admin' : 'visitor'}
+                              />
+                              {isEditing ? (
+                                <div className="space-y-2">
+                                  <textarea
+                                    value={editingMessageText}
+                                    onChange={(e) => setEditingMessageText(e.target.value)}
+                                    className="w-full rounded-lg border border-white/30 bg-white/10 p-2 text-sm text-white"
+                                    rows={3}
+                                  />
+                                  <div className="flex gap-2">
+                                    <button type="button" onClick={() => saveEditedMessage(message.id)} className="rounded-lg bg-white px-2 py-1 text-xs font-bold text-emerald-700">Save</button>
+                                    <button type="button" onClick={() => { setEditingMessageId(null); setEditingMessageText(''); }} className="rounded-lg bg-white/20 px-2 py-1 text-xs font-bold">Cancel</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="whitespace-pre-wrap text-sm leading-relaxed">{getMessageDisplayText(message)}</p>
+                              )}
                               {message.attachments && message.attachments.length > 0 && (
                                 <div className="mt-3 space-y-2">
                                   {message.attachments.map((attachment) => (
@@ -1762,11 +1959,48 @@ export const AdminPanel = () => {
                                   ))}
                                 </div>
                               )}
-                              {message.replyToId && (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {sender === 'user' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setReplyingToMessageId(message.id);
+                                      setReplyingTo(selectedConversation.sessionId);
+                                    }}
+                                    className="text-[10px] font-bold underline opacity-80"
+                                  >
+                                    Reply
+                                  </button>
+                                )}
+                                {isAdminMessage && !isInternal && !message.deletedAt && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingMessageId(message.id);
+                                        setEditingMessageText(message.text);
+                                      }}
+                                      className="inline-flex items-center gap-1 text-[10px] font-bold opacity-80"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                      Edit
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => softDeleteMessage(message.id)}
+                                      className="inline-flex items-center gap-1 text-[10px] font-bold opacity-80"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                      Delete
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                              {message.replyToId && !message.replyTo && (
                                 <p className={`mt-2 border-l-2 pl-2 text-[10px] ${
                                   isAdminMessage ? 'border-emerald-200 text-emerald-50/80' : 'border-zinc-200 text-zinc-400'
                                 }`}>
-                                  Replying to message ID {message.replyToId}
+                                  Replying to message #{message.replyToId}
                                 </p>
                               )}
                             </div>
@@ -1813,6 +2047,27 @@ export const AdminPanel = () => {
                     </div>
 
                     <div className="border-t border-zinc-100 bg-white p-5">
+                      {replyingToMessageId && (
+                        <div className="mb-3 flex items-center justify-between rounded-xl bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+                          <span>Replying to message #{replyingToMessageId}</span>
+                          <button type="button" onClick={() => setReplyingToMessageId(null)} className="rounded p-1 hover:bg-zinc-200">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+                      <div className="mb-3 flex flex-wrap gap-2">
+                        {QUICK_REPLY_TEMPLATES.map((template) => (
+                          <button
+                            key={template}
+                            type="button"
+                            onClick={() => handleAdminReply(selectedConversation.sessionId, replyingToMessageId ?? undefined, { textOverride: template, isQuickReply: true })}
+                            className="rounded-full bg-zinc-100 px-3 py-1.5 text-[11px] font-semibold text-zinc-600 hover:bg-zinc-200"
+                            title={template}
+                          >
+                            Quick reply
+                          </button>
+                        ))}
+                      </div>
                       <input
                         ref={adminFileInputRef}
                         type="file"
@@ -1844,7 +2099,21 @@ export const AdminPanel = () => {
                         rows={3}
                       />
                       <div className="mt-3 flex items-center justify-between gap-3">
-                        <p className="text-xs text-zinc-400">Selected thread refreshes every 3 seconds.</p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setIsInternalNoteMode((value) => !value)}
+                            className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold ${
+                              isInternalNoteMode
+                                ? 'border-amber-300 bg-amber-50 text-amber-800'
+                                : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
+                            }`}
+                          >
+                            <StickyNote className="w-3.5 h-3.5" />
+                            Internal note
+                          </button>
+                          <p className="text-xs text-zinc-400">Selected thread refreshes every 3 seconds.</p>
+                        </div>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
@@ -1854,15 +2123,27 @@ export const AdminPanel = () => {
                             <Paperclip className="w-4 h-4" />
                             Attach
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleAdminReply(selectedConversation.sessionId)}
-                            disabled={(!replyText.trim() && adminReplyAttachments.length === 0) || replyingTo !== selectedConversation.sessionId}
-                            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <Send className="w-4 h-4" />
-                            Send Reply
-                          </button>
+                          {isInternalNoteMode ? (
+                            <button
+                              type="button"
+                              onClick={() => sendInternalNote(selectedConversation.sessionId)}
+                              disabled={!replyText.trim() || replyingTo !== selectedConversation.sessionId}
+                              className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <StickyNote className="w-4 h-4" />
+                              Save note
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleAdminReply(selectedConversation.sessionId)}
+                              disabled={(!replyText.trim() && adminReplyAttachments.length === 0) || replyingTo !== selectedConversation.sessionId}
+                              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <Send className="w-4 h-4" />
+                              Send Reply
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

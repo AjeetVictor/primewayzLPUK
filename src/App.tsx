@@ -22,6 +22,7 @@ import { Footer } from './components/Footer';
 import { ScrollToTop } from './components/ScrollToTop';
 import { LiveChat } from './components/LiveChat';
 import { AdminPanel } from './components/AdminPanel';
+import { AdminMobileChat } from './components/AdminMobileChat';
 import { AdminForgotPassword, AdminResetPassword } from './components/AdminPasswordReset';
 import { BlogPost } from './components/BlogPost';
 import { BlogListPage } from './components/blog/BlogListPage';
@@ -114,6 +115,8 @@ export const App = ({ initialData }: AppProps) => {
       <Routes>
         <Route path="/" element={<MainContent />} />
         <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/admin/chat" element={<AdminMobileChat />} />
+        <Route path="/admin/mobile-chat" element={<AdminMobileChat />} />
         <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
         <Route path="/admin/reset-password" element={<AdminResetPassword />} />
         <Route path="/blog" element={<BlogListPage initialPosts={initialData?.blogPosts} />} />

@@ -149,3 +149,35 @@ export function trackChatAttachmentUploaded(params?: {
   });
 }
 
+export function trackAdminChatReply(params?: {
+  sessionId?: string;
+  hasAttachment?: boolean;
+  isInternalNote?: boolean;
+  isQuickReply?: boolean;
+  conversationStatus?: string;
+}): void {
+  trackEvent('admin_chat_reply', {
+    session_id: params?.sessionId || 'unknown',
+    has_attachment: Boolean(params?.hasAttachment),
+    is_internal_note: Boolean(params?.isInternalNote),
+    is_quick_reply: Boolean(params?.isQuickReply),
+    conversation_status: params?.conversationStatus || 'unknown',
+    lead_type: 'admin_reply',
+  });
+}
+
+export function trackChatLeadConverted(params?: {
+  sessionId?: string;
+  conversionType?: 'lead_qualified' | 'booked_call' | 'closed_won' | string;
+  serviceInterest?: string | null;
+  sourcePage?: string | null;
+}): void {
+  trackEvent('chat_lead_converted', {
+    session_id: params?.sessionId || 'unknown',
+    conversion_type: params?.conversionType || 'lead_qualified',
+    service_interest: params?.serviceInterest || 'unknown',
+    source_page: params?.sourcePage || 'unknown',
+    lead_type: 'chat_conversion',
+  });
+}
+

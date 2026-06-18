@@ -10,6 +10,9 @@ import {
   trackChatMessageSent,
   trackChatOpen,
 } from '../lib/analytics';
+import { getChatSourcePayload } from '../lib/chatSource';
+import { QuotedMessagePreview } from './chat/QuotedMessagePreview';
+import type { ChatReplyPreview } from '../lib/chatTypes';
 
 type ChatStatusKey = 'online' | 'away' | 'offline' | 'assistant';
 
@@ -77,7 +80,25 @@ interface Message {
   text: string;
   sender: 'user' | 'bot' | 'admin';
   timestamp: Date;
+  editedAt?: string | null;
+  deletedAt?: string | null;
+  replyToId?: number | null;
+  replyTo?: ChatReplyPreview | null;
   attachments?: ChatAttachment[];
+}
+
+function mapHistoryMessage(m: Record<string, unknown>): Message {
+  return {
+    id: String(m.id),
+    text: String(m.text || ''),
+    sender: (m.sender as Message['sender']) || 'bot',
+    timestamp: new Date(String(m.timestamp || Date.now())),
+    editedAt: (m.editedAt as string | null | undefined) ?? null,
+    deletedAt: (m.deletedAt as string | null | undefined) ?? null,
+    replyToId: (m.replyToId as number | null | undefined) ?? null,
+    replyTo: (m.replyTo as ChatReplyPreview | null | undefined) ?? null,
+    attachments: (m.attachments as ChatAttachment[] | undefined) || [],
+  };
 }
 
 type ChatAvailabilityStatus = 'online' | 'away' | 'offline' | 'assistant';
@@ -187,6 +208,7 @@ export const LiveChat = () => {
             sessionId,
             userName,
             userEmail,
+            ...getChatSourcePayload(),
           }),
         });
       } catch (error) {
@@ -215,12 +237,7 @@ export const LiveChat = () => {
         if (res.ok) {
           const history = await res.json();
           if (history.length > 0) {
-            setMessages(history.map((m: any) => ({
-              ...m,
-              id: m.id.toString(),
-              timestamp: new Date(m.timestamp),
-              attachments: m.attachments || [],
-            })));
+            setMessages(history.map((m: Record<string, unknown>) => mapHistoryMessage(m)));
           } else {
             // Default welcome message if no history
             setMessages([{
@@ -261,13 +278,11 @@ export const LiveChat = () => {
         const res = await fetch(apiUrl(`/api/chat/${sessionId}`));
         if (res.ok) {
           const history = await res.json();
-          if (history.length > messages.length) {
-            setMessages(history.map((m: any) => ({
-              ...m,
-              id: m.id.toString(),
-              timestamp: new Date(m.timestamp),
-              attachments: m.attachments || [],
-            })));
+          const mapped = history.map((m: Record<string, unknown>) => mapHistoryMessage(m));
+          const latestRemoteId = mapped[mapped.length - 1]?.id;
+          const latestLocalId = messages[messages.length - 1]?.id;
+          if (mapped.length !== messages.length || latestRemoteId !== latestLocalId) {
+            setMessages(mapped);
           }
         }
       } catch (error) {
@@ -346,7 +361,12 @@ export const LiveChat = () => {
       const res = await fetch(apiUrl('/api/chat/session'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, name: userName, email: userEmail })
+        body: JSON.stringify({
+          sessionId,
+          name: userName,
+          email: userEmail,
+          ...getChatSourcePayload(),
+        }),
       });
       if (!res.ok) {
         setApiAvailable(false);
@@ -629,7 +649,11 @@ export const LiveChat = () => {
                         {msg.sender === 'admin' && (
                           <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 mb-1">Support Agent</div>
                         )}
+                        <QuotedMessagePreview replyTo={msg.replyTo} variant="visitor" />
                         {msg.text}
+                        {msg.editedAt && !msg.deletedAt && (
+                          <span className="ml-1 text-[10px] opacity-60">(edited)</span>
+                        )}
                         {msg.attachments && msg.attachments.length > 0 && (
                           <div className="mt-2 space-y-2">
                             {msg.attachments.map((attachment) => (
