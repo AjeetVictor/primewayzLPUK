@@ -490,7 +490,7 @@ async function getInitialDataAndSeo(pathname: string) {
       initialData: { blogPosts },
       seoTags: buildSeoTags({
         title: 'Primewayz UK Insights | Digital Support for UK SMEs',
-        description: 'Practical UK SME guidance on websites, SEO, CRM workflows, automation, AI readiness, maintenance, and digital delivery.',
+        description: 'Practical guidance for UK SMEs on websites, SEO, CRM workflows, automation, AI readiness, maintenance, and ongoing digital delivery.',
         canonical,
         structuredData: {
           '@context': 'https://schema.org',
@@ -535,7 +535,7 @@ async function getInitialDataAndSeo(pathname: string) {
     '/services': {
       title: 'Software, Website & CRM Support Services for UK SMEs | Primewayz UK',
       description:
-        'Explore Primewayz UK services for UK SMEs, including monthly software development support, website maintenance, CRM integration, automation, technical SEO foundations, analytics checks, and ongoing digital delivery.',
+        'Explore Primewayz UK services for UK SMEs, including software development, website maintenance, CRM integration, automation, SEO, and support.',
     },
     '/software-development-subscription-uk': {
       title: 'Software Development Subscription for UK SMEs | Primewayz UK',
@@ -545,12 +545,12 @@ async function getInitialDataAndSeo(pathname: string) {
     '/website-maintenance-subscription-uk': {
       title: 'Website Maintenance Subscription for UK SMEs | Primewayz UK',
       description:
-        'Website maintenance subscription for UK SMEs covering website updates, bug fixes, landing page improvements, technical SEO checks, GA4 and Search Console reviews, form fixes, speed checks, testing, and monthly website support.',
+        'Primewayz UK provides website maintenance subscriptions for UK SMEs, covering updates, bug fixes, SEO checks, forms, speed, and support.',
     },
     '/crm-integration-support-uk': {
       title: 'CRM Integration Support for UK SMEs | Primewayz UK',
       description:
-        'CRM integration support for UK SMEs covering website form integration, enquiry routing, lead tracking, CRM workflow cleanup, automation, notifications, reporting, and operational visibility.',
+        'Primewayz UK provides CRM integration support for UK SMEs, covering lead capture, workflow cleanup, automation, reporting, and customer data.',
     },
     '/professional-services-crm-support-uk': {
       title: 'Professional Services CRM Support UK | Primewayz UK',
@@ -560,7 +560,7 @@ async function getInitialDataAndSeo(pathname: string) {
     '/success-stories/local-trades-lead-capture': {
       title: 'Local Trades Lead Capture Success Story | Primewayz UK',
       description:
-        'See how Primewayz UK supports local trades and service businesses with lead capture, enquiry routing, quote request flows, tracking, and monthly website improvements.',
+        'See how Primewayz UK helps local trades improve lead capture, enquiry routing, quote request flows, tracking, and monthly website updates.',
     },
     '/success-stories/professional-services-crm-cleanup': {
       title: 'Professional Services CRM Cleanup Success Story | Primewayz UK',
@@ -570,7 +570,7 @@ async function getInitialDataAndSeo(pathname: string) {
     '/success-stories/ecommerce-store-stability-support': {
       title: 'E-commerce Store Stability Support Success Story | Primewayz UK',
       description:
-        'See how Primewayz UK supports e-commerce stores with website stability, product and checkout improvements, tracking, technical fixes, and ongoing monthly support.',
+        'See how Primewayz UK helps e-commerce stores improve website stability, checkout flows, tracking, technical fixes, and monthly support.',
     },
   };
 

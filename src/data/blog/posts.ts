@@ -165,7 +165,7 @@ export const posts: BlogPost[] = [
     featured: true,
     seoTitle: 'Monthly Digital Support for UK SMEs',
     seoDescription:
-      'Why UK SMEs benefit from predictable monthly support across websites, SEO, CRM, automation, and digital delivery.',
+      'Learn why UK SMEs benefit from predictable monthly digital support across websites, SEO, CRM, automation, maintenance, and delivery.',
   },
   {
     id: 'website-seo-crm-automation-uk',
@@ -195,6 +195,8 @@ export const posts: BlogPost[] = [
     category: 'Digital Operations',
     tags: ['SEO', 'CRM', 'Automation', 'Websites'],
     image: 'https://picsum.photos/seed/uk-digital-stack/800/500',
+    seoDescription:
+      'A practical framework for UK SMEs to decide whether website, SEO, CRM, or automation improvements should come first for growth.',
   },
   {
     id: 'foundation-sprint-before-monthly-delivery',
@@ -224,6 +226,8 @@ export const posts: BlogPost[] = [
     category: 'Delivery Model',
     tags: ['Foundation Sprint', 'Planning', 'Monthly delivery'],
     image: 'https://picsum.photos/seed/uk-foundation-sprint/800/500',
+    seoDescription:
+      'See how a focused foundation sprint reduces confusion before website, SEO, CRM, automation, or monthly digital delivery work begins.',
   },
   {
     id: 'technical-seo-basics-uk-small-business',
@@ -253,6 +257,8 @@ export const posts: BlogPost[] = [
     category: 'SEO',
     tags: ['Technical SEO', 'Analytics', 'Small business websites'],
     image: 'https://picsum.photos/seed/uk-technical-seo/800/500',
+    seoDescription:
+      'Technical SEO basics for UK small businesses before investing more in campaigns, content, paid traffic, or website improvements.',
   },
   {
     id: 'crm-integration-for-uk-smes',
@@ -282,6 +288,8 @@ export const posts: BlogPost[] = [
     category: 'CRM',
     tags: ['CRM', 'Forms', 'Lead management'],
     image: 'https://picsum.photos/seed/uk-crm-integration/800/500',
+    seoDescription:
+      'Learn how better forms, lead routing, and CRM workflows help UK SME teams respond faster and work more consistently every day.',
   },
   {
     id: 'maintenance-mode-for-uk-business-websites',
@@ -311,6 +319,8 @@ export const posts: BlogPost[] = [
     category: 'Maintenance',
     tags: ['Maintenance', 'Website support', 'Stability'],
     image: 'https://picsum.photos/seed/uk-maintenance-mode-blog/800/500',
+    seoDescription:
+      'A practical website maintenance model for UK businesses to keep digital presence stable when active development slows down.',
   },
 ];
 
