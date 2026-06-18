@@ -113,6 +113,16 @@ export function ContactForm() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isCalendlyOpen, setIsCalendlyOpen] = useState(false);
+  const [hasStartedForm, setHasStartedForm] = useState(false);
+
+  const handleFormStart = () => {
+    if (hasStartedForm) return;
+    setHasStartedForm(true);
+    trackEvent('contact_form_start', {
+      form_name: 'primewayz_uk_contact_form',
+      cta_location: 'contact_form',
+    });
+  };
 
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -150,9 +160,7 @@ export function ContactForm() {
       newErrors.message = `Message must be at most ${MESSAGE_MAX} characters`;
     }
 
-    if (!phone.trim()) {
-      newErrors.phone = 'Enter a UK contact number';
-    } else if (parsedPhoneNumbers.length === 0) {
+    if (phone.trim() && parsedPhoneNumbers.length === 0) {
       newErrors.phone = 'Enter a valid UK number, for example 07522 146 354 or +44 7522 146354';
     }
 
@@ -174,7 +182,7 @@ export function ContactForm() {
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
         message: formData.message.trim(),
-        phone: parsedPhoneNumbers[0],
+        phone: parsedPhoneNumbers[0] || null,
         phoneNumbers: parsedPhoneNumbers,
       };
 
@@ -411,7 +419,7 @@ export function ContactForm() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-8" noValidate>
+            <form onSubmit={handleSubmit} onFocus={handleFormStart} className="space-y-8" noValidate>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
                 <div className="space-y-6">
                   <div className="space-y-2">
@@ -468,7 +476,7 @@ export function ContactForm() {
 
                   <div className="space-y-2">
                     <span id="phone-label" className="block text-sm font-semibold text-gray-700">
-                      Contact Number
+                      Phone / WhatsApp optional
                     </span>
                     <div
                       className={`flex rounded-lg border bg-white overflow-hidden ${
@@ -483,7 +491,7 @@ export function ContactForm() {
                         countries={['GB']}
                         value={phone}
                         onChange={handlePhoneChange}
-                        placeholder="07522 146 354"
+                        placeholder="Optional UK number"
                         autoComplete="tel"
                         aria-labelledby="phone-label"
                         aria-invalid={!!errors.phone}
@@ -517,8 +525,8 @@ export function ContactForm() {
                       name="message"
                       value={formData.message}
                       onChange={handleChange}
-                      rows={8}
-                      placeholder="Tell us about your website, SEO, CRM, automation, integration, or monthly support requirement..."
+                      rows={5}
+                      placeholder="Choose the main area you need help with — website support, CRM, automation, SEO visibility, or monthly digital support."
                       aria-required="true"
                       aria-invalid={!!errors.message}
                       aria-describedby={errors.message ? 'message-error' : undefined}
@@ -547,12 +555,12 @@ export function ContactForm() {
               <div className="flex flex-col items-center gap-3 pt-2">
                 <motion.button
                   type="submit"
-                  disabled={isSubmitting || !isPhoneValid}
+                  disabled={isSubmitting}
                   aria-busy={isSubmitting}
-                  whileHover={!isSubmitting && isPhoneValid ? { scale: 1.02 } : {}}
-                  whileTap={!isSubmitting && isPhoneValid ? { scale: 0.98 } : {}}
+                  whileHover={!isSubmitting ? { scale: 1.02 } : {}}
+                  whileTap={!isSubmitting ? { scale: 0.98 } : {}}
                   className={`w-full max-w-md px-8 py-3.5 rounded-lg font-semibold text-white transition-all shadow-md ${
-                    isSubmitting || !isPhoneValid
+                    isSubmitting
                       ? 'bg-slate-500 cursor-not-allowed opacity-80'
                       : 'bg-slate-800 hover:bg-slate-900 shadow-slate-900/20'
                   }`}
@@ -575,7 +583,7 @@ export function ContactForm() {
                       Sending…
                     </span>
                   ) : (
-                    'Submit UK Enquiry'
+                    'Send enquiry'
                   )}
                 </motion.button>
                 <p className="text-sm text-gray-500 text-center max-w-lg">
@@ -606,8 +614,10 @@ export function ContactForm() {
           <div className="bg-white p-6 md:p-8 rounded-3xl border border-emerald-100 shadow-sm">
             <div className="mb-6">
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">Setup a discovery call</p>
-              <h3 className="mt-2 text-2xl font-bold text-gray-900">Book a 30-minute discovery call</h3>
-              <p className="mt-2 text-sm text-gray-600">Pick a convenient slot directly from our calendar.</p>
+              <h3 className="mt-2 text-2xl font-bold text-gray-900">Book a 30-minute UK discovery call</h3>
+              <p className="mt-2 text-sm text-gray-600">
+                Choose a convenient slot when you are ready to discuss your UK website, CRM, or monthly support requirement.
+              </p>
             </div>
 
             {isCalendlyOpen ? (
@@ -627,10 +637,9 @@ export function ContactForm() {
                 <button
                   type="button"
                   onClick={() => {
-                    trackEvent('book_call_click', {
-                      cta_text: 'Open Calendly calendar',
-                      cta_location: 'contact_calendly_lazy_button',
-                      lead_type: 'discovery_call',
+                    trackEvent('booking_calendar_open', {
+                      cta_text: 'Open booking calendar',
+                      cta_location: 'contact_booking_card',
                     });
                     setIsCalendlyOpen(true);
                   }}
@@ -639,7 +648,7 @@ export function ContactForm() {
                   Open booking calendar
                 </button>
                 <p className="mt-4 text-xs text-slate-500">
-                  The calendar opens inside this page after you click.
+                  The calendar loads only after you click, so the page stays quick and clean.
                 </p>
               </div>
             )}
