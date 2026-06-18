@@ -1,11 +1,32 @@
 ﻿import { ArrowRight, ExternalLink } from 'lucide-react';
 import type { FeaturedInsight } from '../data/insights';
+import { trackEvent } from '../lib/analytics';
 
 type FeaturedInsightCtaProps = {
   insight: FeaturedInsight;
 };
 
+type InsightClickLocation =
+  | 'featured_linkedin_image'
+  | 'featured_linkedin_primary_cta'
+  | 'featured_linkedin_secondary_cta';
+
 export const FeaturedInsightCta = ({ insight }: FeaturedInsightCtaProps) => {
+  const handleInsightClick = (ctaLocation: InsightClickLocation) => {
+    trackEvent('linkedin_article_click', {
+      cta_text:
+        ctaLocation === 'featured_linkedin_primary_cta'
+          ? insight.primaryCta
+          : ctaLocation === 'featured_linkedin_secondary_cta'
+            ? insight.secondaryCta
+            : insight.title,
+      cta_location: ctaLocation,
+      article_title: insight.title,
+      article_url: insight.url,
+      article_source: insight.source,
+    });
+  };
+
   return (
     <div className="mt-10 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
@@ -15,6 +36,7 @@ export const FeaturedInsightCta = ({ insight }: FeaturedInsightCtaProps) => {
           rel="noreferrer"
           className="group block bg-[#000A2D] p-4 sm:p-5"
           aria-label={insight.title}
+          onClick={() => handleInsightClick('featured_linkedin_image')}
         >
           <img
             src={insight.image.src}
@@ -42,6 +64,7 @@ export const FeaturedInsightCta = ({ insight }: FeaturedInsightCtaProps) => {
               href={insight.url}
               target="_blank"
               rel="noreferrer"
+              onClick={() => handleInsightClick('featured_linkedin_primary_cta')}
               className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-[#000A2D] px-5 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-emerald-700"
             >
               {insight.primaryCta}
@@ -52,6 +75,7 @@ export const FeaturedInsightCta = ({ insight }: FeaturedInsightCtaProps) => {
               href={insight.url}
               target="_blank"
               rel="noreferrer"
+              onClick={() => handleInsightClick('featured_linkedin_secondary_cta')}
               className="inline-flex min-h-[44px] items-center justify-center gap-2 px-2 py-2 text-sm font-bold text-emerald-700 transition hover:text-emerald-800"
             >
               {insight.secondaryCta}
