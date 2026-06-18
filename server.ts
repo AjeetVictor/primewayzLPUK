@@ -579,9 +579,9 @@ async function getInitialDataAndSeo(pathname: string) {
         'See how Primewayz UK helps e-commerce stores improve website stability, checkout flows, tracking, technical fixes, and monthly support.',
     },
     '/uk-sme-digital-visibility-checker': {
-      title: 'Free UK SME Digital Visibility Checker | Primewayz UK',
+      title: 'Free UK SME Website Visibility Checker | Primewayz UK',
       description:
-        'Check if your UK SME website is clear, discoverable, trustworthy, and enquiry-ready with a free digital visibility score from Primewayz UK.',
+        'Check if your UK SME website is clear, discoverable, trustworthy, and enquiry-ready with a free website visibility score from Primewayz UK.',
     },
   };
 

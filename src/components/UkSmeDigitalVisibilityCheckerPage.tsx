@@ -6,10 +6,15 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  FileSearch,
+  Gauge,
+  MapPin,
   Loader2,
+  MousePointerClick,
   Search,
   Shield,
   Sparkles,
+  Wrench,
 } from 'lucide-react';
 import { apiUrl } from '../utils/apiUrl';
 import { trackEvent } from '../lib/analytics';
@@ -59,6 +64,41 @@ const statusLabel: Record<CheckStatus, string> = {
   partial: 'Needs work',
   fail: 'Gap',
 };
+
+const sampleChecks = [
+  {
+    title: 'SEO Readiness',
+    description: 'Checks page title, meta description, canonical tags, sitemap, robots.txt, and OpenGraph basics.',
+    icon: FileSearch,
+  },
+  {
+    title: 'Trust Signals',
+    description: 'Looks for contact, about, privacy, and credibility signals that help visitors feel confident.',
+    icon: Shield,
+  },
+  {
+    title: 'Lead Capture',
+    description: 'Reviews whether the page has clear CTAs such as contact, enquiry, quote, booking, or call actions.',
+    icon: MousePointerClick,
+  },
+  {
+    title: 'Local Visibility',
+    description: 'Checks whether service and location signals are present when business type or location is provided.',
+    icon: MapPin,
+  },
+  {
+    title: 'Maintenance Risk',
+    description: 'Highlights missing basics that may suggest the website needs regular updates or technical care.',
+    icon: Wrench,
+  },
+] as const;
+
+const scoreBands = [
+  { range: '80-100', label: 'Strong digital foundation', tone: 'border-emerald-200 bg-emerald-50 text-emerald-900' },
+  { range: '60-79', label: 'Good base, needs improvement', tone: 'border-blue-200 bg-blue-50 text-blue-950' },
+  { range: '40-59', label: 'Visibility gaps need attention', tone: 'border-amber-200 bg-amber-50 text-amber-950' },
+  { range: '0-39', label: 'High-risk digital presence', tone: 'border-red-200 bg-red-50 text-red-950' },
+] as const;
 
 function ScoreRing({ score }: { score: number }) {
   const radius = 54;
@@ -169,7 +209,8 @@ function LeadCaptureForm({
 
   return (
     <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:p-8">
-      <h3 className="text-xl font-bold text-slate-950">Request a Free 15-Minute Digital Visibility Review</h3>
+      <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-700">Want help improving this score?</p>
+      <h3 className="mt-2 text-xl font-bold text-slate-950">Request a free 15-minute Digital Visibility Review from Primewayz UK.</h3>
       <p className="mt-2 text-sm text-slate-600">
         Get practical next steps from the Primewayz UK team based on your score.
       </p>
@@ -336,15 +377,15 @@ export const UkSmeDigitalVisibilityCheckerPage = () => {
               </p>
 
               <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">
-                Free UK SME Digital Visibility Checker
+                Free UK SME Website Visibility Checker
               </h1>
 
               <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-200">
-                Check if your website is clear, discoverable, trustworthy, and enquiry-ready.
+                Check whether your website is clear, discoverable, trustworthy, and ready to generate enquiries.
               </p>
 
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
-                Enter your website URL and get a practical visibility score in under 60 seconds.
+                Enter your website URL and get a practical visibility score in under 60 seconds. The checker reviews common signals that affect how customers and search engines understand your business online.
               </p>
             </div>
 
@@ -381,7 +422,7 @@ export const UkSmeDigitalVisibilityCheckerPage = () => {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               onSubmit={handleSubmit}
-              className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+              className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_20px_55px_rgba(15,23,42,0.10)] sm:p-8"
             >
               <div className="mb-6 flex items-center gap-3">
                 <Shield className="h-5 w-5 text-emerald-600" />
@@ -406,6 +447,7 @@ export const UkSmeDigitalVisibilityCheckerPage = () => {
                     disabled={pageState === 'loading'}
                     className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-60"
                   />
+                  <p className="mt-2 text-xs text-slate-500">Example: https://yourbusiness.co.uk</p>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -550,6 +592,75 @@ export const UkSmeDigitalVisibilityCheckerPage = () => {
               />
             </motion.div>
           )}
+        </div>
+      </section>
+
+      <section className="border-y border-slate-200 bg-slate-50 px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="max-w-3xl">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">Practical website review</p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              What the checker looks for
+            </h2>
+            <p className="mt-4 text-base leading-7 text-slate-600">
+              The score brings together common signals that influence search visibility, customer confidence, and the ease of making an enquiry.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+            {sampleChecks.map((check) => {
+              const Icon = check.icon;
+              return (
+                <article
+                  key={check.title}
+                  className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mt-5 text-base font-black text-slate-950">{check.title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">{check.description}</p>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex items-start gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#000A2D] text-white">
+              <Gauge className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">How to read your score</h2>
+              <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
+                Use the score as a practical starting point. The category checks show where focused improvements can create the clearest benefit.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {scoreBands.map((band) => (
+              <article key={band.range} className={`rounded-xl border p-5 ${band.tone}`}>
+                <p className="text-2xl font-black">{band.range}</p>
+                <p className="mt-2 text-sm font-bold">{band.label}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#000A2D] px-4 py-16 text-white sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-300">Built for practical decisions</p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Why this matters for UK SMEs</h2>
+          </div>
+          <p className="text-base leading-8 text-slate-200 sm:text-lg">
+            A website should do more than exist online. It should explain what you offer, build trust, support search visibility, and make it easy for customers to enquire. This checker gives you a quick starting point before investing in SEO, redesign, CRM, automation, or ongoing website support.
+          </p>
         </div>
       </section>
     </main>

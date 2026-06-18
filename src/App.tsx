@@ -39,7 +39,6 @@ import { LocalTradesLeadCapturePage } from './components/LocalTradesLeadCaptureP
 import { ProfessionalServicesCrmCleanupPage } from './components/ProfessionalServicesCrmCleanupPage';
 import { EcommerceStoreStabilitySupportPage } from './components/EcommerceStoreStabilitySupportPage';
 import { SuccessStoriesPage } from './components/SuccessStoriesPage';
-import { DigitalVisibilityCheckerPromo } from './components/DigitalVisibilityCheckerPromo';
 import { UkSmeDigitalVisibilityCheckerPage } from './components/UkSmeDigitalVisibilityCheckerPage';
 
 // SSR-safe: use static path for logo
@@ -56,7 +55,6 @@ const MainContent = () => (
   <main>
     <Hero />
     <UKTrustStrip />
-    <DigitalVisibilityCheckerPromo />
     <UKSmePainPoints />
     <Philosophy />
     <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 1 }}>
