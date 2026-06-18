@@ -6,6 +6,8 @@ import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshC
 import { format } from 'date-fns';
 import { apiUrl } from '../utils/apiUrl';
 import { PasswordInput } from './ui/PasswordInput';
+import { AppConfirmDialog } from './ui/AppConfirmDialog';
+import { ToastProvider, useToast } from './ui/AppToast';
 import { RichBlogEditor } from './admin/RichBlogEditor';
 import { ChatConfirmDialog } from './admin/ChatConfirmDialog';
 import { sanitizeBlogHtml } from '../utils/sanitizeHtml';
@@ -361,7 +363,70 @@ type AdminNotificationSummary = {
   } | null;
 };
 
-export const AdminPanel = () => {
+type AdminConfirmKind =
+  | 'deleteFormResponse'
+  | 'deleteToolLead'
+  | 'deleteBlogComment'
+  | 'deleteUser'
+  | 'archiveBlogPost';
+
+type PendingAdminConfirm = {
+  kind: AdminConfirmKind;
+  id: number;
+};
+
+const ADMIN_CONFIRM_COPY: Record<AdminConfirmKind, {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  variant: 'danger' | 'warning' | 'default';
+  successMessage: string;
+}> = {
+  deleteFormResponse: {
+    title: 'Delete form response?',
+    body: 'This contact form submission will be permanently removed.',
+    confirmLabel: 'Delete response',
+    variant: 'danger',
+    successMessage: 'Form response deleted.',
+  },
+  deleteToolLead: {
+    title: 'Delete tool lead?',
+    body: 'This visibility checker lead will be permanently removed.',
+    confirmLabel: 'Delete lead',
+    variant: 'danger',
+    successMessage: 'Tool lead deleted.',
+  },
+  deleteBlogComment: {
+    title: 'Delete comment?',
+    body: 'This blog comment will be permanently removed.',
+    confirmLabel: 'Delete comment',
+    variant: 'danger',
+    successMessage: 'Blog comment deleted.',
+  },
+  deleteUser: {
+    title: 'Delete user?',
+    body: 'This admin user will lose access immediately.',
+    confirmLabel: 'Delete user',
+    variant: 'danger',
+    successMessage: 'User deleted.',
+  },
+  archiveBlogPost: {
+    title: 'Archive blog post?',
+    body: 'The post will be removed from the published blog list.',
+    confirmLabel: 'Archive post',
+    variant: 'warning',
+    successMessage: 'Blog post archived.',
+  },
+};
+
+export const AdminPanel = () => (
+  <ToastProvider>
+    <AdminPanelContent />
+  </ToastProvider>
+);
+
+const AdminPanelContent = () => {
+  const { showToast } = useToast();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [email, setEmail] = useState('');
@@ -389,6 +454,8 @@ export const AdminPanel = () => {
   const [editingMessageText, setEditingMessageText] = useState('');
   const [pendingDeleteMessageId, setPendingDeleteMessageId] = useState<number | null>(null);
   const [isDeletingMessage, setIsDeletingMessage] = useState(false);
+  const [pendingAdminConfirm, setPendingAdminConfirm] = useState<PendingAdminConfirm | null>(null);
+  const [isAdminConfirmProcessing, setIsAdminConfirmProcessing] = useState(false);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [unreadBySession, setUnreadBySession] = useState<Record<string, number>>({});
   const [soundAlertsEnabled, setSoundAlertsEnabled] = useState(() => {
@@ -680,39 +747,82 @@ export const AdminPanel = () => {
     }
   };
 
-  const deleteFormResponse = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this response?')) return;
-    try {
-      const res = await fetch(apiUrl(`/api/admin/forms/${id}`), { method: 'DELETE', credentials: 'include' });
-      if (res.ok) {
-        setFormResponses(prev => prev.filter(r => r.id !== id));
-      }
-    } catch (error) {
-      console.error('Delete failed:', error);
-    }
+  const requestAdminConfirm = (kind: AdminConfirmKind, id: number) => {
+    setPendingAdminConfirm({ kind, id });
   };
 
-  const deleteToolLead = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this tool lead?')) return;
-    try {
-      const res = await fetch(apiUrl(`/api/admin/tool-leads/${id}`), { method: 'DELETE', credentials: 'include' });
-      if (res.ok) {
-        setToolLeads(prev => prev.filter(r => r.id !== id));
-      }
-    } catch (error) {
-      console.error('Delete tool lead failed:', error);
-    }
-  };
+  const executePendingAdminConfirm = async () => {
+    if (!pendingAdminConfirm) return;
 
-  const deleteBlogComment = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this comment?')) return;
+    const { kind, id } = pendingAdminConfirm;
+    const copy = ADMIN_CONFIRM_COPY[kind];
+    setIsAdminConfirmProcessing(true);
+
     try {
-      const res = await fetch(apiUrl(`/api/admin/blog-comments/${id}`), { method: 'DELETE', credentials: 'include' });
-      if (res.ok) {
-        setBlogComments(prev => prev.filter(c => c.id !== id));
+      if (kind === 'deleteFormResponse') {
+        const res = await fetch(apiUrl(`/api/admin/forms/${id}`), { method: 'DELETE', credentials: 'include' });
+        if (res.ok) {
+          setFormResponses((prev) => prev.filter((r) => r.id !== id));
+          showToast({ type: 'success', message: copy.successMessage });
+        } else {
+          const data = await res.json().catch(() => ({}));
+          showToast({ type: 'error', message: data.error || 'Failed to delete form response.' });
+        }
+        return;
+      }
+
+      if (kind === 'deleteToolLead') {
+        const res = await fetch(apiUrl(`/api/admin/tool-leads/${id}`), { method: 'DELETE', credentials: 'include' });
+        if (res.ok) {
+          setToolLeads((prev) => prev.filter((r) => r.id !== id));
+          showToast({ type: 'success', message: copy.successMessage });
+        } else {
+          const data = await res.json().catch(() => ({}));
+          showToast({ type: 'error', message: data.error || 'Failed to delete tool lead.' });
+        }
+        return;
+      }
+
+      if (kind === 'deleteBlogComment') {
+        const res = await fetch(apiUrl(`/api/admin/blog-comments/${id}`), { method: 'DELETE', credentials: 'include' });
+        if (res.ok) {
+          setBlogComments((prev) => prev.filter((c) => c.id !== id));
+          showToast({ type: 'success', message: copy.successMessage });
+        } else {
+          const data = await res.json().catch(() => ({}));
+          showToast({ type: 'error', message: data.error || 'Failed to delete comment.' });
+        }
+        return;
+      }
+
+      if (kind === 'deleteUser') {
+        const res = await fetch(apiUrl(`/api/admin/users/${id}`), { method: 'DELETE', credentials: 'include' });
+        if (res.ok) {
+          setUsers((prev) => prev.filter((u) => u.id !== id));
+          showToast({ type: 'success', message: copy.successMessage });
+        } else {
+          const data = await res.json().catch(() => ({}));
+          showToast({ type: 'error', message: data.error || 'Failed to delete user.' });
+        }
+        return;
+      }
+
+      if (kind === 'archiveBlogPost') {
+        const res = await fetch(apiUrl(`/api/admin/blog-posts/${id}`), { method: 'DELETE', credentials: 'include' });
+        if (res.ok) {
+          fetchData();
+          showToast({ type: 'success', message: copy.successMessage });
+        } else {
+          const data = await res.json().catch(() => ({}));
+          showToast({ type: 'error', message: data.error || 'Failed to archive blog post.' });
+        }
       }
     } catch (error) {
-      console.error('Delete comment failed:', error);
+      console.error('Admin confirm action failed:', error);
+      showToast({ type: 'error', message: 'Something went wrong. Please try again.' });
+    } finally {
+      setIsAdminConfirmProcessing(false);
+      setPendingAdminConfirm(null);
     }
   };
 
@@ -729,21 +839,6 @@ export const AdminPanel = () => {
       }
     } catch (error) {
       console.error('Update role failed:', error);
-    }
-  };
-
-  const deleteUser = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this user?')) return;
-    try {
-      const res = await fetch(apiUrl(`/api/admin/users/${id}`), { method: 'DELETE', credentials: 'include' });
-      if (res.ok) {
-        setUsers(prev => prev.filter(u => u.id !== id));
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to delete user');
-      }
-    } catch (error) {
-      console.error('Delete user failed:', error);
     }
   };
 
@@ -822,16 +917,6 @@ export const AdminPanel = () => {
       fetchData();
     } catch (error) {
       setBlogError('Failed to save blog post');
-    }
-  };
-
-  const archiveBlogPost = async (id: number) => {
-    if (!confirm('Archive this blog post?')) return;
-    try {
-      const res = await fetch(apiUrl(`/api/admin/blog-posts/${id}`), { method: 'DELETE', credentials: 'include' });
-      if (res.ok) fetchData();
-    } catch (error) {
-      console.error('Archive blog post failed:', error);
     }
   };
 
@@ -1290,14 +1375,15 @@ export const AdminPanel = () => {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.error || 'Failed to update alert status');
+        showToast({ type: 'error', message: data.error || 'Failed to update alert status.' });
         return;
       }
 
       await fetchNotificationSummary();
+      showToast({ type: 'success', message: 'Alert status updated.' });
     } catch (error) {
       console.error('Failed to update alert status:', error);
-      alert('Failed to update alert status');
+      showToast({ type: 'error', message: 'Failed to update alert status.' });
     }
   };
 
@@ -1673,7 +1759,7 @@ export const AdminPanel = () => {
                           <td className="px-6 py-4 text-right">
                             {(isSuperAdmin(user?.role) || user?.role === 'editor') && (
                               <button 
-                                onClick={() => deleteFormResponse(res.id)}
+                                onClick={() => requestAdminConfirm('deleteFormResponse', res.id)}
                                 className="p-2 text-zinc-400 hover:text-red-600 transition-colors"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -1737,7 +1823,7 @@ export const AdminPanel = () => {
                           <td className="px-6 py-4 text-right">
                             {(isSuperAdmin(user?.role) || user?.role === 'editor') && (
                               <button
-                                onClick={() => deleteToolLead(lead.id)}
+                                onClick={() => requestAdminConfirm('deleteToolLead', lead.id)}
                                 className="p-2 text-zinc-400 hover:text-red-600 transition-colors"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -2537,7 +2623,7 @@ export const AdminPanel = () => {
                                     </button>
                                   )}
                                   {isSuperAdmin(user?.role) && (
-                                    <button onClick={() => archiveBlogPost(post.id)} className="p-2 text-zinc-400 hover:text-red-600 transition-colors" title="Archive">
+                                    <button onClick={() => requestAdminConfirm('archiveBlogPost', post.id)} className="p-2 text-zinc-400 hover:text-red-600 transition-colors" title="Archive">
                                       <Archive className="w-4 h-4" />
                                     </button>
                                   )}
@@ -2587,7 +2673,7 @@ export const AdminPanel = () => {
                           <td className="px-6 py-4 text-right">
                             {isBlogEditor(user?.role) && (
                               <button 
-                                onClick={() => deleteBlogComment(comment.id)}
+                                onClick={() => requestAdminConfirm('deleteBlogComment', comment.id)}
                                 className="p-2 text-zinc-400 hover:text-red-600 transition-colors"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -2706,7 +2792,7 @@ export const AdminPanel = () => {
                           <td className="px-6 py-4 text-right">
                             {u.email !== user.email && (
                               <button 
-                                onClick={() => deleteUser(u.id)}
+                                onClick={() => requestAdminConfirm('deleteUser', u.id)}
                                 className="p-2 text-zinc-400 hover:text-red-600 transition-colors"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -2735,6 +2821,21 @@ export const AdminPanel = () => {
         onConfirm={confirmSoftDeleteMessage}
         isConfirming={isDeletingMessage}
       />
+      {pendingAdminConfirm && (
+        <AppConfirmDialog
+          open
+          title={ADMIN_CONFIRM_COPY[pendingAdminConfirm.kind].title}
+          body={ADMIN_CONFIRM_COPY[pendingAdminConfirm.kind].body}
+          confirmLabel={ADMIN_CONFIRM_COPY[pendingAdminConfirm.kind].confirmLabel}
+          cancelLabel="Cancel"
+          variant={ADMIN_CONFIRM_COPY[pendingAdminConfirm.kind].variant}
+          isProcessing={isAdminConfirmProcessing}
+          onCancel={() => {
+            if (!isAdminConfirmProcessing) setPendingAdminConfirm(null);
+          }}
+          onConfirm={executePendingAdminConfirm}
+        />
+      )}
     </div>
   );
 };

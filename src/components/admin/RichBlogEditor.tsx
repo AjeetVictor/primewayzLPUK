@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { apiUrl } from '../../utils/apiUrl';
 import { sanitizeBlogHtml } from '../../utils/sanitizeHtml';
+import { AppPromptDialog } from '../ui/AppPromptDialog';
 
 type UploadResponse = {
   url: string;
@@ -50,6 +51,7 @@ export function RichBlogEditor({ value, onChange }: RichBlogEditorProps) {
   const [mode, setMode] = useState<'edit' | 'preview'>('edit');
   const [uploadError, setUploadError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [isLinkPromptOpen, setIsLinkPromptOpen] = useState(false);
 
   useEffect(() => {
     if (!editorRef.current || editorRef.current.innerHTML === value) return;
@@ -78,9 +80,12 @@ export function RichBlogEditor({ value, onChange }: RichBlogEditorProps) {
   };
 
   const addLink = () => {
-    const href = window.prompt('Paste the link URL');
-    if (!href) return;
+    setIsLinkPromptOpen(true);
+  };
+
+  const confirmLink = (href: string) => {
     runCommand('createLink', href);
+    setIsLinkPromptOpen(false);
   };
 
   const insertCallout = (kind: 'info' | 'tip' | 'warning' | 'quote') => {
@@ -191,6 +196,17 @@ export function RichBlogEditor({ value, onChange }: RichBlogEditorProps) {
           <div className="blog-content-preview" dangerouslySetInnerHTML={{ __html: sanitizeBlogHtml(value) || '<p class="text-zinc-400">Nothing to preview yet.</p>' }} />
         </div>
       )}
+
+      <AppPromptDialog
+        open={isLinkPromptOpen}
+        title="Insert link"
+        label="Link URL"
+        placeholder="https://example.com"
+        confirmLabel="Insert link"
+        cancelLabel="Cancel"
+        onConfirm={confirmLink}
+        onCancel={() => setIsLinkPromptOpen(false)}
+      />
     </div>
   );
 }
