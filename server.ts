@@ -16,6 +16,15 @@ dotenv.config({ override: false });
 const isProd = process.env.NODE_ENV === 'production';
 // console.log('[debug] NODE_ENV:', process.env.NODE_ENV, '| isProd:', isProd);
 const app = express();
+
+const adminNoindexMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (req.path === '/admin' || req.path.startsWith('/admin/')) {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  }
+  next();
+};
+
+app.use(adminNoindexMiddleware);
 const prisma = new PrismaClient();
 const __dirname = path.resolve();
 
