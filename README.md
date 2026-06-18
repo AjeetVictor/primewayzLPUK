@@ -160,6 +160,15 @@ After any SSR/SEO change, verify:
   - `curl -s http://localhost:3000/ | grep msvalidate.01` shows `<meta name="msvalidate.01" content="503A5E857E52D99A468198CE6BD47F45" />`.
   - `npm run validate:bing` (server must be running).
 
+### IndexNow URL Submission
+
+- Key URL: `https://uk.primewayz.com/b477408d1a358457fb3b6d0b8e032ee3.txt`
+- Local validation (server must be running): `npm run validate:indexnow-key`
+- Production validation: `curl -s https://uk.primewayz.com/b477408d1a358457fb3b6d0b8e032ee3.txt`
+- Submit after deploy (only when key file is publicly reachable): `npm run submit:indexnow`
+- Note: only submit URLs when pages are added, updated, or removed. Do not spam unchanged URLs repeatedly.
+- Bing verification remains separate: `npm run validate:bing`
+
 ## 4.2) Chat architecture and logs
 
 - Live chat calls backend endpoint `POST /api/chat/respond` (no client-side AI key).

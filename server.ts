@@ -1278,6 +1278,17 @@ function serveBingSiteAuth(_req: Request, res: Response) {
 
 app.get('/BingSiteAuth.xml', serveBingSiteAuth);
 
+// IndexNow key verification — must run before static files and SSR catch-all.
+const INDEXNOW_KEY = 'b477408d1a358457fb3b6d0b8e032ee3';
+
+app.get(`/${INDEXNOW_KEY}.txt`, (_req: Request, res: Response) => {
+  res
+    .status(200)
+    .type('text/plain')
+    .set('Cache-Control', 'public, max-age=3600')
+    .send(INDEXNOW_KEY);
+});
+
 // --- Static files ---
 if (isProd) {
   app.use(express.static(path.join(__dirname, 'dist/client'), { index: false }));

@@ -20,7 +20,9 @@
     "build:client": "vite build --outDir dist/client",
     "build:ssr": "vite build --ssr src/entry-server.tsx --outDir dist/server",
     "images:optimize": "node scripts/convert-images-to-webp.mjs",
-    "validate:bing": "node scripts/validate-bing-verification.mjs"
+    "validate:bing": "node scripts/validate-bing-verification.mjs",
+    "validate:indexnow-key": "node scripts/validate-indexnow-key.mjs",
+    "submit:indexnow": "node scripts/submit-indexnow.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
