@@ -7,9 +7,13 @@ import {
   Globe2,
   MapPin,
   MousePointerClick,
+  ScanSearch,
+  Share2,
   Shield,
+  SlidersHorizontal,
   Sparkles,
   Star,
+  Users,
   Zap,
 } from 'lucide-react';
 import type { AuditCategoryId } from '../lib/audit/types';
@@ -40,6 +44,44 @@ const categoryIcons: Record<AuditCategoryId, typeof FileSearch> = {
   'performance-ux': Zap,
   'analytics-readiness': BarChart3,
 };
+
+const trustPoints = [
+  {
+    title: 'Built for UK SMEs',
+    description: 'Questions, categories, and recommendations use practical UK small-business context.',
+    icon: Users,
+  },
+  {
+    title: 'Public-signal overview',
+    description: 'The free audit reviews visible website signals, not private accounts or authenticated platform data.',
+    icon: ScanSearch,
+  },
+  {
+    title: 'Shareable HTML report',
+    description: 'Create a privacy-filtered report link that can be reviewed without exposing submitted contact details.',
+    icon: Share2,
+  },
+  {
+    title: 'Sector-aware recommendations',
+    description: 'Guidance is organised around the supplied business type and the signals found on public pages.',
+    icon: SlidersHorizontal,
+  },
+] as const;
+
+const checkerFaqs = [
+  {
+    question: 'What does the free UK SME web presence audit check?',
+    answer: 'It reviews visible public-page signals across website basics, technical SEO readiness, trust, enquiry paths, UK/local relevance, reputation evidence, performance foundations, and analytics readiness.',
+  },
+  {
+    question: 'Does this tool verify Google or Bing rankings?',
+    answer: 'No. It does not scrape search engines or claim to verify rankings. Google Search, Bing Search, Google Business Profile, external review platforms, and other authenticated sources are clearly marked as not verified.',
+  },
+  {
+    question: 'Can I request a deeper audit?',
+    answer: 'Yes. Primewayz UK can provide an in-depth review using verified platform access, manual checks, and business-specific context when those permissions are available.',
+  },
+] as const;
 
 export const UkSmeDigitalVisibilityCheckerPage = () => (
     <main className="min-h-screen bg-white text-slate-950">
@@ -94,6 +136,29 @@ export const UkSmeDigitalVisibilityCheckerPage = () => (
       <section id="audit-form" className="px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-4xl">
           <WebPresenceAuditForm variant="landing" showIntro={false} analyticsLocation="checker_page" />
+        </div>
+      </section>
+
+      <section className="px-4 pb-16 sm:px-6 lg:px-8" aria-labelledby="checker-trust-heading">
+        <div className="mx-auto max-w-6xl rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:p-8">
+          <div className="max-w-3xl">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Clear scope, useful output</p>
+            <h2 id="checker-trust-heading" className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+              A transparent starting point for digital decisions
+            </h2>
+          </div>
+          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {trustPoints.map(({ title, description, icon: Icon }) => (
+              <article key={title} className="border-l-2 border-blue-200 pl-4">
+                <Icon className="h-5 w-5 text-blue-700" />
+                <h3 className="mt-3 text-sm font-black text-slate-950">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+              </article>
+            ))}
+          </div>
+          <p className="mt-7 border-t border-slate-200 pt-5 text-sm leading-6 text-slate-600">
+            An in-depth audit is available when verified platform checks, manual review, and business-specific context are needed.
+          </p>
         </div>
       </section>
 
@@ -164,6 +229,26 @@ export const UkSmeDigitalVisibilityCheckerPage = () => (
                 <p className="mt-2 text-sm font-bold">{band.label}</p>
                 <p className="mt-2 text-sm leading-6 opacity-90">{band.helper}</p>
               </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 bg-slate-50 px-4 py-16 sm:px-6 lg:px-8" aria-labelledby="checker-faq-heading">
+        <div className="mx-auto max-w-4xl">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Checker FAQ</p>
+          <h2 id="checker-faq-heading" className="mt-2 text-3xl font-black tracking-tight text-slate-950">
+            What the free audit can and cannot confirm
+          </h2>
+          <div className="mt-8 divide-y divide-slate-200 border-y border-slate-200">
+            {checkerFaqs.map((item) => (
+              <details key={item.question} className="group py-5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-black text-slate-950">
+                  {item.question}
+                  <span className="text-xl font-normal text-blue-700 group-open:rotate-45">+</span>
+                </summary>
+                <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">{item.answer}</p>
+              </details>
             ))}
           </div>
         </div>

@@ -437,6 +437,96 @@ function buildDefaultStructuredData(canonical: string, description: string) {
   };
 }
 
+function buildWebPresenceAuditStructuredData(canonical: string, description: string) {
+  const providerId = `${siteUrl}/#primewayz-uk`;
+  const applicationId = `${canonical}#web-application`;
+  const serviceId = `${canonical}#service`;
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': providerId,
+        name: 'Primewayz UK',
+        url: siteUrl,
+        logo: `${siteUrl}/primewayz-uk-dark-logo.png`,
+      },
+      {
+        '@type': 'WebApplication',
+        '@id': applicationId,
+        name: 'Free UK SME Web Presence Audit / Benchmark',
+        url: canonical,
+        description,
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web',
+        browserRequirements: 'Requires a modern web browser',
+        inLanguage: 'en-GB',
+        isAccessibleForFree: true,
+        offers: {
+          '@type': 'Offer',
+          price: '0',
+          priceCurrency: 'GBP',
+        },
+        provider: { '@id': providerId },
+        audience: {
+          '@type': 'BusinessAudience',
+          audienceType: 'UK small businesses and SMEs',
+        },
+        featureList: [
+          'Public website signal review',
+          'Technical SEO readiness overview',
+          'Trust and enquiry path review',
+          'UK and local relevance indicators',
+          'Shareable public-signal report',
+          'Sector-aware recommendations',
+        ],
+      },
+      {
+        '@type': 'Service',
+        '@id': serviceId,
+        name: 'Free UK SME Web Presence Audit / Benchmark',
+        url: canonical,
+        description,
+        provider: { '@id': providerId },
+        areaServed: { '@type': 'Country', name: 'United Kingdom' },
+        serviceType: 'Public-signal website readiness audit',
+        isRelatedTo: { '@id': applicationId },
+      },
+      {
+        '@type': 'FAQPage',
+        '@id': `${canonical}#faq`,
+        mainEntity: [
+          {
+            '@type': 'Question',
+            name: 'What does the free UK SME web presence audit check?',
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: 'It reviews visible public-page signals across website basics, technical SEO readiness, trust, enquiry paths, UK and local relevance, reputation evidence, performance foundations, and analytics readiness.',
+            },
+          },
+          {
+            '@type': 'Question',
+            name: 'Does this tool verify Google or Bing rankings?',
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: 'No. It does not scrape search engines or claim to verify rankings. Google Search, Bing Search, Google Business Profile, external review platforms, and other authenticated sources are marked as not verified.',
+            },
+          },
+          {
+            '@type': 'Question',
+            name: 'Can I request a deeper audit?',
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: 'Yes. Primewayz UK can provide an in-depth review using verified platform access, manual checks, and business-specific context when those permissions are available.',
+            },
+          },
+        ],
+      },
+    ],
+  };
+}
+
 function buildArticleStructuredData(post: BlogPost, canonical: string) {
   return {
     '@context': 'https://schema.org',
@@ -638,7 +728,9 @@ async function getInitialDataAndSeo(pathname: string) {
       title: pageSeo.title,
       description: pageSeo.description,
       canonical,
-      structuredData: buildDefaultStructuredData(canonical, pageSeo.description),
+      structuredData: pathname === '/uk-sme-digital-visibility-checker'
+        ? buildWebPresenceAuditStructuredData(canonical, pageSeo.description)
+        : buildDefaultStructuredData(canonical, pageSeo.description),
     }),
   };
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -18,6 +18,11 @@ import {
   ShieldCheck,
   Sparkles,
 } from 'lucide-react';
+import {
+  AUDIT_CATEGORY_ACTION_LINKS,
+  type AuditActionCategoryId,
+} from '../../constants/auditCategoryActionLinks';
+import { trackEvent } from '../../lib/analytics';
 import type {
   AuditCheck,
   AuditCheckStatus,
@@ -33,6 +38,7 @@ import { WebPresenceAuditBenchmarkPanel } from './WebPresenceAuditBenchmarkPanel
 import { WebPresenceAuditClassificationPanel } from './WebPresenceAuditClassificationPanel';
 import { WebPresenceAuditMobileReadinessPanel } from './WebPresenceAuditMobileReadinessPanel';
 import { WebPresenceAuditHeadReadinessPanel } from './WebPresenceAuditHeadReadinessPanel';
+import { AuditInfoTooltip } from './AuditInfoTooltip';
 
 type WebPresenceAuditResultProps = {
   report: Partial<WebPresenceAuditReport> | SharedWebPresenceAuditReport;
@@ -40,6 +46,70 @@ type WebPresenceAuditResultProps = {
   showSharePanel?: boolean;
   ctaLocation?: string;
   contactCtaHref?: string;
+};
+
+type CategoryHelp = {
+  checked: string;
+  whyItMatters: string;
+  goodLooksLike: string;
+  notVerified: string;
+};
+
+const CATEGORY_HELP: Record<string, CategoryHelp> = {
+  'website-basics': {
+    checked: 'Public homepage reachability, HTTPS, a page title, readable HTML, and obvious fetch errors.',
+    whyItMatters: 'These are basic signals that allow visitors and automated systems to access and understand the site.',
+    goodLooksLike: 'A reachable HTTPS homepage with a clear title and readable content.',
+    notVerified: 'Hosting quality, uptime history, security testing, and authenticated platform settings.',
+  },
+  'technical-seo': {
+    checked: 'Visible title, meta description, canonical, robots, sitemap, heading, image-alt, and social-preview signals.',
+    whyItMatters: 'Clear technical signals help search engines interpret public pages consistently.',
+    goodLooksLike: 'Indexable pages with deliberate metadata, canonical URLs, crawl guidance, and useful content structure.',
+    notVerified: 'Search rankings, Search Console data, backlinks, keyword demand, and index coverage.',
+  },
+  'trust-signals': {
+    checked: 'Visible contact, about, privacy, terms, business identity, and service-area information.',
+    whyItMatters: 'Visitors need enough context to understand who operates the site and how to verify or contact the business.',
+    goodLooksLike: 'Clear ownership, contact routes, policies, and credible business information.',
+    notVerified: 'Legal compliance, company records, accreditations, or the accuracy of business claims.',
+  },
+  'lead-capture': {
+    checked: 'Visible enquiry forms, booking links, telephone/email links, chat options, and clear calls to action.',
+    whyItMatters: 'A visible, low-friction next step helps interested visitors become measurable enquiries.',
+    goodLooksLike: 'Clear calls to action supported by usable contact or booking routes.',
+    notVerified: 'Form deliverability, CRM routing, response times, lead quality, or conversion rates.',
+  },
+  'local-visibility': {
+    checked: 'UK/local wording, visible phone and address or service-area details, and relevant structured data.',
+    whyItMatters: 'Local context helps visitors understand where the business operates and whether it serves their area.',
+    goodLooksLike: 'Consistent UK and service-area information that is easy to find on public pages.',
+    notVerified: 'Google Business Profile status, map-pack visibility, citations, or local search rankings.',
+  },
+  'external-presence': {
+    checked: 'Links from the website to relevant public social, directory, map, or review profiles.',
+    whyItMatters: 'Connected public profiles can give visitors additional ways to verify and engage with a business.',
+    goodLooksLike: 'Current, relevant external profiles linked clearly from the website.',
+    notVerified: 'Google/Bing rankings, profile ownership, follower counts, engagement, or platform performance.',
+  },
+  'reviews-reputation': {
+    checked: 'Visible testimonials, case studies, success stories, portfolio evidence, and review-profile links.',
+    whyItMatters: 'Specific, genuine proof helps visitors evaluate experience and expected outcomes.',
+    goodLooksLike: 'Evidence-based case studies and genuine review or portfolio references.',
+    notVerified: 'Review authenticity, third-party ratings, customer identity, or reputation-platform data.',
+  },
+  'performance-ux': {
+    checked: 'Basic public HTML size and responsive viewport signals.',
+    whyItMatters: 'These are useful first indicators of whether a page is prepared for common devices.',
+    goodLooksLike: 'Responsive page foundations with manageable markup and clear mobile presentation.',
+    notVerified: 'Core Web Vitals, device testing, accessibility compliance, or real-user performance.',
+  },
+  'analytics-readiness': {
+    checked: 'Visible analytics, tag-manager, and selected marketing-tag installation signals.',
+    whyItMatters: 'Governed tracking helps teams understand whether important enquiry actions are being measured.',
+    goodLooksLike: 'A deliberate analytics setup with relevant conversion events and consent-aware governance.',
+    notVerified: 'Account access, data accuracy, consent configuration, event quality, or attribution.',
+  },
 };
 
 
@@ -129,18 +199,48 @@ function RecommendationList({ recommendations }: { recommendations?: string[] })
   );
 }
 
-function CategoryCard({ check }: { check: Partial<AuditCheck> }) {
+function CategoryCard({
+  check,
+  scoreBand,
+  scoreLabel,
+  ctaLocation,
+}: {
+  check: Partial<AuditCheck>;
+  scoreBand: string;
+  scoreLabel: string;
+  ctaLocation: string;
+}) {
   const points = Number.isFinite(check.points) ? Number(check.points) : 0;
   const maxPoints = Number.isFinite(check.maxPoints) ? Number(check.maxPoints) : 0;
   const ratio = maxPoints > 0 ? Math.max(0, Math.min(100, (points / maxPoints) * 100)) : 0;
   const band = getCategoryBand(ratio, check.status);
+  const categoryId = typeof check.id === 'string' ? check.id : 'unknown';
+  const help = CATEGORY_HELP[categoryId] || {
+    checked: 'Visible public-page signals associated with this audit category.',
+    whyItMatters: 'Clear public signals help visitors and automated systems understand the website.',
+    goodLooksLike: 'Relevant information is visible, consistent, and easy to use.',
+    notVerified: 'Authenticated platforms, private systems, rankings, and off-site performance.',
+  };
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-black tracking-tight text-slate-950">{check.name || 'Audit category'}</h3>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1">
+              <h3 className="text-lg font-black tracking-tight text-slate-950">{check.name || 'Audit category'}</h3>
+              <AuditInfoTooltip
+                categoryId={categoryId}
+                title={check.name || 'Audit category'}
+                checked={help.checked}
+                whyItMatters={help.whyItMatters}
+                goodLooksLike={help.goodLooksLike}
+                notVerified={help.notVerified}
+                scoreBand={scoreBand}
+                scoreLabel={scoreLabel}
+                ctaLocation={ctaLocation}
+              />
+            </div>
             <p className="mt-2 text-sm font-black" style={{ color: band.textColor }}>
               {points} / {maxPoints} points
             </p>
@@ -178,6 +278,58 @@ function CategoryCard({ check }: { check: Partial<AuditCheck> }) {
   );
 }
 
+function RecommendedActions({
+  categoryIds,
+  scoreBand,
+  scoreLabel,
+  ctaLocation,
+}: {
+  categoryIds: AuditActionCategoryId[];
+  scoreBand: string;
+  scoreLabel: string;
+  ctaLocation: string;
+}) {
+  const actions = categoryIds
+    .map((categoryId) => AUDIT_CATEGORY_ACTION_LINKS[categoryId])
+    .filter(Boolean);
+
+  if (actions.length === 0) return null;
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Recommended next actions</p>
+      <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Turn visible gaps into a focused plan</h2>
+      <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+        These links are selected from categories that need attention. They do not imply that an off-site platform or ranking has been verified.
+      </p>
+      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {actions.map((action) => (
+          <a
+            key={action.categoryId}
+            href={action.href}
+            onClick={() => trackEvent('audit_action_card_clicked', {
+              category_id: action.categoryId,
+              score_band: scoreBand,
+              score_label: scoreLabel,
+              cta_location: ctaLocation,
+            })}
+            className="group flex min-h-40 flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-5 transition hover:border-blue-200 hover:bg-blue-50/50 hover:shadow-sm"
+          >
+            <div>
+              <h3 className="text-base font-black leading-6 text-slate-950">{action.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{action.description}</p>
+            </div>
+            <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-blue-700">
+              Explore this action
+              <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </span>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function ProfileItem({
   label,
   value,
@@ -210,6 +362,7 @@ export function WebPresenceAuditResult({
   const sharedContactHref = contactCtaHref ?? getSharedReportContactCtaUrl();
   const score = Math.max(0, Math.min(100, Number(report.score) || 0));
   const scoreBand = getScoreBand(score);
+  const scoreBandValue = `${scoreBand.min}-${scoreBand.max}`;
   const checks = Array.isArray(report.checks) ? report.checks : [];
   const metadata = report.metadata;
   const profile = report.profile;
@@ -217,7 +370,37 @@ export function WebPresenceAuditResult({
   const validGeneratedAt = generatedAt && !Number.isNaN(generatedAt.getTime());
   const businessName = profile?.businessName || 'Your website';
   const brandImage = profile?.logoUrl || profile?.faviconUrl || profile?.openGraphImage;
-  const interactiveProfile = !isShared && profile ? profile as WebPresenceAuditReport['profile'] : null;
+  const weakCheckActionIds = checks.flatMap((check): AuditActionCategoryId[] => {
+    const status = safeStatus(check.status);
+    const categoryId = typeof check.id === 'string' ? check.id : '';
+    if (
+      (status === 'partial' || status === 'gap')
+      && categoryId in AUDIT_CATEGORY_ACTION_LINKS
+    ) {
+      return [categoryId as AuditActionCategoryId];
+    }
+    return [];
+  });
+  const weakActionCategoryIds = Array.from(new Set<AuditActionCategoryId>([
+    ...weakCheckActionIds,
+    ...(report.mobileReadiness?.status === 'needs_review' ? ['mobile-readiness' as const] : []),
+    ...(report.headReadiness && (
+      report.headReadiness.title === 'missing'
+      || report.headReadiness.metaDescription === 'missing'
+      || report.headReadiness.canonical === 'missing'
+      || report.headReadiness.robotsMeta === 'noindex_detected'
+      || report.headReadiness.structuredData === 'missing'
+    ) ? ['head-readiness' as const] : []),
+  ])).slice(0, 6);
+
+  useEffect(() => {
+    trackEvent('result_meaning_viewed', {
+      category_id: 'overall-result',
+      score_band: scoreBandValue,
+      score_label: scoreBand.label,
+      cta_location: ctaLocation,
+    });
+  }, [ctaLocation, scoreBand.label, scoreBandValue]);
 
   const priorities = checks
     .filter((check) => safeStatus(check.status) !== 'not_verified' && Array.isArray(check.recommendations))
@@ -305,6 +488,20 @@ export function WebPresenceAuditResult({
 
       <WebPresenceAuditDisclaimer />
 
+      <section className="rounded-2xl border border-blue-200 bg-blue-50/50 p-5 sm:p-7">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-blue-700 shadow-sm">
+            <CircleHelp className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black tracking-tight text-slate-950">What this result means</h2>
+            <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-700">
+              This score highlights how clearly important website signals are visible on the audited pages. A lower score does not prove the business has no visibility elsewhere, but it may indicate that trust, enquiry, local, reputation, or tracking signals need to be made clearer before investing heavily in ads, SEO, or redesign work.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {!isShared && showSharePanel && report.score !== undefined && report.profile && report.metadata && Array.isArray(report.checks) ? (
         <WebPresenceAuditSharePanel report={report as WebPresenceAuditReport} ctaLocation={ctaLocation} />
       ) : null}
@@ -323,11 +520,21 @@ export function WebPresenceAuditResult({
       ) : null}
 
       {report.mobileReadiness ? (
-        <WebPresenceAuditMobileReadinessPanel mobileReadiness={report.mobileReadiness} />
+        <WebPresenceAuditMobileReadinessPanel
+          mobileReadiness={report.mobileReadiness}
+          scoreBand={scoreBandValue}
+          scoreLabel={scoreBand.label}
+          ctaLocation={ctaLocation}
+        />
       ) : null}
 
       {report.headReadiness ? (
-        <WebPresenceAuditHeadReadinessPanel headReadiness={report.headReadiness} />
+        <WebPresenceAuditHeadReadinessPanel
+          headReadiness={report.headReadiness}
+          scoreBand={scoreBandValue}
+          scoreLabel={scoreBand.label}
+          ctaLocation={ctaLocation}
+        />
       ) : null}
 
       {profile ? (
@@ -350,23 +557,21 @@ export function WebPresenceAuditResult({
             <ProfileItem label="Business type" value={profile.businessType} icon={<Sparkles className="h-4 w-4" />} />
             <ProfileItem label="Target country" value={profile.targetCountry} icon={<Globe2 className="h-4 w-4" />} />
             <ProfileItem label="Location / service area" value={profile.location} icon={<MapPin className="h-4 w-4" />} />
-            {!isShared && interactiveProfile ? (
-              <>
-                <ProfileItem label="Provided phone" value={interactiveProfile.providedPhone} icon={<Phone className="h-4 w-4" />} />
-                <ProfileItem label="Provided email" value={interactiveProfile.providedEmail} icon={<Mail className="h-4 w-4" />} />
-              </>
-            ) : null}
             <ProfileItem label="Detected phone" value={profile.detectedPhone} icon={<Phone className="h-4 w-4" />} />
             <ProfileItem label="Detected email" value={profile.detectedEmail} icon={<Mail className="h-4 w-4" />} />
             <ProfileItem label="Detected address / area signal" value={profile.detectedAddressSnippet} icon={<MapPin className="h-4 w-4" />} />
             <ProfileItem label="Resolved host" value={profile.normalizedHost} icon={<Network className="h-4 w-4" />} />
-            {!isShared && interactiveProfile ? (
-              <ProfileItem label="Public IP" value={interactiveProfile.resolvedIp} icon={<Network className="h-4 w-4" />} />
-            ) : null}
             <ProfileItem label="Hosting / IP location" value="Not verified in this free audit" icon={<ShieldCheck className="h-4 w-4" />} />
           </div>
         </section>
       ) : null}
+
+      <RecommendedActions
+        categoryIds={weakActionCategoryIds}
+        scoreBand={scoreBandValue}
+        scoreLabel={scoreBand.label}
+        ctaLocation={ctaLocation}
+      />
 
       {priorities.length > 0 ? (
         <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5 sm:p-7">
@@ -406,7 +611,13 @@ export function WebPresenceAuditResult({
           </div>
           <div className="grid gap-5 lg:grid-cols-2">
             {checks.map((check, index) => (
-              <CategoryCard key={check.id || `${check.name}-${index}`} check={check} />
+              <CategoryCard
+                key={check.id || `${check.name}-${index}`}
+                check={check}
+                scoreBand={scoreBandValue}
+                scoreLabel={scoreBand.label}
+                ctaLocation={ctaLocation}
+              />
             ))}
           </div>
         </section>
