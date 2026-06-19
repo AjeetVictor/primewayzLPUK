@@ -1,12 +1,24 @@
 import { CATEGORY_CONFIG, CATEGORY_ORDER } from './scoringConfig.ts';
 import type { AuditCategoryId, AuditCheck, AuditCheckStatus, AuditSignal } from '../types.ts';
 
+const EXTERNAL_PRESENCE_DETECTED_EXPLANATION =
+  'Some external presence signals were detected on the audited pages. Google, Bing, directory, and review-platform visibility are not verified in this free audit.';
+
+const EXTERNAL_PRESENCE_NOT_DETECTED_EXPLANATION =
+  'External links or presence signals were not detected on the audited pages. This does not confirm absence from Google, Bing, social platforms, or directories.';
+
+const ANALYTICS_DETECTED_EXPLANATION =
+  'Analytics or tracking tags were detected in the audited HTML. Platform setup, event accuracy, consent mode, and conversion tracking are not verified in this free audit.';
+
+const ANALYTICS_NOT_DETECTED_EXPLANATION =
+  'Analytics or tracking tags were not detected in the audited HTML. Tags may still exist through consent tools, server-side tracking, or scripts not visible to this free checker.';
+
 const CATEGORY_EXPLANATIONS: Partial<Record<AuditCategoryId, Partial<Record<AuditCheckStatus, string>>>> = {
   'external-presence': {
-    good: 'External presence signals are visible on the audited pages.',
-    partial: 'Some external links were detected on the audited pages, but coverage is limited. Google and Bing search visibility were not verified in this free version.',
-    gap: 'External links or presence signals were not detected on the audited pages. This does not confirm whether the business is absent from Google, Bing, social platforms, or directories.',
-    not_verified: 'External search and directory visibility were not verified in this free version.',
+    good: EXTERNAL_PRESENCE_DETECTED_EXPLANATION,
+    partial: EXTERNAL_PRESENCE_DETECTED_EXPLANATION,
+    gap: EXTERNAL_PRESENCE_NOT_DETECTED_EXPLANATION,
+    not_verified: 'External search and directory visibility were not verified in this free audit.',
   },
   'reviews-reputation': {
     good: 'Review, testimonial, or reputation signals were detected on the audited pages.',
@@ -15,10 +27,10 @@ const CATEGORY_EXPLANATIONS: Partial<Record<AuditCategoryId, Partial<Record<Audi
     not_verified: 'External review platforms were not verified in this free version.',
   },
   'analytics-readiness': {
-    good: 'Analytics or tracking tags were detected in the audited HTML.',
-    partial: 'Some analytics or tracking signals were detected, but setup may be incomplete or partially hidden.',
-    gap: 'Analytics or tracking tags were not detected in the audited HTML. Tags may still exist through consent tools, server-side tracking, or scripts not visible to this free checker.',
-    not_verified: 'Analytics configuration was not verified beyond visible page HTML.',
+    good: ANALYTICS_DETECTED_EXPLANATION,
+    partial: ANALYTICS_DETECTED_EXPLANATION,
+    gap: ANALYTICS_NOT_DETECTED_EXPLANATION,
+    not_verified: 'Analytics configuration was not verified beyond visible page HTML in this free audit.',
   },
   'local-visibility': {
     good: 'UK / local visibility signals are well represented across the audited pages.',
@@ -53,7 +65,26 @@ function statusForSignals(signals: AuditSignal[], points: number, maxPoints: num
   return 'gap';
 }
 
-function explanationForStatus(categoryId: AuditCategoryId, name: string, status: AuditCheckStatus): string {
+function hasDetectedCategorySignals(categorySignals: AuditSignal[]): boolean {
+  return categorySignals.some((signal) => signal.points > 0 || signal.status === 'found' || signal.status === 'partial');
+}
+
+function explanationForStatus(
+  categoryId: AuditCategoryId,
+  name: string,
+  status: AuditCheckStatus,
+  categorySignals: AuditSignal[],
+): string {
+  const hasDetected = hasDetectedCategorySignals(categorySignals);
+
+  if (categoryId === 'external-presence') {
+    return hasDetected ? EXTERNAL_PRESENCE_DETECTED_EXPLANATION : EXTERNAL_PRESENCE_NOT_DETECTED_EXPLANATION;
+  }
+
+  if (categoryId === 'analytics-readiness') {
+    return hasDetected ? ANALYTICS_DETECTED_EXPLANATION : ANALYTICS_NOT_DETECTED_EXPLANATION;
+  }
+
   const custom = CATEGORY_EXPLANATIONS[categoryId]?.[status];
   if (custom) return custom;
   if (status === 'good') return `${name} signals are well represented across the audited pages.`;
@@ -64,15 +95,19 @@ function explanationForStatus(categoryId: AuditCategoryId, name: string, status:
   return `Limited ${name.toLowerCase()} signals were detected in the audited pages. This is based on visible website content only and does not confirm absence elsewhere.`;
 }
 
-function fallbackEvidenceLabel(categoryId: AuditCategoryId, name: string): string {
+function fallbackEvidenceLabel(categoryId: AuditCategoryId, name: string, categorySignals: AuditSignal[]): string {
   if (categoryId === 'external-presence') {
-    return 'No visible external presence signals were detected in the audited pages.';
+    return hasDetectedCategorySignals(categorySignals)
+      ? 'External presence signals were detected in the audited pages.'
+      : 'No visible external presence signals were detected in the audited pages.';
   }
   if (categoryId === 'reviews-reputation') {
     return 'No visible review or reputation signals were detected in the audited pages.';
   }
   if (categoryId === 'analytics-readiness') {
-    return 'No analytics or tracking tags were detected in the audited HTML.';
+    return hasDetectedCategorySignals(categorySignals)
+      ? 'Analytics or tracking tags were detected in the audited HTML.'
+      : 'No analytics or tracking tags were detected in the audited HTML.';
   }
   return `No positive ${name.toLowerCase()} signals were detected in the audited pages.`;
 }
@@ -106,12 +141,12 @@ export function scoreAudit(signals: AuditSignal[]): { score: number; checks: Aud
       status,
       points,
       maxPoints: config.maxPoints,
-      explanation: explanationForStatus(category, config.name, status),
+      explanation: explanationForStatus(category, config.name, status, categorySignals),
       evidence: evidence.length
         ? evidence
         : [{
             source: 'website' as const,
-            label: fallbackEvidenceLabel(category, config.name),
+            label: fallbackEvidenceLabel(category, config.name, categorySignals),
           }],
       recommendations: resolveRecommendations(
         category,

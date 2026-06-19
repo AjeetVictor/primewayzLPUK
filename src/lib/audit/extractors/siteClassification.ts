@@ -8,11 +8,35 @@ type TypeRule = {
 
 const TYPE_RULES: TypeRule[] = [
   {
+    detectedType: 'Software / IT services website',
+    patterns: [
+      {
+        regex: /\b(software development|web development|it services|software engineering|digital product engineering)\b/i,
+        label: 'Software or IT services wording',
+      },
+      {
+        regex: /\b(crm|automation|website maintenance|technical support|analytics setup|digital visibility)\b/i,
+        label: 'Technical delivery or support signals',
+      },
+      {
+        regex: /\b(subscription support|monthly support|uk smes?|sme support|managed support)\b/i,
+        label: 'Managed IT or SME support signals',
+      },
+    ],
+    recommendationFocus: [
+      'Technical SEO and trust content clarity',
+      'Lead capture and enquiry path visibility',
+      'Case studies and service credibility',
+      'Analytics and conversion tracking readiness',
+    ],
+  },
+  {
     detectedType: 'Ecommerce website',
     patterns: [
       { regex: /\b(add to (?:cart|basket)|shopping cart|checkout)\b/i, label: 'Cart or checkout wording' },
-      { regex: /\b(products?|sku|woocommerce|shopify|magento)\b/i, label: 'Product or ecommerce platform signals' },
       { regex: /\b(basket|buy now|add to bag)\b/i, label: 'Purchase action wording' },
+      { regex: /\b(sku|product categor(?:y|ies)|woocommerce|shopify|magento)\b/i, label: 'Product catalog or ecommerce platform signals' },
+      { regex: /\b(payment|pay now|secure checkout)\b/i, label: 'Payment or checkout signals' },
     ],
     recommendationFocus: [
       'Product schema and category clarity',
@@ -24,9 +48,9 @@ const TYPE_RULES: TypeRule[] = [
   {
     detectedType: 'SaaS / software product website',
     patterns: [
-      { regex: /\b(pricing|features|integrations?|onboarding|subscription)\b/i, label: 'SaaS product wording' },
+      { regex: /\b(pricing|features|integrations?|onboarding)\b/i, label: 'SaaS product wording' },
       { regex: /\b(request demo|book demo|free trial|start trial)\b/i, label: 'Demo or trial CTA wording' },
-      { regex: /\b(software platform|saas|api)\b/i, label: 'Software platform signals' },
+      { regex: /\b(software as a service|\bsaas\b|api documentation)\b/i, label: 'Software product platform signals' },
     ],
     recommendationFocus: [
       'Pricing and demo request clarity',
@@ -130,8 +154,14 @@ const TYPE_RULES: TypeRule[] = [
   {
     detectedType: 'Service business website',
     patterns: [
-      { regex: /\b(services?|quote|consultation|service area)\b/i, label: 'Service business wording' },
-      { regex: /\b(call now|get a quote|book (?:a )?call|enquir(?:y|ies))\b/i, label: 'Service enquiry signals' },
+      {
+        regex: /\b(services?|quote|consultation|service area|enquir(?:y|ies)|request a review)\b/i,
+        label: 'Service business wording',
+      },
+      {
+        regex: /\b(call now|get a quote|book (?:a )?call|contact us|support|maintenance)\b/i,
+        label: 'Service enquiry or support signals',
+      },
     ],
     recommendationFocus: [
       'Location and service-area clarity',
@@ -202,7 +232,9 @@ export function extractSiteClassification(context: AuditContext): WebPresenceAud
     };
   }
 
-  if (topScore >= 2 && second && top.score - second.score <= 1 && second.score >= 2) {
+  const isAmbiguous = Boolean(topScore >= 2 && second && top.score === second.score);
+
+  if (isAmbiguous) {
     detectedType = 'Unknown / mixed website';
     confidence = 'low';
     detectedSignals = [...new Set([...(top.detectedSignals || []), ...(second.detectedSignals || [])])].slice(0, 5);
