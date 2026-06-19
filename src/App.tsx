@@ -40,6 +40,7 @@ import { ProfessionalServicesCrmCleanupPage } from './components/ProfessionalSer
 import { EcommerceStoreStabilitySupportPage } from './components/EcommerceStoreStabilitySupportPage';
 import { SuccessStoriesPage } from './components/SuccessStoriesPage';
 import { UkSmeDigitalVisibilityCheckerPage } from './components/UkSmeDigitalVisibilityCheckerPage';
+import { WebPresenceAuditSharedReportPage } from './components/tools/WebPresenceAuditSharedReportPage';
 import { WebPresenceAuditForm } from './components/tools/WebPresenceAuditForm';
 import { CampaignLandingHandler } from './components/CampaignLandingHandler';
 
@@ -110,13 +111,15 @@ type AppProps = {
 export const App = ({ initialData }: AppProps) => {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
+  const isSharedAuditReport = location.pathname.startsWith('/web-presence-audit/report/');
+  const showSiteChrome = !isAdmin && !isSharedAuditReport;
 
   return (
     <div className="relative min-h-screen bg-white font-sans selection:bg-emerald-100 selection:text-emerald-900">
       <AnalyticsTracker />
       <CampaignLandingHandler />
-      {!isAdmin && <Navbar />}
-      {!isAdmin && <ScrollToTop />}
+      {showSiteChrome ? <Navbar /> : null}
+      {showSiteChrome ? <ScrollToTop /> : null}
 
       <Routes>
         <Route path="/" element={<MainContent />} />
@@ -129,6 +132,7 @@ export const App = ({ initialData }: AppProps) => {
         <Route path="/blog/:id" element={<BlogPost initialPost={initialData?.blogPost} />} />
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/uk-sme-digital-visibility-checker" element={<UkSmeDigitalVisibilityCheckerPage />} />
+        <Route path="/web-presence-audit/report/:publicToken" element={<WebPresenceAuditSharedReportPage />} />
         <Route path="/software-development-subscription-uk" element={<SoftwareDevelopmentSubscriptionUkPage />} />
         <Route path="/website-maintenance-subscription-uk" element={<WebsiteMaintenanceSubscriptionUkPage />} />
         <Route path="/crm-integration-support-uk" element={<CrmIntegrationSupportUkPage />} />
@@ -142,8 +146,8 @@ export const App = ({ initialData }: AppProps) => {
         <Route path="/cookie-policy" element={<LegalPage type="cookies" />} />
       </Routes>
 
-      {!isAdmin && <Footer />}
-      {!isAdmin && <ClientOnly><LiveChat /></ClientOnly>}
+      {!showSiteChrome ? null : <Footer />}
+      {showSiteChrome ? <ClientOnly><LiveChat /></ClientOnly> : null}
     </div>
   );
 };

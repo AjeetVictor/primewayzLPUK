@@ -22,12 +22,18 @@ import type {
   AuditCheck,
   AuditCheckStatus,
   AuditEvidence,
+  SharedWebPresenceAuditReport,
   WebPresenceAuditReport,
 } from '../../lib/audit/types';
 import { getCategoryBand, getScoreBand } from '../../lib/audit/scoreBands';
+import { WebPresenceAuditDisclaimer } from './WebPresenceAuditDisclaimer';
+import { WebPresenceAuditSharePanel } from './WebPresenceAuditSharePanel';
 
 type WebPresenceAuditResultProps = {
-  report: Partial<WebPresenceAuditReport>;
+  report: Partial<WebPresenceAuditReport> | SharedWebPresenceAuditReport;
+  mode?: 'interactive' | 'shared';
+  showSharePanel?: boolean;
+  ctaLocation?: string;
 };
 
 
@@ -187,7 +193,13 @@ function ProfileItem({
   );
 }
 
-export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) {
+export function WebPresenceAuditResult({
+  report,
+  mode = 'interactive',
+  showSharePanel = false,
+  ctaLocation = 'audit_result',
+}: WebPresenceAuditResultProps) {
+  const isShared = mode === 'shared';
   const score = Math.max(0, Math.min(100, Number(report.score) || 0));
   const scoreBand = getScoreBand(score);
   const checks = Array.isArray(report.checks) ? report.checks : [];
@@ -197,6 +209,7 @@ export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) 
   const validGeneratedAt = generatedAt && !Number.isNaN(generatedAt.getTime());
   const businessName = profile?.businessName || 'Your website';
   const brandImage = profile?.logoUrl || profile?.faviconUrl || profile?.openGraphImage;
+  const interactiveProfile = !isShared && profile ? profile as WebPresenceAuditReport['profile'] : null;
 
   const priorities = checks
     .filter((check) => safeStatus(check.status) !== 'not_verified' && Array.isArray(check.recommendations))
@@ -212,13 +225,15 @@ export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) 
     .filter((item, index, items) => items.findIndex((candidate) => candidate.recommendation === item.recommendation) === index)
     .slice(0, 5);
 
-  const notVerified = [
-    'Google Search',
-    'Bing Search',
-    'Google Business Profile',
-    'External review platforms',
-    'Hosting geolocation',
-  ];
+  const notVerified = Array.isArray(report.notVerified) && report.notVerified.length > 0
+    ? report.notVerified
+    : [
+      'Google Search',
+      'Bing Search',
+      'Google Business Profile',
+      'External review platforms',
+      'Hosting geolocation',
+    ];
 
   return (
     <div className="mt-12 space-y-8" aria-live="polite">
@@ -280,9 +295,7 @@ export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) 
         </div>
       </section>
 
-      <p className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-600">
-        Findings are based on crawled pages and visible HTML signals. External platforms and hidden tracking setups are not fully verified in this free audit.
-      </p>
+      <WebPresenceAuditDisclaimer variant={isShared ? 'prominent' : 'default'} />
 
       {profile ? (
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
@@ -292,7 +305,11 @@ export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) 
             </div>
             <div>
               <h2 className="text-xl font-black tracking-tight text-slate-950">Business profile reviewed</h2>
-              <p className="mt-1 text-sm text-slate-600">Details supplied by you and signals detected on the audited public pages.</p>
+              <p className="mt-1 text-sm text-slate-600">
+                {isShared
+                  ? 'Business details and signals detected on the audited public pages.'
+                  : 'Details supplied by you and signals detected on the audited public pages.'}
+              </p>
             </div>
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -300,13 +317,19 @@ export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) 
             <ProfileItem label="Business type" value={profile.businessType} icon={<Sparkles className="h-4 w-4" />} />
             <ProfileItem label="Target country" value={profile.targetCountry} icon={<Globe2 className="h-4 w-4" />} />
             <ProfileItem label="Location / service area" value={profile.location} icon={<MapPin className="h-4 w-4" />} />
-            <ProfileItem label="Provided phone" value={profile.providedPhone} icon={<Phone className="h-4 w-4" />} />
-            <ProfileItem label="Provided email" value={profile.providedEmail} icon={<Mail className="h-4 w-4" />} />
+            {!isShared && interactiveProfile ? (
+              <>
+                <ProfileItem label="Provided phone" value={interactiveProfile.providedPhone} icon={<Phone className="h-4 w-4" />} />
+                <ProfileItem label="Provided email" value={interactiveProfile.providedEmail} icon={<Mail className="h-4 w-4" />} />
+              </>
+            ) : null}
             <ProfileItem label="Detected phone" value={profile.detectedPhone} icon={<Phone className="h-4 w-4" />} />
             <ProfileItem label="Detected email" value={profile.detectedEmail} icon={<Mail className="h-4 w-4" />} />
             <ProfileItem label="Detected address / area signal" value={profile.detectedAddressSnippet} icon={<MapPin className="h-4 w-4" />} />
             <ProfileItem label="Resolved host" value={profile.normalizedHost} icon={<Network className="h-4 w-4" />} />
-            <ProfileItem label="Public IP" value={profile.resolvedIp} icon={<Network className="h-4 w-4" />} />
+            {!isShared && interactiveProfile ? (
+              <ProfileItem label="Public IP" value={interactiveProfile.resolvedIp} icon={<Network className="h-4 w-4" />} />
+            ) : null}
             <ProfileItem label="Hosting / IP location" value="Not verified in this free audit" icon={<ShieldCheck className="h-4 w-4" />} />
           </div>
         </section>
@@ -384,20 +407,28 @@ export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) 
         <div className="flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">Practical next step</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight">Need help improving this score?</h2>
+            <h2 className="mt-2 text-2xl font-black tracking-tight">
+              {isShared ? 'Need a more complete digital visibility assessment?' : 'Need help improving this score?'}
+            </h2>
             <p className="mt-3 text-sm leading-7 text-slate-200">
-              Request a free 15-minute Digital Visibility Review from Primewayz UK.
+              {isShared
+                ? 'Request an in-depth digital visibility audit from Primewayz UK with verified access, external platform checks, manual review, and business-specific context.'
+                : 'Request a free 15-minute Digital Visibility Review from Primewayz UK.'}
             </p>
           </div>
           <a
             href="/#contact"
             className="inline-flex min-h-[50px] shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-[#000A2D] transition hover:bg-emerald-50"
           >
-            Request my free review
+            {isShared ? 'Request an in-depth digital visibility audit' : 'Request my free review'}
             <ArrowUpRight className="h-4 w-4" />
           </a>
         </div>
       </section>
+
+      {!isShared && showSharePanel && report.score !== undefined && report.profile && report.metadata && Array.isArray(report.checks) ? (
+        <WebPresenceAuditSharePanel report={report as WebPresenceAuditReport} ctaLocation={ctaLocation} />
+      ) : null}
 
       {checks.length === 0 ? (
         <p className="flex items-center gap-2 text-sm text-amber-700">

@@ -82,37 +82,50 @@ export type AuditContext = {
   homepage?: FetchedPage;
 };
 
+export type WebPresenceAuditProfile = {
+  businessName: string;
+  websiteUrl: string;
+  normalizedHost: string;
+  businessType: string;
+  targetCountry: string;
+  location?: string;
+  providedPhone?: string;
+  providedEmail?: string;
+  detectedPhone?: string;
+  detectedEmail?: string;
+  detectedAddressSnippet?: string;
+  faviconUrl?: string;
+  logoUrl?: string;
+  openGraphImage?: string;
+  resolvedIp?: string;
+  hostingLocationStatus: 'not_verified';
+};
+
+export type WebPresenceAuditMetadata = {
+  auditedUrl: string;
+  pagesCrawled: number;
+  pagesAttempted: number;
+  generatedAt: string;
+  version: 'web-presence-audit-v1';
+};
+
 export type WebPresenceAuditReport = {
   score: number;
   label: string;
   summary: string;
   checks: AuditCheck[];
   notVerified: string[];
-  profile: {
-    businessName: string;
-    websiteUrl: string;
-    normalizedHost: string;
-    businessType: string;
-    targetCountry: string;
-    location?: string;
-    providedPhone?: string;
-    providedEmail?: string;
-    detectedPhone?: string;
-    detectedEmail?: string;
-    detectedAddressSnippet?: string;
-    faviconUrl?: string;
-    logoUrl?: string;
-    openGraphImage?: string;
-    resolvedIp?: string;
-    hostingLocationStatus: 'not_verified';
-  };
-  metadata: {
-    auditedUrl: string;
-    pagesCrawled: number;
-    pagesAttempted: number;
-    generatedAt: string;
-    version: 'web-presence-audit-v1';
-  };
+  profile: WebPresenceAuditProfile;
+  metadata: WebPresenceAuditMetadata;
+};
+
+export type SharedWebPresenceAuditProfile = Omit<
+  WebPresenceAuditProfile,
+  'providedPhone' | 'providedEmail' | 'resolvedIp'
+>;
+
+export type SharedWebPresenceAuditReport = Omit<WebPresenceAuditReport, 'profile'> & {
+  profile: SharedWebPresenceAuditProfile;
 };
 
 export class AuditInputError extends Error {

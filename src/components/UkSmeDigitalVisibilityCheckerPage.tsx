@@ -91,7 +91,7 @@ export const UkSmeDigitalVisibilityCheckerPage = () => (
         </div>
       </section>
 
-      <section className="px-4 py-12 sm:px-6 lg:px-8">
+      <section id="audit-form" className="px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-4xl">
           <WebPresenceAuditForm variant="landing" showIntro={false} analyticsLocation="checker_page" />
         </div>

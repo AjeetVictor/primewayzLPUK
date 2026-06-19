@@ -10,6 +10,9 @@ import { getAllBlogPosts, getBlogPostById } from './src/data/blog/utils.ts';
 import { runDigitalVisibilityCheck } from './src/lib/digitalVisibilityCheck.ts';
 import { runWebPresenceAudit } from './src/lib/audit/runWebPresenceAudit.ts';
 import { AuditInputError } from './src/lib/audit/types.ts';
+import { createSharedReport, getSharedReport } from './src/lib/audit/share/shareReportService.ts';
+import { ensureReportStoreReady } from './src/lib/audit/share/reportStore.ts';
+import { isValidPublicToken } from './src/lib/audit/share/publicToken.ts';
 import type { NextFunction, Request, Response } from 'express';
 import type { BlogPost } from './src/data/blog/types.ts';
 
@@ -27,7 +30,18 @@ const adminNoindexMiddleware = (req: express.Request, res: express.Response, nex
   next();
 };
 
+const sharedAuditReportNoindexMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (
+    req.path.startsWith('/web-presence-audit/report/')
+    || req.path.startsWith('/api/tools/web-presence-audit/report/')
+  ) {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  }
+  next();
+};
+
 app.use(adminNoindexMiddleware);
+app.use(sharedAuditReportNoindexMiddleware);
 const prisma = new PrismaClient();
 const __dirname = path.resolve();
 
@@ -473,6 +487,14 @@ function buildSeoTags(options: {
   `;
 }
 
+function buildNoIndexSeoTags(options: { title: string; description: string }) {
+  return `
+    <title>${escapeHtml(options.title)}</title>
+    <meta name="description" content="${escapeHtml(options.description)}" />
+    <meta name="robots" content="noindex, nofollow" />
+  `;
+}
+
 function stripExistingSeoTags(html: string) {
   return html
     .replace(/<title>[\s\S]*?<\/title>/i, '')
@@ -486,6 +508,17 @@ function stripExistingSeoTags(html: string) {
 
 async function getInitialDataAndSeo(pathname: string) {
   const canonical = `${siteUrl}${pathname === '/' ? '/' : pathname}`;
+
+  const sharedReportMatch = pathname.match(/^\/web-presence-audit\/report\/([^/]+)$/);
+  if (sharedReportMatch && isValidPublicToken(sharedReportMatch[1])) {
+    return {
+      initialData: {},
+      seoTags: buildNoIndexSeoTags({
+        title: 'Shared Web Presence Audit Report | Primewayz UK',
+        description: 'Shared public-signal web presence audit overview from Primewayz UK.',
+      }),
+    };
+  }
 
   if (pathname === '/blog') {
     const blogPosts = await getPublicBlogPosts();
@@ -1072,6 +1105,46 @@ app.post('/api/tools/web-presence-audit', async (req, res) => {
   }
 });
 
+app.post('/api/tools/web-presence-audit/share', async (req, res) => {
+  try {
+    const { report } = req.body;
+    if (!report || typeof report !== 'object') {
+      return res.status(400).json({ error: 'A valid audit report is required.' });
+    }
+
+    const result = await createSharedReport(report, siteUrl);
+    res.status(201).json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Could not create a shareable report.';
+    const status = message.includes('required') ? 400 : 500;
+    console.error('Web presence audit share error:', error);
+    res.status(status).json({ error: message });
+  }
+});
+
+app.get('/api/tools/web-presence-audit/report/:publicToken', async (req, res) => {
+  try {
+    const { publicToken } = req.params;
+    if (!isValidPublicToken(publicToken)) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
+
+    const record = await getSharedReport(publicToken);
+    if (!record) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
+
+    res.json({
+      publicToken: record.publicToken,
+      createdAt: record.createdAt,
+      report: record.report,
+    });
+  } catch (error) {
+    console.error('Web presence audit shared report error:', error);
+    res.status(500).json({ error: 'Could not load this shared report.' });
+  }
+});
+
 app.post('/api/tools/digital-visibility-check/lead', async (req, res) => {
   try {
     const { name, email, phone, message, websiteUrl, score, businessType, location } = req.body;
@@ -1461,6 +1534,7 @@ async function createServer() {
   }
 
   seedAdmin();
+  await ensureReportStoreReady();
 
   const port = parseInt(process.env.PORT || '3000');
   app.listen(port, () => {

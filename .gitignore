@@ -54,4 +54,7 @@ image-sources/
 convert-process-delivery-image-to-webp.py
 patch-how-it-works-layout.py
 trim-process-delivery-infographic.py
-replace-process-infographic-webp.py
+# Shared web presence audit snapshots (local file store)
+data/web-presence-audit-reports/
+
+data/web-presence-audit-reports/*.json

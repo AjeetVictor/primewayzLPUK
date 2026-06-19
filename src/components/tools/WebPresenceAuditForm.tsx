@@ -505,7 +505,14 @@ export function WebPresenceAuditForm({
     </div>
   );
 
-  const resultPanel = report ? <WebPresenceAuditResult report={report} /> : null;
+  const resultPanel = report ? (
+    <WebPresenceAuditResult
+      report={report}
+      mode="interactive"
+      showSharePanel
+      ctaLocation={resolvedAnalyticsLocation}
+    />
+  ) : null;
 
   const cardClass =
     variant === 'homepage'
