@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import type {
+  AuditCategoryId,
   AuditCheck,
   AuditCheckStatus,
   AuditEvidence,
@@ -28,6 +29,27 @@ import type {
 type WebPresenceAuditResultProps = {
   report: Partial<WebPresenceAuditReport>;
 };
+
+const LIMITED_SIGNAL_CATEGORIES = new Set<AuditCategoryId>([
+  'external-presence',
+  'reviews-reputation',
+  'analytics-readiness',
+  'local-visibility',
+]);
+
+function statusBadgeLabel(check: Partial<AuditCheck>): string {
+  const status = safeStatus(check.status);
+  const categoryId = check.id as AuditCategoryId | undefined;
+
+  if (status === 'gap' && categoryId && LIMITED_SIGNAL_CATEGORIES.has(categoryId)) {
+    return 'Limited signals detected';
+  }
+  if (status === 'partial' && categoryId && LIMITED_SIGNAL_CATEGORIES.has(categoryId)) {
+    return 'Needs verification';
+  }
+
+  return statusStyles[status].label;
+}
 
 const statusStyles: Record<AuditCheckStatus, { label: string; badge: string; bar: string; accent: string }> = {
   good: {
@@ -145,6 +167,7 @@ function RecommendationList({ recommendations }: { recommendations?: string[] })
 function CategoryCard({ check }: { check: Partial<AuditCheck> }) {
   const status = safeStatus(check.status);
   const styles = statusStyles[status];
+  const badgeLabel = statusBadgeLabel(check);
   const points = Number.isFinite(check.points) ? Number(check.points) : 0;
   const maxPoints = Number.isFinite(check.maxPoints) ? Number(check.maxPoints) : 0;
   const ratio = maxPoints > 0 ? Math.max(0, Math.min(100, (points / maxPoints) * 100)) : 0;
@@ -160,7 +183,7 @@ function CategoryCard({ check }: { check: Partial<AuditCheck> }) {
             </p>
           </div>
           <span className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ${styles.badge}`}>
-            {styles.label}
+            {badgeLabel}
           </span>
         </div>
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
@@ -231,9 +254,10 @@ export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) 
     .slice(0, 5);
 
   const notVerified = [
-    'Google Search Presence',
-    'Bing Search Presence',
-    'Google Business Profile and review insights',
+    'Google Search',
+    'Bing Search',
+    'Google Business Profile',
+    'External review platforms',
     'Hosting geolocation',
   ];
 
@@ -294,6 +318,10 @@ export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) 
         </div>
       </section>
 
+      <p className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-600">
+        Findings are based on crawled pages and visible HTML signals. External platforms and hidden tracking setups are not fully verified in this free audit.
+      </p>
+
       {profile ? (
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
           <div className="flex items-center gap-3">
@@ -302,7 +330,7 @@ export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) 
             </div>
             <div>
               <h2 className="text-xl font-black tracking-tight text-slate-950">Business profile reviewed</h2>
-              <p className="mt-1 text-sm text-slate-600">Details supplied by you and signals detected on the public website.</p>
+              <p className="mt-1 text-sm text-slate-600">Details supplied by you and signals detected on the audited public pages.</p>
             </div>
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -330,7 +358,7 @@ export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) 
             </div>
             <div>
               <h2 className="text-xl font-black tracking-tight text-slate-950">Top priorities</h2>
-              <p className="mt-1 text-sm text-slate-600">Start with the lowest-scoring areas for the clearest improvement path.</p>
+              <p className="mt-1 text-sm text-slate-600">Suggested next steps based on signals not detected in the audited pages.</p>
             </div>
           </div>
           <ol className="mt-6 grid gap-3 lg:grid-cols-2">
@@ -356,7 +384,7 @@ export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) 
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Score breakdown</p>
               <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">All audit categories</h2>
             </div>
-            <p className="max-w-lg text-sm leading-6 text-slate-600">Open each category to review its evidence and recommended next actions.</p>
+            <p className="max-w-lg text-sm leading-6 text-slate-600">Open each category to review detected evidence, limitations, and suggested next actions.</p>
           </div>
           <div className="grid gap-5 lg:grid-cols-2">
             {checks.map((check, index) => (
@@ -371,7 +399,7 @@ export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) 
           <CircleHelp className="h-6 w-6 text-slate-500" />
           <div>
             <h2 className="text-lg font-black text-slate-950">Not verified in this free version</h2>
-            <p className="mt-1 text-sm text-slate-600">These items require external platform data or a separate verification process.</p>
+            <p className="mt-1 text-sm text-slate-600">These items were not checked or could not be confirmed in this free version.</p>
           </div>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -382,7 +410,10 @@ export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) 
             </div>
           ))}
         </div>
-        <p className="mt-4 text-xs leading-5 text-slate-500">
+        <p className="mt-4 text-sm leading-6 text-slate-600">
+          This free audit checks visible website signals only. Google Search, Bing Search, Google Business Profile, external review platforms, and hosting geolocation are not verified in this version.
+        </p>
+        <p className="mt-2 text-xs leading-5 text-slate-500">
           This report does not scrape Google or Bing and does not call an IP geolocation provider.
         </p>
       </section>

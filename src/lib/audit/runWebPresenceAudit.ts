@@ -98,10 +98,10 @@ function reputationSignal(
 function extractReputationSignals(context: AuditContext): AuditSignal[] {
   const value = `${context.combinedHtml} ${context.combinedText}`.toLowerCase();
   return [
-    reputationSignal('reputation-testimonials', /testimonial|customer review|client review|what our clients say/.test(value), 2, 'Testimonials or review wording was found.', 'Add genuine customer testimonials or reviews.', context),
-    reputationSignal('reputation-case-studies', /case stud(?:y|ies)/.test(value), 2, 'Case study content was found.', 'Publish evidence-based case studies.', context),
-    reputationSignal('reputation-success-stories', /success stor(?:y|ies)/.test(value), 2, 'Success story content was found.', 'Add customer success stories with clear outcomes.', context),
-    reputationSignal('reputation-portfolio', /portfolio|our work|clients include|client logos?/.test(value), 2, 'Portfolio or client evidence was found.', 'Show relevant work examples, portfolio links, or client evidence.', context),
+    reputationSignal('reputation-testimonials', /testimonial|customer review|client review|what our clients say/.test(value), 2, 'Testimonials or review wording was detected in the audited pages.', 'Add visible testimonials, case studies, or review links if available.', context),
+    reputationSignal('reputation-case-studies', /case stud(?:y|ies)/.test(value), 2, 'Case study content was detected in the audited pages.', 'Publish visible evidence-based case studies if available.', context),
+    reputationSignal('reputation-success-stories', /success stor(?:y|ies)/.test(value), 2, 'Success story content was detected in the audited pages.', 'Add visible customer success stories with clear outcomes if available.', context),
+    reputationSignal('reputation-portfolio', /portfolio|our work|clients include|client logos?/.test(value), 2, 'Portfolio or client evidence was detected in the audited pages.', 'Show visible work examples, portfolio links, or client evidence if available.', context),
   ];
 }
 

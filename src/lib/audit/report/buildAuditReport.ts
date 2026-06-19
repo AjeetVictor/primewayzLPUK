@@ -12,8 +12,8 @@ function labelForScore(score: number): string {
 function summaryForScore(score: number): string {
   if (score >= 80) return 'The audited website has a strong foundation. Focus on the remaining evidence-based recommendations.';
   if (score >= 60) return 'The website has a workable foundation, with several opportunities to improve trust, visibility, and lead capture.';
-  if (score >= 40) return 'The audit found meaningful gaps that may make the business harder to discover or trust online.';
-  return 'The website has high-priority gaps across core visibility, trust, or enquiry signals.';
+  if (score >= 40) return 'The audit found limited visible signals in several areas. Review category notes below — many external platforms are not verified in this free version.';
+  return 'Limited visible signals were detected across several audited categories. This reflects crawled page content only and does not confirm absence on external platforms.';
 }
 
 export function buildAuditReport(signals: AuditSignal[], context: AuditContext): WebPresenceAuditReport {

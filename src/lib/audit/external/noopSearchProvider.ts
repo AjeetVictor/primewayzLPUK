@@ -13,7 +13,7 @@ export class NoopSearchPresenceProvider implements SearchPresenceProvider {
         maxPoints: 0,
         evidence: [{
           source: 'not_verified',
-          label: 'Google Search Presence requires an external search provider.',
+          label: 'Google Search presence was not verified in this free version.',
         }],
         recommendations: [],
       },
@@ -26,7 +26,7 @@ export class NoopSearchPresenceProvider implements SearchPresenceProvider {
         maxPoints: 0,
         evidence: [{
           source: 'not_verified',
-          label: 'Bing Search Presence requires an external search provider.',
+          label: 'Bing Search presence was not verified in this free version.',
         }],
         recommendations: [],
       },

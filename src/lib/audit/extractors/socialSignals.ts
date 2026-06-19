@@ -23,12 +23,12 @@ function socialSignal(
 
 export function extractSocialSignals(context: AuditContext): AuditSignal[] {
   return [
-    socialSignal('social-linkedin', /https?:\/\/(?:www\.)?linkedin\.com\/[^"' <]+/i, 2, 'LinkedIn profile link found.', 'Link the website to the business LinkedIn profile.', context),
-    socialSignal('social-facebook', /https?:\/\/(?:www\.)?facebook\.com\/[^"' <]+/i, 1, 'Facebook profile link found.', 'Add the active Facebook business profile if relevant.', context),
-    socialSignal('social-instagram', /https?:\/\/(?:www\.)?instagram\.com\/[^"' <]+/i, 1, 'Instagram profile link found.', 'Add the active Instagram profile if relevant.', context),
-    socialSignal('social-youtube', /https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\/[^"' <]+/i, 1, 'YouTube link found.', 'Add the active YouTube channel if relevant.', context),
-    socialSignal('social-twitter', /https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\/[^"' <]+/i, 1, 'X or Twitter profile link found.', 'Add the active X/Twitter profile if relevant.', context),
-    socialSignal('social-google-maps', /https?:\/\/[^"' <]*(?:google\.[^/]+\/maps|maps\.app\.goo\.gl)[^"' <]*/i, 2, 'Google Maps or Business Profile link found.', 'Link to the Google Business Profile or map listing.', context),
-    socialSignal('social-directory', /https?:\/\/[^"' <]*(?:trustpilot|yell\.com|checkatrade|tripadvisor|reviews\.io|clutch\.co)[^"' <]*/i, 2, 'External directory or review profile found.', 'Link a relevant directory or review profile where customers can verify the business.', context),
+    socialSignal('social-linkedin', /https?:\/\/(?:www\.)?linkedin\.com\/[^"' <]+/i, 2, 'LinkedIn profile link detected in the audited pages.', 'Add a visible link to the business LinkedIn profile if one exists.', context),
+    socialSignal('social-facebook', /https?:\/\/(?:www\.)?facebook\.com\/[^"' <]+/i, 1, 'Facebook profile link detected in the audited pages.', 'Add a visible link to the active Facebook business profile if relevant.', context),
+    socialSignal('social-instagram', /https?:\/\/(?:www\.)?instagram\.com\/[^"' <]+/i, 1, 'Instagram profile link detected in the audited pages.', 'Add a visible link to the active Instagram profile if relevant.', context),
+    socialSignal('social-youtube', /https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\/[^"' <]+/i, 1, 'YouTube link detected in the audited pages.', 'Add a visible link to the active YouTube channel if relevant.', context),
+    socialSignal('social-twitter', /https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\/[^"' <]+/i, 1, 'X or Twitter profile link detected in the audited pages.', 'Add a visible link to the active X/Twitter profile if relevant.', context),
+    socialSignal('social-google-maps', /https?:\/\/[^"' <]*(?:google\.[^/]+\/maps|maps\.app\.goo\.gl)[^"' <]*/i, 2, 'Google Maps or Business Profile link detected in the audited pages.', 'Add a visible link to the Google Business Profile or map listing if available.', context),
+    socialSignal('social-directory', /https?:\/\/[^"' <]*(?:trustpilot|yell\.com|checkatrade|tripadvisor|reviews\.io|clutch\.co)[^"' <]*/i, 2, 'External directory or review profile link detected in the audited pages.', 'Add a visible link to a relevant directory or review profile where customers can verify the business.', context),
   ];
 }
