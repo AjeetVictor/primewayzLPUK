@@ -1,361 +1,53 @@
-import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'motion/react';
 import {
-  AlertCircle,
   ArrowLeft,
-  ArrowRight,
-  CheckCircle2,
+  BarChart3,
   FileSearch,
   Gauge,
+  Globe2,
   MapPin,
-  Loader2,
   MousePointerClick,
-  Search,
   Shield,
   Sparkles,
-  Wrench,
+  Star,
+  Zap,
 } from 'lucide-react';
-import { apiUrl } from '../utils/apiUrl';
-import { trackEvent } from '../lib/analytics';
+import type { AuditCategoryId } from '../lib/audit/types';
+import { CATEGORY_CONFIG, CATEGORY_ORDER } from '../lib/audit/scoring/scoringConfig';
+import { WebPresenceAuditForm } from './tools/WebPresenceAuditForm';
 
-type CheckStatus = 'pass' | 'partial' | 'fail';
-
-type CategoryCheck = {
-  id: string;
-  name: string;
-  status: CheckStatus;
-  points: number;
-  maxPoints: number;
-  explanation: string;
-  recommendations: string[];
+const categoryDescriptions: Record<AuditCategoryId, string> = {
+  'website-basics': 'Checks homepage reachability, HTTPS, title, and readable HTML content.',
+  'technical-seo': 'Reviews title tags, meta descriptions, canonicals, robots, sitemap, and OpenGraph basics.',
+  'trust-signals': 'Looks for contact, about, privacy, and credibility signals that help visitors feel confident.',
+  'lead-capture': 'Reviews whether the site has clear CTAs such as contact, enquiry, quote, booking, or call actions.',
+  'local-visibility': 'Checks UK/local wording, phone, address or service-area signals, and structured data.',
+  'external-presence': 'Flags Google and Bing presence as not verified without scraping search engines.',
+  'reviews-reputation': 'Looks for testimonials, case studies, success stories, and portfolio or client evidence.',
+  'performance-ux': 'Reviews homepage HTML size and responsive viewport basics.',
+  'analytics-readiness': 'Checks for analytics or tag-manager readiness signals on the public site.',
 };
 
-type CheckResult = {
-  score: number;
-  label: string;
-  summary: string;
-  checks: CategoryCheck[];
-  recommendations: string[];
+const categoryIcons: Record<AuditCategoryId, typeof FileSearch> = {
+  'website-basics': Globe2,
+  'technical-seo': FileSearch,
+  'trust-signals': Shield,
+  'lead-capture': MousePointerClick,
+  'local-visibility': MapPin,
+  'external-presence': Globe2,
+  'reviews-reputation': Star,
+  'performance-ux': Zap,
+  'analytics-readiness': BarChart3,
 };
-
-type PageState = 'form' | 'loading' | 'error' | 'result';
-
-const statusStyles: Record<CheckStatus, { badge: string; ring: string; icon: string }> = {
-  pass: {
-    badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    ring: 'border-emerald-200',
-    icon: 'text-emerald-600',
-  },
-  partial: {
-    badge: 'bg-amber-50 text-amber-800 border-amber-200',
-    ring: 'border-amber-200',
-    icon: 'text-amber-600',
-  },
-  fail: {
-    badge: 'bg-red-50 text-red-700 border-red-200',
-    ring: 'border-red-200',
-    icon: 'text-red-600',
-  },
-};
-
-const statusLabel: Record<CheckStatus, string> = {
-  pass: 'Good',
-  partial: 'Needs work',
-  fail: 'Gap',
-};
-
-const sampleChecks = [
-  {
-    title: 'SEO Readiness',
-    description: 'Checks page title, meta description, canonical tags, sitemap, robots.txt, and OpenGraph basics.',
-    icon: FileSearch,
-  },
-  {
-    title: 'Trust Signals',
-    description: 'Looks for contact, about, privacy, and credibility signals that help visitors feel confident.',
-    icon: Shield,
-  },
-  {
-    title: 'Lead Capture',
-    description: 'Reviews whether the page has clear CTAs such as contact, enquiry, quote, booking, or call actions.',
-    icon: MousePointerClick,
-  },
-  {
-    title: 'Local Visibility',
-    description: 'Checks whether service and location signals are present when business type or location is provided.',
-    icon: MapPin,
-  },
-  {
-    title: 'Maintenance Risk',
-    description: 'Highlights missing basics that may suggest the website needs regular updates or technical care.',
-    icon: Wrench,
-  },
-] as const;
 
 const scoreBands = [
-  { range: '80-100', label: 'Strong digital foundation', tone: 'border-emerald-200 bg-emerald-50 text-emerald-900' },
-  { range: '60-79', label: 'Good base, needs improvement', tone: 'border-blue-200 bg-blue-50 text-blue-950' },
+  { range: '80-100', label: 'Strong web presence foundation', tone: 'border-emerald-200 bg-emerald-50 text-emerald-900' },
+  { range: '60-79', label: 'Good base, clear improvement path', tone: 'border-blue-200 bg-blue-50 text-blue-950' },
   { range: '40-59', label: 'Visibility gaps need attention', tone: 'border-amber-200 bg-amber-50 text-amber-950' },
-  { range: '0-39', label: 'High-risk digital presence', tone: 'border-red-200 bg-red-50 text-red-950' },
+  { range: '0-39', label: 'Priority gaps to address', tone: 'border-red-200 bg-red-50 text-red-950' },
 ] as const;
 
-function ScoreRing({ score }: { score: number }) {
-  const radius = 54;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (score / 100) * circumference;
-
-  return (
-    <div className="relative mx-auto h-40 w-40">
-      <svg className="h-40 w-40 -rotate-90" viewBox="0 0 120 120" aria-hidden>
-        <circle cx="60" cy="60" r={radius} fill="none" stroke="currentColor" strokeWidth="10" className="text-white/10" />
-        <circle
-          cx="60"
-          cy="60"
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="10"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          className="text-emerald-400 transition-all duration-700"
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-        <span className="text-4xl font-black">{score}</span>
-        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-200">/ 100</span>
-      </div>
-    </div>
-  );
-}
-
-function LeadCaptureForm({
-  websiteUrl,
-  score,
-  businessType,
-  location,
-}: {
-  websiteUrl: string;
-  score: number;
-  businessType: string;
-  location: string;
-}) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [message, setMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !email.trim()) {
-      setError('Name and email are required.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      const res = await fetch(apiUrl('/api/tools/digital-visibility-check/lead'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim(),
-          phone: phone.trim() || undefined,
-          message: message.trim() || undefined,
-          websiteUrl,
-          score,
-          businessType: businessType || undefined,
-          location: location || undefined,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Could not submit your request.');
-      }
-
-      trackEvent('visibility_checker_lead_submit', {
-        score,
-        website_url: websiteUrl,
-        has_phone: Boolean(phone.trim()),
-        has_message: Boolean(message.trim()),
-      });
-
-      setIsSubmitted(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (isSubmitted) {
-    return (
-      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center">
-        <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-emerald-600" />
-        <h3 className="text-lg font-bold text-emerald-900">Request received</h3>
-        <p className="mt-2 text-sm text-emerald-800">
-          Thanks — we will review your website visibility score and be in touch shortly.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:p-8">
-      <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-700">Want help improving this score?</p>
-      <h3 className="mt-2 text-xl font-bold text-slate-950">Request a free 15-minute Digital Visibility Review from Primewayz UK.</h3>
-      <p className="mt-2 text-sm text-slate-600">
-        Get practical next steps from the Primewayz UK team based on your score.
-      </p>
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="lead-name" className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">
-            Name *
-          </label>
-          <input
-            id="lead-name"
-            type="text"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-emerald-500/0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
-          />
-        </div>
-        <div>
-          <label htmlFor="lead-email" className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">
-            Email *
-          </label>
-          <input
-            id="lead-email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-emerald-500/0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
-          />
-        </div>
-        <div>
-          <label htmlFor="lead-phone" className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">
-            Phone (optional)
-          </label>
-          <input
-            id="lead-phone"
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-emerald-500/0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label htmlFor="lead-message" className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">
-            Message (optional)
-          </label>
-          <textarea
-            id="lead-message"
-            rows={3}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-emerald-500/0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
-            placeholder="Anything specific you want us to look at?"
-          />
-        </div>
-      </div>
-
-      {error && (
-        <p className="mt-4 flex items-center gap-2 text-sm text-red-600">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          {error}
-        </p>
-      )}
-
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="mt-6 inline-flex min-h-[48px] w-full items-center justify-center rounded-lg bg-[#000A2D] px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-      >
-        {isSubmitting ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Sending…
-          </>
-        ) : (
-          'Request free review'
-        )}
-      </button>
-    </form>
-  );
-}
-
-export const UkSmeDigitalVisibilityCheckerPage = () => {
-  const [websiteUrl, setWebsiteUrl] = useState('');
-  const [businessType, setBusinessType] = useState('');
-  const [location, setLocation] = useState('');
-  const [pageState, setPageState] = useState<PageState>('form');
-  const [errorMessage, setErrorMessage] = useState('');
-  const [result, setResult] = useState<CheckResult | null>(null);
-  const [hasStarted, setHasStarted] = useState(false);
-
-  useEffect(() => {
-    trackEvent('visibility_checker_start', { page: 'uk_sme_digital_visibility_checker' });
-  }, []);
-
-  const handleFormStart = () => {
-    if (hasStarted) return;
-    setHasStarted(true);
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!websiteUrl.trim()) {
-      setErrorMessage('Please enter your website URL.');
-      setPageState('error');
-      return;
-    }
-
-    setPageState('loading');
-    setErrorMessage('');
-    trackEvent('visibility_checker_submit', {
-      has_business_type: Boolean(businessType.trim()),
-      has_location: Boolean(location.trim()),
-    });
-
-    try {
-      const res = await fetch(apiUrl('/api/tools/digital-visibility-check'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          websiteUrl: websiteUrl.trim(),
-          businessType: businessType.trim() || undefined,
-          location: location.trim() || undefined,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Could not check this website.');
-      }
-
-      setResult(data);
-      setPageState('result');
-      trackEvent('visibility_checker_result_view', {
-        score: data.score,
-        score_label: data.label,
-      });
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Could not check this website. Please try again.');
-      setPageState('error');
-    }
-  };
-
-  return (
+export const UkSmeDigitalVisibilityCheckerPage = () => (
     <main className="min-h-screen bg-white text-slate-950">
       <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-16 pt-24 text-white sm:px-6 lg:px-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.22),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.22),transparent_34%)]" />
@@ -377,7 +69,7 @@ export const UkSmeDigitalVisibilityCheckerPage = () => {
               </p>
 
               <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">
-                Free UK SME Website Visibility Checker
+                Free UK SME Web Presence Audit
               </h1>
 
               <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-200">
@@ -385,31 +77,21 @@ export const UkSmeDigitalVisibilityCheckerPage = () => {
               </p>
 
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
-                Enter your website URL and get a practical visibility score in under 60 seconds. The checker reviews common signals that affect how customers and search engines understand your business online.
+                Enter your website details and get a practical 100-point audit across nine readiness categories. The report reviews public pages only and does not scrape Google or Bing.
               </p>
             </div>
 
             <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm sm:p-8">
-              {pageState === 'result' && result ? (
-                <div className="text-center">
-                  <p className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">
-                    Digital Visibility Score
-                  </p>
-                  <ScoreRing score={result.score} />
-                  <p className="mt-4 text-lg font-bold text-white">{result.label}</p>
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-300">
+                  <Gauge className="h-8 w-8" />
                 </div>
-              ) : (
-                <div className="flex flex-col items-center text-center">
-                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-300">
-                    <Search className="h-8 w-8" />
-                  </div>
-                  <p className="text-sm font-semibold text-emerald-200">Digital Visibility Score</p>
-                  <p className="mt-2 text-3xl font-black text-white">0–100</p>
-                  <p className="mt-3 max-w-xs text-xs leading-6 text-slate-300">
-                    Covers website basics, SEO, trust, lead capture, local signals, and maintenance risk.
-                  </p>
-                </div>
-              )}
+                <p className="text-sm font-semibold text-emerald-200">Web presence score</p>
+                <p className="mt-2 text-3xl font-black text-white">0–100</p>
+                <p className="mt-3 max-w-xs text-xs leading-6 text-slate-300">
+                  Nine categories covering website basics, SEO, trust, lead capture, local visibility, reputation, performance, and analytics readiness.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -417,209 +99,41 @@ export const UkSmeDigitalVisibilityCheckerPage = () => {
 
       <section className="px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-4xl">
-          {(pageState === 'form' || pageState === 'loading' || pageState === 'error') && (
-            <motion.form
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              onSubmit={handleSubmit}
-              className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_20px_55px_rgba(15,23,42,0.10)] sm:p-8"
-            >
-              <div className="mb-6 flex items-center gap-3">
-                <Shield className="h-5 w-5 text-emerald-600" />
-                <p className="text-sm text-slate-600">
-                  We only check public pages. Private and internal addresses are blocked for security.
-                </p>
-              </div>
-
-              <div className="grid gap-4">
-                <div>
-                  <label htmlFor="website-url" className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Website URL *
-                  </label>
-                  <input
-                    id="website-url"
-                    type="url"
-                    required
-                    placeholder="https://yourbusiness.co.uk"
-                    value={websiteUrl}
-                    onFocus={handleFormStart}
-                    onChange={(e) => setWebsiteUrl(e.target.value)}
-                    disabled={pageState === 'loading'}
-                    className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-60"
-                  />
-                  <p className="mt-2 text-xs text-slate-500">Example: https://yourbusiness.co.uk</p>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label htmlFor="business-type" className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Business type (optional)
-                    </label>
-                    <input
-                      id="business-type"
-                      type="text"
-                      placeholder="e.g. Local service business"
-                      value={businessType}
-                      onFocus={handleFormStart}
-                      onChange={(e) => setBusinessType(e.target.value)}
-                      disabled={pageState === 'loading'}
-                      className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-60"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="location" className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Location (optional)
-                    </label>
-                    <input
-                      id="location"
-                      type="text"
-                      placeholder="e.g. London"
-                      value={location}
-                      onFocus={handleFormStart}
-                      onChange={(e) => setLocation(e.target.value)}
-                      disabled={pageState === 'loading'}
-                      className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-60"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {pageState === 'error' && errorMessage && (
-                <p className="mt-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                  {errorMessage}
-                </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={pageState === 'loading'}
-                className="mt-6 inline-flex min-h-[48px] w-full items-center justify-center rounded-lg bg-emerald-500 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-              >
-                {pageState === 'loading' ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Checking your website…
-                  </>
-                ) : (
-                  <>
-                    Check My Website
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
-              </button>
-            </motion.form>
-          )}
-
-          {pageState === 'result' && result && (
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6 sm:p-8">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-600">Your score</p>
-                    <p className="mt-2 text-4xl font-black text-slate-950">
-                      {result.score}
-                      <span className="text-lg font-semibold text-slate-500"> / 100</span>
-                    </p>
-                    <p className="mt-2 text-lg font-bold text-slate-800">{result.label}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPageState('form');
-                      setResult(null);
-                    }}
-                    className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300"
-                  >
-                    Check another website
-                  </button>
-                </div>
-                <p className="mt-4 text-sm leading-7 text-slate-600">{result.summary}</p>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                {result.checks.map((check) => {
-                  const styles = statusStyles[check.status];
-                  return (
-                    <article
-                      key={check.id}
-                      className={`rounded-2xl border bg-white p-5 shadow-sm ${styles.ring}`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <h3 className="text-base font-bold text-slate-950">{check.name}</h3>
-                        <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${styles.badge}`}>
-                          {statusLabel[check.status]}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm font-semibold text-slate-700">
-                        {check.points} / {check.maxPoints} points
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">{check.explanation}</p>
-                      {check.recommendations.length > 0 && (
-                        <ul className="mt-3 space-y-1.5 text-sm text-slate-600">
-                          {check.recommendations.map((rec) => (
-                            <li key={rec} className="flex gap-2">
-                              <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${styles.icon.replace('text-', 'bg-')}`} />
-                              {rec}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </article>
-                  );
-                })}
-              </div>
-
-              {result.recommendations.length > 0 && (
-                <div className="rounded-2xl border border-slate-200 bg-white p-6">
-                  <h3 className="text-lg font-bold text-slate-950">Top priorities</h3>
-                  <ul className="mt-4 space-y-2">
-                    {result.recommendations.map((rec) => (
-                      <li key={rec} className="flex gap-2 text-sm text-slate-600">
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                        {rec}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <LeadCaptureForm
-                websiteUrl={websiteUrl.trim()}
-                score={result.score}
-                businessType={businessType}
-                location={location}
-              />
-            </motion.div>
-          )}
+          <WebPresenceAuditForm variant="landing" showIntro={false} analyticsLocation="checker_page" />
         </div>
       </section>
 
       <section className="border-y border-slate-200 bg-slate-50 px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-3xl">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">Practical website review</p>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">Nine readiness categories</p>
             <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-              What the checker looks for
+              What the audit reviews
             </h2>
             <p className="mt-4 text-base leading-7 text-slate-600">
-              The score brings together common signals that influence search visibility, customer confidence, and the ease of making an enquiry.
+              The score brings together public-site signals that influence search visibility, customer confidence, and the ease of making an enquiry.
             </p>
           </div>
 
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
-            {sampleChecks.map((check) => {
-              const Icon = check.icon;
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {CATEGORY_ORDER.map((categoryId) => {
+              const config = CATEGORY_CONFIG[categoryId];
+              const Icon = categoryIcons[categoryId];
               return (
                 <article
-                  key={check.title}
+                  key={categoryId}
                   className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
-                    <Icon className="h-5 w-5" />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                      {config.maxPoints} pts
+                    </span>
                   </div>
-                  <h3 className="mt-5 text-base font-black text-slate-950">{check.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">{check.description}</p>
+                  <h3 className="mt-5 text-base font-black text-slate-950">{config.name}</h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">{categoryDescriptions[categoryId]}</p>
                 </article>
               );
             })}
@@ -636,7 +150,7 @@ export const UkSmeDigitalVisibilityCheckerPage = () => {
             <div>
               <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">How to read your score</h2>
               <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
-                Use the score as a practical starting point. The category checks show where focused improvements can create the clearest benefit.
+                Use the score as a practical starting point. The category breakdown shows where focused improvements can create the clearest benefit.
               </p>
             </div>
           </div>
@@ -659,10 +173,9 @@ export const UkSmeDigitalVisibilityCheckerPage = () => {
             <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Why this matters for UK SMEs</h2>
           </div>
           <p className="text-base leading-8 text-slate-200 sm:text-lg">
-            A website should do more than exist online. It should explain what you offer, build trust, support search visibility, and make it easy for customers to enquire. This checker gives you a quick starting point before investing in SEO, redesign, CRM, automation, or ongoing website support.
+            A website should do more than exist online. It should explain what you offer, build trust, support search visibility, and make it easy for customers to enquire. This audit gives you a quick starting point before investing in SEO, redesign, CRM, automation, or ongoing website support.
           </p>
         </div>
       </section>
     </main>
-  );
-};
+);
