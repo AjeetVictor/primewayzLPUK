@@ -1,3 +1,5 @@
+import { captureUtmParams } from './utm.ts';
+
 const FIRST_LANDING_KEY = 'primewayz_first_landing_page';
 
 const SERVICE_PATH_MAP: Record<string, string> = {
@@ -72,18 +74,18 @@ export function getChatSourcePayload(): ChatSourcePayload {
     };
   }
 
-  const params = new URLSearchParams(window.location.search);
   const pathname = window.location.pathname || '/';
   const userAgent = navigator.userAgent || '';
+  const utm = captureUtmParams(window.location.search);
 
   return {
     firstLandingPage: getFirstLandingPage(),
     currentPageUrl: window.location.href,
     referrer: document.referrer || null,
-    utmSource: params.get('utm_source'),
-    utmMedium: params.get('utm_medium'),
-    utmCampaign: params.get('utm_campaign'),
-    utmContent: params.get('utm_content'),
+    utmSource: utm.utm_source,
+    utmMedium: utm.utm_medium,
+    utmCampaign: utm.utm_campaign,
+    utmContent: utm.utm_content,
     deviceType: detectDeviceType(userAgent),
     browser: detectBrowser(userAgent),
     serviceInterest: inferServiceInterest(pathname),

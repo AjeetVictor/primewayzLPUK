@@ -41,6 +41,7 @@ import { EcommerceStoreStabilitySupportPage } from './components/EcommerceStoreS
 import { SuccessStoriesPage } from './components/SuccessStoriesPage';
 import { UkSmeDigitalVisibilityCheckerPage } from './components/UkSmeDigitalVisibilityCheckerPage';
 import { WebPresenceAuditForm } from './components/tools/WebPresenceAuditForm';
+import { CampaignLandingHandler } from './components/CampaignLandingHandler';
 
 // SSR-safe: use static path for logo
 const logo = '/assets/primewayz-infotech-logo.svg';
@@ -113,6 +114,7 @@ export const App = ({ initialData }: AppProps) => {
   return (
     <div className="relative min-h-screen bg-white font-sans selection:bg-emerald-100 selection:text-emerald-900">
       <AnalyticsTracker />
+      <CampaignLandingHandler />
       {!isAdmin && <Navbar />}
       {!isAdmin && <ScrollToTop />}
 

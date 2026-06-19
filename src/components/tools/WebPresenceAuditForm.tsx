@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { WebPresenceAuditReport } from '../../lib/audit/types';
 import { trackEvent } from '../../lib/analytics';
+import { getUtmAnalyticsPayload } from '../../lib/utm';
 import { apiUrl } from '../../utils/apiUrl';
 import { WebPresenceAuditResult } from './WebPresenceAuditResult';
 
@@ -161,6 +162,13 @@ export function WebPresenceAuditForm() {
   const [report, setReport] = useState<Partial<WebPresenceAuditReport> | null>(null);
 
   useEffect(() => {
+    trackEvent('web_presence_audit_view', {
+      cta_location: 'homepage_audit_section',
+      ...getUtmAnalyticsPayload(),
+    });
+  }, []);
+
+  useEffect(() => {
     if (!isLoading) {
       setActiveLoadingStep(0);
       return;
@@ -198,6 +206,7 @@ export function WebPresenceAuditForm() {
       has_location: Boolean(form.location.trim()),
       has_phone: Boolean(form.phone.trim()),
       has_email: Boolean(form.email.trim()),
+      ...getUtmAnalyticsPayload(),
     };
 
     trackEvent('web_presence_audit_submit', safeAnalyticsContext);
@@ -254,7 +263,12 @@ export function WebPresenceAuditForm() {
     }`;
 
   return (
-    <section id="free-web-presence-audit" className="overflow-hidden border-y border-slate-200 bg-slate-50 py-16 sm:py-20">
+    <section
+      id="free-web-presence-audit"
+      aria-labelledby="web-presence-audit-heading"
+      className="overflow-hidden border-y border-slate-200 bg-slate-50 py-16 sm:py-20"
+    >
+      <span id="web-presence-audit" className="sr-only" aria-hidden="true" />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-900/5">
           <div className="grid lg:grid-cols-[0.88fr_1.12fr]">
@@ -265,7 +279,7 @@ export function WebPresenceAuditForm() {
                   <Sparkles className="h-3.5 w-3.5" />
                   Free UK SME tool
                 </p>
-                <h2 className="mt-6 text-4xl font-black tracking-tight sm:text-5xl">
+                <h2 id="web-presence-audit-heading" className="mt-6 text-4xl font-black tracking-tight sm:text-5xl">
                   Is your website enquiry-ready?
                 </h2>
                 <p className="mt-5 max-w-xl text-base leading-8 text-slate-200">

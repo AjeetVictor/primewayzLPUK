@@ -1,14 +1,15 @@
-import { Link } from 'react-router-dom';
 import { ArrowRight, Gauge } from 'lucide-react';
 import { motion } from 'motion/react';
 import { trackEvent } from '../lib/analytics';
+import { getUtmAnalyticsPayload, WEB_PRESENCE_AUDIT_SECTION_ALIAS } from '../lib/utm';
 
 export const DigitalVisibilityCheckerPromo = () => {
   const handleClick = () => {
     trackEvent('cta_click', {
       cta_text: 'Check My Website',
       cta_location: 'homepage_visibility_tool',
-      tool_name: 'digital_visibility_checker',
+      tool_name: 'web_presence_audit',
+      ...getUtmAnalyticsPayload(),
     });
   };
 
@@ -29,14 +30,14 @@ export const DigitalVisibilityCheckerPromo = () => {
               </p>
 
               <div className="mt-6 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-                <Link
-                  to="/uk-sme-digital-visibility-checker"
+                <a
+                  href={`#${WEB_PRESENCE_AUDIT_SECTION_ALIAS}`}
                   onClick={handleClick}
                   className="inline-flex min-h-[48px] items-center justify-center rounded-lg bg-[#000A2D] px-6 py-3 text-sm font-bold text-white shadow-md shadow-slate-950/10 transition hover:bg-blue-900"
                 >
                   Check My Website
                   <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
+                </a>
                 <p className="max-w-sm text-xs leading-5 text-slate-500">
                   Checks SEO basics, trust signals, lead capture, local visibility, and maintenance risk.
                 </p>
