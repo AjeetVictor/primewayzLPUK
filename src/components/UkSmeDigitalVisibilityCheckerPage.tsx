@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { AuditCategoryId } from '../lib/audit/types';
 import { CATEGORY_CONFIG, CATEGORY_ORDER } from '../lib/audit/scoring/scoringConfig';
+import { SCORE_BANDS_HIGH_TO_LOW, formatScoreBandRange } from '../lib/audit/scoreBands';
 import { WebPresenceAuditForm } from './tools/WebPresenceAuditForm';
 
 const categoryDescriptions: Record<AuditCategoryId, string> = {
@@ -39,13 +40,6 @@ const categoryIcons: Record<AuditCategoryId, typeof FileSearch> = {
   'performance-ux': Zap,
   'analytics-readiness': BarChart3,
 };
-
-const scoreBands = [
-  { range: '80-100', label: 'Strong web presence foundation', tone: 'border-emerald-200 bg-emerald-50 text-emerald-900' },
-  { range: '60-79', label: 'Good base, clear improvement path', tone: 'border-blue-200 bg-blue-50 text-blue-950' },
-  { range: '40-59', label: 'Visibility gaps need attention', tone: 'border-amber-200 bg-amber-50 text-amber-950' },
-  { range: '0-39', label: 'Priority gaps to address', tone: 'border-red-200 bg-red-50 text-red-950' },
-] as const;
 
 export const UkSmeDigitalVisibilityCheckerPage = () => (
     <main className="min-h-screen bg-white text-slate-950">
@@ -156,10 +150,19 @@ export const UkSmeDigitalVisibilityCheckerPage = () => (
           </div>
 
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {scoreBands.map((band) => (
-              <article key={band.range} className={`rounded-xl border p-5 ${band.tone}`}>
-                <p className="text-2xl font-black">{band.range}</p>
+            {SCORE_BANDS_HIGH_TO_LOW.map((band) => (
+              <article
+                key={band.min}
+                className="rounded-xl border p-5"
+                style={{
+                  borderColor: band.borderColor,
+                  backgroundColor: band.bgColor,
+                  color: band.textColor,
+                }}
+              >
+                <p className="text-2xl font-black">{formatScoreBandRange(band)}</p>
                 <p className="mt-2 text-sm font-bold">{band.label}</p>
+                <p className="mt-2 text-sm leading-6 opacity-90">{band.helper}</p>
               </article>
             ))}
           </div>

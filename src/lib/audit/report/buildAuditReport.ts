@@ -1,20 +1,7 @@
 import type { AuditContext, AuditSignal, WebPresenceAuditReport } from '../types.ts';
 import { scoreAudit } from '../scoring/scoreAudit.ts';
+import { getScoreBand, summaryForScore } from '../scoreBands.ts';
 import { buildAuditProfile } from './buildAuditProfile.ts';
-
-function labelForScore(score: number): string {
-  if (score >= 80) return 'Strong web presence';
-  if (score >= 60) return 'Moderate web presence';
-  if (score >= 40) return 'Visibility gaps need attention';
-  return 'High-risk web presence';
-}
-
-function summaryForScore(score: number): string {
-  if (score >= 80) return 'The audited website has a strong foundation. Focus on the remaining evidence-based recommendations.';
-  if (score >= 60) return 'The website has a workable foundation, with several opportunities to improve trust, visibility, and lead capture.';
-  if (score >= 40) return 'The audit found limited visible signals in several areas. Review category notes below — many external platforms are not verified in this free version.';
-  return 'Limited visible signals were detected across several audited categories. This reflects crawled page content only and does not confirm absence on external platforms.';
-}
 
 export function buildAuditReport(signals: AuditSignal[], context: AuditContext): WebPresenceAuditReport {
   const { crawl } = context;
@@ -25,7 +12,7 @@ export function buildAuditReport(signals: AuditSignal[], context: AuditContext):
 
   return {
     score,
-    label: labelForScore(score),
+    label: getScoreBand(score).label,
     summary: summaryForScore(score),
     checks,
     notVerified: [...new Set(notVerified)],

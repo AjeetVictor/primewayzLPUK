@@ -19,64 +19,17 @@ import {
   Sparkles,
 } from 'lucide-react';
 import type {
-  AuditCategoryId,
   AuditCheck,
   AuditCheckStatus,
   AuditEvidence,
   WebPresenceAuditReport,
 } from '../../lib/audit/types';
+import { getCategoryBand, getScoreBand } from '../../lib/audit/scoreBands';
 
 type WebPresenceAuditResultProps = {
   report: Partial<WebPresenceAuditReport>;
 };
 
-const LIMITED_SIGNAL_CATEGORIES = new Set<AuditCategoryId>([
-  'external-presence',
-  'reviews-reputation',
-  'analytics-readiness',
-  'local-visibility',
-]);
-
-function statusBadgeLabel(check: Partial<AuditCheck>): string {
-  const status = safeStatus(check.status);
-  const categoryId = check.id as AuditCategoryId | undefined;
-
-  if (status === 'gap' && categoryId && LIMITED_SIGNAL_CATEGORIES.has(categoryId)) {
-    return 'Limited signals detected';
-  }
-  if (status === 'partial' && categoryId && LIMITED_SIGNAL_CATEGORIES.has(categoryId)) {
-    return 'Needs verification';
-  }
-
-  return statusStyles[status].label;
-}
-
-const statusStyles: Record<AuditCheckStatus, { label: string; badge: string; bar: string; accent: string }> = {
-  good: {
-    label: 'Strong',
-    badge: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-    bar: 'bg-emerald-500',
-    accent: 'text-emerald-700',
-  },
-  partial: {
-    label: 'Opportunity',
-    badge: 'border-amber-200 bg-amber-50 text-amber-800',
-    bar: 'bg-amber-400',
-    accent: 'text-amber-700',
-  },
-  gap: {
-    label: 'Priority gap',
-    badge: 'border-red-200 bg-red-50 text-red-800',
-    bar: 'bg-red-500',
-    accent: 'text-red-700',
-  },
-  not_verified: {
-    label: 'Not verified',
-    badge: 'border-slate-200 bg-slate-100 text-slate-700',
-    bar: 'bg-slate-400',
-    accent: 'text-slate-600',
-  },
-};
 
 function safeStatus(status?: string): AuditCheckStatus {
   if (status === 'good' || status === 'partial' || status === 'gap' || status === 'not_verified') {
@@ -165,12 +118,10 @@ function RecommendationList({ recommendations }: { recommendations?: string[] })
 }
 
 function CategoryCard({ check }: { check: Partial<AuditCheck> }) {
-  const status = safeStatus(check.status);
-  const styles = statusStyles[status];
-  const badgeLabel = statusBadgeLabel(check);
   const points = Number.isFinite(check.points) ? Number(check.points) : 0;
   const maxPoints = Number.isFinite(check.maxPoints) ? Number(check.maxPoints) : 0;
   const ratio = maxPoints > 0 ? Math.max(0, Math.min(100, (points / maxPoints) * 100)) : 0;
+  const band = getCategoryBand(ratio, check.status);
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -178,16 +129,23 @@ function CategoryCard({ check }: { check: Partial<AuditCheck> }) {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h3 className="text-lg font-black tracking-tight text-slate-950">{check.name || 'Audit category'}</h3>
-            <p className={`mt-2 text-sm font-black ${styles.accent}`}>
+            <p className="mt-2 text-sm font-black" style={{ color: band.textColor }}>
               {points} / {maxPoints} points
             </p>
           </div>
-          <span className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ${styles.badge}`}>
-            {badgeLabel}
+          <span
+            className="rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em]"
+            style={{
+              color: band.textColor,
+              backgroundColor: band.bgColor,
+              borderColor: band.borderColor,
+            }}
+          >
+            {band.label}
           </span>
         </div>
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
-          <div className={`h-full rounded-full ${styles.bar}`} style={{ width: `${ratio}%` }} />
+          <div className="h-full rounded-full" style={{ width: `${ratio}%`, backgroundColor: band.mainColor }} />
         </div>
         <p className="mt-4 text-sm leading-6 text-slate-600">
           {check.explanation || 'This category did not include an explanation.'}
@@ -231,6 +189,7 @@ function ProfileItem({
 
 export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) {
   const score = Math.max(0, Math.min(100, Number(report.score) || 0));
+  const scoreBand = getScoreBand(score);
   const checks = Array.isArray(report.checks) ? report.checks : [];
   const metadata = report.metadata;
   const profile = report.profile;
@@ -305,14 +264,17 @@ export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) 
             <div className="relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-white/5">
               <div
                 className="absolute inset-0 rounded-full"
-                style={{ background: `conic-gradient(#34d399 ${score * 3.6}deg, rgba(255,255,255,.12) 0deg)` }}
+                style={{ background: `conic-gradient(${scoreBand.mainColor} ${score * 3.6}deg, rgba(255,255,255,.12) 0deg)` }}
               />
               <div className="absolute inset-2 rounded-full bg-[#000A2D]" />
               <span className="relative text-4xl font-black">{score}</span>
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.15em] text-blue-200">Score / 100</p>
-              <p className="mt-2 text-lg font-black leading-6">{report.label || 'Web presence audit'}</p>
+              <p className="mt-2 text-lg font-black leading-6" style={{ color: scoreBand.mainColor }}>
+                {scoreBand.label}
+              </p>
+              <p className="mt-2 text-xs leading-5 text-slate-300">{scoreBand.helper}</p>
             </div>
           </div>
         </div>
@@ -345,7 +307,7 @@ export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) 
             <ProfileItem label="Detected address / area signal" value={profile.detectedAddressSnippet} icon={<MapPin className="h-4 w-4" />} />
             <ProfileItem label="Resolved host" value={profile.normalizedHost} icon={<Network className="h-4 w-4" />} />
             <ProfileItem label="Public IP" value={profile.resolvedIp} icon={<Network className="h-4 w-4" />} />
-            <ProfileItem label="Hosting / IP location" value="Not verified in this free version" icon={<ShieldCheck className="h-4 w-4" />} />
+            <ProfileItem label="Hosting / IP location" value="Not verified in this free audit" icon={<ShieldCheck className="h-4 w-4" />} />
           </div>
         </section>
       ) : null}
@@ -398,7 +360,7 @@ export function WebPresenceAuditResult({ report }: WebPresenceAuditResultProps) 
         <div className="flex items-center gap-3">
           <CircleHelp className="h-6 w-6 text-slate-500" />
           <div>
-            <h2 className="text-lg font-black text-slate-950">Not verified in this free version</h2>
+            <h2 className="text-lg font-black text-slate-950">Not verified in this free audit</h2>
             <p className="mt-1 text-sm text-slate-600">These items were not checked or could not be confirmed in this free version.</p>
           </div>
         </div>
