@@ -20,7 +20,7 @@ export function initGA(): void {
   // GA base script is loaded from index.html.
 }
 
-export function trackPageView(path: string): void {
+export function trackPageView(path: string, extraParams?: Record<string, unknown>): void {
   if (!isGaEnabled() || !window.gtag) return;
 
   window.gtag('event', 'page_view', {
@@ -29,6 +29,7 @@ export function trackPageView(path: string): void {
     page_title: document.title,
     service_region: 'UK',
     business_model: 'subscription_software_delivery',
+    ...extraParams,
   });
 }
 
