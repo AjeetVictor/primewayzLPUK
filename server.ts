@@ -618,6 +618,16 @@ async function getInitialDataAndSeo(pathname: string) {
       description:
         'Check if your UK SME website is clear, discoverable, trustworthy, and enquiry-ready with a free website visibility score from Primewayz UK.',
     },
+    '/about-us': {
+      title: 'About Primewayz UK | Monthly Digital Delivery for UK SMEs',
+      description:
+        'Learn how Primewayz UK supports UK SMEs with subscription-based software, website, CRM, SEO foundation, analytics, and maintenance delivery.',
+    },
+    '/contact-us': {
+      title: 'Contact Primewayz UK | Request a Digital Visibility Review',
+      description:
+        'Contact Primewayz UK to request a free digital visibility review or discuss monthly website, CRM, analytics, and maintenance support.',
+    },
   };
 
   const pageSeo = staticPageSeo[pathname] || staticPageSeo['/'];

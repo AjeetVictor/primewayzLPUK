@@ -39,6 +39,9 @@ import { LocalTradesLeadCapturePage } from './components/LocalTradesLeadCaptureP
 import { ProfessionalServicesCrmCleanupPage } from './components/ProfessionalServicesCrmCleanupPage';
 import { EcommerceStoreStabilitySupportPage } from './components/EcommerceStoreStabilitySupportPage';
 import { SuccessStoriesPage } from './components/SuccessStoriesPage';
+import { AboutUsPage } from './components/AboutUsPage';
+import { ContactUsPage } from './components/ContactUsPage';
+import { ClientConfidenceSignals } from './components/ClientConfidenceSignals';
 import { UkSmeDigitalVisibilityCheckerPage } from './components/UkSmeDigitalVisibilityCheckerPage';
 import { WebPresenceAuditSharedReportPage } from './components/tools/WebPresenceAuditSharedReportPage';
 import { WebPresenceAuditForm } from './components/tools/WebPresenceAuditForm';
@@ -58,6 +61,7 @@ const MainContent = () => (
   <main>
     <Hero />
     <UKTrustStrip />
+    <ClientConfidenceSignals />
     <UKSmePainPoints />
     <WebPresenceAuditForm />
     <Philosophy />
@@ -132,6 +136,8 @@ export const App = ({ initialData }: AppProps) => {
         <Route path="/blog/:id" element={<BlogPost initialPost={initialData?.blogPost} />} />
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/uk-sme-digital-visibility-checker" element={<UkSmeDigitalVisibilityCheckerPage />} />
+        <Route path="/about-us" element={<AboutUsPage />} />
+        <Route path="/contact-us" element={<ContactUsPage />} />
         <Route path="/web-presence-audit/report/:publicToken" element={<WebPresenceAuditSharedReportPage />} />
         <Route path="/software-development-subscription-uk" element={<SoftwareDevelopmentSubscriptionUkPage />} />
         <Route path="/website-maintenance-subscription-uk" element={<WebsiteMaintenanceSubscriptionUkPage />} />

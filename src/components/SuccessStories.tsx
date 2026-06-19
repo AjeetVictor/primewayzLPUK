@@ -52,7 +52,7 @@ export const SuccessStories = () => {
               viewport={{ once: true }}
               className="text-3xl md:text-5xl font-bold tracking-tight text-zinc-900 mb-6"
             >
-              Practical outcomes for <br />
+              Practical outcomes and case studies for <br />
               <span className="text-emerald-600 italic">UK small businesses</span>
             </motion.h2>
             <motion.p
@@ -62,7 +62,7 @@ export const SuccessStories = () => {
               transition={{ delay: 0.1 }}
               className="text-lg text-zinc-600"
             >
-              Focused example workstreams for UK businesses that need clearer
+              Focused example workstreams and client portfolio areas for UK businesses that need clearer
               enquiry flow, cleaner CRM operations, website upkeep, SEO foundations,
               and predictable monthly delivery.
             </motion.p>

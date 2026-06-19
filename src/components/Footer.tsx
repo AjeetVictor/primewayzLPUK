@@ -1,30 +1,39 @@
 import { Linkedin, Phone, Mail } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
+import { COMPANY_TRUST_LINKS } from '../constants/companyTrustLinks';
 
 const productLinks = [
-  { label: 'Digital Visibility Checker', href: '/uk-sme-digital-visibility-checker' },
+  { label: 'Web Presence Audit', href: COMPANY_TRUST_LINKS.webPresenceAudit },
+  { label: 'UK SME Digital Visibility Checker', href: COMPANY_TRUST_LINKS.digitalVisibilityChecker },
   { label: 'Software Subscription', href: '/software-development-subscription-uk' },
   { label: 'Website Maintenance', href: '/website-maintenance-subscription-uk' },
   { label: 'How it Works', href: '/#how-it-works' },
   { label: 'Features', href: '/#features' },
-  { label: 'Success Stories', href: '/success-stories' },
+  { label: 'Success Stories', href: COMPANY_TRUST_LINKS.successStories },
   { label: 'Pricing', href: '/#pricing' },
   { label: 'FAQ', href: '/#faq' },
 ] as const;
 
+const trustLinks = [
+  { label: 'About', href: COMPANY_TRUST_LINKS.about },
+  { label: 'Contact', href: COMPANY_TRUST_LINKS.contact },
+  { label: 'Success Stories', href: COMPANY_TRUST_LINKS.successStories },
+  { label: 'Web Presence Audit', href: COMPANY_TRUST_LINKS.webPresenceAudit },
+  { label: 'UK SME Digital Visibility Checker', href: COMPANY_TRUST_LINKS.digitalVisibilityChecker },
+] as const;
+
 const legalLinks = [
-  { label: 'Blog', href: '/blog' },
-  { label: 'Privacy Policy', href: '/privacy-policy' },
-  { label: 'Terms of Service', href: '/terms-of-service' },
-  { label: 'Cookie Policy', href: '/cookie-policy' },
-  { label: 'Contact Us', href: '/#contact' },
+  { label: 'Blog', href: COMPANY_TRUST_LINKS.blog },
+  { label: 'Privacy Policy', href: COMPANY_TRUST_LINKS.privacyPolicy },
+  { label: 'Terms of Service', href: COMPANY_TRUST_LINKS.termsOfService },
+  { label: 'Cookie Policy', href: COMPANY_TRUST_LINKS.cookiePolicy },
 ] as const;
 
 export const Footer = () => {
   return (
     <footer className="py-16 bg-[#000A2D] text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-12 mb-16">
           <div className="col-span-1 sm:col-span-2 lg:col-span-2">
             <div className="flex items-center gap-2 mb-6">
             <img
@@ -38,8 +47,12 @@ export const Footer = () => {
             />
             </div>
 
-            <p className="text-zinc-400 max-w-sm mb-6">
+            <p className="text-zinc-400 max-w-sm mb-4">
               Subscription-based software delivery for UK businesses - covering websites, SEO foundations, CRM integrations, automation, maintenance, and ongoing digital improvements.
+            </p>
+
+            <p className="text-zinc-500 max-w-sm mb-6 text-sm leading-6">
+              Supporting UK SMEs across London, Manchester, Birmingham, and wider UK regions.
             </p>
 
             <div className="mb-8">
@@ -94,7 +107,7 @@ export const Footer = () => {
 
             <div className="flex items-center gap-4">
               <TrackedLink
-                href="https://www.linkedin.com/company/primewayz-uk/"
+                href={COMPANY_TRUST_LINKS.linkedin}
                 target="_blank"
                 rel="noopener noreferrer"
                 ariaLabel="Primewayz on LinkedIn"
@@ -117,6 +130,25 @@ export const Footer = () => {
                     href={link.href}
                     ctaText={link.label}
                     ctaLocation="footer_product_navigation"
+                    eventType="footer_link_click"
+                    className="hover:text-white transition-colors"
+                  >
+                    {link.label}
+                  </TrackedLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-bold uppercase tracking-wider mb-6">Trust</h4>
+            <ul className="space-y-4 text-zinc-400">
+              {trustLinks.map((link) => (
+                <li key={link.href}>
+                  <TrackedLink
+                    href={link.href}
+                    ctaText={link.label}
+                    ctaLocation="footer_trust_navigation"
                     eventType="footer_link_click"
                     className="hover:text-white transition-colors"
                   >

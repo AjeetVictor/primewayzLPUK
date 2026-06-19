@@ -52,7 +52,8 @@ export const UKTrustStrip = () => (
             <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-600">
               Keep digital work moving without restarting projects every time priorities change.
               Scale capacity, keep SEO basics in view, separate vendor costs, and move into
-              maintenance when active delivery slows.
+              maintenance when active delivery slows. Supporting UK SMEs across London,
+              Manchester, Birmingham, and wider UK regions.
             </p>
           </div>
 
