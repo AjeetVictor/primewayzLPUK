@@ -46,6 +46,33 @@ function cleanHostname(hostname: string): string {
   return hostname.replace(/^\[|\]$/g, '').toLowerCase();
 }
 
+export async function resolvePublicAddresses(hostname: string): Promise<string[]> {
+  const cleanHost = cleanHostname(hostname);
+  if (net.isIP(cleanHost)) {
+    if (isPrivateAddress(cleanHost)) {
+      throw new AuditInputError('Private or internal IP addresses cannot be audited.');
+    }
+    return [cleanHost];
+  }
+
+  let addresses: Array<{ address: string; family: number }>;
+  try {
+    addresses = await dns.lookup(cleanHost, { all: true, verbatim: true });
+  } catch {
+    throw new AuditInputError('The website hostname could not be resolved.');
+  }
+
+  if (!addresses.length) {
+    throw new AuditInputError('The website hostname could not be resolved.');
+  }
+
+  if (addresses.some((entry) => isPrivateAddress(entry.address))) {
+    throw new AuditInputError('The website resolves to a private or internal network address.');
+  }
+
+  return [...new Set(addresses.map((entry) => entry.address))];
+}
+
 export async function normalizeAndValidateUrl(rawUrl: string): Promise<URL> {
   let parsed: URL;
   try {
@@ -73,27 +100,7 @@ export async function normalizeAndValidateUrl(rawUrl: string): Promise<URL> {
     throw new AuditInputError('Localhost and internal website addresses cannot be audited.');
   }
 
-  if (net.isIP(hostname)) {
-    if (isPrivateAddress(hostname)) {
-      throw new AuditInputError('Private or internal IP addresses cannot be audited.');
-    }
-    return parsed;
-  }
-
-  let addresses: Array<{ address: string; family: number }>;
-  try {
-    addresses = await dns.lookup(hostname, { all: true, verbatim: true });
-  } catch {
-    throw new AuditInputError('The website hostname could not be resolved.');
-  }
-
-  if (!addresses.length) {
-    throw new AuditInputError('The website hostname could not be resolved.');
-  }
-
-  if (addresses.some((entry) => isPrivateAddress(entry.address))) {
-    throw new AuditInputError('The website resolves to a private or internal network address.');
-  }
+  await resolvePublicAddresses(hostname);
 
   return parsed;
 }

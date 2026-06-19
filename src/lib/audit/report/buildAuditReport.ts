@@ -1,5 +1,6 @@
-import type { AuditCrawlResult, AuditSignal, WebPresenceAuditReport } from '../types.ts';
+import type { AuditContext, AuditSignal, WebPresenceAuditReport } from '../types.ts';
 import { scoreAudit } from '../scoring/scoreAudit.ts';
+import { buildAuditProfile } from './buildAuditProfile.ts';
 
 function labelForScore(score: number): string {
   if (score >= 80) return 'Strong web presence';
@@ -15,7 +16,8 @@ function summaryForScore(score: number): string {
   return 'The website has high-priority gaps across core visibility, trust, or enquiry signals.';
 }
 
-export function buildAuditReport(signals: AuditSignal[], crawl: AuditCrawlResult): WebPresenceAuditReport {
+export function buildAuditReport(signals: AuditSignal[], context: AuditContext): WebPresenceAuditReport {
+  const { crawl } = context;
   const { score, checks } = scoreAudit(signals);
   const notVerified = signals
     .filter((signal) => signal.status === 'not_verified')
@@ -27,6 +29,7 @@ export function buildAuditReport(signals: AuditSignal[], crawl: AuditCrawlResult
     summary: summaryForScore(score),
     checks,
     notVerified: [...new Set(notVerified)],
+    profile: buildAuditProfile(context),
     metadata: {
       auditedUrl: crawl.auditedUrl,
       pagesCrawled: crawl.pages.filter((page) => page.ok).length,

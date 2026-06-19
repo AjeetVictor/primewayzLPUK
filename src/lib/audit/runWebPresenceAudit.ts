@@ -176,5 +176,5 @@ export async function runWebPresenceAudit(rawInput: unknown): Promise<WebPresenc
     ...await searchProvider.check(input),
   ];
 
-  return buildAuditReport(signals, crawl);
+  return buildAuditReport(signals, context);
 }

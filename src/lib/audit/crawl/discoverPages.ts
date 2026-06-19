@@ -1,5 +1,5 @@
 import { extractAttribute } from './extractText.ts';
-import { normalizeAndValidateUrl } from './normalizeUrl.ts';
+import { normalizeAndValidateUrl, resolvePublicAddresses } from './normalizeUrl.ts';
 import { safeFetchPage } from './safeFetchPage.ts';
 import type { AuditCrawlResult, FetchedPage } from '../types.ts';
 
@@ -59,6 +59,7 @@ async function probeResource(baseUrl: URL, pathname: string): Promise<boolean> {
 
 export async function discoverPages(rawUrl: string): Promise<AuditCrawlResult> {
   const startUrl = await normalizeAndValidateUrl(rawUrl);
+  const resolvedAddresses = await resolvePublicAddresses(startUrl.hostname);
   const homepage = await safeFetchPage(startUrl);
   const pages: FetchedPage[] = [homepage];
 
@@ -78,6 +79,8 @@ export async function discoverPages(rawUrl: string): Promise<AuditCrawlResult> {
 
   return {
     auditedUrl: homepage.finalUrl || startUrl.toString(),
+    normalizedHost: startUrl.hostname.toLowerCase(),
+    resolvedIp: resolvedAddresses[0],
     pages,
     pagesAttempted: pages.length,
     robotsAccessible,

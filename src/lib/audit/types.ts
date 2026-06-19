@@ -66,6 +66,8 @@ export type FetchedPage = {
 
 export type AuditCrawlResult = {
   auditedUrl: string;
+  normalizedHost: string;
+  resolvedIp?: string;
   pages: FetchedPage[];
   pagesAttempted: number;
   robotsAccessible: boolean;
@@ -86,6 +88,24 @@ export type WebPresenceAuditReport = {
   summary: string;
   checks: AuditCheck[];
   notVerified: string[];
+  profile: {
+    businessName: string;
+    websiteUrl: string;
+    normalizedHost: string;
+    businessType: string;
+    targetCountry: string;
+    location?: string;
+    providedPhone?: string;
+    providedEmail?: string;
+    detectedPhone?: string;
+    detectedEmail?: string;
+    detectedAddressSnippet?: string;
+    faviconUrl?: string;
+    logoUrl?: string;
+    openGraphImage?: string;
+    resolvedIp?: string;
+    hostingLocationStatus: 'not_verified';
+  };
   metadata: {
     auditedUrl: string;
     pagesCrawled: number;
