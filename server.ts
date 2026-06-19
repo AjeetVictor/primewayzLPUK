@@ -8,6 +8,8 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { getAllBlogPosts, getBlogPostById } from './src/data/blog/utils.ts';
 import { runDigitalVisibilityCheck } from './src/lib/digitalVisibilityCheck.ts';
+import { runWebPresenceAudit } from './src/lib/audit/runWebPresenceAudit.ts';
+import { AuditInputError } from './src/lib/audit/types.ts';
 import type { NextFunction, Request, Response } from 'express';
 import type { BlogPost } from './src/data/blog/types.ts';
 
@@ -1054,6 +1056,18 @@ app.post('/api/tools/digital-visibility-check', async (req, res) => {
     const message = err instanceof Error ? err.message : 'Could not check this website.';
     const status = message.includes('cannot be checked') || message.includes('valid website') ? 400 : 502;
     console.error('Digital visibility check error:', err);
+    res.status(status).json({ error: message });
+  }
+});
+
+app.post('/api/tools/web-presence-audit', async (req, res) => {
+  try {
+    const report = await runWebPresenceAudit(req.body);
+    res.json(report);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'The web presence audit could not be completed.';
+    const status = error instanceof AuditInputError ? 400 : 500;
+    console.error('Web presence audit error:', error);
     res.status(status).json({ error: message });
   }
 });

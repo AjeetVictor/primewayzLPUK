@@ -40,6 +40,7 @@ import { ProfessionalServicesCrmCleanupPage } from './components/ProfessionalSer
 import { EcommerceStoreStabilitySupportPage } from './components/EcommerceStoreStabilitySupportPage';
 import { SuccessStoriesPage } from './components/SuccessStoriesPage';
 import { UkSmeDigitalVisibilityCheckerPage } from './components/UkSmeDigitalVisibilityCheckerPage';
+import { WebPresenceAuditForm } from './components/tools/WebPresenceAuditForm';
 
 // SSR-safe: use static path for logo
 const logo = '/assets/primewayz-infotech-logo.svg';
@@ -56,6 +57,7 @@ const MainContent = () => (
     <Hero />
     <UKTrustStrip />
     <UKSmePainPoints />
+    <WebPresenceAuditForm />
     <Philosophy />
     <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 1 }}>
       <HowItWorks />
