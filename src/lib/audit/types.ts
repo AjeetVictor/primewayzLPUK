@@ -109,6 +109,51 @@ export type WebPresenceAuditMetadata = {
   version: 'web-presence-audit-v1';
 };
 
+export type WebPresenceAuditBenchmark = {
+  label: string;
+  helper: string;
+  disclaimer: string;
+  frameworkName: 'Primewayz UK Public-Signal Readiness Framework';
+  sector: string;
+  sectorInsight: string;
+  strengths: string[];
+  improvementAreas: string[];
+  shareSummary: string;
+};
+
+export type WebPresenceAuditClassification = {
+  detectedType: string;
+  confidence: 'low' | 'medium' | 'high';
+  reason: string;
+  detectedSignals: string[];
+  recommendationFocus: string[];
+};
+
+export type WebPresenceAuditMobileReadiness = {
+  label: string;
+  status: 'strong' | 'workable' | 'needs_review' | 'not_verified';
+  signals: string[];
+  concerns: string[];
+  recommendations: string[];
+  disclaimer: string;
+};
+
+export type WebPresenceAuditHeadReadiness = {
+  title: 'found' | 'missing';
+  metaDescription: 'found' | 'missing';
+  canonical: 'found' | 'missing';
+  robotsMeta: 'indexable' | 'noindex_detected' | 'not_detected';
+  openGraph: 'found' | 'partial' | 'missing';
+  twitterCard: 'found' | 'missing';
+  structuredData: 'found' | 'missing';
+  robotsTxt: 'accessible' | 'not_detected';
+  sitemapXml: 'accessible' | 'not_detected';
+  googleSiteVerificationMeta: 'detected' | 'not_detected';
+  bingSiteVerificationMeta: 'detected' | 'not_detected';
+  notes: string[];
+  recommendations: string[];
+};
+
 export type WebPresenceAuditReport = {
   score: number;
   label: string;
@@ -117,6 +162,10 @@ export type WebPresenceAuditReport = {
   notVerified: string[];
   profile: WebPresenceAuditProfile;
   metadata: WebPresenceAuditMetadata;
+  benchmark?: WebPresenceAuditBenchmark;
+  classification?: WebPresenceAuditClassification;
+  mobileReadiness?: WebPresenceAuditMobileReadiness;
+  headReadiness?: WebPresenceAuditHeadReadiness;
 };
 
 export type SharedWebPresenceAuditProfile = Omit<

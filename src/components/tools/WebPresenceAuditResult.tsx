@@ -29,6 +29,10 @@ import { getCategoryBand, getScoreBand } from '../../lib/audit/scoreBands';
 import { getSharedReportContactCtaUrl } from '../../lib/audit/share/disclaimers';
 import { WebPresenceAuditDisclaimer } from './WebPresenceAuditDisclaimer';
 import { WebPresenceAuditSharePanel } from './WebPresenceAuditSharePanel';
+import { WebPresenceAuditBenchmarkPanel } from './WebPresenceAuditBenchmarkPanel';
+import { WebPresenceAuditClassificationPanel } from './WebPresenceAuditClassificationPanel';
+import { WebPresenceAuditMobileReadinessPanel } from './WebPresenceAuditMobileReadinessPanel';
+import { WebPresenceAuditHeadReadinessPanel } from './WebPresenceAuditHeadReadinessPanel';
 
 type WebPresenceAuditResultProps = {
   report: Partial<WebPresenceAuditReport> | SharedWebPresenceAuditReport;
@@ -303,6 +307,27 @@ export function WebPresenceAuditResult({
 
       {!isShared && showSharePanel && report.score !== undefined && report.profile && report.metadata && Array.isArray(report.checks) ? (
         <WebPresenceAuditSharePanel report={report as WebPresenceAuditReport} ctaLocation={ctaLocation} />
+      ) : null}
+
+      {report.benchmark ? (
+        <WebPresenceAuditBenchmarkPanel
+          benchmark={report.benchmark}
+          businessType={profile?.businessType}
+          ctaLocation={ctaLocation}
+          score={score}
+        />
+      ) : null}
+
+      {report.classification ? (
+        <WebPresenceAuditClassificationPanel classification={report.classification} />
+      ) : null}
+
+      {report.mobileReadiness ? (
+        <WebPresenceAuditMobileReadinessPanel mobileReadiness={report.mobileReadiness} />
+      ) : null}
+
+      {report.headReadiness ? (
+        <WebPresenceAuditHeadReadinessPanel headReadiness={report.headReadiness} />
       ) : null}
 
       {profile ? (

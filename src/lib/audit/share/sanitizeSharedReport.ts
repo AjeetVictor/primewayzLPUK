@@ -1,7 +1,140 @@
-import type { SharedWebPresenceAuditReport, WebPresenceAuditReport } from '../types.ts';
+import type {
+  SharedWebPresenceAuditReport,
+  WebPresenceAuditBenchmark,
+  WebPresenceAuditClassification,
+  WebPresenceAuditHeadReadiness,
+  WebPresenceAuditMobileReadiness,
+  WebPresenceAuditReport,
+} from '../types.ts';
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function sanitizeBenchmark(raw: unknown): WebPresenceAuditBenchmark | undefined {
+  if (!isObject(raw)) return undefined;
+
+  const strengths = Array.isArray(raw.strengths)
+    ? raw.strengths.filter((item): item is string => typeof item === 'string')
+    : [];
+  const improvementAreas = Array.isArray(raw.improvementAreas)
+    ? raw.improvementAreas.filter((item): item is string => typeof item === 'string')
+    : [];
+
+  if (
+    typeof raw.label !== 'string'
+    || typeof raw.helper !== 'string'
+    || typeof raw.disclaimer !== 'string'
+    || typeof raw.sector !== 'string'
+    || typeof raw.sectorInsight !== 'string'
+    || typeof raw.shareSummary !== 'string'
+  ) {
+    return undefined;
+  }
+
+  return {
+    label: raw.label.trim(),
+    helper: raw.helper.trim(),
+    disclaimer: raw.disclaimer.trim(),
+    frameworkName: 'Primewayz UK Public-Signal Readiness Framework',
+    sector: raw.sector.trim(),
+    sectorInsight: raw.sectorInsight.trim(),
+    strengths,
+    improvementAreas,
+    shareSummary: raw.shareSummary.trim(),
+  };
+}
+
+function sanitizeStringArray(raw: unknown): string[] {
+  return Array.isArray(raw) ? raw.filter((item): item is string => typeof item === 'string') : [];
+}
+
+function sanitizeClassification(raw: unknown): WebPresenceAuditClassification | undefined {
+  if (!isObject(raw)) return undefined;
+  const confidence = raw.confidence;
+  if (
+    typeof raw.detectedType !== 'string'
+    || typeof raw.reason !== 'string'
+    || (confidence !== 'low' && confidence !== 'medium' && confidence !== 'high')
+  ) {
+    return undefined;
+  }
+
+  return {
+    detectedType: raw.detectedType.trim(),
+    confidence,
+    reason: raw.reason.trim(),
+    detectedSignals: sanitizeStringArray(raw.detectedSignals),
+    recommendationFocus: sanitizeStringArray(raw.recommendationFocus),
+  };
+}
+
+function sanitizeMobileReadiness(raw: unknown): WebPresenceAuditMobileReadiness | undefined {
+  if (!isObject(raw)) return undefined;
+  const status = raw.status;
+  if (
+    typeof raw.label !== 'string'
+    || typeof raw.disclaimer !== 'string'
+    || (status !== 'strong' && status !== 'workable' && status !== 'needs_review' && status !== 'not_verified')
+  ) {
+    return undefined;
+  }
+
+  return {
+    label: raw.label.trim(),
+    status,
+    signals: sanitizeStringArray(raw.signals),
+    concerns: sanitizeStringArray(raw.concerns),
+    recommendations: sanitizeStringArray(raw.recommendations),
+    disclaimer: raw.disclaimer.trim(),
+  };
+}
+
+function sanitizeHeadReadiness(raw: unknown): WebPresenceAuditHeadReadiness | undefined {
+  if (!isObject(raw)) return undefined;
+
+  const title = raw.title === 'found' || raw.title === 'missing' ? raw.title : undefined;
+  const metaDescription = raw.metaDescription === 'found' || raw.metaDescription === 'missing' ? raw.metaDescription : undefined;
+  const canonical = raw.canonical === 'found' || raw.canonical === 'missing' ? raw.canonical : undefined;
+  const robotsMeta = raw.robotsMeta === 'indexable' || raw.robotsMeta === 'noindex_detected' || raw.robotsMeta === 'not_detected'
+    ? raw.robotsMeta
+    : undefined;
+  const openGraph = raw.openGraph === 'found' || raw.openGraph === 'partial' || raw.openGraph === 'missing'
+    ? raw.openGraph
+    : undefined;
+  const twitterCard = raw.twitterCard === 'found' || raw.twitterCard === 'missing' ? raw.twitterCard : undefined;
+  const structuredData = raw.structuredData === 'found' || raw.structuredData === 'missing' ? raw.structuredData : undefined;
+  const robotsTxt = raw.robotsTxt === 'accessible' || raw.robotsTxt === 'not_detected' ? raw.robotsTxt : undefined;
+  const sitemapXml = raw.sitemapXml === 'accessible' || raw.sitemapXml === 'not_detected' ? raw.sitemapXml : undefined;
+  const googleSiteVerificationMeta = raw.googleSiteVerificationMeta === 'detected' || raw.googleSiteVerificationMeta === 'not_detected'
+    ? raw.googleSiteVerificationMeta
+    : undefined;
+  const bingSiteVerificationMeta = raw.bingSiteVerificationMeta === 'detected' || raw.bingSiteVerificationMeta === 'not_detected'
+    ? raw.bingSiteVerificationMeta
+    : undefined;
+
+  if (
+    !title || !metaDescription || !canonical || !robotsMeta || !openGraph || !twitterCard
+    || !structuredData || !robotsTxt || !sitemapXml || !googleSiteVerificationMeta || !bingSiteVerificationMeta
+  ) {
+    return undefined;
+  }
+
+  return {
+    title,
+    metaDescription,
+    canonical,
+    robotsMeta,
+    openGraph,
+    twitterCard,
+    structuredData,
+    robotsTxt,
+    sitemapXml,
+    googleSiteVerificationMeta,
+    bingSiteVerificationMeta,
+    notes: sanitizeStringArray(raw.notes),
+    recommendations: sanitizeStringArray(raw.recommendations),
+  };
 }
 
 export function sanitizeSharedReport(raw: unknown): SharedWebPresenceAuditReport {
@@ -15,8 +148,12 @@ export function sanitizeSharedReport(raw: unknown): SharedWebPresenceAuditReport
   const notVerified = Array.isArray(raw.notVerified)
     ? raw.notVerified.filter((item): item is string => typeof item === 'string')
     : [];
+  const benchmark = sanitizeBenchmark(raw.benchmark);
+  const classification = sanitizeClassification(raw.classification);
+  const mobileReadiness = sanitizeMobileReadiness(raw.mobileReadiness);
+  const headReadiness = sanitizeHeadReadiness(raw.headReadiness);
 
-  return {
+  const report: SharedWebPresenceAuditReport = {
     score: Math.max(0, Math.min(100, Number(raw.score) || 0)),
     label: typeof raw.label === 'string' ? raw.label.trim() : 'Web presence audit',
     summary: typeof raw.summary === 'string' ? raw.summary.trim() : '',
@@ -51,6 +188,21 @@ export function sanitizeSharedReport(raw: unknown): SharedWebPresenceAuditReport
       version: 'web-presence-audit-v1',
     },
   };
+
+  if (benchmark) {
+    report.benchmark = benchmark;
+  }
+  if (classification) {
+    report.classification = classification;
+  }
+  if (mobileReadiness) {
+    report.mobileReadiness = mobileReadiness;
+  }
+  if (headReadiness) {
+    report.headReadiness = headReadiness;
+  }
+
+  return report;
 }
 
 export function toSharedReport(report: WebPresenceAuditReport): SharedWebPresenceAuditReport {
