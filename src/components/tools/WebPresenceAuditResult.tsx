@@ -320,7 +320,7 @@ function RecommendedActions({
               <p className="mt-2 text-sm leading-6 text-slate-600">{action.description}</p>
             </div>
             <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-blue-700">
-              Explore this action
+              {action.ctaLabel}
               <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </span>
           </a>
