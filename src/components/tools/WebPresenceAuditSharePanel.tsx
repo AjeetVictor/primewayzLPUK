@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Check, Copy, Link2, Loader2, Share2 } from 'lucide-react';
+import { Check, Copy, ExternalLink, Link2, Loader2, Share2 } from 'lucide-react';
 import type { WebPresenceAuditReport } from '../../lib/audit/types';
 import { getScoreBand } from '../../lib/audit/scoreBands';
-import { AUDIT_SHARE_SHORT_DISCLAIMER } from '../../lib/audit/share/disclaimers';
 import { trackEvent } from '../../lib/analytics';
 import { apiUrl } from '../../utils/apiUrl';
+import { WebPresenceAuditDisclaimer } from './WebPresenceAuditDisclaimer';
 
 type WebPresenceAuditSharePanelProps = {
   report: WebPresenceAuditReport;
@@ -69,37 +69,32 @@ export function WebPresenceAuditSharePanel({ report, ctaLocation }: WebPresenceA
   };
 
   return (
-    <section className="rounded-2xl border border-blue-200 bg-blue-50/60 p-5 shadow-sm sm:p-7">
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-blue-700 shadow-sm">
-          <Share2 className="h-5 w-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-xl font-black tracking-tight text-slate-950">Create share link</h2>
-          <p className="mt-2 text-sm leading-7 text-slate-600">
-            Generate a read-only online report you can share with colleagues or stakeholders.
-          </p>
-          <p className="mt-3 rounded-xl border border-blue-100 bg-white px-4 py-3 text-sm font-medium leading-6 text-slate-700">
-            {AUDIT_SHARE_SHORT_DISCLAIMER}
-          </p>
-
-          {error ? (
-            <p className="mt-4 text-sm font-semibold text-red-700" role="alert">
-              {error}
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+            <Share2 className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-black tracking-tight text-slate-950">Share report</h2>
+            <p className="mt-1 max-w-xl text-sm leading-6 text-slate-600">
+              Create a read-only online report link for colleagues or stakeholders.
             </p>
-          ) : null}
+          </div>
+        </div>
 
+        <div className="flex shrink-0 flex-wrap items-center gap-3">
           {!shareUrl ? (
             <button
               type="button"
               onClick={createShareLink}
               disabled={isCreating}
-              className="mt-5 inline-flex min-h-[46px] items-center justify-center gap-2 rounded-xl bg-[#000A2D] px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-950 disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[#000A2D] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-blue-950 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isCreating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Creating share link…
+                  Creating…
                 </>
               ) : (
                 <>
@@ -109,42 +104,52 @@ export function WebPresenceAuditSharePanel({ report, ctaLocation }: WebPresenceA
               )}
             </button>
           ) : (
-            <div className="mt-5 space-y-3">
-              <label className="block text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-                Shareable report link
-              </label>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <input
-                  type="url"
-                  readOnly
-                  value={shareUrl}
-                  className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800"
-                  aria-label="Shareable report link"
-                />
-                <button
-                  type="button"
-                  onClick={copyShareLink}
-                  className="inline-flex min-h-[46px] shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="h-4 w-4 text-emerald-600" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4" />
-                      Copy link
-                    </>
-                  )}
-                </button>
-              </div>
-              <p className="text-xs leading-5 text-slate-500">
-                Shared reports omit submitted contact details and internal crawl data. Links are public to anyone with the URL.
-              </p>
-            </div>
+            <>
+              <button
+                type="button"
+                onClick={copyShareLink}
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-4 w-4 text-emerald-600" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4" />
+                    Copy share link
+                  </>
+                )}
+              </button>
+              <a
+                href={shareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
+              >
+                Open shared report
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </>
           )}
         </div>
+      </div>
+
+      {error ? (
+        <p className="mt-4 text-sm font-semibold text-red-700" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      {shareUrl ? (
+        <p className="mt-4 truncate text-xs text-slate-500" title={shareUrl}>
+          {shareUrl}
+        </p>
+      ) : null}
+
+      <div className="mt-5">
+        <WebPresenceAuditDisclaimer compact />
       </div>
     </section>
   );

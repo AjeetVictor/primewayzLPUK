@@ -19,6 +19,7 @@ import { WebPresenceAuditResult } from './WebPresenceAuditResult';
 const businessTypes = [
   'Local service business',
   'Professional services',
+  'Financial services',
   'Ecommerce business',
   'Software / IT services',
   'Healthcare / clinic',

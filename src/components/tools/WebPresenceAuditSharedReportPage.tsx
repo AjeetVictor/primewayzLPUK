@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, ArrowUpRight, Check, Copy, Loader2 } from 'lucide-react';
 import type { SharedWebPresenceAuditReport } from '../../lib/audit/types';
+import { getSharedReportContactCtaUrl } from '../../lib/audit/share/disclaimers';
 import { apiUrl } from '../../utils/apiUrl';
 import { WebPresenceAuditResult } from './WebPresenceAuditResult';
 
@@ -12,6 +13,57 @@ type SharedReportResponse = {
   createdAt: string;
   report: SharedWebPresenceAuditReport;
 };
+
+function SharedReportTopBar() {
+  const [copied, setCopied] = useState(false);
+  const contactHref = getSharedReportContactCtaUrl();
+
+  const copyReportLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard unavailable — user can copy from the address bar.
+    }
+  };
+
+  return (
+    <section className="mb-8 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+          Public shareable report
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={copyReportLink}
+            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
+          >
+            {copied ? (
+              <>
+                <Check className="h-4 w-4 text-emerald-600" />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy className="h-4 w-4" />
+                Copy report link
+              </>
+            )}
+          </button>
+          <a
+            href={contactHref}
+            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[#000A2D] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-blue-950"
+          >
+            Request an in-depth digital visibility audit
+            <ArrowUpRight className="h-4 w-4" />
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export function WebPresenceAuditSharedReportPage() {
   const { publicToken } = useParams<{ publicToken: string }>();
@@ -107,7 +159,12 @@ export function WebPresenceAuditSharedReportPage() {
           </div>
         ) : null}
 
-        {!isLoading && report ? <WebPresenceAuditResult report={report} mode="shared" /> : null}
+        {!isLoading && report ? (
+          <>
+            <SharedReportTopBar />
+            <WebPresenceAuditResult report={report} mode="shared" />
+          </>
+        ) : null}
       </main>
     </div>
   );

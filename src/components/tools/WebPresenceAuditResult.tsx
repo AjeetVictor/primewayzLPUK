@@ -26,6 +26,7 @@ import type {
   WebPresenceAuditReport,
 } from '../../lib/audit/types';
 import { getCategoryBand, getScoreBand } from '../../lib/audit/scoreBands';
+import { getSharedReportContactCtaUrl } from '../../lib/audit/share/disclaimers';
 import { WebPresenceAuditDisclaimer } from './WebPresenceAuditDisclaimer';
 import { WebPresenceAuditSharePanel } from './WebPresenceAuditSharePanel';
 
@@ -34,6 +35,7 @@ type WebPresenceAuditResultProps = {
   mode?: 'interactive' | 'shared';
   showSharePanel?: boolean;
   ctaLocation?: string;
+  contactCtaHref?: string;
 };
 
 
@@ -198,8 +200,10 @@ export function WebPresenceAuditResult({
   mode = 'interactive',
   showSharePanel = false,
   ctaLocation = 'audit_result',
+  contactCtaHref,
 }: WebPresenceAuditResultProps) {
   const isShared = mode === 'shared';
+  const sharedContactHref = contactCtaHref ?? getSharedReportContactCtaUrl();
   const score = Math.max(0, Math.min(100, Number(report.score) || 0));
   const scoreBand = getScoreBand(score);
   const checks = Array.isArray(report.checks) ? report.checks : [];
@@ -295,7 +299,11 @@ export function WebPresenceAuditResult({
         </div>
       </section>
 
-      <WebPresenceAuditDisclaimer variant={isShared ? 'prominent' : 'default'} />
+      <WebPresenceAuditDisclaimer />
+
+      {!isShared && showSharePanel && report.score !== undefined && report.profile && report.metadata && Array.isArray(report.checks) ? (
+        <WebPresenceAuditSharePanel report={report as WebPresenceAuditReport} ctaLocation={ctaLocation} />
+      ) : null}
 
       {profile ? (
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
@@ -417,7 +425,7 @@ export function WebPresenceAuditResult({
             </p>
           </div>
           <a
-            href="/#contact"
+            href={isShared ? sharedContactHref : '/#contact'}
             className="inline-flex min-h-[50px] shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-[#000A2D] transition hover:bg-emerald-50"
           >
             {isShared ? 'Request an in-depth digital visibility audit' : 'Request my free review'}
@@ -425,10 +433,6 @@ export function WebPresenceAuditResult({
           </a>
         </div>
       </section>
-
-      {!isShared && showSharePanel && report.score !== undefined && report.profile && report.metadata && Array.isArray(report.checks) ? (
-        <WebPresenceAuditSharePanel report={report as WebPresenceAuditReport} ctaLocation={ctaLocation} />
-      ) : null}
 
       {checks.length === 0 ? (
         <p className="flex items-center gap-2 text-sm text-amber-700">
