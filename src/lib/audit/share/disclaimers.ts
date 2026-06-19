@@ -8,4 +8,13 @@ export const AUDIT_SHORT_DISCLAIMER =
   'Findings are based on crawled pages and visible HTML signals. External platforms and hidden tracking setups are not fully verified in this free audit.';
 
 export const AUDIT_SHARE_SHORT_DISCLAIMER =
-  'This shareable report is a public-signal overview, not an authenticated audit.';
+  'This shareable report is a quick public-signal overview, not an authenticated audit.';
+
+export const SHARED_REPORT_CONTACT_CTA_URL =
+  'https://uk.primewayz.com/?utm_source=shared_report&utm_medium=referral&utm_campaign=web_presence_audit_share&utm_content=contact_cta#contact';
+
+export function getSharedReportContactCtaUrl(): string {
+  return SHARED_REPORT_CONTACT_CTA_URL;
+}
+
+
