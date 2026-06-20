@@ -12,6 +12,7 @@ type WebPresenceAuditSharePanelProps = {
   ctaLocation: string;
   shareLink: ShareLinkState | null;
   onShareLinkChange: (link: ShareLinkState) => void;
+  mode?: 'inline' | 'modal';
 };
 
 type ShareResponse = ShareLinkState & {
@@ -23,6 +24,7 @@ export function WebPresenceAuditSharePanel({
   ctaLocation,
   shareLink,
   onShareLinkChange,
+  mode = 'inline',
 }: WebPresenceAuditSharePanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -54,10 +56,9 @@ export function WebPresenceAuditSharePanel({
       });
 
       const scoreBand = getScoreBand(report.score);
-      trackEvent('web_presence_audit_share_created', {
+      trackEvent('web_presence_audit_share_link_created', {
         score_band: `${scoreBand.min}-${scoreBand.max}`,
         score_label: scoreBand.label,
-        pages_crawled: report.metadata.pagesCrawled,
         cta_location: ctaLocation,
       });
     } catch (shareError) {
@@ -80,14 +81,14 @@ export function WebPresenceAuditSharePanel({
   };
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <section className={mode === 'modal' ? 'bg-white' : 'rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6'}>
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
             <Share2 className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-lg font-black tracking-tight text-slate-950">Share report</h2>
+            <h2 className={mode === 'modal' ? 'text-2xl font-black tracking-tight text-slate-950' : 'text-lg font-black tracking-tight text-slate-950'}>Share report</h2>
             <p className="mt-1 max-w-xl text-sm leading-6 text-slate-600">
               Create a read-only online report link for colleagues or stakeholders.
             </p>
@@ -160,7 +161,13 @@ export function WebPresenceAuditSharePanel({
       ) : null}
 
       <div className="mt-5">
-        <WebPresenceAuditDisclaimer compact />
+        {mode === 'modal' ? (
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+            This shareable report is a quick public-signal overview, not an authenticated audit.
+          </div>
+        ) : (
+          <WebPresenceAuditDisclaimer compact />
+        )}
       </div>
     </section>
   );

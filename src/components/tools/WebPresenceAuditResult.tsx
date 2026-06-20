@@ -34,8 +34,7 @@ import { getCategoryBand, getScoreBand } from '../../lib/audit/scoreBands';
 import { getSharedReportContactCtaUrl } from '../../lib/audit/share/disclaimers';
 import type { ShareLinkState } from '../../lib/audit/share/shareReportService';
 import { WebPresenceAuditDisclaimer } from './WebPresenceAuditDisclaimer';
-import { WebPresenceAuditSharePanel } from './WebPresenceAuditSharePanel';
-import { WebPresenceAuditEmailReportPanel } from './WebPresenceAuditEmailReportPanel';
+import { WebPresenceAuditReportActions } from './WebPresenceAuditReportActions';
 import { WebPresenceAuditBenchmarkPanel } from './WebPresenceAuditBenchmarkPanel';
 import { WebPresenceAuditClassificationPanel } from './WebPresenceAuditClassificationPanel';
 import { WebPresenceAuditMobileReadinessPanel } from './WebPresenceAuditMobileReadinessPanel';
@@ -510,20 +509,12 @@ export function WebPresenceAuditResult({
       </section>
 
       {!isShared && showSharePanel && report.score !== undefined && report.profile && report.metadata && Array.isArray(report.checks) ? (
-        <>
-          <WebPresenceAuditSharePanel
-            report={report as WebPresenceAuditReport}
-            ctaLocation={ctaLocation}
-            shareLink={shareLink}
-            onShareLinkChange={setShareLink}
-          />
-          <WebPresenceAuditEmailReportPanel
-            report={report as WebPresenceAuditReport}
-            ctaLocation={ctaLocation}
-            shareLink={shareLink}
-            onShareLinkChange={setShareLink}
-          />
-        </>
+        <WebPresenceAuditReportActions
+          report={report as WebPresenceAuditReport}
+          ctaLocation={ctaLocation}
+          shareLink={shareLink}
+          onShareLinkChange={setShareLink}
+        />
       ) : null}
 
       {report.benchmark ? (

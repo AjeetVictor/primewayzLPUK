@@ -12,6 +12,7 @@ type WebPresenceAuditEmailReportPanelProps = {
   ctaLocation: string;
   shareLink: ShareLinkState | null;
   onShareLinkChange: (link: ShareLinkState) => void;
+  mode?: 'inline' | 'modal';
 };
 
 type FormState = {
@@ -48,6 +49,7 @@ export function WebPresenceAuditEmailReportPanel({
   ctaLocation,
   shareLink,
   onShareLinkChange,
+  mode = 'inline',
 }: WebPresenceAuditEmailReportPanelProps) {
   const [form, setForm] = useState<FormState>(initialFormState);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -103,6 +105,11 @@ export function WebPresenceAuditEmailReportPanel({
     };
 
     onShareLinkChange(link);
+    trackEvent('web_presence_audit_share_link_created', {
+      score_band: `${scoreBand.min}-${scoreBand.max}`,
+      score_label: scoreBand.label,
+      cta_location: ctaLocation,
+    });
     return link;
   };
 
@@ -117,13 +124,6 @@ export function WebPresenceAuditEmailReportPanel({
 
     setIsSubmitting(true);
     setErrors({});
-
-    trackEvent('web_presence_audit_email_report_requested', {
-      score_band: `${scoreBand.min}-${scoreBand.max}`,
-      score_label: scoreBand.label,
-      cta_location: ctaLocation,
-      reminder_opt_in: form.reminderOptIn,
-    });
 
     try {
       const link = await ensureShareLink();
@@ -158,7 +158,6 @@ export function WebPresenceAuditEmailReportPanel({
         score_band: `${scoreBand.min}-${scoreBand.max}`,
         score_label: scoreBand.label,
         cta_location: ctaLocation,
-        reminder_opt_in: form.reminderOptIn,
       });
 
       setIsSent(true);
@@ -172,13 +171,13 @@ export function WebPresenceAuditEmailReportPanel({
   };
 
   return (
-    <section className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5 shadow-sm sm:p-6">
+    <section className={mode === 'modal' ? 'bg-white' : 'rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5 shadow-sm sm:p-6'}>
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm">
           <Mail className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-black tracking-tight text-slate-950">Email this report</h2>
+          <h2 className={mode === 'modal' ? 'text-2xl font-black tracking-tight text-slate-950' : 'text-lg font-black tracking-tight text-slate-950'}>Email this report</h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
             Send a copy of your audit summary and shared report link to your inbox. Optionally request a 30-day re-check reminder.
           </p>
