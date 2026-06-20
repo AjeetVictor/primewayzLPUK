@@ -24,11 +24,14 @@ model ToolLead {
   websiteUrl   String
   score        Int?
   businessType String?
+  businessName String?
   location     String?
   name         String?
   email        String?
   phone        String?
   message      String?  @db.Text
+  /// Safe structured metadata for audit email-report leads (no raw report/crawler/debug data).
+  details      Json?
   createdAt    DateTime @default(now())
 
   @@index([source])

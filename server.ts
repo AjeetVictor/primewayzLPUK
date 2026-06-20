@@ -13,6 +13,8 @@ import { AuditInputError } from './src/lib/audit/types.ts';
 import { createSharedReport, getSharedReport } from './src/lib/audit/share/shareReportService.ts';
 import { ensureReportStoreReady } from './src/lib/audit/share/reportStore.ts';
 import { isValidPublicToken } from './src/lib/audit/share/publicToken.ts';
+import { emailAuditReport, EmailReportValidationError } from './src/lib/audit/email/emailReportService.ts';
+import { ensureLeadStoreReady } from './src/lib/audit/leads/leadStore.ts';
 import type { NextFunction, Request, Response } from 'express';
 import type { BlogPost } from './src/data/blog/types.ts';
 
@@ -1247,6 +1249,22 @@ app.get('/api/tools/web-presence-audit/report/:publicToken', async (req, res) =>
   }
 });
 
+app.post('/api/tools/web-presence-audit/email-report', async (req, res) => {
+  try {
+    const result = await emailAuditReport(prisma, req.body, siteUrl);
+    res.status(201).json(result);
+  } catch (error) {
+    const message = error instanceof EmailReportValidationError
+      ? error.message
+      : 'Could not save your report request.';
+    const status = error instanceof EmailReportValidationError ? 400 : 500;
+    if (!(error instanceof EmailReportValidationError)) {
+      console.error('[audit-lead] email-report request failed');
+    }
+    res.status(status).json({ error: message });
+  }
+});
+
 app.post('/api/tools/digital-visibility-check/lead', async (req, res) => {
   try {
     const { name, email, phone, message, websiteUrl, score, businessType, location } = req.body;
@@ -1637,6 +1655,7 @@ async function createServer() {
 
   seedAdmin();
   await ensureReportStoreReady();
+  await ensureLeadStoreReady();
 
   const port = parseInt(process.env.PORT || '3000');
   app.listen(port, () => {

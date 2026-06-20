@@ -1,8 +1,12 @@
 import { FileCode2 } from 'lucide-react';
 import type { WebPresenceAuditHeadReadiness } from '../../lib/audit/types';
+import { AuditInfoTooltip } from './AuditInfoTooltip';
 
 type WebPresenceAuditHeadReadinessPanelProps = {
   headReadiness: WebPresenceAuditHeadReadiness;
+  scoreBand?: string;
+  scoreLabel?: string;
+  ctaLocation?: string;
 };
 
 type StatusCard = {
@@ -35,7 +39,12 @@ function cardToneForValue(value: string): StatusCard['tone'] {
   return 'neutral';
 }
 
-export function WebPresenceAuditHeadReadinessPanel({ headReadiness }: WebPresenceAuditHeadReadinessPanelProps) {
+export function WebPresenceAuditHeadReadinessPanel({
+  headReadiness,
+  scoreBand,
+  scoreLabel,
+  ctaLocation,
+}: WebPresenceAuditHeadReadinessPanelProps) {
   const cards: StatusCard[] = [
     { label: 'Title tag', value: headReadiness.title, tone: cardToneForValue(headReadiness.title) },
     { label: 'Meta description', value: headReadiness.metaDescription, tone: cardToneForValue(headReadiness.metaDescription) },
@@ -66,7 +75,20 @@ export function WebPresenceAuditHeadReadinessPanel({ headReadiness }: WebPresenc
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-indigo-700">Technical head signals</p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Head &amp; indexing readiness</h2>
+          <div className="mt-2 flex items-center gap-1">
+            <h2 className="text-2xl font-black tracking-tight text-slate-950">Head &amp; indexing readiness</h2>
+            <AuditInfoTooltip
+              categoryId="head-readiness"
+              title="Head and indexing readiness"
+              checked="Visible metadata, canonical, robots, social preview, structured-data, sitemap, and verification-tag signals."
+              whyItMatters="These signals help crawlers and sharing platforms interpret public pages consistently."
+              goodLooksLike="Intentional metadata, indexable public pages, crawl guidance, and complete social-preview foundations."
+              notVerified="Actual index coverage, search rankings, Search Console/Bing Webmaster Tools ownership, and crawl history."
+              scoreBand={scoreBand}
+              scoreLabel={scoreLabel}
+              ctaLocation={ctaLocation}
+            />
+          </div>
           <p className="mt-2 text-sm text-slate-600">
             Statuses below are based on visible HTML and accessibility checks only. Platform performance is not verified in this free audit.
           </p>

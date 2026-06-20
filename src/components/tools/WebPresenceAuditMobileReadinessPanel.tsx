@@ -1,8 +1,12 @@
 import { AlertTriangle, CheckCircle2, Smartphone } from 'lucide-react';
 import type { WebPresenceAuditMobileReadiness } from '../../lib/audit/types';
+import { AuditInfoTooltip } from './AuditInfoTooltip';
 
 type WebPresenceAuditMobileReadinessPanelProps = {
   mobileReadiness: WebPresenceAuditMobileReadiness;
+  scoreBand?: string;
+  scoreLabel?: string;
+  ctaLocation?: string;
 };
 
 const statusStyles: Record<WebPresenceAuditMobileReadiness['status'], string> = {
@@ -12,7 +16,12 @@ const statusStyles: Record<WebPresenceAuditMobileReadiness['status'], string> = 
   not_verified: 'bg-slate-100 text-slate-700 border-slate-200',
 };
 
-export function WebPresenceAuditMobileReadinessPanel({ mobileReadiness }: WebPresenceAuditMobileReadinessPanelProps) {
+export function WebPresenceAuditMobileReadinessPanel({
+  mobileReadiness,
+  scoreBand,
+  scoreLabel,
+  ctaLocation,
+}: WebPresenceAuditMobileReadinessPanelProps) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -22,7 +31,20 @@ export function WebPresenceAuditMobileReadinessPanel({ mobileReadiness }: WebPre
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">Mobile readiness</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Mobile-readiness indicators</h2>
+            <div className="mt-2 flex items-center gap-1">
+              <h2 className="text-2xl font-black tracking-tight text-slate-950">Mobile-readiness indicators</h2>
+              <AuditInfoTooltip
+                categoryId="mobile-readiness"
+                title="Mobile-readiness indicators"
+                checked="Responsive viewport and visible mobile-oriented page signals available in public HTML."
+                whyItMatters="A usable mobile foundation helps visitors understand the page and reach an enquiry action."
+                goodLooksLike="Responsive content, clear navigation, readable layouts, and accessible enquiry routes."
+                notVerified="Real-device rendering, interaction testing, Core Web Vitals, and accessibility compliance."
+                scoreBand={scoreBand}
+                scoreLabel={scoreLabel}
+                ctaLocation={ctaLocation}
+              />
+            </div>
             <p className="mt-2 text-sm text-slate-600">{mobileReadiness.label}</p>
           </div>
         </div>

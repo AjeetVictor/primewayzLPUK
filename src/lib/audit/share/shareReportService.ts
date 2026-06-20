@@ -8,6 +8,8 @@ export type CreateSharedReportResult = {
   createdAt: string;
 };
 
+export type ShareLinkState = CreateSharedReportResult;
+
 export async function createSharedReport(
   rawReport: unknown,
   siteUrl: string,

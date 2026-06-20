@@ -58,3 +58,7 @@ trim-process-delivery-infographic.py
 data/web-presence-audit-reports/
 
 data/web-presence-audit-reports/*.json
+
+# Web presence audit email leads (file-store fallback)
+data/web-presence-audit-leads/
+data/web-presence-audit-leads/*.json

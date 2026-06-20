@@ -32,8 +32,10 @@ import type {
 } from '../../lib/audit/types';
 import { getCategoryBand, getScoreBand } from '../../lib/audit/scoreBands';
 import { getSharedReportContactCtaUrl } from '../../lib/audit/share/disclaimers';
+import type { ShareLinkState } from '../../lib/audit/share/shareReportService';
 import { WebPresenceAuditDisclaimer } from './WebPresenceAuditDisclaimer';
 import { WebPresenceAuditSharePanel } from './WebPresenceAuditSharePanel';
+import { WebPresenceAuditEmailReportPanel } from './WebPresenceAuditEmailReportPanel';
 import { WebPresenceAuditBenchmarkPanel } from './WebPresenceAuditBenchmarkPanel';
 import { WebPresenceAuditClassificationPanel } from './WebPresenceAuditClassificationPanel';
 import { WebPresenceAuditMobileReadinessPanel } from './WebPresenceAuditMobileReadinessPanel';
@@ -359,6 +361,7 @@ export function WebPresenceAuditResult({
   contactCtaHref,
 }: WebPresenceAuditResultProps) {
   const isShared = mode === 'shared';
+  const [shareLink, setShareLink] = useState<ShareLinkState | null>(null);
   const sharedContactHref = contactCtaHref ?? getSharedReportContactCtaUrl();
   const score = Math.max(0, Math.min(100, Number(report.score) || 0));
   const scoreBand = getScoreBand(score);
@@ -401,6 +404,10 @@ export function WebPresenceAuditResult({
       cta_location: ctaLocation,
     });
   }, [ctaLocation, scoreBand.label, scoreBandValue]);
+
+  useEffect(() => {
+    setShareLink(null);
+  }, [metadata?.generatedAt, metadata?.auditedUrl]);
 
   const priorities = checks
     .filter((check) => safeStatus(check.status) !== 'not_verified' && Array.isArray(check.recommendations))
@@ -503,7 +510,20 @@ export function WebPresenceAuditResult({
       </section>
 
       {!isShared && showSharePanel && report.score !== undefined && report.profile && report.metadata && Array.isArray(report.checks) ? (
-        <WebPresenceAuditSharePanel report={report as WebPresenceAuditReport} ctaLocation={ctaLocation} />
+        <>
+          <WebPresenceAuditSharePanel
+            report={report as WebPresenceAuditReport}
+            ctaLocation={ctaLocation}
+            shareLink={shareLink}
+            onShareLinkChange={setShareLink}
+          />
+          <WebPresenceAuditEmailReportPanel
+            report={report as WebPresenceAuditReport}
+            ctaLocation={ctaLocation}
+            shareLink={shareLink}
+            onShareLinkChange={setShareLink}
+          />
+        </>
       ) : null}
 
       {report.benchmark ? (

@@ -4,6 +4,7 @@ import type { WebPresenceAuditBenchmark } from '../../lib/audit/types';
 import { getScoreBand } from '../../lib/audit/scoreBands';
 import { VERIFIED_VISIBILITY_AUDIT_CTA_URL } from '../../lib/audit/benchmark/constants';
 import { trackEvent } from '../../lib/analytics';
+import { AuditInfoTooltip } from './AuditInfoTooltip';
 
 type WebPresenceAuditBenchmarkPanelProps = {
   benchmark: WebPresenceAuditBenchmark;
@@ -47,7 +48,20 @@ export function WebPresenceAuditBenchmarkPanel({
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Public-signal benchmark</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">How your website compares</h2>
+            <div className="mt-2 flex items-center gap-1">
+              <h2 className="text-2xl font-black tracking-tight text-slate-950">How your website compares</h2>
+              <AuditInfoTooltip
+                categoryId="benchmark"
+                title="Public-signal benchmark"
+                checked="The overall score band and visible strengths or gaps produced by the audit framework."
+                whyItMatters="A consistent framework helps organise the public signals into a practical starting point."
+                goodLooksLike="Important website signals are clearly visible across the audited pages."
+                notVerified="Competitor performance, market averages, rankings, traffic, and authenticated platform data."
+                scoreBand={`${scoreBand.min}-${scoreBand.max}`}
+                scoreLabel={scoreBand.label}
+                ctaLocation={ctaLocation}
+              />
+            </div>
             <p className="mt-2 text-sm text-slate-600">{benchmark.frameworkName}</p>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Check, Copy, ExternalLink, Link2, Loader2, Share2 } from 'lucide-react';
 import type { WebPresenceAuditReport } from '../../lib/audit/types';
+import type { ShareLinkState } from '../../lib/audit/share/shareReportService';
 import { getScoreBand } from '../../lib/audit/scoreBands';
 import { trackEvent } from '../../lib/analytics';
 import { apiUrl } from '../../utils/apiUrl';
@@ -9,19 +10,25 @@ import { WebPresenceAuditDisclaimer } from './WebPresenceAuditDisclaimer';
 type WebPresenceAuditSharePanelProps = {
   report: WebPresenceAuditReport;
   ctaLocation: string;
+  shareLink: ShareLinkState | null;
+  onShareLinkChange: (link: ShareLinkState) => void;
 };
 
-type ShareResponse = {
-  shareUrl: string;
-  publicToken: string;
-  createdAt: string;
+type ShareResponse = ShareLinkState & {
+  error?: string;
 };
 
-export function WebPresenceAuditSharePanel({ report, ctaLocation }: WebPresenceAuditSharePanelProps) {
-  const [shareUrl, setShareUrl] = useState<string | null>(null);
+export function WebPresenceAuditSharePanel({
+  report,
+  ctaLocation,
+  shareLink,
+  onShareLinkChange,
+}: WebPresenceAuditSharePanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const shareUrl = shareLink?.shareUrl ?? null;
 
   const createShareLink = async () => {
     setIsCreating(true);
@@ -34,13 +41,17 @@ export function WebPresenceAuditSharePanel({ report, ctaLocation }: WebPresenceA
         body: JSON.stringify({ report }),
       });
 
-      const payload = await response.json().catch(() => ({})) as ShareResponse & { error?: string };
+      const payload = await response.json().catch(() => ({})) as ShareResponse;
 
       if (!response.ok) {
         throw new Error(payload.error || 'Could not create a share link.');
       }
 
-      setShareUrl(payload.shareUrl);
+      onShareLinkChange({
+        shareUrl: payload.shareUrl,
+        publicToken: payload.publicToken,
+        createdAt: payload.createdAt,
+      });
 
       const scoreBand = getScoreBand(report.score);
       trackEvent('web_presence_audit_share_created', {
