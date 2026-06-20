@@ -14,7 +14,11 @@ import type { ShareLinkState } from '../../lib/audit/share/shareReportService';
 import { getScoreBand } from '../../lib/audit/scoreBands';
 import { trackEvent } from '../../lib/analytics';
 import { WebPresenceAuditSharePanel } from './WebPresenceAuditSharePanel';
-import { WebPresenceAuditEmailReportPanel } from './WebPresenceAuditEmailReportPanel';
+import {
+  getEmailDialogTitle,
+  WebPresenceAuditEmailReportPanel,
+  type EmailReportPhase,
+} from './WebPresenceAuditEmailReportPanel';
 
 type WebPresenceAuditReportActionsProps = {
   report: WebPresenceAuditReport;
@@ -34,6 +38,7 @@ export function WebPresenceAuditReportActions({
   contactCtaHref = '/#contact',
 }: WebPresenceAuditReportActionsProps) {
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
+  const [emailModalPhase, setEmailModalPhase] = useState<EmailReportPhase>('form');
   const [copied, setCopied] = useState(false);
   const scoreBand = getScoreBand(report.score);
   const analyticsPayload = {
@@ -51,6 +56,12 @@ export function WebPresenceAuditReportActions({
       analyticsPayload,
     );
   };
+
+  const isCompactEmailModal =
+    activeDialog === 'email' && (emailModalPhase === 'success' || emailModalPhase === 'skipped');
+  const dialogWidthClass = isCompactEmailModal
+    ? 'sm:w-[min(92vw,36rem)]'
+    : 'sm:w-[min(92vw,42rem)]';
 
   const copyShareLink = async () => {
     if (!shareLink?.shareUrl) return;
@@ -131,18 +142,29 @@ export function WebPresenceAuditReportActions({
       <Dialog.Root
         open={activeDialog !== null}
         onOpenChange={(open) => {
-          if (!open) setActiveDialog(null);
+          if (!open) {
+            setActiveDialog(null);
+            setEmailModalPhase('form');
+          }
         }}
       >
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-[100] bg-slate-950/55 backdrop-blur-[2px]" />
-          <Dialog.Content className="fixed inset-x-0 bottom-0 z-[101] max-h-[92vh] overflow-y-auto rounded-t-[1.75rem] bg-white p-4 shadow-2xl focus:outline-none sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:w-[min(92vw,44rem)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.75rem] sm:p-6">
+          <Dialog.Content className={`fixed inset-x-0 bottom-0 z-[101] max-h-[92vh] overflow-y-auto rounded-t-[1.75rem] bg-white p-4 shadow-2xl transition-[width] focus:outline-none sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.75rem] sm:p-6 ${dialogWidthClass}`}>
             <Dialog.Title className="sr-only">
-              {activeDialog === 'email' ? 'Email this report' : 'Share report'}
+              {activeDialog === 'email' ? getEmailDialogTitle(emailModalPhase) : 'Share report'}
             </Dialog.Title>
             <Dialog.Description className="sr-only">
               {activeDialog === 'email'
-                ? 'Complete the form to email a copy of this report.'
+                ? emailModalPhase === 'success'
+                  ? 'Your audit report has been emailed successfully.'
+                  : emailModalPhase === 'skipped'
+                    ? 'Your request was saved, but email delivery is not configured.'
+                    : emailModalPhase === 'error'
+                      ? 'There was a problem emailing this report.'
+                      : emailModalPhase === 'submitting'
+                        ? 'Sending your audit report by email.'
+                        : 'Complete the form to email a copy of this report.'
                 : 'Create or manage a read-only share link for this report.'}
             </Dialog.Description>
             <Dialog.Close
@@ -169,6 +191,8 @@ export function WebPresenceAuditReportActions({
                   shareLink={shareLink}
                   onShareLinkChange={onShareLinkChange}
                   mode="modal"
+                  contactCtaHref={contactCtaHref}
+                  onPhaseChange={setEmailModalPhase}
                 />
               ) : null}
             </div>
