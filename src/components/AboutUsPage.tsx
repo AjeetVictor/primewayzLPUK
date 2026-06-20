@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Building2, Globe2, MapPin, ShieldCheck } from 'lucide-react';
 import { COMPANY_TRUST_LINKS, COMPANY_SOCIAL_LINKS } from '../constants/companyTrustLinks';
 import { TrackedLink } from './common/TrackedLink';
+import { SelfAuditCta } from './SelfAuditCta';
 
 export const AboutUsPage = () => (
   <main className="min-h-screen bg-white text-slate-950">
@@ -24,6 +25,8 @@ export const AboutUsPage = () => (
         </p>
       </div>
     </section>
+
+    <SelfAuditCta variant="inline" utmContent="about_page" ctaLocation="about_page" />
 
     <section className="px-4 py-14 sm:px-6 lg:px-8">
       <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-2">

@@ -46,6 +46,7 @@ import { UkSmeDigitalVisibilityCheckerPage } from './components/UkSmeDigitalVisi
 import { WebPresenceAuditSharedReportPage } from './components/tools/WebPresenceAuditSharedReportPage';
 import { WebPresenceAuditForm } from './components/tools/WebPresenceAuditForm';
 import { CampaignLandingHandler } from './components/CampaignLandingHandler';
+import { SelfAuditCta } from './components/SelfAuditCta';
 
 // SSR-safe: use static path for logo
 const logo = '/assets/primewayz-infotech-logo.svg';
@@ -63,6 +64,11 @@ const MainContent = () => (
     <UKTrustStrip />
     <ClientConfidenceSignals />
     <UKSmePainPoints />
+    <SelfAuditCta
+      variant="banner"
+      utmContent="homepage_banner"
+      ctaLocation="homepage_banner"
+    />
     <WebPresenceAuditForm />
     <Philosophy />
     <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 1 }}>

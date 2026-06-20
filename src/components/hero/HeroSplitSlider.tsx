@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { HeroHeadlineSlide } from './heroHeadlineSlides';
+import { SelfAuditCta } from '../SelfAuditCta';
 
 type HeroSplitSliderProps = {
   slides: HeroHeadlineSlide[];
@@ -145,6 +146,12 @@ export const HeroSplitSlider = ({
                 >
                   {activeSlide.secondaryCtaLabel}
                 </TrackedLink>
+
+                <SelfAuditCta
+                  variant="hero"
+                  utmContent="homepage_hero"
+                  ctaLocation="homepage_hero"
+                />
                 </div>
 
                 <div className="flex items-center gap-2" role="tablist" aria-label="Hero slide controls">

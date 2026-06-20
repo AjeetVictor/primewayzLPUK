@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { ContactForm } from './ContactForm';
+import { SelfAuditCta } from './SelfAuditCta';
 
 export const ContactUsPage = () => (
   <main className="min-h-screen bg-white">
@@ -20,6 +21,7 @@ export const ContactUsPage = () => (
         </p>
       </div>
     </section>
+    <SelfAuditCta variant="inline" utmContent="contact_page" ctaLocation="contact_page" />
     <ContactForm />
   </main>
 );

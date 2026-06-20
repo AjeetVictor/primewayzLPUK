@@ -9,6 +9,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
+import { SelfAuditCta } from './SelfAuditCta';
 
 const includedItems = [
   'Website and landing page improvements',
@@ -172,6 +173,8 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
           </div>
         </div>
       </section>
+
+      <SelfAuditCta variant="inline" utmContent="software_subscription_page" ctaLocation="software_subscription_page" />
 
       <section id="subscription-coverage" className="px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">

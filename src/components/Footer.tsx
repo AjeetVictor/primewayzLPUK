@@ -1,9 +1,9 @@
 import { Linkedin, Phone, Mail } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
 import { COMPANY_TRUST_LINKS } from '../constants/companyTrustLinks';
+import { SelfAuditCta } from './SelfAuditCta';
 
 const productLinks = [
-  { label: 'Web Presence Audit', href: COMPANY_TRUST_LINKS.webPresenceAudit },
   { label: 'UK SME Digital Visibility Checker', href: COMPANY_TRUST_LINKS.digitalVisibilityChecker },
   { label: 'Software Subscription', href: '/software-development-subscription-uk' },
   { label: 'Website Maintenance', href: '/website-maintenance-subscription-uk' },
@@ -18,7 +18,6 @@ const trustLinks = [
   { label: 'About', href: COMPANY_TRUST_LINKS.about },
   { label: 'Contact', href: COMPANY_TRUST_LINKS.contact },
   { label: 'Success Stories', href: COMPANY_TRUST_LINKS.successStories },
-  { label: 'Web Presence Audit', href: COMPANY_TRUST_LINKS.webPresenceAudit },
   { label: 'UK SME Digital Visibility Checker', href: COMPANY_TRUST_LINKS.digitalVisibilityChecker },
 ] as const;
 
@@ -143,6 +142,14 @@ export const Footer = () => {
           <div>
             <h4 className="text-sm font-bold uppercase tracking-wider mb-6">Trust</h4>
             <ul className="space-y-4 text-zinc-400">
+              <li>
+                <SelfAuditCta
+                  variant="footer"
+                  utmContent="footer"
+                  ctaLocation="footer"
+                  className="hover:text-white transition-colors"
+                />
+              </li>
               {trustLinks.map((link) => (
                 <li key={link.href}>
                   <TrackedLink

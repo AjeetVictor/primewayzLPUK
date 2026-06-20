@@ -2,13 +2,14 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send, FileText, Save, UploadCloud, Archive, Star, Bell, BellOff, Paperclip, Image as ImageIcon, CalendarClock, StickyNote, Pencil, X, Check, Reply } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send, FileText, Save, UploadCloud, Archive, Star, Bell, BellOff, Paperclip, Image as ImageIcon, CalendarClock, StickyNote, Pencil, X, Check, Reply, Gauge } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiUrl } from '../utils/apiUrl';
 import { PasswordInput } from './ui/PasswordInput';
 import { AppConfirmDialog } from './ui/AppConfirmDialog';
 import { ToastProvider, useToast } from './ui/AppToast';
 import { RichBlogEditor } from './admin/RichBlogEditor';
+import { AdminAuditLeadsPanel } from './admin/AdminAuditLeadsPanel';
 import { ChatConfirmDialog } from './admin/ChatConfirmDialog';
 import { sanitizeBlogHtml } from '../utils/sanitizeHtml';
 import {
@@ -1663,6 +1664,13 @@ const AdminPanelContent = () => {
                     {formResponses.length + toolLeads.length}
                   </span>
                 </Tabs.Trigger>
+                <Tabs.Trigger
+                  value="audit-leads"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
+                >
+                  <Gauge className="w-4 h-4" />
+                  Audit Leads
+                </Tabs.Trigger>
                 <Tabs.Trigger 
                   value="leads"
                   className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
@@ -1837,6 +1845,10 @@ const AdminPanelContent = () => {
                 </table>
               </div>
             </div>
+          </Tabs.Content>
+
+          <Tabs.Content value="audit-leads" className="outline-none">
+            <AdminAuditLeadsPanel globalSearch={searchTerm} />
           </Tabs.Content>
 
           <Tabs.Content value="leads" className="outline-none">

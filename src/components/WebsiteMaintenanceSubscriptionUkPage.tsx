@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
+import { SelfAuditCta } from './SelfAuditCta';
 
 const supportItems = [
   'Website content updates, CMS edits, and landing page improvements',
@@ -164,6 +165,8 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => (
         </div>
       </div>
     </section>
+
+    <SelfAuditCta variant="inline" utmContent="maintenance_page" ctaLocation="maintenance_page" />
 
     <section id="website-maintenance-included" className="px-4 py-20 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">

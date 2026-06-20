@@ -4,6 +4,7 @@ import { Menu, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SITE_CONTAINER_CLASS } from '../constants/siteLayout';
+import { SelfAuditCta } from './SelfAuditCta';
 
 // SSR-safe: public folder served at root, no import needed
 const Logo = '/primewayz-infotech-logo.svg';
@@ -70,6 +71,11 @@ export const Navbar = () => {
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+            <SelfAuditCta
+              variant="nav"
+              utmContent="header_nav"
+              ctaLocation="header_nav"
+            />
             <TrackedLink
               href="/#contact"
               ctaText="Book a call"
@@ -119,6 +125,13 @@ export const Navbar = () => {
                     {link.name}
                   </a>
                 ))}
+                <SelfAuditCta
+                  variant="nav"
+                  utmContent="header_nav"
+                  ctaLocation="header_nav_mobile"
+                  onClick={() => setIsOpen(false)}
+                  className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-md border border-emerald-600/40 bg-white px-4 py-3 text-[15px] font-semibold text-emerald-800"
+                />
                 <TrackedLink
                   href="/#contact"
                   ctaText="Book a call"
@@ -126,7 +139,7 @@ export const Navbar = () => {
                   eventType="book_call_click"
                   onClick={() => setIsOpen(false)}
                   whileTap={{ scale: 0.99 }}
-                  className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-md bg-slate-900 px-4 py-3 text-[15px] font-semibold text-white shadow-md shadow-slate-900/10"
+                  className="mt-2 flex min-h-[48px] w-full items-center justify-center rounded-md bg-slate-900 px-4 py-3 text-[15px] font-semibold text-white shadow-md shadow-slate-900/10"
                 >
                   Book a call
                 </TrackedLink>

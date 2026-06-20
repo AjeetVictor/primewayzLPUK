@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, PhoneCall, Users, Zap } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
+import { SelfAuditCta } from './SelfAuditCta';
 
 const stories = [
   {
@@ -63,6 +64,8 @@ export const SuccessStoriesPage = () => (
         </p>
       </div>
     </section>
+
+    <SelfAuditCta variant="inline" utmContent="success_stories_page" ctaLocation="success_stories_page" />
 
     <section className="px-4 py-20 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">

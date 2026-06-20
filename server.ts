@@ -15,6 +15,13 @@ import { ensureReportStoreReady } from './src/lib/audit/share/reportStore.ts';
 import { isValidPublicToken } from './src/lib/audit/share/publicToken.ts';
 import { emailAuditReport, EmailReportValidationError } from './src/lib/audit/email/emailReportService.ts';
 import { ensureLeadStoreReady } from './src/lib/audit/leads/leadStore.ts';
+import {
+  addAdminAuditLeadNote,
+  getAdminAuditLeadById,
+  listAdminAuditLeads,
+  updateAdminAuditLeadStatus,
+  validateAuditLeadAdminStatus,
+} from './src/lib/audit/leads/adminAuditLeadsService.ts';
 import type { NextFunction, Request, Response } from 'express';
 import type { BlogPost } from './src/data/blog/types.ts';
 
@@ -819,6 +826,71 @@ app.delete('/api/admin/tool-leads/:id', requireAdmin, requireRole(isOperationsRo
   if (!id) return res.status(400).json({ error: 'Invalid tool lead id' });
   await prisma.toolLead.delete({ where: { id } });
   res.json({ success: true });
+});
+
+app.get('/api/admin/audit-leads', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
+  try {
+    const result = await listAdminAuditLeads(prisma, {
+      status: typeof req.query.status === 'string' ? req.query.status : undefined,
+      q: typeof req.query.q === 'string' ? req.query.q : undefined,
+      scoreBand: typeof req.query.scoreBand === 'string' ? req.query.scoreBand : undefined,
+      reminderOptIn: typeof req.query.reminderOptIn === 'string' ? req.query.reminderOptIn : undefined,
+      limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined,
+      offset: typeof req.query.offset === 'string' ? Number(req.query.offset) : undefined,
+    });
+    res.json(result);
+  } catch (error) {
+    console.error('[admin-audit-leads] list failed');
+    res.status(500).json({ error: 'Failed to load audit leads' });
+  }
+});
+
+app.get('/api/admin/audit-leads/:id', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Invalid audit lead id' });
+
+    const lead = await getAdminAuditLeadById(prisma, id);
+    if (!lead) return res.status(404).json({ error: 'Audit lead not found' });
+
+    res.json(lead);
+  } catch (error) {
+    console.error('[admin-audit-leads] detail failed');
+    res.status(500).json({ error: 'Failed to load audit lead' });
+  }
+});
+
+app.patch('/api/admin/audit-leads/:id/status', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Invalid audit lead id' });
+
+    const status = validateAuditLeadAdminStatus(req.body?.status);
+    if (!status) return res.status(400).json({ error: 'Invalid status' });
+
+    const lead = await updateAdminAuditLeadStatus(prisma, id, status);
+    if (!lead) return res.status(404).json({ error: 'Audit lead not found' });
+
+    res.json(lead);
+  } catch (error) {
+    console.error('[admin-audit-leads] status update failed');
+    res.status(500).json({ error: 'Failed to update audit lead status' });
+  }
+});
+
+app.post('/api/admin/audit-leads/:id/notes', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Invalid audit lead id' });
+
+    const lead = await addAdminAuditLeadNote(prisma, id, req.body?.note);
+    if (!lead) return res.status(400).json({ error: 'Invalid note or audit lead not found' });
+
+    res.json(lead);
+  } catch (error) {
+    console.error('[admin-audit-leads] note create failed');
+    res.status(500).json({ error: 'Failed to add audit lead note' });
+  }
 });
 
 app.get('/api/admin/chats', requireAdmin, requireRole(isOperationsRole), async (_req, res) => {

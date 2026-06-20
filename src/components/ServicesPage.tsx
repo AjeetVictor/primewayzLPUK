@@ -12,6 +12,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
+import { SelfAuditCta } from './SelfAuditCta';
 
 const serviceCards = [
   {
@@ -201,6 +202,8 @@ export const ServicesPage = () => (
         </div>
       </div>
     </section>
+
+    <SelfAuditCta variant="inline" utmContent="services_page" ctaLocation="services_page" />
 
     <section className="border-y border-slate-200 bg-slate-50 px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-6 sm:flex-row sm:items-center sm:p-8">

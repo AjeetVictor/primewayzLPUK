@@ -10,6 +10,7 @@ import {
   Workflow,
 } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
+import { SelfAuditCta } from './SelfAuditCta';
 
 const services = [
   {
@@ -236,6 +237,8 @@ export function CrmIntegrationSupportUkPage() {
           </div>
         </div>
       </section>
+
+      <SelfAuditCta variant="inline" utmContent="crm_page" ctaLocation="crm_page" />
 
       <section id="crm-services" className="px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
