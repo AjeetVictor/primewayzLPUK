@@ -6,7 +6,10 @@ import {
   serviceNavGroups,
   type ServiceNavGroup,
 } from '../../constants/servicesNavigation';
+import { shellClasses } from '../../constants/designSystem';
 import { getDataLayerUtmPayload, pushDataLayer } from '../../lib/dataLayer';
+import { ServiceNavIcon } from '../ui/ServiceNavIcon';
+import { cn } from '../../utils/cn';
 
 type ServicesMegaMenuProps = {
   variant: 'desktop' | 'mobile';
@@ -14,14 +17,13 @@ type ServicesMegaMenuProps = {
 };
 
 function trackServiceNavClick(group: ServiceNavGroup, serviceName: string, href: string): void {
-  const utm = getDataLayerUtmPayload();
   pushDataLayer({
     event: 'nav_service_click',
     nav_group: group.label,
     service_name: serviceName,
     destination_url: href,
     page_path: typeof window !== 'undefined' ? window.location.pathname : '/',
-    ...utm,
+    ...getDataLayerUtmPayload(),
   });
 }
 
@@ -36,7 +38,6 @@ function ServiceNavLink({
   onNavigate?: () => void;
   className?: string;
 }) {
-  const Icon = item.icon;
   const isInternal = item.href.startsWith('/');
   const isHashOnly = item.href.startsWith('/#');
 
@@ -47,16 +48,14 @@ function ServiceNavLink({
 
   const content = (
     <>
-      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700 transition group-hover:bg-emerald-50 group-hover:text-emerald-700">
-        <Icon className="h-4 w-4" strokeWidth={2} />
-      </span>
+      <ServiceNavIcon icon={item.icon} tone={item.iconTone ?? 'blue'} />
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-slate-900 group-hover:text-emerald-800">
+          <span className="text-sm font-semibold text-brand-ink group-hover:text-brand-navy">
             {item.name}
           </span>
           {item.isNew ? (
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-600">
               New
             </span>
           ) : null}
@@ -71,7 +70,10 @@ function ServiceNavLink({
     'data-nav-group': group.label,
     'data-service-name': item.name,
     onClick: handleClick,
-    className: `group flex gap-3 rounded-xl p-3 transition hover:bg-slate-50 ${className ?? ''}`.trim(),
+    className: cn(
+      'group flex gap-3 rounded-xl border border-transparent p-3 transition hover:border-brand-border hover:bg-brand-surface/80',
+      className,
+    ),
   };
 
   if (isHashOnly) {
@@ -125,34 +127,34 @@ export function ServicesMegaMenu({ variant, onNavigate }: ServicesMegaMenuProps)
 
   if (variant === 'mobile') {
     return (
-      <div className="border-b border-slate-100 pb-2">
+      <div className="border-b border-brand-border/80 pb-2">
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
-          className="flex min-h-[44px] w-full items-center justify-between rounded-md px-3 py-3 text-[15px] font-medium text-slate-700"
+          className="flex min-h-[44px] w-full items-center justify-between rounded-lg px-3 py-3 text-[15px] font-medium text-brand-ink"
           aria-expanded={open}
         >
           Services
-          <ChevronDown className={`h-4 w-4 transition ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown className={cn('h-4 w-4 transition', open && 'rotate-180')} />
         </button>
 
         {open ? (
           <div className="space-y-3 px-1 pb-2">
-            <p className="px-2 text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
+            <p className="px-2 text-[11px] font-bold uppercase tracking-[0.2em] text-brand-blue">
               {SERVICES_MENU_TITLE}
             </p>
             {serviceNavGroups.map((group) => {
               const isExpanded = expandedGroup === group.label;
               return (
-                <div key={group.label} className="rounded-xl border border-slate-100 bg-slate-50/80">
+                <div key={group.label} className="rounded-xl border border-brand-border bg-brand-surface/50">
                   <button
                     type="button"
                     onClick={() => setExpandedGroup(isExpanded ? null : group.label)}
-                    className="flex w-full items-center justify-between px-3 py-3 text-left text-sm font-semibold text-slate-800"
+                    className="flex w-full items-center justify-between px-3 py-3 text-left text-sm font-semibold text-brand-navy"
                     aria-expanded={isExpanded}
                   >
                     {group.label}
-                    <ChevronDown className={`h-4 w-4 transition ${isExpanded ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={cn('h-4 w-4 transition', isExpanded && 'rotate-180')} />
                   </button>
                   {isExpanded ? (
                     <div className="space-y-1 px-2 pb-3">
@@ -184,24 +186,36 @@ export function ServicesMegaMenu({ variant, onNavigate }: ServicesMegaMenuProps)
         onMouseEnter={() => setOpen(true)}
         aria-expanded={open}
         aria-haspopup="true"
-        className="inline-flex items-center gap-1 rounded-md px-1.5 py-2 text-[13px] font-medium leading-none text-slate-600 transition-colors hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600/40 xl:text-sm"
+        className={cn(shellClasses.navLink, 'inline-flex items-center gap-1', open && 'bg-brand-surface text-brand-navy')}
       >
         Services
-        <ChevronDown className={`h-3.5 w-3.5 transition ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={cn('h-3.5 w-3.5 transition', open && 'rotate-180')} />
       </button>
 
       {open ? (
         <div
-          className="absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,52rem)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-900/10"
+          className={cn(shellClasses.megaMenuPanel, 'absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,56rem)] -translate-x-1/2')}
           onMouseLeave={() => setOpen(false)}
         >
-          <p className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-emerald-700">
-            {SERVICES_MENU_TITLE}
-          </p>
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="mb-4 flex items-center justify-between gap-4 border-b border-brand-border pb-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand-blue">
+              {SERVICES_MENU_TITLE}
+            </p>
+            <Link
+              to="/services"
+              onClick={() => {
+                setOpen(false);
+                onNavigate?.();
+              }}
+              className="text-xs font-semibold text-brand-blue transition hover:text-brand-navy"
+            >
+              View all services →
+            </Link>
+          </div>
+          <div className="grid gap-6 md:grid-cols-3">
             {serviceNavGroups.map((group) => (
               <div key={group.label}>
-                <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
                   {group.label}
                 </p>
                 <div className="space-y-1">

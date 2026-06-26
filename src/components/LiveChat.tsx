@@ -238,6 +238,10 @@ export const LiveChat = () => {
         const res = await fetch(apiUrl(`/api/chat/${sessionId}`));
         if (res.ok) {
           const history = await res.json();
+          if (!Array.isArray(history)) {
+            setApiAvailable(false);
+            return;
+          }
           if (history.length > 0) {
             setMessages(history.map((m: Record<string, unknown>) => mapHistoryMessage(m)));
           } else {
@@ -280,6 +284,10 @@ export const LiveChat = () => {
         const res = await fetch(apiUrl(`/api/chat/${sessionId}`));
         if (res.ok) {
           const history = await res.json();
+          if (!Array.isArray(history)) {
+            setApiAvailable(false);
+            return;
+          }
           const mapped = history.map((m: Record<string, unknown>) => mapHistoryMessage(m));
           const latestRemoteId = mapped[mapped.length - 1]?.id;
           const latestLocalId = messages[messages.length - 1]?.id;

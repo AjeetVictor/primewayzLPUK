@@ -1,24 +1,29 @@
 import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { trackEvent } from '../lib/analytics';
+import { AUDIT_CHECKER_PATH } from '../constants/navigation';
 import {
   captureUtmParams,
   getUtmAnalyticsPayload,
   hasUtmInSearch,
   isWebPresenceAuditCampaign,
-  scrollToWebPresenceAuditSection,
   WEB_PRESENCE_AUDIT_SECTION_ALIAS,
   WEB_PRESENCE_AUDIT_SECTION_ID,
 } from '../lib/utm';
 
-function shouldScrollToAudit(hash: string): boolean {
+function shouldRouteToAuditPage(hash: string): boolean {
   if (!hash) return false;
   const normalized = hash.replace(/^#/, '');
   return normalized === WEB_PRESENCE_AUDIT_SECTION_ID || normalized === WEB_PRESENCE_AUDIT_SECTION_ALIAS;
 }
 
+function buildAuditCheckerRoute(search: string): string {
+  return search ? `${AUDIT_CHECKER_PATH}${search}` : AUDIT_CHECKER_PATH;
+}
+
 export function CampaignLandingHandler() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const utm = captureUtmParams(location.search);
@@ -30,17 +35,14 @@ export function CampaignLandingHandler() {
       });
     }
 
-    if (location.pathname !== '/') return;
+    const auditLanding =
+      shouldRouteToAuditPage(location.hash) || (location.pathname === '/' && isWebPresenceAuditCampaign(utm));
 
-    const scrollToAudit = shouldScrollToAudit(location.hash) || isWebPresenceAuditCampaign(utm);
-    if (!scrollToAudit) return;
+    if (!auditLanding) return;
 
-    const timer = window.setTimeout(() => {
-      scrollToWebPresenceAuditSection();
-    }, 200);
-
-    return () => window.clearTimeout(timer);
-  }, [location.pathname, location.search, location.hash]);
+    const target = buildAuditCheckerRoute(location.search);
+    navigate(target, { replace: true });
+  }, [location.pathname, location.search, location.hash, navigate]);
 
   return null;
 }

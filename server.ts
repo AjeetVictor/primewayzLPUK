@@ -312,6 +312,53 @@ async function getChatAvailabilityPayload() {
   };
 }
 
+function isDatabaseUnavailableError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  return (
+    err.name === 'PrismaClientInitializationError'
+    || err.message.includes("Can't reach database server")
+    || err.message.includes('ECONNREFUSED')
+    || err.message.includes('Connection refused')
+    || err.message.includes('P1001')
+  );
+}
+
+function logChatDbFallback(context: string, err: unknown) {
+  console.warn(`[local-safe] ${context}:`, err instanceof Error ? err.message : err);
+}
+
+const OFFLINE_CHAT_BOT_REPLY =
+  'Thanks for your message. We have received it and the Primewayz UK team will follow up shortly.';
+
+function offlineChatSessionStub(sessionId: string, extra: Record<string, unknown> = {}) {
+  return {
+    id: sessionId,
+    status: 'new',
+    unavailable: true,
+    ...extra,
+  };
+}
+
+async function offlineChatRespondPayload(userText: string) {
+  const now = new Date();
+  return {
+    userMessage: {
+      id: `offline-user-${now.getTime()}`,
+      text: userText,
+      sender: 'user',
+      timestamp: now.toISOString(),
+    },
+    botMessage: {
+      id: `offline-bot-${now.getTime()}`,
+      text: OFFLINE_CHAT_BOT_REPLY,
+      sender: 'bot',
+      timestamp: now.toISOString(),
+    },
+    availability: await getChatAvailabilityPayload(),
+    unavailable: true,
+  };
+}
+
 function publicUser(user: { id: number; email: string; role: string; createdAt?: Date }) {
   return {
     id: user.id,
@@ -1373,173 +1420,208 @@ app.post('/api/chat/session', async (req, res) => {
   const { sessionId, name, email } = req.body;
   if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
 
-  const sourceData = buildSessionSourceData(req.body);
-  const session = await prisma.chatSession.upsert({
-    where: { id: sessionId },
-    update: {
-      name: name || undefined,
-      email: email || undefined,
-      currentPageUrl: sourceData.currentPageUrl,
-      referrer: sourceData.referrer,
-      utmSource: sourceData.utmSource,
-      utmMedium: sourceData.utmMedium,
-      utmCampaign: sourceData.utmCampaign,
-      utmContent: sourceData.utmContent,
-      deviceType: sourceData.deviceType,
-      browser: sourceData.browser,
-      serviceInterest: sourceData.serviceInterest,
-      firstLandingPage: sourceData.firstLandingPage,
-    },
-    create: {
-      id: sessionId,
-      name: name || null,
-      email: email || null,
-      status: 'new',
-      ...sourceData,
-    },
-  });
+  try {
+    const sourceData = buildSessionSourceData(req.body);
+    const session = await prisma.chatSession.upsert({
+      where: { id: sessionId },
+      update: {
+        name: name || undefined,
+        email: email || undefined,
+        currentPageUrl: sourceData.currentPageUrl,
+        referrer: sourceData.referrer,
+        utmSource: sourceData.utmSource,
+        utmMedium: sourceData.utmMedium,
+        utmCampaign: sourceData.utmCampaign,
+        utmContent: sourceData.utmContent,
+        deviceType: sourceData.deviceType,
+        browser: sourceData.browser,
+        serviceInterest: sourceData.serviceInterest,
+        firstLandingPage: sourceData.firstLandingPage,
+      },
+      create: {
+        id: sessionId,
+        name: name || null,
+        email: email || null,
+        status: 'new',
+        ...sourceData,
+      },
+    });
 
-  res.json(session);
+    return res.json(session);
+  } catch (err) {
+    if (!isDatabaseUnavailableError(err)) throw err;
+    logChatDbFallback('Chat session unavailable', err);
+    return res.json(offlineChatSessionStub(sessionId, { name: name || null, email: email || null }));
+  }
 });
 
 app.post('/api/chat/heartbeat', async (req, res) => {
   const { sessionId, userName, userEmail } = req.body;
   if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
 
-  const sourceData = buildSessionSourceData(req.body);
-  const session = await prisma.chatSession.upsert({
-    where: { id: sessionId },
-    update: {
-      visitorLastSeenAt: new Date(),
-      name: userName || undefined,
-      email: userEmail || undefined,
-      currentPageUrl: sourceData.currentPageUrl,
-      referrer: sourceData.referrer,
-      utmSource: sourceData.utmSource,
-      utmMedium: sourceData.utmMedium,
-      utmCampaign: sourceData.utmCampaign,
-      utmContent: sourceData.utmContent,
-      deviceType: sourceData.deviceType,
-      browser: sourceData.browser,
-      serviceInterest: sourceData.serviceInterest,
-      firstLandingPage: sourceData.firstLandingPage,
-    },
-    create: {
-      id: sessionId,
-      name: userName || null,
-      email: userEmail || null,
-      visitorLastSeenAt: new Date(),
-      status: 'new',
-      ...sourceData,
-    },
-  });
+  try {
+    const sourceData = buildSessionSourceData(req.body);
+    const session = await prisma.chatSession.upsert({
+      where: { id: sessionId },
+      update: {
+        visitorLastSeenAt: new Date(),
+        name: userName || undefined,
+        email: userEmail || undefined,
+        currentPageUrl: sourceData.currentPageUrl,
+        referrer: sourceData.referrer,
+        utmSource: sourceData.utmSource,
+        utmMedium: sourceData.utmMedium,
+        utmCampaign: sourceData.utmCampaign,
+        utmContent: sourceData.utmContent,
+        deviceType: sourceData.deviceType,
+        browser: sourceData.browser,
+        serviceInterest: sourceData.serviceInterest,
+        firstLandingPage: sourceData.firstLandingPage,
+      },
+      create: {
+        id: sessionId,
+        name: userName || null,
+        email: userEmail || null,
+        visitorLastSeenAt: new Date(),
+        status: 'new',
+        ...sourceData,
+      },
+    });
 
-  res.json(session);
+    return res.json(session);
+  } catch (err) {
+    if (!isDatabaseUnavailableError(err)) throw err;
+    logChatDbFallback('Chat heartbeat unavailable', err);
+    return res.json(
+      offlineChatSessionStub(sessionId, {
+        name: userName || null,
+        email: userEmail || null,
+        visitorLastSeenAt: new Date().toISOString(),
+      }),
+    );
+  }
 });
 
 app.get('/api/chat/:sessionId', async (req, res) => {
-  const messages = await prisma.chatMessage.findMany({
-    where: { sessionId: req.params.sessionId },
-    orderBy: { timestamp: 'asc' },
-    include: chatMessageInclude,
-  });
-  res.json(
-    messages
-      .map((message) => formatVisitorMessage(message))
-      .filter(Boolean),
-  );
+  try {
+    const messages = await prisma.chatMessage.findMany({
+      where: { sessionId: req.params.sessionId },
+      orderBy: { timestamp: 'asc' },
+      include: chatMessageInclude,
+    });
+    return res.json(
+      messages
+        .map((message) => formatVisitorMessage(message))
+        .filter(Boolean),
+    );
+  } catch (err) {
+    if (!isDatabaseUnavailableError(err)) throw err;
+    logChatDbFallback('Chat messages unavailable', err);
+    return res.json([]);
+  }
 });
 
 app.post('/api/chat', async (req: AdminRequest, res) => {
   const { sessionId, sender, text, replyToId, attachmentIds, isInternalNote } = req.body;
   if (!sessionId || !sender) return res.status(400).json({ error: 'sessionId and sender are required' });
 
-  const wantsInternalNote = Boolean(isInternalNote);
-  let adminUser: { id: number } | null = null;
-  if (wantsInternalNote || sender === 'admin') {
-    adminUser = await getAdminUserFromRequest(req);
-    if (wantsInternalNote && !adminUser) {
-      return res.status(401).json({ error: 'Admin authentication required for internal notes' });
+  try {
+    const wantsInternalNote = Boolean(isInternalNote);
+    let adminUser: { id: number } | null = null;
+    if (wantsInternalNote || sender === 'admin') {
+      adminUser = await getAdminUserFromRequest(req);
+      if (wantsInternalNote && !adminUser) {
+        return res.status(401).json({ error: 'Admin authentication required for internal notes' });
+      }
     }
-  }
 
-  await prisma.chatSession.upsert({
-    where: { id: sessionId },
-    update: {},
-    create: { id: sessionId, status: 'new' },
-  });
-
-  const message = await prisma.chatMessage.create({
-    data: {
-      sessionId,
-      sender,
-      text: text || 'Shared an attachment',
-      answered: sender === 'admin' || sender === 'bot',
-      isInternalNote: wantsInternalNote,
-      replyToId: replyToId || null,
-      attachments: Array.isArray(attachmentIds)
-        ? { connect: attachmentIds.map((id: number) => ({ id })) }
-        : undefined,
-    },
-    include: chatMessageInclude,
-  });
-
-  if (sender === 'admin' && !wantsInternalNote) {
-    await prisma.chatMessage.updateMany({
-      where: { sessionId, sender: 'user', answered: false },
-      data: { answered: true },
+    await prisma.chatSession.upsert({
+      where: { id: sessionId },
+      update: {},
+      create: { id: sessionId, status: 'new' },
     });
-    await autoUpdateConversationStatus(sessionId, 'admin_replied');
-  }
 
-  res.status(201).json(message);
+    const message = await prisma.chatMessage.create({
+      data: {
+        sessionId,
+        sender,
+        text: text || 'Shared an attachment',
+        answered: sender === 'admin' || sender === 'bot',
+        isInternalNote: wantsInternalNote,
+        replyToId: replyToId || null,
+        attachments: Array.isArray(attachmentIds)
+          ? { connect: attachmentIds.map((id: number) => ({ id })) }
+          : undefined,
+      },
+      include: chatMessageInclude,
+    });
+
+    if (sender === 'admin' && !wantsInternalNote) {
+      await prisma.chatMessage.updateMany({
+        where: { sessionId, sender: 'user', answered: false },
+        data: { answered: true },
+      });
+      await autoUpdateConversationStatus(sessionId, 'admin_replied');
+    }
+
+    return res.status(201).json(message);
+  } catch (err) {
+    if (!isDatabaseUnavailableError(err)) throw err;
+    logChatDbFallback('Chat message create unavailable', err);
+    return res.status(503).json({ error: 'Chat is temporarily unavailable', unavailable: true });
+  }
 });
 
 app.post('/api/chat/respond', async (req, res) => {
   const { sessionId, message, userName, attachmentIds, replyToId } = req.body;
   if (!sessionId || !message) return res.status(400).json({ error: 'sessionId and message are required' });
 
-  await prisma.chatSession.upsert({
-    where: { id: sessionId },
-    update: { name: userName || undefined, visitorLastSeenAt: new Date() },
-    create: { id: sessionId, name: userName || null, visitorLastSeenAt: new Date(), status: 'new' },
-  });
+  try {
+    await prisma.chatSession.upsert({
+      where: { id: sessionId },
+      update: { name: userName || undefined, visitorLastSeenAt: new Date() },
+      create: { id: sessionId, name: userName || null, visitorLastSeenAt: new Date(), status: 'new' },
+    });
 
-  const userMessage = await prisma.chatMessage.create({
-    data: {
-      sessionId,
-      sender: 'user',
-      text: message,
-      answered: false,
-      replyToId: replyToId || null,
-      attachments: Array.isArray(attachmentIds)
-        ? { connect: attachmentIds.map((id: number) => ({ id })) }
-        : undefined,
-    },
-    include: chatMessageInclude,
-  });
+    const userMessage = await prisma.chatMessage.create({
+      data: {
+        sessionId,
+        sender: 'user',
+        text: message,
+        answered: false,
+        replyToId: replyToId || null,
+        attachments: Array.isArray(attachmentIds)
+          ? { connect: attachmentIds.map((id: number) => ({ id })) }
+          : undefined,
+      },
+      include: chatMessageInclude,
+    });
 
-  await autoUpdateConversationStatus(sessionId, 'admin_needed');
+    await autoUpdateConversationStatus(sessionId, 'admin_needed');
 
-  const botText = 'Thanks for your message. We have received it and the Primewayz UK team will follow up shortly.';
-  const botMessage = await prisma.chatMessage.create({
-    data: {
-      sessionId,
-      sender: 'bot',
-      text: botText,
-      answered: true,
-      replyToId: userMessage.id,
-    },
-    include: chatMessageInclude,
-  });
+    const botMessage = await prisma.chatMessage.create({
+      data: {
+        sessionId,
+        sender: 'bot',
+        text: OFFLINE_CHAT_BOT_REPLY,
+        answered: true,
+        replyToId: userMessage.id,
+      },
+      include: chatMessageInclude,
+    });
 
-  await autoUpdateConversationStatus(sessionId, 'bot_replied');
+    await autoUpdateConversationStatus(sessionId, 'bot_replied');
 
-  res.json({
-    userMessage: formatVisitorMessage(userMessage),
-    botMessage: formatVisitorMessage(botMessage),
-    availability: await getChatAvailabilityPayload(),
-  });
+    return res.json({
+      userMessage: formatVisitorMessage(userMessage),
+      botMessage: formatVisitorMessage(botMessage),
+      availability: await getChatAvailabilityPayload(),
+    });
+  } catch (err) {
+    if (!isDatabaseUnavailableError(err)) throw err;
+    logChatDbFallback('Chat respond unavailable', err);
+    return res.json(await offlineChatRespondPayload(String(message)));
+  }
 });
 
 app.post('/api/chat/uploads', (_req, res) => {
@@ -1550,28 +1632,34 @@ app.post('/api/chat/appointments', async (req, res) => {
   const { sessionId, name, email, phone, preferredDate, preferredTime, timezone, message } = req.body;
   if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
 
-  await prisma.chatSession.upsert({
-    where: { id: sessionId },
-    update: { name: name || undefined, email: email || undefined },
-    create: { id: sessionId, name: name || null, email: email || null },
-  });
+  try {
+    await prisma.chatSession.upsert({
+      where: { id: sessionId },
+      update: { name: name || undefined, email: email || undefined },
+      create: { id: sessionId, name: name || null, email: email || null },
+    });
 
-  const appointment = await prisma.chatAppointmentRequest.create({
-    data: {
-      sessionId,
-      name: name || null,
-      email: email || null,
-      phone: phone || null,
-      preferredDate: preferredDate || null,
-      preferredTime: preferredTime || null,
-      timezone: timezone || 'Europe/London',
-      message: message || null,
-    },
-  });
+    const appointment = await prisma.chatAppointmentRequest.create({
+      data: {
+        sessionId,
+        name: name || null,
+        email: email || null,
+        phone: phone || null,
+        preferredDate: preferredDate || null,
+        preferredTime: preferredTime || null,
+        timezone: timezone || 'Europe/London',
+        message: message || null,
+      },
+    });
 
-  await autoUpdateConversationStatus(sessionId, 'booked_call');
+    await autoUpdateConversationStatus(sessionId, 'booked_call');
 
-  res.status(201).json(appointment);
+    return res.status(201).json(appointment);
+  } catch (err) {
+    if (!isDatabaseUnavailableError(err)) throw err;
+    logChatDbFallback('Chat appointment unavailable', err);
+    return res.status(503).json({ error: 'Chat booking is temporarily unavailable', unavailable: true });
+  }
 });
 
 app.get('/api/blog/posts', async (_req, res) => {

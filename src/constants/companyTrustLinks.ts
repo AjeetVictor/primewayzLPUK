@@ -9,7 +9,7 @@ export const COMPANY_TRUST_LINKS = {
   successStories: '/success-stories',
   blog: '/blog',
   services: '/services',
-  webPresenceAudit: '/#free-web-presence-audit',
+  webPresenceAudit: '/uk-sme-digital-visibility-checker',
   digitalVisibilityChecker: '/uk-sme-digital-visibility-checker',
 } as const;
 

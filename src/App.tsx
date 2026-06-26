@@ -44,7 +44,6 @@ import { ContactUsPage } from './components/ContactUsPage';
 import { ClientConfidenceSignals } from './components/ClientConfidenceSignals';
 import { UkSmeDigitalVisibilityCheckerPage } from './components/UkSmeDigitalVisibilityCheckerPage';
 import { WebPresenceAuditSharedReportPage } from './components/tools/WebPresenceAuditSharedReportPage';
-import { WebPresenceAuditForm } from './components/tools/WebPresenceAuditForm';
 import { CampaignLandingHandler } from './components/CampaignLandingHandler';
 import { SelfAuditCta } from './components/SelfAuditCta';
 import { RemoteItCapacitySection } from './components/sections/RemoteItCapacitySection';
@@ -73,7 +72,6 @@ const MainContent = () => (
       utmContent="homepage_banner"
       ctaLocation="homepage_banner"
     />
-    <WebPresenceAuditForm />
     <Philosophy />
     <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 1 }}>
       <HowItWorks />

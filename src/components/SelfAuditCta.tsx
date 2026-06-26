@@ -2,10 +2,7 @@ import type { MouseEvent, ReactNode } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { trackEvent } from '../lib/analytics';
-import {
-  scrollToWebPresenceAuditSection,
-  WEB_PRESENCE_AUDIT_SECTION_ALIAS,
-} from '../lib/utm';
+import { AUDIT_CHECKER_PATH } from '../constants/navigation';
 
 export type SelfAuditCtaVariant = 'nav' | 'hero' | 'banner' | 'inline' | 'footer';
 
@@ -24,7 +21,7 @@ export function buildSelfAuditCtaUrl(utmContent: string): string {
     utm_campaign: 'self_audit_cta',
     utm_content: utmContent,
   });
-  return `/?${params.toString()}#${WEB_PRESENCE_AUDIT_SECTION_ALIAS}`;
+  return `${AUDIT_CHECKER_PATH}?${params.toString()}`;
 }
 
 type SelfAuditCtaProps = {
@@ -40,6 +37,7 @@ function trackSelfAuditClick(variant: SelfAuditCtaVariant, ctaLocation: string, 
     cta_location: ctaLocation,
     page_path: pagePath,
     variant,
+    destination: AUDIT_CHECKER_PATH,
   });
 }
 
@@ -77,11 +75,10 @@ export function SelfAuditCta({
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     trackSelfAuditClick(variant, ctaLocation, location.pathname);
     onClick?.();
-
-    if (location.pathname === '/') {
+    // Always route to the dedicated audit page (homepage stays promotional only).
+    if (location.pathname === '/' && !href.startsWith('http')) {
       event.preventDefault();
-      window.history.pushState({}, '', href);
-      scrollToWebPresenceAuditSection();
+      window.location.assign(href);
     }
   };
 
@@ -95,7 +92,7 @@ export function SelfAuditCta({
         onClick={handleClick}
         className={
           mergedClassName ||
-          'hidden min-h-[40px] items-center rounded-md border border-emerald-600/40 bg-white px-3 py-2 text-[13px] font-semibold text-emerald-800 transition-colors hover:border-emerald-600 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600/40 md:inline-flex xl:px-4 xl:text-sm'
+          'hidden min-h-[40px] items-center rounded-lg border border-brand-blue/35 bg-white px-3 py-2 text-[13px] font-semibold text-brand-blue transition-colors hover:border-brand-blue hover:bg-brand-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40 md:inline-flex xl:px-4 xl:text-sm'
         }
       />
     );
@@ -109,7 +106,7 @@ export function SelfAuditCta({
         onClick={handleClick}
         className={
           mergedClassName ||
-          'inline-flex w-full items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50/80 px-7 py-3.5 text-[15px] font-semibold text-emerald-900 shadow-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50 sm:w-auto'
+          'inline-flex w-full items-center justify-center rounded-lg border border-brand-blue/25 bg-brand-surface px-7 py-3.5 text-[15px] font-semibold text-brand-navy shadow-sm transition-colors hover:border-brand-blue/40 hover:bg-white sm:w-auto'
         }
       >
         {label}
@@ -120,27 +117,30 @@ export function SelfAuditCta({
 
   if (variant === 'banner') {
     return (
-      <section className="border-y border-slate-200 bg-white px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-4xl rounded-2xl border border-slate-200 bg-slate-50/80 px-6 py-8 sm:px-8">
-          <h2 className="text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
+      <section className="border-y border-brand-border bg-brand-surface/60 px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl rounded-2xl border border-brand-border bg-white px-6 py-8 shadow-[0_16px_40px_-28px_rgba(0,10,45,0.25)] sm:px-8">
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand-blue">
+            Free UK SME visibility tool
+          </p>
+          <h2 className="mt-2 text-xl font-bold tracking-tight text-brand-navy sm:text-2xl">
             Not sure how your website looks to search engines and new visitors?
           </h2>
           <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">
-            Run a free public-signal website audit and get a practical visibility score, benchmark,
-            mobile-readiness indicators, and recommended next actions.
+            Run a free public-signal website audit on our dedicated checker page and get a practical
+            visibility score, benchmark, mobile-readiness indicators, and recommended next actions.
           </p>
           <div className="mt-5 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
             <SelfAuditLink
               href={href}
               label={label}
               onClick={handleClick}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-[#000A2D] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-900"
+              className="inline-flex min-h-[48px] items-center justify-center rounded-lg bg-brand-navy px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-navy/90"
             >
               {label}
               <ArrowRight className="ml-2 h-4 w-4" />
             </SelfAuditLink>
             <p className="text-xs leading-5 text-slate-500">
-              Free public-signal overview. Not an authenticated platform audit.
+              Free public-signal overview. Full report runs on the audit page only.
             </p>
           </div>
         </div>
@@ -151,13 +151,13 @@ export function SelfAuditCta({
   if (variant === 'inline') {
     return (
       <section className="px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-5xl flex-col gap-4 rounded-2xl border border-emerald-100 bg-emerald-50/40 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="mx-auto flex max-w-5xl flex-col gap-4 rounded-2xl border border-brand-border bg-brand-surface/50 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="max-w-2xl">
-            <p className="text-sm font-semibold text-slate-900">
+            <p className="text-sm font-semibold text-brand-navy">
               See how your website looks to search engines and new visitors
             </p>
             <p className="mt-1 text-sm leading-6 text-slate-600">
-              Run a free public-signal audit for a practical visibility score and recommended next actions.
+              Run the free checker on our dedicated audit page for a practical visibility score and next actions.
             </p>
           </div>
           <SelfAuditLink
@@ -166,7 +166,7 @@ export function SelfAuditCta({
             onClick={handleClick}
             className={
               mergedClassName ||
-              'inline-flex shrink-0 items-center justify-center rounded-lg border border-emerald-600/30 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-800 transition hover:border-emerald-600 hover:bg-emerald-50'
+              'inline-flex shrink-0 items-center justify-center rounded-lg border border-brand-blue/30 bg-white px-4 py-2.5 text-sm font-semibold text-brand-blue transition hover:border-brand-blue hover:bg-brand-surface'
             }
           >
             {label}

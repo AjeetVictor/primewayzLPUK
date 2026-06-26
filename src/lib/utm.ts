@@ -169,7 +169,13 @@ export function scrollToWebPresenceAuditSection(): void {
 
   const section = document.getElementById(WEB_PRESENCE_AUDIT_SECTION_ID)
     || document.getElementById(WEB_PRESENCE_AUDIT_SECTION_ALIAS);
-  section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  if (section) {
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  window.location.assign('/uk-sme-digital-visibility-checker');
 }
 
 export function buildWebPresenceAuditLaunchUrl(content = 'company_page_launch'): string {
@@ -180,5 +186,5 @@ export function buildWebPresenceAuditLaunchUrl(content = 'company_page_launch'):
     utm_content: content,
   });
 
-  return `https://uk.primewayz.com/?${params.toString()}#${WEB_PRESENCE_AUDIT_SECTION_ALIAS}`;
+  return `https://uk.primewayz.com/uk-sme-digital-visibility-checker?${params.toString()}`;
 }

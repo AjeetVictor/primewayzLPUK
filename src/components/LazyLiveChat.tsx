@@ -41,5 +41,9 @@ export function LazyLiveChat() {
 
   if (hideOnContact || !ready) return null;
 
+  if (import.meta.env.VITE_DISABLE_CHAT === 'true') {
+    return null;
+  }
+
   return <LiveChat />;
 }
