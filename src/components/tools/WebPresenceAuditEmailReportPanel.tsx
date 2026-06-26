@@ -82,7 +82,7 @@ export function WebPresenceAuditEmailReportPanel({
   shareLink,
   onShareLinkChange,
   mode = 'inline',
-  contactCtaHref = '/#contact',
+  contactCtaHref = '/contact-us#book-call',
   onPhaseChange,
 }: WebPresenceAuditEmailReportPanelProps) {
   const [form, setForm] = useState<FormState>(initialFormState);

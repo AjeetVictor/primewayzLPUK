@@ -18,7 +18,7 @@ export type AuditCategoryActionLink = {
 };
 
 function auditActionContactHref(categorySlug: AuditActionCategoryId): string {
-  return `/?utm_source=audit_report&utm_medium=action_card&utm_campaign=web_presence_audit_actions&utm_content=${categorySlug}#contact`;
+  return `/contact-us?utm_source=audit_report&utm_medium=action_card&utm_campaign=web_presence_audit_actions&utm_content=${categorySlug}#book-call`;
 }
 
 export const AUDIT_CATEGORY_ACTION_LINKS: Record<AuditActionCategoryId, AuditCategoryActionLink> = {

@@ -17,10 +17,10 @@ import { FAQ } from './components/FAQ';
 import { Testimonials } from './components/Testimonials';
 import { BlogSection } from './components/BlogSection';
 import { SuccessStories } from './components/SuccessStories';
-import { ContactForm } from './components/ContactForm';
+import { ContactBookingCta } from './components/ContactBookingCta';
 import { Footer } from './components/Footer';
 import { ScrollToTop } from './components/ScrollToTop';
-import { LiveChat } from './components/LiveChat';
+import { LazyLiveChat } from './components/LazyLiveChat';
 import { AdminPanel } from './components/AdminPanel';
 import { AdminMobileChat } from './components/AdminMobileChat';
 import { AdminForgotPassword, AdminResetPassword } from './components/AdminPasswordReset';
@@ -47,6 +47,10 @@ import { WebPresenceAuditSharedReportPage } from './components/tools/WebPresence
 import { WebPresenceAuditForm } from './components/tools/WebPresenceAuditForm';
 import { CampaignLandingHandler } from './components/CampaignLandingHandler';
 import { SelfAuditCta } from './components/SelfAuditCta';
+import { RemoteItCapacitySection } from './components/sections/RemoteItCapacitySection';
+import { RemoteItResourceAugmentationPage } from './components/RemoteItResourceAugmentationPage';
+import { ContactRedirect } from './components/ContactRedirect';
+import { BOOK_CALL_URL } from './constants/contactBooking';
 
 // SSR-safe: use static path for logo
 const logo = '/assets/primewayz-infotech-logo.svg';
@@ -79,12 +83,13 @@ const MainContent = () => (
     <Experience />
     <Stats />
     <ServicePathCards />
+    <RemoteItCapacitySection />
     <Pricing />
     <FAQ />
     <SuccessStories />
     <Testimonials />
     <BlogSection />
-    <ContactForm />
+    <ContactBookingCta />
     <section className="py-24 bg-emerald-600">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-8">
@@ -95,10 +100,10 @@ const MainContent = () => (
         </motion.p>
         <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
           <TrackedLink
-            href="#contact"
+            href={BOOK_CALL_URL}
             ctaText="Book a UK discovery call"
             ctaLocation="final_cta"
-            eventType="book_call_click"
+            eventType="book_call_click_home"
             className="inline-block bg-white text-emerald-600 px-10 py-5 rounded-full text-xl font-bold hover:bg-emerald-50 transition-all shadow-xl shadow-emerald-900/20"
           >
             Book a UK discovery call
@@ -143,7 +148,9 @@ export const App = ({ initialData }: AppProps) => {
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/uk-sme-digital-visibility-checker" element={<UkSmeDigitalVisibilityCheckerPage />} />
         <Route path="/about-us" element={<AboutUsPage />} />
+        <Route path="/contact" element={<ContactRedirect />} />
         <Route path="/contact-us" element={<ContactUsPage />} />
+        <Route path="/remote-it-resource-augmentation" element={<RemoteItResourceAugmentationPage />} />
         <Route path="/web-presence-audit/report/:publicToken" element={<WebPresenceAuditSharedReportPage />} />
         <Route path="/software-development-subscription-uk" element={<SoftwareDevelopmentSubscriptionUkPage />} />
         <Route path="/website-maintenance-subscription-uk" element={<WebsiteMaintenanceSubscriptionUkPage />} />
@@ -159,7 +166,7 @@ export const App = ({ initialData }: AppProps) => {
       </Routes>
 
       {!showSiteChrome ? null : <Footer />}
-      {showSiteChrome ? <ClientOnly><LiveChat /></ClientOnly> : null}
+      {showSiteChrome ? <ClientOnly><LazyLiveChat /></ClientOnly> : null}
     </div>
   );
 };

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
 import { SelfAuditCta } from './SelfAuditCta';
+import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../lib/utm';
 
 const serviceCards = [
   {
@@ -54,6 +55,25 @@ const serviceCards = [
       'CRM cleanup and operational visibility',
     ],
   },
+  {
+    title: 'Remote IT Resources',
+    href: buildInternalUtmUrl(
+      '/remote-it-resource-augmentation',
+      'services_hub',
+      REMOTE_RESOURCE_CAMPAIGN,
+      'services_hub_card',
+    ),
+    icon: Users,
+    anchor: 'Remote IT resource augmentation for UK SMEs',
+    description:
+      'Extend your UK team with remote developers, QA testers, website support, automation specialists, digital support, and project coordination through structured delivery.',
+    bestFor: [
+      'Developers and QA capacity',
+      'Website and digital support',
+      'Project coordination and reporting',
+    ],
+    isNew: true,
+  },
 ];
 
 const supportAreas = [
@@ -63,6 +83,7 @@ const supportAreas = [
   'Website form and lead routing',
   'Business automation',
   'API and third-party integrations',
+  'Remote developers, QA, and digital support',
   'Analytics and GA4 checks',
   'Search Console and technical SEO basics',
   'Dashboards and reporting workflows',
@@ -154,7 +175,7 @@ export const ServicesPage = () => (
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <TrackedLink
-                href="/#contact"
+                href="/contact-us#book-call"
                 ctaText="Book a UK discovery call"
                 ctaLocation="services_hero"
                 eventType="book_call_click"
@@ -251,8 +272,15 @@ export const ServicesPage = () => (
                 aria-label={service.anchor}
                 className="group rounded-3xl border border-slate-200 bg-slate-50 p-7 shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:bg-white hover:shadow-xl"
               >
-                <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#000A2D] text-white transition group-hover:bg-emerald-600">
-                  <Icon className="h-6 w-6" />
+                <div className="mb-6 flex items-start justify-between gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#000A2D] text-white transition group-hover:bg-emerald-600">
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  {'isNew' in service && service.isNew ? (
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+                      New
+                    </span>
+                  ) : null}
                 </div>
 
                 <h3 className="text-xl font-black text-[#000A2D]">{service.title}</h3>
@@ -403,7 +431,7 @@ export const ServicesPage = () => (
         </div>
 
         <TrackedLink
-          href="/#contact"
+          href="/contact-us#book-call"
           ctaText="Discuss services"
           ctaLocation="services_final_cta"
           eventType="book_call_click"

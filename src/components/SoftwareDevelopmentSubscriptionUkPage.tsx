@@ -125,7 +125,7 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <TrackedLink
-                  href="/#contact"
+                  href="/contact-us#book-call"
                   ctaText="Book a 30-minute discovery call"
                   ctaLocation="service_page_hero"
                   eventType="book_call_click"
@@ -343,7 +343,7 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
           </div>
 
           <TrackedLink
-            href="/#contact"
+            href="/contact-us#book-call"
             ctaText="Discuss software subscription"
             ctaLocation="service_page_final_cta"
             eventType="book_call_click"

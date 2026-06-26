@@ -1,4 +1,4 @@
-import { captureUtmParams } from './utm.ts';
+import { captureUtmParams, getFirstUtmParams, getLatestUtmParams } from './utm.ts';
 
 const FIRST_LANDING_KEY = 'primewayz_first_landing_page';
 
@@ -6,6 +6,7 @@ const SERVICE_PATH_MAP: Record<string, string> = {
   '/software-development-subscription-uk': 'Software development subscription',
   '/website-maintenance-subscription-uk': 'Website maintenance subscription',
   '/crm-integration-support-uk': 'CRM integration support',
+  '/remote-it-resource-augmentation': 'Remote IT resource augmentation',
   '/professional-services-crm-support-uk': 'Professional services CRM support',
   '/services': 'Services overview',
   '/success-stories/local-trades-lead-capture': 'Local trades lead capture',
@@ -53,6 +54,17 @@ export interface ChatSourcePayload {
   utmMedium: string | null;
   utmCampaign: string | null;
   utmContent: string | null;
+  utmTerm: string | null;
+  firstUtmSource: string | null;
+  firstUtmMedium: string | null;
+  firstUtmCampaign: string | null;
+  firstUtmContent: string | null;
+  firstUtmTerm: string | null;
+  latestUtmSource: string | null;
+  latestUtmMedium: string | null;
+  latestUtmCampaign: string | null;
+  latestUtmContent: string | null;
+  latestUtmTerm: string | null;
   deviceType: string;
   browser: string;
   serviceInterest: string | null;
@@ -68,6 +80,17 @@ export function getChatSourcePayload(): ChatSourcePayload {
       utmMedium: null,
       utmCampaign: null,
       utmContent: null,
+      utmTerm: null,
+      firstUtmSource: null,
+      firstUtmMedium: null,
+      firstUtmCampaign: null,
+      firstUtmContent: null,
+      firstUtmTerm: null,
+      latestUtmSource: null,
+      latestUtmMedium: null,
+      latestUtmCampaign: null,
+      latestUtmContent: null,
+      latestUtmTerm: null,
       deviceType: 'unknown',
       browser: 'unknown',
       serviceInterest: null,
@@ -77,6 +100,8 @@ export function getChatSourcePayload(): ChatSourcePayload {
   const pathname = window.location.pathname || '/';
   const userAgent = navigator.userAgent || '';
   const utm = captureUtmParams(window.location.search);
+  const firstUtm = getFirstUtmParams();
+  const latestUtm = getLatestUtmParams();
 
   return {
     firstLandingPage: getFirstLandingPage(),
@@ -86,6 +111,17 @@ export function getChatSourcePayload(): ChatSourcePayload {
     utmMedium: utm.utm_medium,
     utmCampaign: utm.utm_campaign,
     utmContent: utm.utm_content,
+    utmTerm: utm.utm_term,
+    firstUtmSource: firstUtm.utm_source,
+    firstUtmMedium: firstUtm.utm_medium,
+    firstUtmCampaign: firstUtm.utm_campaign,
+    firstUtmContent: firstUtm.utm_content,
+    firstUtmTerm: firstUtm.utm_term,
+    latestUtmSource: latestUtm.utm_source,
+    latestUtmMedium: latestUtm.utm_medium,
+    latestUtmCampaign: latestUtm.utm_campaign,
+    latestUtmContent: latestUtm.utm_content,
+    latestUtmTerm: latestUtm.utm_term,
     deviceType: detectDeviceType(userAgent),
     browser: detectBrowser(userAgent),
     serviceInterest: inferServiceInterest(pathname),

@@ -672,7 +672,7 @@ export function WebPresenceAuditResult({
             </p>
           </div>
           <a
-            href={isShared ? sharedContactHref : '/#contact'}
+            href={isShared ? sharedContactHref : '/contact-us#book-call'}
             className="inline-flex min-h-[50px] shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-[#000A2D] transition hover:bg-emerald-50"
           >
             {isShared ? 'Request an in-depth digital visibility audit' : 'Request my free review'}

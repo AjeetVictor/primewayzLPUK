@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import { ArrowUpRight, Users, PhoneCall, Zap } from 'lucide-react';
 import { ShareButton } from './ShareButton';
 import { Link } from 'react-router-dom';
+import { CONTACT_ENQUIRY_URL } from '../constants/contactBooking';
 
 const stories = [
   {
@@ -68,7 +69,7 @@ export const SuccessStories = () => {
             </motion.p>
           </div>
           <motion.a
-            href="#contact"
+            href={CONTACT_ENQUIRY_URL}
             initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}

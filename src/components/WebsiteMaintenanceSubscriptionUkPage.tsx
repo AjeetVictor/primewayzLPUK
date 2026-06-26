@@ -117,7 +117,7 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => (
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <TrackedLink
-                href="/#contact"
+                href="/contact-us#book-call"
                 ctaText="Book a UK website maintenance review"
                 ctaLocation="website_maintenance_hero"
                 eventType="book_call_click"
@@ -330,7 +330,7 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => (
         </div>
 
         <TrackedLink
-          href="/#contact"
+          href="/contact-us#book-call"
           ctaText="Book website maintenance review"
           ctaLocation="website_maintenance_final_cta"
           eventType="book_call_click"

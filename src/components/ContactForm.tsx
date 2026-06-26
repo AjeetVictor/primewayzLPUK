@@ -6,7 +6,14 @@ import 'react-phone-number-input/style.css';
 import confetti from 'canvas-confetti';
 import { apiUrl } from '../utils/apiUrl';
 import { CONTACT_SOCIAL_LINKS } from '../constants/contactSocial';
-import { trackEvent } from '../lib/analytics';
+import { trackEvent, trackConversionEvent } from '../lib/analytics';
+import { getFirstUtmParams, getLatestUtmParams } from '../lib/utm';
+import { BOOK_CALL_HASH, isBookCallHash } from '../constants/contactBooking';
+import {
+  initCalendlyInlineWidget,
+  loadCalendlyScript,
+  subscribeCalendlyPostMessages,
+} from '../lib/calendly';
 
 declare global {
   interface Window {
@@ -39,8 +46,10 @@ const NAME_MIN = 2;
 const NAME_MAX = 80;
 const MESSAGE_MIN = 10;
 const MESSAGE_MAX = 2000;
-const CALENDLY_URL = 'https://calendly.com/primewayz-info/30-minute-meeting-uk';
-const CALENDLY_SCRIPT_URL = 'https://assets.calendly.com/assets/external/widget.js';
+
+type ContactFormProps = {
+  variant?: 'full';
+};
 
 export function normalizeUkPhoneNumber(raw: string): string | null {
   const compact = raw.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
@@ -100,7 +109,7 @@ function SocialIcon({ label }: { label: string }) {
   }
 }
 
-export function ContactForm() {
+export function ContactForm({ variant = 'full' }: ContactFormProps) {
   const [formData, setFormData] = useState<FormData>({
     name: '',
     email: '',
@@ -178,12 +187,24 @@ export function ContactForm() {
 
     try {
       const parsedPhoneNumbers = parseUkPhoneNumbers(phone);
+      const firstUtm = getFirstUtmParams();
+      const latestUtm = getLatestUtmParams();
       const payload = {
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
         message: formData.message.trim(),
         phone: parsedPhoneNumbers[0] || null,
         phoneNumbers: parsedPhoneNumbers,
+        firstUtmSource: firstUtm.utm_source,
+        firstUtmMedium: firstUtm.utm_medium,
+        firstUtmCampaign: firstUtm.utm_campaign,
+        firstUtmContent: firstUtm.utm_content,
+        firstUtmTerm: firstUtm.utm_term,
+        latestUtmSource: latestUtm.utm_source,
+        latestUtmMedium: latestUtm.utm_medium,
+        latestUtmCampaign: latestUtm.utm_campaign,
+        latestUtmContent: latestUtm.utm_content,
+        latestUtmTerm: latestUtm.utm_term,
       };
 
       const response = await fetch(apiUrl('/api/contact'), {
@@ -240,58 +261,35 @@ export function ContactForm() {
   const showPhoneValidState = phone.trim().length > 0 && isPhoneValid;
 
   useEffect(() => {
-    const handleCalendlyEvent = (event: MessageEvent) => {
-      if (event.origin !== 'https://calendly.com') return;
+    if (variant !== 'full') return undefined;
+    return subscribeCalendlyPostMessages('contact_calendly_inline');
+  }, [variant]);
 
-      const calendlyEventName = event.data?.event;
+  useEffect(() => {
+    if (variant !== 'full') return;
+    if (!isBookCallHash(window.location.hash)) return;
 
-      if (calendlyEventName === 'calendly.event_scheduled') {
-        trackEvent('calendly_event_scheduled', {
-          calendly_url: CALENDLY_URL,
-          lead_type: 'discovery_call',
-          cta_location: 'contact_calendly_lazy',
-        });
+    const bookCallSection = document.getElementById(BOOK_CALL_HASH);
+    bookCallSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setIsCalendlyOpen(true);
+  }, [variant]);
+
+  useEffect(() => {
+    if (variant !== 'full' || !isCalendlyOpen) return;
+
+    const mountCalendly = async () => {
+      try {
+        await loadCalendlyScript();
+        const parentElement = document.getElementById('primewayz-calendly-inline');
+        if (!parentElement) return;
+        initCalendlyInlineWidget(parentElement, 'contact_calendly_inline');
+      } catch {
+        // Calendly is optional; page remains usable without it.
       }
     };
 
-    window.addEventListener('message', handleCalendlyEvent);
-
-    return () => {
-      window.removeEventListener('message', handleCalendlyEvent);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isCalendlyOpen) return;
-
-    const initCalendly = () => {
-      const parentElement = document.getElementById('primewayz-calendly-inline');
-
-      if (!parentElement || !window.Calendly?.initInlineWidget) return;
-
-      parentElement.innerHTML = '';
-
-      window.Calendly.initInlineWidget({
-        url: CALENDLY_URL,
-        parentElement,
-      });
-    };
-
-    const existingScript = document.querySelector<HTMLScriptElement>(
-      `script[src="${CALENDLY_SCRIPT_URL}"]`
-    );
-
-    if (existingScript) {
-      initCalendly();
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = CALENDLY_SCRIPT_URL;
-    script.async = true;
-    script.onload = initCalendly;
-    document.body.appendChild(script);
-  }, [isCalendlyOpen]);
+    void mountCalendly();
+  }, [isCalendlyOpen, variant]);
 
   useEffect(() => {
     if (isSubmitted) {
@@ -611,7 +609,7 @@ export function ContactForm() {
             </div>
           </div>
 
-          <div className="bg-white p-6 md:p-8 rounded-3xl border border-emerald-100 shadow-sm">
+          <div id={BOOK_CALL_HASH} className="bg-white p-6 md:p-8 rounded-3xl border border-emerald-100 shadow-sm scroll-mt-28">
             <div className="mb-6">
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">Setup a discovery call</p>
               <h3 className="mt-2 text-2xl font-bold text-gray-900">Book a 30-minute UK discovery call</h3>
@@ -637,7 +635,7 @@ export function ContactForm() {
                 <button
                   type="button"
                   onClick={() => {
-                    trackEvent('booking_calendar_open', {
+                    trackConversionEvent('booking_calendar_open', {
                       cta_text: 'Open booking calendar',
                       cta_location: 'contact_booking_card',
                     });

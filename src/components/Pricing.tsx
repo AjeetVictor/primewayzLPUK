@@ -1,5 +1,6 @@
 import { TrackedLink } from './common/TrackedLink';
 import { motion } from 'motion/react';
+import { BOOK_CALL_URL, CONTACT_ENQUIRY_URL } from '../constants/contactBooking';
 import {
   ArrowRight,
   Check,
@@ -70,7 +71,7 @@ const foundationSprint: PlanCard = {
   ],
   limitations: ['Not designed for ongoing monthly feature delivery'],
   cta: 'Start with Foundation Sprint',
-  ctaHref: '#contact',
+  ctaHref: CONTACT_ENQUIRY_URL,
 };
 
 const activePlans: PlanCard[] = [
@@ -105,7 +106,7 @@ const activePlans: PlanCard[] = [
       'No advanced automation',
     ],
     cta: 'Book a call for Essential',
-    ctaHref: '#contact',
+    ctaHref: BOOK_CALL_URL,
   },
   {
     name: 'Growth',
@@ -138,7 +139,7 @@ const activePlans: PlanCard[] = [
       'Not ideal for governance-heavy delivery',
     ],
     cta: 'Book a call for Growth',
-    ctaHref: '#contact',
+    ctaHref: BOOK_CALL_URL,
     highlight: true,
   },
   {
@@ -171,7 +172,7 @@ const activePlans: PlanCard[] = [
       'Complex governance needs Enterprise engagement',
     ],
     cta: 'Book a call for Scale',
-    ctaHref: '#contact',
+    ctaHref: BOOK_CALL_URL,
   },
 ];
 
@@ -200,7 +201,7 @@ const maintenancePlan: PlanCard = {
   ],
   limitations: ['No active redesign', 'No major new features', 'No deeper integrations'],
   cta: 'Move to Maintenance Mode',
-  ctaHref: '#contact',
+  ctaHref: CONTACT_ENQUIRY_URL,
 };
 
 const enterprisePlan: PlanCard = {
@@ -230,8 +231,8 @@ const enterprisePlan: PlanCard = {
   ],
   limitations: ['Not required for standard website/CMS monthly delivery'],
   note: 'Custom scope after discovery may apply for advanced cases.',
-  cta: 'Talk to us about Enterprise',
-  ctaHref: '#contact',
+    cta: 'Talk to us about Enterprise',
+    ctaHref: BOOK_CALL_URL,
 };
 
 const transparencyColumns = [

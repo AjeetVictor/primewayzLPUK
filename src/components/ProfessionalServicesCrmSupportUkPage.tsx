@@ -146,7 +146,7 @@ export const ProfessionalServicesCrmSupportUkPage = () => (
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <TrackedLink
-                href="/#contact"
+                href="/contact-us#book-call"
                 ctaText="Book a UK discovery call"
                 ctaLocation="professional_services_crm_hero"
                 eventType="book_call_click"
@@ -353,7 +353,7 @@ export const ProfessionalServicesCrmSupportUkPage = () => (
         </div>
 
         <TrackedLink
-          href="/#contact"
+          href="/contact-us#book-call"
           ctaText="Book a UK discovery call"
           ctaLocation="professional_services_crm_final_cta"
           eventType="book_call_click"

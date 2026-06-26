@@ -1,6 +1,8 @@
 import { motion } from 'motion/react';
 import { MessageCircle, Users, FileEdit } from 'lucide-react';
 
+import { BOOK_CALL_URL } from '../constants/contactBooking';
+
 export const FloatingContact = () => {
   const actions = [
     {
@@ -18,7 +20,7 @@ export const FloatingContact = () => {
     {
       icon: FileEdit,
       label: 'Connect With Us',
-      href: '#contact',
+      href: BOOK_CALL_URL,
       color: 'bg-emerald-600', // App Theme Emerald
     },
   ];

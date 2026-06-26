@@ -38,7 +38,7 @@ export const BlogCTA = () => (
       </div>
 
       <TrackedLink
-        href="/#contact"
+        href="/contact-us#book-call"
         ctaText="Book a UK discovery call"
         ctaLocation="blog_cta"
         eventType="book_call_click"

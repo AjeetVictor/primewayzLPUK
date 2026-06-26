@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { TrackedLink } from './common/TrackedLink';
+import { BOOK_CALL_URL } from '../constants/contactBooking';
 
 const steps = [
   {
@@ -352,7 +353,7 @@ export const InteractiveDemo = () => {
             </div>
           </div>
           <TrackedLink
-            href="#contact"
+            href={BOOK_CALL_URL}
             ctaText="Book a UK discovery call"
             ctaLocation="interactive_demo"
             eventType="book_call_click"

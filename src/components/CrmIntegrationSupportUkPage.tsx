@@ -187,7 +187,7 @@ export function CrmIntegrationSupportUkPage() {
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <TrackedLink
-                  href="/#contact"
+                  href="/contact-us#book-call"
                   ctaText="Book a CRM integration review"
                   ctaLocation="crm_integration_hero"
                   eventType="book_call_click"
@@ -486,7 +486,7 @@ export function CrmIntegrationSupportUkPage() {
           </div>
 
           <TrackedLink
-            href="/#contact"
+            href="/contact-us#book-call"
             ctaText="Book CRM integration consultation"
             ctaLocation="crm_integration_final_cta"
             eventType="book_call_click"

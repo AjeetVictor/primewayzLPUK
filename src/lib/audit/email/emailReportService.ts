@@ -19,7 +19,7 @@ import {
 } from './auditReportEmailTemplates.ts';
 
 const IN_DEPTH_AUDIT_URL =
-  'https://uk.primewayz.com/?utm_source=audit_email&utm_medium=email&utm_campaign=web_presence_audit_email&utm_content=in_depth_cta#contact';
+  'https://uk.primewayz.com/contact-us?utm_source=audit_email&utm_medium=email&utm_campaign=web_presence_audit_email&utm_content=in_depth_cta#book-call';
 
 /** @deprecated Use AuditLeadValidationError */
 export { AuditLeadValidationError as EmailReportValidationError } from '../leads/auditLeadRecord.ts';

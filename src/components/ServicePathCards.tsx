@@ -1,5 +1,14 @@
-import { ArrowRight, Code2, LifeBuoy, Network } from 'lucide-react';
+import { ArrowRight, Code2, LifeBuoy, Network, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../lib/utm';
+import { getDataLayerUtmPayload, pushDataLayer } from '../lib/dataLayer';
+
+const remoteItCardHref = buildInternalUtmUrl(
+  '/remote-it-resource-augmentation',
+  'homepage_service_card',
+  REMOTE_RESOURCE_CAMPAIGN,
+  'service_card',
+);
 
 const servicePaths = [
   {
@@ -26,6 +35,16 @@ const servicePaths = [
     icon: Network,
     anchor: 'CRM integration support for UK SMEs',
   },
+  {
+    title: 'Remote IT Resources',
+    description:
+      'Extend your UK team with remote developers, QA testers, website support, digital support and project coordination.',
+    href: remoteItCardHref,
+    icon: Users,
+    anchor: 'View service',
+    isNew: true,
+    tracked: true,
+  },
 ];
 
 const supportingLinks = [
@@ -38,6 +57,16 @@ const supportingLinks = [
     href: '/#success-stories',
   },
 ];
+
+function trackServiceCardClick(destinationUrl: string): void {
+  pushDataLayer({
+    event: 'service_card_click',
+    service: REMOTE_RESOURCE_CAMPAIGN,
+    card_location: 'homepage_service_grid',
+    destination_url: destinationUrl,
+    ...getDataLayerUtmPayload(),
+  });
+}
 
 export const ServicePathCards = () => {
   return (
@@ -56,7 +85,7 @@ export const ServicePathCards = () => {
 
           <p className="mt-5 text-lg leading-8 text-slate-600">
             Start with the area causing the most friction today — software delivery, website maintenance,
-            or CRM integration — then build a practical monthly improvement rhythm around it.
+            CRM integration, or remote IT capacity — then build a practical monthly improvement rhythm around it.
           </p>
 
           <div className="mt-8 flex flex-wrap justify-center gap-3">
@@ -72,19 +101,22 @@ export const ServicePathCards = () => {
           </div>
         </div>
 
-        <div className="mt-14 grid gap-6 md:grid-cols-3">
+        <div className="mt-14 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {servicePaths.map((item) => {
             const Icon = item.icon;
+            const isInternalRoute = item.href.startsWith('/') && !item.href.includes('?');
 
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                className="group rounded-3xl border border-slate-200 bg-slate-50 p-7 shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:bg-white hover:shadow-xl"
-                aria-label={item.anchor}
-              >
-                <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#000A2D] text-white transition group-hover:bg-emerald-600">
-                  <Icon className="h-6 w-6" />
+            const cardContent = (
+              <>
+                <div className="mb-6 flex items-start justify-between gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#000A2D] text-white transition group-hover:bg-emerald-600">
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  {item.isNew ? (
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+                      New
+                    </span>
+                  ) : null}
                 </div>
 
                 <h3 className="text-xl font-black text-[#000A2D]">{item.title}</h3>
@@ -95,7 +127,45 @@ export const ServicePathCards = () => {
                   {item.anchor}
                   <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
                 </div>
-              </Link>
+              </>
+            );
+
+            if (item.tracked) {
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  onClick={() => trackServiceCardClick(item.href)}
+                  className="group rounded-3xl border border-slate-200 bg-slate-50 p-7 shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:bg-white hover:shadow-xl"
+                  aria-label={item.anchor}
+                >
+                  {cardContent}
+                </Link>
+              );
+            }
+
+            if (isInternalRoute) {
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className="group rounded-3xl border border-slate-200 bg-slate-50 p-7 shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:bg-white hover:shadow-xl"
+                  aria-label={item.anchor}
+                >
+                  {cardContent}
+                </Link>
+              );
+            }
+
+            return (
+              <a
+                key={item.href}
+                href={item.href}
+                className="group rounded-3xl border border-slate-200 bg-slate-50 p-7 shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:bg-white hover:shadow-xl"
+                aria-label={item.anchor}
+              >
+                {cardContent}
+              </a>
             );
           })}
         </div>

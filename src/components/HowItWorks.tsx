@@ -1,5 +1,6 @@
 ﻿import { useState, type MouseEvent } from 'react';
 import { TrackedLink } from './common/TrackedLink';
+import { BOOK_CALL_URL } from '../constants/contactBooking';
 import { motion } from 'motion/react';
 import { Target, Layers, BarChart } from 'lucide-react';
 
@@ -171,7 +172,7 @@ export const HowItWorks = () => {
 
                 <div className="mt-6 pl-[3.15rem]">
                   <TrackedLink
-                    href="#contact"
+                    href={BOOK_CALL_URL}
                     ctaText="Book a UK discovery call"
                     ctaLocation="how_it_works"
                     eventType="book_call_click"

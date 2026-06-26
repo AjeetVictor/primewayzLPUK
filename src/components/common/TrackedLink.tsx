@@ -1,11 +1,15 @@
 import { motion } from 'motion/react';
 import type { TargetAndTransition, VariantLabels } from 'motion/react';
 import type { ReactNode } from 'react';
-import { trackCtaClick, trackEvent } from '../../lib/analytics';
+import { trackCtaClick, trackBookCallClick, trackConversionEvent } from '../../lib/analytics';
 
 type TrackingEventType =
   | 'cta_click'
   | 'book_call_click'
+  | 'book_call_click_header'
+  | 'book_call_click_home'
+  | 'book_call_click_pricing'
+  | 'book_call_click_audit'
   | 'pricing_plan_click'
   | 'external_link_click'
   | 'footer_link_click'
@@ -48,8 +52,16 @@ export function TrackedLink({
   const handleClick = () => {
     if (eventType === 'cta_click') {
       trackCtaClick(ctaText, ctaLocation, trackingParams);
+    } else if (
+      eventType === 'book_call_click'
+      || eventType === 'book_call_click_header'
+      || eventType === 'book_call_click_home'
+      || eventType === 'book_call_click_pricing'
+      || eventType === 'book_call_click_audit'
+    ) {
+      trackBookCallClick(ctaText, ctaLocation, trackingParams);
     } else {
-      trackEvent(eventType, {
+      trackConversionEvent(eventType, {
         cta_text: ctaText,
         cta_location: ctaLocation,
         ...trackingParams,

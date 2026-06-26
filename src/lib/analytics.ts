@@ -1,3 +1,6 @@
+import { getFullUtmAnalyticsPayload } from './utm';
+import { pushDataLayer } from './dataLayer';
+
 export const GA_MEASUREMENT_ID =
   import.meta.env?.VITE_GA_MEASUREMENT_ID || 'G-669V6LN0B7';
 
@@ -7,6 +10,16 @@ declare global {
     gtag?: (...args: unknown[]) => void;
   }
 }
+
+const BOOK_CALL_LOCATION_EVENT_MAP: Record<string, string> = {
+  navbar_desktop: 'book_call_click_header',
+  navbar_mobile: 'book_call_click_header',
+  header_nav: 'book_call_click_header',
+  homepage_booking_cta: 'book_call_click_home',
+  final_cta: 'book_call_click_home',
+  pricing_footer_cta: 'book_call_click_pricing',
+  audit_report_cta: 'book_call_click_audit',
+};
 
 export function isGaEnabled(): boolean {
   return Boolean(
@@ -46,6 +59,42 @@ export function trackEvent(
     page_title: document.title,
     transport_type: 'beacon',
     ...params,
+  });
+}
+
+export function trackConversionEvent(
+  eventName: string,
+  params?: Record<string, unknown>
+): void {
+  const payload = {
+    service_region: 'UK',
+    business_model: 'subscription_software_delivery',
+    page_path: typeof window !== 'undefined' ? window.location.pathname : undefined,
+    page_title: typeof document !== 'undefined' ? document.title : undefined,
+    source_page: typeof window !== 'undefined' ? window.location.pathname : undefined,
+    ...getFullUtmAnalyticsPayload(),
+    ...params,
+  };
+
+  pushDataLayer({
+    event: eventName,
+    ...payload,
+  });
+
+  trackEvent(eventName, params);
+}
+
+export function trackBookCallClick(
+  ctaText: string,
+  ctaLocation: string,
+  extraParams?: Record<string, unknown>
+): void {
+  const eventName = BOOK_CALL_LOCATION_EVENT_MAP[ctaLocation] || 'book_call_click';
+
+  trackConversionEvent(eventName, {
+    cta_text: ctaText,
+    cta_location: ctaLocation,
+    ...extraParams,
   });
 }
 
@@ -94,10 +143,35 @@ export function trackChatOpen(params?: {
   chatTitle?: string;
   ctaLocation?: string;
 }): void {
-  trackEvent('chat_open', {
+  const payload = {
     chat_status: normalizeChatAnalyticsStatus(params?.chatStatus),
     chat_title: params?.chatTitle || 'unknown',
     cta_location: params?.ctaLocation || 'chat_launcher',
+  };
+
+  trackConversionEvent('chat_widget_open', payload);
+  trackEvent('chat_open', payload);
+}
+
+export function trackChatLeadCaptured(params?: {
+  chatStatus?: ChatAnalyticsStatus;
+  ctaLocation?: string;
+}): void {
+  trackConversionEvent('chat_lead_captured', {
+    chat_status: normalizeChatAnalyticsStatus(params?.chatStatus),
+    cta_location: params?.ctaLocation || 'chat_lead_form',
+    lead_type: 'chat_lead',
+  });
+}
+
+export function trackChatBookCallClick(params?: {
+  chatStatus?: ChatAnalyticsStatus;
+  ctaLocation?: string;
+}): void {
+  trackConversionEvent('chat_book_call_click', {
+    chat_status: normalizeChatAnalyticsStatus(params?.chatStatus),
+    cta_location: params?.ctaLocation || 'chat_panel',
+    lead_type: 'chat_booking_intent',
   });
 }
 
@@ -109,6 +183,16 @@ export function trackChatMessageSent(params?: {
   ctaLocation?: string;
 }): void {
   const attachmentCount = Number(params?.attachmentCount || 0);
+
+  trackConversionEvent('chat_message_sent', {
+    chat_status: normalizeChatAnalyticsStatus(params?.chatStatus),
+    message_length_bucket: getMessageLengthBucket(params?.messageLength),
+    has_attachment: attachmentCount > 0,
+    attachment_count: attachmentCount,
+    bot_reply_sent: Boolean(params?.botReplySent),
+    cta_location: params?.ctaLocation || 'live_chat',
+    lead_type: 'chat_message',
+  });
 
   trackEvent('chat_message_sent', {
     chat_status: normalizeChatAnalyticsStatus(params?.chatStatus),

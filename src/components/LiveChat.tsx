@@ -7,6 +7,8 @@ import { apiUrl } from '../utils/apiUrl';
 import {
   trackChatAppointmentRequested,
   trackChatAttachmentUploaded,
+  trackChatBookCallClick,
+  trackChatLeadCaptured,
   trackChatMessageSent,
   trackChatOpen,
 } from '../lib/analytics';
@@ -372,6 +374,10 @@ export const LiveChat = () => {
         setApiAvailable(false);
       }
       setShowLeadForm(false);
+      trackChatLeadCaptured({
+        chatStatus: availability.status,
+        ctaLocation: 'chat_lead_form',
+      });
     } catch (error) {
       setApiAvailable(false);
       setShowLeadForm(false);
@@ -549,7 +555,7 @@ export const LiveChat = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-end">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[60] flex flex-col items-end max-w-[calc(100vw-32px)]">
       <AnimatePresence>
         {isOpen && !isMinimized && (
           <motion.div
@@ -710,7 +716,13 @@ export const LiveChat = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={toggleAppointmentForm}
+                    onClick={() => {
+                      trackChatBookCallClick({
+                        chatStatus: availability.status,
+                        ctaLocation: 'chat_panel',
+                      });
+                      toggleAppointmentForm();
+                    }}
                     className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
                       availability.status === 'online'
                         ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
@@ -811,10 +823,7 @@ export const LiveChat = () => {
       </div>
       <motion.button
         aria-label={`Open chat. ${availability.title}. ${availability.subtitle}`}
-        onClick={() => {
-          setIsOpen(true);
-          setIsMinimized(false);
-        }}
+        onClick={openChatWidget}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         className={`sm:hidden relative w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all ${

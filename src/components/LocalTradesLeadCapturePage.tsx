@@ -129,7 +129,7 @@ export const LocalTradesLeadCapturePage = () => {
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
-                  to="/#contact"
+                  to="/contact-us#book-call"
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-[#000A2D] px-6 py-3 text-sm font-black text-white shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5 hover:bg-[#0057C8]"
                 >
                   Discuss your UK requirements
@@ -273,7 +273,7 @@ export const LocalTradesLeadCapturePage = () => {
 
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Link
-              to="/#contact"
+              to="/contact-us#book-call"
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[#E4005A] px-7 py-3 text-sm font-black text-white shadow-lg shadow-pink-900/20 transition hover:-translate-y-0.5 hover:bg-[#c90050]"
             >
               Book a UK discovery call

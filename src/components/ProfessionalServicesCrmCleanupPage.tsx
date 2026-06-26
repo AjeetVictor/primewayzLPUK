@@ -56,7 +56,7 @@ export const ProfessionalServicesCrmCleanupPage = () => (
 
             <div className="mt-8 flex flex-wrap gap-3">
               <a
-                href="/#contact"
+                href="/contact-us#book-call"
                 className="rounded-full bg-slate-950 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-slate-900/15 transition hover:-translate-y-0.5 hover:bg-slate-800"
               >
                 Discuss your UK requirements
@@ -142,7 +142,7 @@ export const ProfessionalServicesCrmCleanupPage = () => (
           </div>
 
           <a
-            href="/#contact"
+            href="/contact-us#book-call"
             className="inline-flex justify-center rounded-full bg-white px-6 py-3 text-sm font-black text-slate-950 transition hover:-translate-y-0.5 hover:bg-sky-50"
           >
             Book a UK discovery call

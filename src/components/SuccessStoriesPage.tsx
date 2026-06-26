@@ -124,7 +124,7 @@ export const SuccessStoriesPage = () => (
             Talk through your website, CRM, lead capture, or maintenance priorities with the Primewayz UK team.
           </p>
           <TrackedLink
-            href="/#contact"
+            href="/contact-us#book-call"
             ctaText="Book a UK discovery call"
             ctaLocation="success_stories_listing"
             eventType="book_call_click"

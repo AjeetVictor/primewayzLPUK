@@ -1,15 +1,25 @@
+import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../../lib/utm';
+import { BOOK_CALL_URL, CONTACT_ENQUIRY_URL } from '../../constants/contactBooking';
+
 export type HeroHeadlineSlide = {
   id: string;
   badge: string;
   headline: string;
   highlight: string;
   description: string;
+  bullets?: string[];
   primaryCtaLabel: string;
   primaryCtaHref: string;
   secondaryCtaLabel: string;
   secondaryCtaHref: string;
   image: string;
   imageAlt: string;
+  visualKey?: 'remote-it-hero';
+  tracking?: {
+    slideName: string;
+    service: string;
+    ctaLocation: string;
+  };
 };
 
 export const heroHeadlineSlides: HeroHeadlineSlide[] = [
@@ -21,11 +31,47 @@ export const heroHeadlineSlides: HeroHeadlineSlide[] = [
     description:
       'Primewayz UK helps small and growing UK businesses maintain, improve, and extend their digital systems every month — from website fixes and CRM workflows to automation, integrations, SEO foundations, and ongoing software delivery.',
     primaryCtaLabel: 'Book a UK discovery call',
-    primaryCtaHref: '#contact',
+    primaryCtaHref: BOOK_CALL_URL,
     secondaryCtaLabel: 'See monthly support plans',
     secondaryCtaHref: '#pricing',
     image: '/images/hero/software-delivery-hero.webp',
     imageAlt: 'Developer working on a laptop with code on screen',
+  },
+  {
+    id: 'remote-it-resource-augmentation',
+    badge: 'Flexible IT capacity for UK SMEs',
+    headline: 'Remote IT Resource Augmentation for UK Businesses',
+    highlight: 'Add reliable remote IT capacity without building a full in-house team',
+    description:
+      'Access developers, QA testers, website support, automation specialists, digital support and project coordination through a structured remote delivery model from Primewayz UK.',
+    bullets: [
+      'Developers, QA, support and digital resources',
+      'Flexible part-time, monthly or dedicated support',
+      'Managed delivery from India for UK business needs',
+      'Useful for SMEs, agencies, startups and growing teams',
+    ],
+    primaryCtaLabel: 'Explore Remote IT Resources',
+    primaryCtaHref: buildInternalUtmUrl(
+      '/remote-it-resource-augmentation',
+      'home_hero_slider',
+      REMOTE_RESOURCE_CAMPAIGN,
+      'hero_slider_primary_cta',
+    ),
+    secondaryCtaLabel: 'Discuss resource needs',
+    secondaryCtaHref: buildInternalUtmUrl(
+      CONTACT_ENQUIRY_URL,
+      'home_hero_slider',
+      REMOTE_RESOURCE_CAMPAIGN,
+      'hero_slider_secondary_cta',
+    ),
+    image: '/images/hero/team-collaboration.webp',
+    imageAlt: 'Remote IT resource augmentation dashboard for UK businesses',
+    visualKey: 'remote-it-hero',
+    tracking: {
+      slideName: 'Remote IT Resource Augmentation',
+      service: REMOTE_RESOURCE_CAMPAIGN,
+      ctaLocation: 'home_hero_slider',
+    },
   },
   {
     id: 'website-crm-automation',
@@ -35,11 +81,10 @@ export const heroHeadlineSlides: HeroHeadlineSlide[] = [
     description:
       'Whether you need regular website improvements, CRM cleanup, lead-flow automation, third-party integrations, or support for an existing platform, our monthly delivery model gives your business a practical technical team with a clear execution rhythm.',
     primaryCtaLabel: 'Discuss your support needs',
-    primaryCtaHref: '#contact',
+    primaryCtaHref: CONTACT_ENQUIRY_URL,
     secondaryCtaLabel: 'Explore services',
     secondaryCtaHref: '#services',
-    image:
-      '/images/hero/team-collaboration.webp',
+    image: '/images/hero/team-collaboration.webp',
     imageAlt: 'Team collaborating on software delivery',
   },
   {
@@ -50,11 +95,10 @@ export const heroHeadlineSlides: HeroHeadlineSlide[] = [
     description:
       'Every approved workstream moves through planning, design, development, QA, and release in sequence — helping UK business owners stay in control of priorities, approvals, delivery quality, and monthly progress.',
     primaryCtaLabel: 'Book a UK discovery call',
-    primaryCtaHref: '#contact',
+    primaryCtaHref: BOOK_CALL_URL,
     secondaryCtaLabel: 'How delivery works',
     secondaryCtaHref: '#how-it-works',
-    image:
-      '/images/hero/business-planning.webp',
+    image: '/images/hero/business-planning.webp',
     imageAlt: 'Software planning discussion between professionals',
   },
   {
@@ -67,9 +111,8 @@ export const heroHeadlineSlides: HeroHeadlineSlide[] = [
     primaryCtaLabel: 'See monthly plans',
     primaryCtaHref: '#pricing',
     secondaryCtaLabel: 'Book a call',
-    secondaryCtaHref: '#contact',
-    image:
-      '/images/hero/client-workshop.webp',
+    secondaryCtaHref: BOOK_CALL_URL,
+    image: '/images/hero/client-workshop.webp',
     imageAlt: 'Business team reviewing transparent software delivery plan',
   },
 ];

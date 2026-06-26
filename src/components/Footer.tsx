@@ -1,6 +1,7 @@
 import { Linkedin, Phone, Mail } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
 import { COMPANY_TRUST_LINKS } from '../constants/companyTrustLinks';
+import { remoteItFooterHref } from '../constants/servicesNavigation';
 import { SelfAuditCta } from './SelfAuditCta';
 
 const productLinks = [
@@ -76,6 +77,12 @@ export const Footer = () => {
                   className="block text-zinc-400 transition-colors hover:text-white"
                 >
                   CRM Integration &amp; Support
+                </a>
+                <a
+                  href={remoteItFooterHref}
+                  className="block text-zinc-400 transition-colors hover:text-white"
+                >
+                  Remote IT Resources
                 </a>
               </div>
             </div>

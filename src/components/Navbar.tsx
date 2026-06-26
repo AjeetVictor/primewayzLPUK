@@ -4,23 +4,22 @@ import { Menu, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SITE_CONTAINER_CLASS } from '../constants/siteLayout';
+import { BOOK_CALL_URL } from '../constants/contactBooking';
 import { SelfAuditCta } from './SelfAuditCta';
+import { ServicesMegaMenu } from './navigation/ServicesMegaMenu';
 
-// SSR-safe: public folder served at root, no import needed
 const Logo = '/primewayz-infotech-logo.svg';
+
+const navLinks = [
+  { name: 'How it Works', href: '/#how-it-works' },
+  { name: 'Features', href: '/#features' },
+  { name: 'Success Stories', href: '/#success-stories' },
+  { name: 'Pricing', href: '/#pricing' },
+  { name: 'FAQ', href: '/#faq' },
+];
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-
-  const navLinks = [
-    { name: 'How it Works', href: '/#how-it-works' },
-    { name: 'Features', href: '/#features' },
-    { name: 'Success Stories', href: '/#success-stories' },
-    { name: 'Subscription', href: '/software-development-subscription-uk' },
-    { name: 'Maintenance', href: '/website-maintenance-subscription-uk' },
-    { name: 'Pricing', href: '/#pricing' },
-    { name: 'FAQ', href: '/#faq' },
-  ];
 
   useEffect(() => {
     if (isOpen) {
@@ -57,7 +56,8 @@ export const Navbar = () => {
           </Link>
 
           <div className="pointer-events-none absolute inset-x-0 top-0 hidden h-full items-center justify-center lg:flex">
-            <div className="pointer-events-auto flex max-h-14 max-w-[min(100%,36rem)] flex-wrap items-center justify-center gap-x-2 gap-y-1 xl:max-w-[min(100%,44rem)] xl:gap-x-5">
+            <div className="pointer-events-auto flex max-h-14 max-w-[min(100%,40rem)] flex-wrap items-center justify-center gap-x-2 gap-y-1 xl:max-w-[min(100%,48rem)] xl:gap-x-4">
+              <ServicesMegaMenu variant="desktop" />
               {navLinks.map((link) => (
                 <a
                   key={link.name}
@@ -77,10 +77,10 @@ export const Navbar = () => {
               ctaLocation="header_nav"
             />
             <TrackedLink
-              href="/#contact"
+              href={BOOK_CALL_URL}
               ctaText="Book a call"
               ctaLocation="navbar_desktop"
-              eventType="book_call_click"
+              eventType="book_call_click_header"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="hidden min-h-[40px] items-center rounded-md bg-slate-900 px-3 py-2 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 md:inline-flex xl:px-5 xl:text-sm"
@@ -115,6 +115,7 @@ export const Navbar = () => {
               className={`${SITE_CONTAINER_CLASS} max-h-[min(70vh,calc(100dvh-3.5rem))] overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] pt-1`}
             >
               <div className="flex flex-col gap-0.5 py-2">
+                <ServicesMegaMenu variant="mobile" onNavigate={() => setIsOpen(false)} />
                 {navLinks.map((link) => (
                   <a
                     key={link.name}
@@ -133,10 +134,10 @@ export const Navbar = () => {
                   className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-md border border-emerald-600/40 bg-white px-4 py-3 text-[15px] font-semibold text-emerald-800"
                 />
                 <TrackedLink
-                  href="/#contact"
+                  href={BOOK_CALL_URL}
                   ctaText="Book a call"
                   ctaLocation="navbar_mobile"
-                  eventType="book_call_click"
+                  eventType="book_call_click_header"
                   onClick={() => setIsOpen(false)}
                   whileTap={{ scale: 0.99 }}
                   className="mt-2 flex min-h-[48px] w-full items-center justify-center rounded-md bg-slate-900 px-4 py-3 text-[15px] font-semibold text-white shadow-md shadow-slate-900/10"

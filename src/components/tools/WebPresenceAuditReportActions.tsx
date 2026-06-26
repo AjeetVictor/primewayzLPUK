@@ -35,7 +35,7 @@ export function WebPresenceAuditReportActions({
   ctaLocation,
   shareLink,
   onShareLinkChange,
-  contactCtaHref = '/#contact',
+  contactCtaHref = '/contact-us#book-call',
 }: WebPresenceAuditReportActionsProps) {
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
   const [emailModalPhase, setEmailModalPhase] = useState<EmailReportPhase>('form');
