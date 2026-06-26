@@ -6,7 +6,6 @@ export const GA_MEASUREMENT_ID =
 
 declare global {
   interface Window {
-    dataLayer?: unknown[];
     gtag?: (...args: unknown[]) => void;
   }
 }

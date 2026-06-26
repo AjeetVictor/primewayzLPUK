@@ -1,10 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { UKTrustStrip } from './components/UKTrustStrip';
-import { UKSmePainPoints } from './components/UKSmePainPoints';
+import { WebsiteProblemSection } from './components/sections/WebsiteProblemSection';
+import { OutcomePillarsSection } from './components/sections/OutcomePillarsSection';
 import { ServicePathCards } from './components/ServicePathCards';
 import { Philosophy } from './components/Philosophy';
 import { HowItWorks } from './components/HowItWorks';
@@ -65,8 +66,9 @@ const MainContent = () => (
   <main>
     <Hero />
     <UKTrustStrip />
+    <WebsiteProblemSection />
+    <OutcomePillarsSection />
     <ClientConfidenceSignals />
-    <UKSmePainPoints />
     <SelfAuditCta
       variant="banner"
       utmContent="homepage_banner"
@@ -145,6 +147,9 @@ export const App = ({ initialData }: AppProps) => {
         <Route path="/blog/:id" element={<BlogPost initialPost={initialData?.blogPost} />} />
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/uk-sme-digital-visibility-checker" element={<UkSmeDigitalVisibilityCheckerPage />} />
+        <Route path="/website-visibility-support" element={<Navigate to="/website-maintenance-subscription-uk" replace />} />
+        <Route path="/crm-automation-support" element={<Navigate to="/crm-integration-support-uk" replace />} />
+        <Route path="/how-it-works" element={<Navigate to="/#how-it-works" replace />} />
         <Route path="/about-us" element={<AboutUsPage />} />
         <Route path="/contact" element={<ContactRedirect />} />
         <Route path="/contact-us" element={<ContactUsPage />} />

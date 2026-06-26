@@ -54,9 +54,9 @@ export const Navbar = () => {
             <img
               src={LOGO_LIGHT_SRC}
               alt="Primewayz Infotech Pvt. Ltd. UK"
-              width={192}
-              height={45}
-              className="h-9 w-auto max-w-[160px] sm:h-10 sm:max-w-[178px]"
+              width={220}
+              height={48}
+              className="h-9 w-auto max-w-[190px] sm:h-10 sm:max-w-[210px]"
             />
           </Link>
 

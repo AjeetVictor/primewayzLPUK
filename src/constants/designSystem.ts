@@ -51,9 +51,25 @@ export const shellClasses = {
     'inline-flex min-h-[40px] items-center justify-center rounded-lg bg-brand-navy px-4 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-brand-navy/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy xl:px-5 xl:text-sm',
   btnOutlineAudit:
     'inline-flex min-h-[40px] items-center justify-center rounded-lg border border-brand-blue/35 bg-white px-3 py-2 text-[13px] font-semibold text-brand-blue transition hover:border-brand-blue hover:bg-brand-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40 xl:px-4 xl:text-sm',
+  btnHeroPrimary:
+    'inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-brand-navy px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_28px_-16px_rgba(0,10,45,0.35)] transition hover:bg-brand-navy/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy sm:w-auto',
+  btnHeroSecondary:
+    'inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg border border-brand-border bg-white px-6 py-3 text-sm font-semibold text-brand-navy transition hover:border-brand-blue/35 hover:bg-brand-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40 sm:w-auto',
+  heroTitle:
+    'text-4xl font-bold tracking-tight text-brand-navy sm:text-5xl lg:text-[3.25rem] lg:leading-[1.12]',
+  heroLead: 'text-base leading-7 text-slate-600 sm:text-lg sm:leading-8',
+  trustChip:
+    'inline-flex items-center rounded-full border border-brand-border bg-white px-4 py-2 text-sm font-medium text-brand-ink shadow-sm',
+  sectionEyebrow:
+    'text-[11px] font-bold uppercase tracking-[0.2em] text-brand-blue',
+  sectionHeading:
+    'text-3xl font-bold tracking-tight text-brand-navy sm:text-4xl lg:text-[2.75rem] lg:leading-[1.12]',
+  sectionLead: 'text-base leading-7 text-slate-600 sm:text-lg sm:leading-8',
+  sectionCard:
+    'flex h-full flex-col rounded-2xl border border-brand-border bg-white p-6 shadow-sm transition hover:border-brand-blue/20 hover:shadow-md sm:p-7',
   megaMenuPanel:
     'rounded-2xl border border-brand-border bg-white p-5 shadow-[0_24px_48px_-24px_rgba(0,10,45,0.18)]',
 } as const;
 
-export const LOGO_LIGHT_SRC = '/primewayz-infotech-logo.svg';
+export const LOGO_LIGHT_SRC = '/pw-logo-uk.jpg';
 export const LOGO_DARK_SRC = '/primewayz-uk-dark-logo.png';
