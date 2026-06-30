@@ -24,6 +24,7 @@ import {
 } from './src/lib/audit/leads/adminAuditLeadsService.ts';
 import type { NextFunction, Request, Response } from 'express';
 import type { BlogPost } from './src/data/blog/types.ts';
+import { LEGACY_ROUTE_REDIRECTS } from './src/constants/canonicalRoutes.ts';
 
 dotenv.config({ path: '.env.local', override: false });
 dotenv.config({ override: false });
@@ -482,11 +483,10 @@ function buildDefaultStructuredData(canonical: string, description: string) {
     description,
     areaServed: { '@type': 'Country', name: 'United Kingdom' },
     serviceType: [
-      'Software Development Subscription',
-      'Website maintenance',
-      'CRM integration',
-      'Business automation',
-      'SEO foundation support',
+      'Website visibility support',
+      'Trust signal improvements',
+      'Enquiry flow optimisation',
+      'CRM integration support',
       'Ongoing digital delivery support',
     ],
     audience: { '@type': 'BusinessAudience', audienceType: 'UK small businesses and SMEs' },
@@ -710,9 +710,9 @@ async function getInitialDataAndSeo(pathname: string) {
 
   const staticPageSeo: Record<string, { title: string; description: string }> = {
     '/': {
-      title: 'Software Development Subscription for UK SMEs | Primewayz UK',
+      title: 'UK Website Visibility, Trust & Enquiry Support | Primewayz UK',
       description:
-        'Primewayz UK helps UK SMEs with monthly software, website, CRM, automation, technical SEO foundation, maintenance, and ongoing digital delivery support.',
+        'Primewayz UK helps founders, consultants and growing SMEs improve website visibility, trust signals, enquiry flow, CRM support and ongoing digital delivery.',
     },
     '/services': {
       title: 'Software, Website & CRM Support Services for UK SMEs | Primewayz UK',
@@ -774,6 +774,31 @@ async function getInitialDataAndSeo(pathname: string) {
       description:
         'Contact Primewayz UK to request a free digital visibility review or discuss monthly website, CRM, analytics, and maintenance support.',
     },
+    '/website-visibility-support': {
+      title: 'Website & Visibility Support for UK SMEs | Primewayz UK',
+      description:
+        'Primewayz UK provides website visibility support for UK SMEs, covering SEO foundations, trust signals, enquiry flow, speed, and ongoing improvements.',
+    },
+    '/maintenance': {
+      title: 'Website Maintenance Subscription for UK SMEs | Primewayz UK',
+      description:
+        'Primewayz UK provides website maintenance subscriptions for UK SMEs, covering updates, bug fixes, SEO checks, forms, speed, and support.',
+    },
+    '/crm-automation-support': {
+      title: 'CRM Integration Support for UK SMEs | Primewayz UK',
+      description:
+        'Primewayz UK provides CRM integration support for UK SMEs, covering lead capture, workflow cleanup, automation, reporting, and customer data.',
+    },
+    '/software-product-delivery': {
+      title: 'Software Development Subscription for UK SMEs | Primewayz UK',
+      description:
+        'Primewayz UK provides monthly software development subscriptions for UK SMEs, covering websites, CRM, automation, integrations, technical SEO, and support.',
+    },
+    '/remote-it-resources': {
+      title: 'Remote IT Resources for UK SMEs | Primewayz UK',
+      description:
+        'Extend your UK team with remote developers, QA, website support, digital support, and project coordination from Primewayz UK.',
+    },
   };
 
   const pageSeo = staticPageSeo[pathname] || staticPageSeo['/'];
@@ -789,6 +814,38 @@ async function getInitialDataAndSeo(pathname: string) {
         : buildDefaultStructuredData(canonical, pageSeo.description),
     }),
   };
+}
+
+type SsrRenderFn = (
+  url: string,
+  basePath: string,
+  initialData: Record<string, unknown>,
+) => { html: string };
+
+async function sendSsrPage(req: Request, res: Response, indexHtml: string, render: SsrRenderFn) {
+  const pathname = new URL(req.originalUrl, siteUrl).pathname;
+  const { initialData, seoTags } = await getInitialDataAndSeo(pathname);
+  const { html: appHtml } = render(req.originalUrl, '/', initialData);
+  const cleanAppHtml = stripExistingSeoTags(appHtml);
+  const initialDataScript = `<script>window.__PRIMEWAYZ_INITIAL_DATA__=${safeJson(initialData)};</script>`;
+  const headInjectedHtml = stripExistingSeoTags(indexHtml)
+    .replace('</head>', `${seoTags}\n</head>`);
+
+  // Keep SSR resilient to dev-template transforms by handling both the outlet comment
+  // and full root container replacement.
+  const htmlWithApp = headInjectedHtml
+    .replace(/<!--\s*ssr-outlet\s*-->/i, cleanAppHtml)
+    .replace(
+      /<div id=["']root["']>\s*<\/div>/i,
+      `<div id="root">${cleanAppHtml}</div>`,
+    );
+
+  const html = htmlWithApp.replace(
+    '<script type="module"',
+    `${initialDataScript}\n<script type="module"`,
+  );
+
+  return res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
 }
 
 // --- Middleware ---
@@ -1729,6 +1786,14 @@ app.get(`/${INDEXNOW_KEY}.txt`, (_req: Request, res: Response) => {
     .send(INDEXNOW_KEY);
 });
 
+// Legacy marketing URLs → canonical routes (before static files and SPA catch-all).
+for (const [fromPath, toPath] of Object.entries(LEGACY_ROUTE_REDIRECTS)) {
+  app.get(fromPath, (req, res) => {
+    const suffix = req.originalUrl.slice(fromPath.length);
+    res.redirect(301, `${toPath}${suffix}`);
+  });
+}
+
 // --- Static files ---
 if (isProd) {
   app.use(express.static(path.join(__dirname, 'dist/client'), { index: false }));
@@ -1776,36 +1841,40 @@ async function createServer() {
       server: { middlewareMode: true },
       appType: 'custom',
     });
-    app.use(vite.middlewares);
 
     app.get('*', async (req, res) => {
+      const pathname = new URL(req.originalUrl, siteUrl).pathname;
+      const isAssetRequest = /\.[a-z0-9]+$/i.test(pathname);
+      const isViteRuntimeRequest = pathname.startsWith('/@vite')
+        || pathname.startsWith('/@react-refresh')
+        || pathname.startsWith('/__vite_ping')
+        || pathname.startsWith('/src/');
+
+      if (isAssetRequest || isViteRuntimeRequest) {
+        return vite.middlewares(req, res, () => undefined);
+      }
+
       try {
         let html = await fs.readFile(path.join(__dirname, 'index.html'), 'utf-8');
-        // Vite transforms the HTML (injects HMR client etc.)
         html = await vite.transformIndexHtml(req.originalUrl, html);
-        res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
+        const { render } = await vite.ssrLoadModule('/src/entry-server.tsx');
+        await sendSsrPage(req, res, html, render as SsrRenderFn);
       } catch (err: any) {
         vite.ssrFixStacktrace(err);
-        console.error('Dev render error:', err);
+        console.error('Dev SSR render error:', err);
         res.status(500).send(err.message);
       }
     });
+
+    app.use(vite.middlewares);
   } else {
     // In production: full SSR
+    const { render } = await import('./dist/server/entry-server.js');
+
     app.get('*', async (req, res) => {
       try {
         const indexHtml = await fs.readFile(path.join(__dirname, 'dist/client/index.html'), 'utf-8');
-        const { render } = await import('./dist/server/entry-server.js');
-        const pathname = new URL(req.originalUrl, siteUrl).pathname;
-        const { initialData, seoTags } = await getInitialDataAndSeo(pathname);
-        const { html: appHtml } = render(req.originalUrl, '/', initialData);
-        const cleanAppHtml = stripExistingSeoTags(appHtml);
-        const initialDataScript = `<script>window.__PRIMEWAYZ_INITIAL_DATA__=${safeJson(initialData)};</script>`;
-        const html = stripExistingSeoTags(indexHtml)
-          .replace('</head>', `${seoTags}\n</head>`)
-          .replace('<!--ssr-outlet-->', cleanAppHtml)
-          .replace('<script type="module"', `${initialDataScript}\n<script type="module"`);
-        return res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
+        await sendSsrPage(req, res, indexHtml, render as SsrRenderFn);
       } catch (err: any) {
         console.error('SSR render error:', err);
         res.status(500).send('Internal Server Error');

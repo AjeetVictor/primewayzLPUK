@@ -12,7 +12,7 @@ import {
   Send,
 } from 'lucide-react';
 import type { WebPresenceAuditReport } from '../../lib/audit/types';
-import type { ShareLinkState } from '../../lib/audit/share/shareReportService';
+import type { ShareLinkState } from '../../lib/audit/share/types';
 import { getScoreBand } from '../../lib/audit/scoreBands';
 import { trackEvent } from '../../lib/analytics';
 import { getUtmAnalyticsPayload } from '../../lib/utm';

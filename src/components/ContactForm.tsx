@@ -318,7 +318,7 @@ export function ContactForm({ variant = 'full' }: ContactFormProps) {
   if (isSubmitted) {
     return (
       <section id="contact" className="py-24 bg-white" aria-labelledby="contact-heading">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -394,8 +394,8 @@ export function ContactForm({ variant = 'full' }: ContactFormProps) {
 
   return (
     <section id="contact" className="py-24 bg-white" aria-labelledby="contact-heading">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16 max-w-4xl mx-auto">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16 max-w-[1200px] mx-auto">
           <h2 id="contact-heading" className="text-3xl md:text-5xl font-bold tracking-tight text-gray-900 mb-4">
             Choose how you want to connect
           </h2>

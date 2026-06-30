@@ -27,7 +27,7 @@ export const AUDIT_CATEGORY_ACTION_LINKS: Record<AuditActionCategoryId, AuditCat
     title: 'Improve technical SEO readiness',
     description: 'Review crawlability, metadata, canonical signals, sitemaps, and technical foundations.',
     ctaLabel: 'Fix SEO readiness',
-    href: '/website-maintenance-subscription-uk',
+    href: '/website-visibility-support',
   },
   'trust-signals': {
     categoryId: 'trust-signals',
@@ -83,6 +83,6 @@ export const AUDIT_CATEGORY_ACTION_LINKS: Record<AuditActionCategoryId, AuditCat
     title: 'Fix indexing and metadata signals',
     description: 'Correct visible head, indexing, social preview, and structured-data foundations.',
     ctaLabel: 'Fix metadata/indexing',
-    href: '/website-maintenance-subscription-uk',
+    href: '/website-visibility-support',
   },
 };

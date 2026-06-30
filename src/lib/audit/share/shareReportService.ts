@@ -1,14 +1,9 @@
-import { createPublicToken } from './publicToken.ts';
+import { createPublicToken } from './publicToken.server.ts';
 import { loadSharedReport, saveSharedReport } from './reportStore.ts';
 import { sanitizeSharedReport } from './sanitizeSharedReport.ts';
+import type { CreateSharedReportResult } from './types.ts';
 
-export type CreateSharedReportResult = {
-  publicToken: string;
-  shareUrl: string;
-  createdAt: string;
-};
-
-export type ShareLinkState = CreateSharedReportResult;
+export type { CreateSharedReportResult, ShareLinkState } from './types.ts';
 
 export async function createSharedReport(
   rawReport: unknown,

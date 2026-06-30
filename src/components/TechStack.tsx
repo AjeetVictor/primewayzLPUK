@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent, type ChangeEvent } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, Send, X } from 'lucide-react';
+import { useRevealMotion } from '../hooks/useRevealMotion';
 import { apiUrl } from '../utils/apiUrl';
 
 type StackFormData = {
@@ -23,6 +24,7 @@ const initialFormData: StackFormData = {
 };
 
 export const TechStack = () => {
+  const reveal = useRevealMotion();
   const [selectedStack, setSelectedStack] = useState<string | null>(null);
   const [formData, setFormData] = useState<StackFormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,18 +88,18 @@ export const TechStack = () => {
 
   return (
     <section className="bg-zinc-100 py-20 md:py-24 overflow-hidden">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8 text-center">
         <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={reveal.initial({ opacity: 0, y: 20 })}
+          whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
           viewport={{ once: true, margin: '-100px' }}
           className="text-4xl md:text-5xl font-bold tracking-tight text-zinc-900"
         >
           Yes. We cover your tech stack<span className="text-orange-500">.</span>
         </motion.h2>
         <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={reveal.initial({ opacity: 0, y: 16 })}
+          whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
           transition={{ delay: 0.1 }}
           viewport={{ once: true, margin: '-100px' }}
           className="mx-auto mt-4 max-w-2xl text-base md:text-lg text-zinc-600"

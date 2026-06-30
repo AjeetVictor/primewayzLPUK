@@ -95,7 +95,7 @@ export const HeroContentSlider = ({
         exit: (customDirection: number) => ({ opacity: 0, y: -10, x: customDirection * -6 }),
       };
 
-  const containerClassName = `mx-auto max-w-6xl mb-10 ${className ?? ''}`.trim();
+  const containerClassName = `mx-auto max-w-[1200px] mb-10 ${className ?? ''}`.trim();
 
   return (
     <div

@@ -3,7 +3,7 @@ import { Code2, Layout, Database, Shield, Zap, Terminal } from 'lucide-react';
 
 export const HeroVisual = () => {
   return (
-    <div className="relative w-full max-w-4xl mx-auto mt-20 perspective-1000">
+    <div className="relative w-full max-w-[1200px] mx-auto mt-20 perspective-1000">
       <motion.div
         initial={{ opacity: 0, y: 100, rotateX: 20 }}
         animate={{ opacity: 1, y: 0, rotateX: 0 }}

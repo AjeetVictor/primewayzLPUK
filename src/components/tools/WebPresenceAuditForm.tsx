@@ -14,6 +14,7 @@ import type { WebPresenceAuditReport } from '../../lib/audit/types';
 import { trackEvent } from '../../lib/analytics';
 import { captureUtmParams, getUtmAnalyticsPayload } from '../../lib/utm';
 import { apiUrl } from '../../utils/apiUrl';
+import { normaliseWebsiteUrl } from '../../utils/normalizeWebsiteUrl';
 import { WebPresenceAuditResult } from './WebPresenceAuditResult';
 
 const businessTypes = [
@@ -82,28 +83,23 @@ function createInitialState(targetCountry: string, businessType: string): FormSt
   };
 }
 
-function normalizeWebsiteUrl(value: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  const candidate = /^[a-z][a-z\d+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-
+function isValidPublicWebsiteUrl(value: string): boolean {
   try {
-    const parsed = new URL(candidate);
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
-    if (!parsed.hostname || !parsed.hostname.includes('.')) return null;
-    parsed.hash = '';
-    return parsed.toString();
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    if (!parsed.hostname || !parsed.hostname.includes('.')) return false;
+    return true;
   } catch {
-    return null;
+    return false;
   }
 }
 
 function validateForm(form: FormState): { errors: FormErrors; normalizedUrl?: string } {
   const errors: FormErrors = {};
-  const normalizedUrl = normalizeWebsiteUrl(form.websiteUrl);
+  const normalizedUrl = normaliseWebsiteUrl(form.websiteUrl);
 
   if (!form.websiteUrl.trim()) errors.websiteUrl = 'Website URL is required.';
-  else if (!normalizedUrl) errors.websiteUrl = 'Enter a valid public website URL or domain.';
+  else if (!isValidPublicWebsiteUrl(normalizedUrl)) errors.websiteUrl = 'Enter a valid public website URL or domain.';
   if (!form.businessName.trim()) errors.businessName = 'Business name is required.';
   if (!form.businessType) errors.businessType = 'Select a business type.';
   if (!form.targetCountry.trim()) errors.targetCountry = 'Target country is required.';
@@ -253,6 +249,20 @@ export function WebPresenceAuditForm({
   }, [resolvedAnalyticsLocation, variant]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const websiteParam = new URLSearchParams(window.location.search).get('website');
+    if (!websiteParam) return;
+
+    const normalizedWebsite = normaliseWebsiteUrl(websiteParam);
+    if (!isValidPublicWebsiteUrl(normalizedWebsite)) return;
+
+    setForm((current) => {
+      if (current.websiteUrl.trim()) return current;
+      return { ...current, websiteUrl: normalizedWebsite };
+    });
+  }, []);
+
+  useEffect(() => {
     if (!isLoading) {
       setActiveLoadingStep(0);
       return;
@@ -370,7 +380,7 @@ export function WebPresenceAuditForm({
             type="text"
             inputMode="url"
             autoComplete="url"
-            placeholder="yourbusiness.co.uk"
+            placeholder="https://yourbusiness.co.uk"
             value={form.websiteUrl}
             onChange={(event) => updateField('websiteUrl', event.target.value)}
             className={inputClass(Boolean(errors.websiteUrl))}
@@ -556,7 +566,7 @@ function HomepageAuditSection({ children, anchorId, headingId }: { children: Rea
       className="overflow-hidden border-y border-slate-200 bg-slate-50 py-16 sm:py-20"
     >
       <span id="web-presence-audit" className="sr-only" aria-hidden="true" />
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">{children}</div>
+      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">{children}</div>
     </section>
   );
 }

@@ -19,7 +19,7 @@ export const DigitalVisibilityCheckerPromo = () => {
 
   return (
     <section className="border-y border-brand-border bg-brand-surface/70 px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1200px]">
         <div className="overflow-hidden rounded-2xl border border-brand-border bg-white shadow-[0_16px_40px_-28px_rgba(0,10,45,0.28)]">
           <div className="grid lg:grid-cols-[1fr_0.85fr]">
             <div className="flex flex-col justify-center p-6 sm:p-8 lg:p-9">

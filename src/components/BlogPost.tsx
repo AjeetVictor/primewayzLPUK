@@ -219,7 +219,7 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
 
   return (
     <main className="min-h-screen bg-white pt-32 pb-24">
-      <article className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+      <article className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
         <motion.nav initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} className="mb-10">
           <Link
             to="/blog"

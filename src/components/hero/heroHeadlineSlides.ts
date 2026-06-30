@@ -52,7 +52,7 @@ export const heroHeadlineSlides: HeroHeadlineSlide[] = [
     ],
     primaryCtaLabel: 'Explore Remote IT Resources',
     primaryCtaHref: buildInternalUtmUrl(
-      '/remote-it-resource-augmentation',
+      '/remote-it-resources',
       'home_hero_slider',
       REMOTE_RESOURCE_CAMPAIGN,
       'hero_slider_primary_cta',

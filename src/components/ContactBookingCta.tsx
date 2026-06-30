@@ -5,7 +5,7 @@ import { BOOK_CALL_URL, CONTACT_ENQUIRY_URL } from '../constants/contactBooking'
 export function ContactBookingCta() {
   return (
     <section id="contact" className="py-24 bg-slate-50" aria-labelledby="homepage-contact-heading">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <motion.h2
           id="homepage-contact-heading"
           initial={{ opacity: 0, y: 20 }}

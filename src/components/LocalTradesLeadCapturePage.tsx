@@ -88,9 +88,9 @@ export const LocalTradesLeadCapturePage = () => {
         <div className="absolute right-0 top-0 h-72 w-72 rounded-full bg-[#2FA8DF]/10 blur-3xl" />
         <div className="absolute left-0 bottom-0 h-72 w-72 rounded-full bg-[#E4005A]/10 blur-3xl" />
 
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="mx-auto max-w-[1200px] px-6 lg:px-8">
           <Link
-            to="/#success-stories"
+            to="/success-stories"
             className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 transition hover:text-[#0057C8]"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -136,7 +136,7 @@ export const LocalTradesLeadCapturePage = () => {
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
-                  to="/website-maintenance-subscription-uk"
+                  to="/maintenance"
                   className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-black text-[#000A2D] transition hover:border-[#2FA8DF]/40 hover:text-[#0057C8]"
                 >
                   View maintenance support
@@ -172,7 +172,7 @@ export const LocalTradesLeadCapturePage = () => {
       </section>
 
       <section className="py-20">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="mx-auto max-w-[1200px] px-6 lg:px-8">
           <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.24em] text-[#E4005A]">Business challenge</p>
@@ -198,7 +198,7 @@ export const LocalTradesLeadCapturePage = () => {
       </section>
 
       <section className="bg-slate-50 py-20">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="mx-auto max-w-[1200px] px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-sm font-black uppercase tracking-[0.24em] text-[#E4005A]">What we deliver</p>
             <h2 className="mt-4 text-3xl font-black tracking-tight text-[#000A2D] sm:text-4xl">
@@ -228,7 +228,7 @@ export const LocalTradesLeadCapturePage = () => {
       </section>
 
       <section className="py-20">
-        <div className="mx-auto grid max-w-7xl gap-10 px-6 lg:grid-cols-2 lg:px-8">
+        <div className="mx-auto grid max-w-[1200px] gap-10 px-6 lg:grid-cols-2 lg:px-8">
           <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
             <div className="flex items-center gap-3">
               <Target className="h-6 w-6 text-[#E4005A]" />
@@ -261,7 +261,7 @@ export const LocalTradesLeadCapturePage = () => {
       </section>
 
       <section className="bg-slate-50 py-20">
-        <div className="mx-auto max-w-5xl px-6 text-center lg:px-8">
+        <div className="mx-auto max-w-[1200px] px-6 text-center lg:px-8">
           <MapPin className="mx-auto h-8 w-8 text-[#E4005A]" />
           <h2 className="mt-5 text-3xl font-black tracking-tight text-[#000A2D] sm:text-4xl">
             Built for UK local service businesses that need practical digital support.
@@ -280,7 +280,7 @@ export const LocalTradesLeadCapturePage = () => {
               <Phone className="h-4 w-4" />
             </Link>
             <Link
-              to="/software-development-subscription-uk"
+              to="/software-product-delivery"
               className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-7 py-3 text-sm font-black text-[#000A2D] transition hover:border-[#2FA8DF]/40 hover:text-[#0057C8]"
             >
               View subscription model

@@ -1,6 +1,6 @@
 import { TrackedLink } from './common/TrackedLink';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, X } from 'lucide-react';
+import { Menu, Phone, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { SITE_CONTAINER_CLASS } from '../constants/siteLayout';
@@ -44,24 +44,22 @@ export const Navbar = () => {
       className={shellClasses.header}
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
-      <div className={SITE_CONTAINER_CLASS}>
-        <div className="relative flex min-h-[3.5rem] items-center py-2 sm:min-h-16 sm:py-0">
+      <div className="mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8">
+        <div className="flex min-h-[3.5rem] items-center justify-between gap-4 py-2 sm:min-h-16 sm:py-0">
           <Link
             to="/"
-            className="relative z-10 flex min-h-[44px] min-w-0 shrink-0 items-center pr-3"
+            className="flex min-h-[44px] min-w-0 shrink-0 items-center"
             aria-label="Primewayz UK Home"
           >
             <img
               src={LOGO_LIGHT_SRC}
               alt="Primewayz Infotech Pvt. Ltd. UK"
-              width={220}
-              height={48}
-              className="h-9 w-auto max-w-[190px] sm:h-10 sm:max-w-[210px]"
+              className="h-9 w-auto object-contain"
             />
           </Link>
 
-          <div className="pointer-events-none absolute inset-x-0 top-0 hidden h-full items-center justify-center lg:flex">
-            <div className="pointer-events-auto flex max-h-14 items-center justify-center gap-x-1 xl:gap-x-2">
+          <div className="hidden min-w-0 flex-1 items-center justify-center lg:flex">
+            <div className="flex max-h-14 min-w-0 items-center justify-center gap-x-1.5 xl:gap-x-2">
               <ServicesMegaMenu variant="desktop" />
               {mainNavLinks.map((link) => (
                 <a
@@ -78,24 +76,33 @@ export const Navbar = () => {
             </div>
           </div>
 
-          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <SelfAuditCta
-              variant="nav"
-              utmContent="header_nav"
-              ctaLocation="header_nav"
-              className={shellClasses.btnOutlineAudit}
-            />
-            <TrackedLink
-              href={BOOK_CALL_URL}
-              ctaText="Book a call"
-              ctaLocation="navbar_desktop"
-              eventType="book_call_click_header"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className={cn(shellClasses.btnPrimary, 'hidden md:inline-flex')}
-            >
-              Book a call
-            </TrackedLink>
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <div className="hidden items-center gap-2 lg:flex xl:gap-3">
+              <a
+                href="tel:+447588741740"
+                className="hidden min-h-[40px] items-center gap-2 whitespace-nowrap px-1 text-sm font-semibold text-brand-navy transition hover:text-brand-blue xl:inline-flex"
+              >
+                <Phone className="h-4 w-4 text-brand-cyan" strokeWidth={2.15} aria-hidden />
+                +44 7588 741740
+              </a>
+              <TrackedLink
+                href={BOOK_CALL_URL}
+                ctaText="Book a call"
+                ctaLocation="navbar_desktop"
+                eventType="book_call_click_header"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className={shellClasses.btnOutlineAudit}
+              >
+                Book a call
+              </TrackedLink>
+              <SelfAuditCta
+                variant="nav"
+                utmContent="header_nav"
+                ctaLocation="header_nav"
+                className={shellClasses.btnPrimary}
+              />
+            </div>
             <button
               type="button"
               onClick={() => setIsOpen((v) => !v)}

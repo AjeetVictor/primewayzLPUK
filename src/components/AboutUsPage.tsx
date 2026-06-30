@@ -8,7 +8,7 @@ export const AboutUsPage = () => (
   <main className="min-h-screen bg-white text-slate-950">
     <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-16 pt-24 text-white sm:px-6 lg:px-8">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.18),transparent_34%)]" />
-      <div className="relative mx-auto max-w-4xl">
+      <div className="relative mx-auto max-w-[1200px]">
         <Link
           to="/"
           className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white"
@@ -29,7 +29,7 @@ export const AboutUsPage = () => (
     <SelfAuditCta variant="inline" utmContent="about_page" ctaLocation="about_page" />
 
     <section className="px-4 py-14 sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-2">
+      <div className="mx-auto grid max-w-[1200px] gap-8 lg:grid-cols-2">
         <article className="rounded-3xl border border-slate-200 bg-slate-50 p-6 sm:p-8">
           <div className="flex items-center gap-3">
             <Building2 className="h-5 w-5 text-blue-700" />

@@ -6,7 +6,7 @@ import { SelfAuditCta } from './SelfAuditCta';
 export const ContactUsPage = () => (
   <main className="min-h-screen bg-white">
     <section className="border-b border-slate-200 bg-slate-50 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-[1200px]">
         <Link
           to="/"
           className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-950"

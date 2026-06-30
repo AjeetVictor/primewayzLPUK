@@ -14,21 +14,21 @@ type BlogListPageProps = {
 const supportPathLinks = [
   {
     title: 'Software Development Subscription',
-    href: '/software-development-subscription-uk',
+    href: '/software-product-delivery',
     description:
       'Monthly software delivery for UK SMEs that need steady progress across websites, CRM workflows, automation, dashboards, integrations, and technical improvements.',
     anchor: 'Software development subscription for UK SMEs',
   },
   {
     title: 'Website Maintenance Subscription',
-    href: '/website-maintenance-subscription-uk',
+    href: '/maintenance',
     description:
       'Monthly website support for content updates, bug fixes, landing page improvements, technical SEO checks, analytics, forms, and conversion journeys.',
     anchor: 'Website maintenance subscription for UK SMEs',
   },
   {
     title: 'CRM Integration & Support',
-    href: '/crm-integration-support-uk',
+    href: '/crm-automation-support',
     description:
       'CRM integration support for cleaner lead capture, website form connections, enquiry routing, workflow automation, reporting, and follow-up visibility.',
     anchor: 'CRM integration support for UK SMEs',

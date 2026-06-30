@@ -6,19 +6,22 @@ import { Hero } from './components/Hero';
 import { UKTrustStrip } from './components/UKTrustStrip';
 import { WebsiteProblemSection } from './components/sections/WebsiteProblemSection';
 import { OutcomePillarsSection } from './components/sections/OutcomePillarsSection';
-import { ServicePathCards } from './components/ServicePathCards';
+import { TrustPillarSection } from './components/sections/TrustPillarSection';
+import { EnquiriesPillarSection } from './components/sections/EnquiriesPillarSection';
+import { ServiceRoutesSection } from './components/sections/ServiceRoutesSection';
+import { MonthlySupportRhythmSection } from './components/sections/MonthlySupportRhythmSection';
+import { AuditLedProcessSection } from './components/sections/AuditLedProcessSection';
+import { WhatWeReviewFirstSection } from './components/sections/WhatWeReviewFirstSection';
+import { CommercialClaritySection } from './components/sections/CommercialClaritySection';
+import { SupportModelOverviewSection } from './components/sections/SupportModelOverviewSection';
+import { InsightsSection } from './components/sections/InsightsSection';
+import { HomepageContactSection } from './components/sections/HomepageContactSection';
+import { RemoteItCapacitySection } from './components/sections/RemoteItCapacitySection';
 import { Philosophy } from './components/Philosophy';
 import { HowItWorks } from './components/HowItWorks';
-import { InteractiveDemo } from './components/InteractiveDemo';
 import { TechStack } from './components/TechStack';
-import { Stats } from './components/Stats';
-import { Experience } from './components/Experience';
-import { Pricing } from './components/Pricing';
 import { FAQ } from './components/FAQ';
-import { Testimonials } from './components/Testimonials';
-import { BlogSection } from './components/BlogSection';
 import { SuccessStories } from './components/SuccessStories';
-import { ContactBookingCta } from './components/ContactBookingCta';
 import { Footer } from './components/Footer';
 import { ScrollToTop } from './components/ScrollToTop';
 import { LazyLiveChat } from './components/LazyLiveChat';
@@ -30,7 +33,6 @@ import { BlogListPage } from './components/blog/BlogListPage';
 import type { BlogPost as BlogPostData } from './data/blog/types';
 import LegalPage from './components/LegalPage';
 import AnalyticsTracker from './components/AnalyticsTracker';
-import { TrackedLink } from './components/common/TrackedLink';
 import { SoftwareDevelopmentSubscriptionUkPage } from './components/SoftwareDevelopmentSubscriptionUkPage';
 import { WebsiteMaintenanceSubscriptionUkPage } from './components/WebsiteMaintenanceSubscriptionUkPage';
 import { CrmIntegrationSupportUkPage } from './components/CrmIntegrationSupportUkPage';
@@ -42,15 +44,12 @@ import { EcommerceStoreStabilitySupportPage } from './components/EcommerceStoreS
 import { SuccessStoriesPage } from './components/SuccessStoriesPage';
 import { AboutUsPage } from './components/AboutUsPage';
 import { ContactUsPage } from './components/ContactUsPage';
-import { ClientConfidenceSignals } from './components/ClientConfidenceSignals';
 import { UkSmeDigitalVisibilityCheckerPage } from './components/UkSmeDigitalVisibilityCheckerPage';
 import { WebPresenceAuditSharedReportPage } from './components/tools/WebPresenceAuditSharedReportPage';
 import { CampaignLandingHandler } from './components/CampaignLandingHandler';
-import { SelfAuditCta } from './components/SelfAuditCta';
-import { RemoteItCapacitySection } from './components/sections/RemoteItCapacitySection';
 import { RemoteItResourceAugmentationPage } from './components/RemoteItResourceAugmentationPage';
 import { ContactRedirect } from './components/ContactRedirect';
-import { BOOK_CALL_URL } from './constants/contactBooking';
+import { useRevealMotion } from './hooks/useRevealMotion';
 
 // SSR-safe: use static path for logo
 const logo = '/assets/primewayz-infotech-logo.svg';
@@ -62,57 +61,36 @@ const ClientOnly = ({ children }: { children: ReactNode }) => {
   return <>{children}</>;
 };
 
-const MainContent = () => (
+const MainContent = () => {
+  const reveal = useRevealMotion();
+
+  return (
   <main>
     <Hero />
     <UKTrustStrip />
     <WebsiteProblemSection />
     <OutcomePillarsSection />
-    <ClientConfidenceSignals />
-    <SelfAuditCta
-      variant="banner"
-      utmContent="homepage_banner"
-      ctaLocation="homepage_banner"
-    />
+    <TrustPillarSection />
+    <EnquiriesPillarSection />
+    <ServiceRoutesSection />
+    <MonthlySupportRhythmSection />
+    <AuditLedProcessSection />
+    <WhatWeReviewFirstSection />
+    <CommercialClaritySection />
+    <SupportModelOverviewSection />
+    <InsightsSection />
     <Philosophy />
-    <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 1 }}>
+    <motion.div initial={reveal.initial({ opacity: 0 })} whileInView={reveal.whileInView({ opacity: 1 })} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 1 }}>
       <HowItWorks />
     </motion.div>
-    <InteractiveDemo />
     <TechStack />
-    <Experience />
-    <Stats />
-    <ServicePathCards />
     <RemoteItCapacitySection />
-    <Pricing />
     <FAQ />
     <SuccessStories />
-    <Testimonials />
-    <BlogSection />
-    <ContactBookingCta />
-    <section className="py-24 bg-emerald-600">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-8">
-          Ready to plan your next <br /> delivery phase?
-        </motion.h2>
-        <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="text-xl text-emerald-50 mb-12">
-          Start with Foundation Sprint, then move into the monthly delivery capacity that fits your roadmap.
-        </motion.p>
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
-          <TrackedLink
-            href={BOOK_CALL_URL}
-            ctaText="Book a UK discovery call"
-            ctaLocation="final_cta"
-            eventType="book_call_click_home"
-            className="inline-block bg-white text-emerald-600 px-10 py-5 rounded-full text-xl font-bold hover:bg-emerald-50 transition-all shadow-xl shadow-emerald-900/20"
-          >
-            Book a UK discovery call
-          </TrackedLink>
-        </motion.div>
-      </div>
-    </section>
+    <HomepageContactSection />
   </main>
-);
+  );
+};
 
 export type InitialAppData = {
   blogPosts?: BlogPostData[];
@@ -147,17 +125,22 @@ export const App = ({ initialData }: AppProps) => {
         <Route path="/blog/:id" element={<BlogPost initialPost={initialData?.blogPost} />} />
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/uk-sme-digital-visibility-checker" element={<UkSmeDigitalVisibilityCheckerPage />} />
-        <Route path="/website-visibility-support" element={<Navigate to="/website-maintenance-subscription-uk" replace />} />
-        <Route path="/crm-automation-support" element={<Navigate to="/crm-integration-support-uk" replace />} />
+        <Route path="/website-visibility-support" element={<WebsiteMaintenanceSubscriptionUkPage />} />
+        <Route path="/maintenance" element={<WebsiteMaintenanceSubscriptionUkPage />} />
+        <Route path="/crm-automation-support" element={<CrmIntegrationSupportUkPage />} />
+        <Route path="/software-product-delivery" element={<SoftwareDevelopmentSubscriptionUkPage />} />
+        <Route path="/remote-it-resources" element={<RemoteItResourceAugmentationPage />} />
+        <Route path="/pricing" element={<Navigate to="/#pricing" replace />} />
         <Route path="/how-it-works" element={<Navigate to="/#how-it-works" replace />} />
         <Route path="/about-us" element={<AboutUsPage />} />
+        <Route path="/about" element={<Navigate to="/about-us" replace />} />
         <Route path="/contact" element={<ContactRedirect />} />
         <Route path="/contact-us" element={<ContactUsPage />} />
-        <Route path="/remote-it-resource-augmentation" element={<RemoteItResourceAugmentationPage />} />
+        <Route path="/website-maintenance-subscription-uk" element={<Navigate to="/maintenance" replace />} />
+        <Route path="/remote-it-resource-augmentation" element={<Navigate to="/remote-it-resources" replace />} />
         <Route path="/web-presence-audit/report/:publicToken" element={<WebPresenceAuditSharedReportPage />} />
-        <Route path="/software-development-subscription-uk" element={<SoftwareDevelopmentSubscriptionUkPage />} />
-        <Route path="/website-maintenance-subscription-uk" element={<WebsiteMaintenanceSubscriptionUkPage />} />
-        <Route path="/crm-integration-support-uk" element={<CrmIntegrationSupportUkPage />} />
+        <Route path="/software-development-subscription-uk" element={<Navigate to="/software-product-delivery" replace />} />
+        <Route path="/crm-integration-support-uk" element={<Navigate to="/crm-automation-support" replace />} />
         <Route path="/professional-services-crm-support-uk" element={<ProfessionalServicesCrmSupportUkPage />} />
         <Route path="/success-stories" element={<SuccessStoriesPage />} />
         <Route path="/success-stories/local-trades-lead-capture" element={<LocalTradesLeadCapturePage />} />

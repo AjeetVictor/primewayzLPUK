@@ -21,7 +21,7 @@ const supportValues = [
 
 export const Testimonials = () => (
   <section className="bg-zinc-50 py-24">
-    <div className="mx-auto max-w-7xl px-6 lg:px-8">
+    <div className="mx-auto max-w-[1200px] px-6 lg:px-8">
       <div className="mx-auto max-w-3xl text-center">
         <h2 className="text-4xl font-black tracking-tight text-zinc-950 sm:text-5xl">
           Why UK SME teams choose{' '}
@@ -33,7 +33,7 @@ export const Testimonials = () => (
         </p>
       </div>
 
-      <div className="mx-auto mt-14 grid max-w-6xl gap-6 md:grid-cols-3">
+      <div className="mx-auto mt-14 grid max-w-[1200px] gap-6 md:grid-cols-3">
         {supportValues.map((item, index) => (
           <article
             key={item.title}

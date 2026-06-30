@@ -15,25 +15,25 @@ const serviceNavLinks = [
   },
   {
     label: 'Software subscription',
-    href: '/software-development-subscription-uk',
+    href: '/software-product-delivery',
   },
   {
     label: 'Website maintenance',
-    href: '/website-maintenance-subscription-uk',
+    href: '/maintenance',
   },
   {
     label: 'CRM integration',
-    href: '/crm-integration-support-uk',
+    href: '/crm-automation-support',
   },
   {
     label: 'UK SME examples',
-    href: '/#success-stories',
+    href: '/success-stories',
   },
 ];
 
 export const BlogLayout = ({ eyebrow = 'Insights', title, description, children }: BlogLayoutProps) => (
   <main className="min-h-screen bg-zinc-50 pt-32 pb-24">
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
       <header className="mb-14 max-w-4xl">
         <p className="mb-4 text-xs font-bold uppercase tracking-[0.24em] text-emerald-600">{eyebrow}</p>
 

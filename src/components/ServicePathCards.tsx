@@ -4,7 +4,7 @@ import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../lib/utm';
 import { getDataLayerUtmPayload, pushDataLayer } from '../lib/dataLayer';
 
 const remoteItCardHref = buildInternalUtmUrl(
-  '/remote-it-resource-augmentation',
+  '/remote-it-resources',
   'homepage_service_card',
   REMOTE_RESOURCE_CAMPAIGN,
   'service_card',
@@ -15,7 +15,7 @@ const servicePaths = [
     title: 'Software Development Subscription',
     description:
       'Monthly software delivery support for websites, automation, integrations, SEO foundations, and ongoing digital improvements.',
-    href: '/software-development-subscription-uk',
+    href: '/software-product-delivery',
     icon: Code2,
     anchor: 'Software development subscription for UK SMEs',
   },
@@ -23,7 +23,7 @@ const servicePaths = [
     title: 'Website Maintenance Subscription',
     description:
       'Reliable website updates, bug fixes, technical SEO checks, landing page improvements, analytics support, and monthly care.',
-    href: '/website-maintenance-subscription-uk',
+    href: '/maintenance',
     icon: LifeBuoy,
     anchor: 'Website maintenance subscription for UK SMEs',
   },
@@ -31,7 +31,7 @@ const servicePaths = [
     title: 'CRM Integration & Support',
     description:
       'Connect CRM with website forms, email, reporting, support workflows, and automation for cleaner business operations.',
-    href: '/crm-integration-support-uk',
+    href: '/crm-automation-support',
     icon: Network,
     anchor: 'CRM integration support for UK SMEs',
   },
@@ -54,7 +54,7 @@ const supportingLinks = [
   },
   {
     label: 'See UK SME delivery examples',
-    href: '/#success-stories',
+    href: '/success-stories',
   },
 ];
 
@@ -73,7 +73,7 @@ export const ServicePathCards = () => {
     <section id="services" className="relative overflow-hidden bg-white py-24 sm:py-28">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-200 to-transparent" />
 
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+      <div className="mx-auto max-w-[1200px] px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-sm font-bold uppercase tracking-[0.24em] text-emerald-600">
             Explore Primewayz UK service paths
@@ -177,7 +177,7 @@ export const ServicePathCards = () => {
               UK SME digital support services
             </Link>{' '}
             or look at our{' '}
-            <Link to="/#success-stories" className="font-black text-emerald-700 hover:text-emerald-800">
+            <Link to="/success-stories" className="font-black text-emerald-700 hover:text-emerald-800">
               UK SME delivery examples
             </Link>{' '}
             before choosing a monthly support path.

@@ -3,8 +3,13 @@ import { captureUtmParams, getFirstUtmParams, getLatestUtmParams } from './utm.t
 const FIRST_LANDING_KEY = 'primewayz_first_landing_page';
 
 const SERVICE_PATH_MAP: Record<string, string> = {
-  '/software-development-subscription-uk': 'Software development subscription',
+  '/website-visibility-support': 'Website visibility support',
+  '/software-product-delivery': 'Software development subscription',
+  '/maintenance': 'Website maintenance subscription',
+  '/crm-automation-support': 'CRM integration support',
+  '/remote-it-resources': 'Remote IT resource augmentation',
   '/website-maintenance-subscription-uk': 'Website maintenance subscription',
+  '/software-development-subscription-uk': 'Software development subscription',
   '/crm-integration-support-uk': 'CRM integration support',
   '/remote-it-resource-augmentation': 'Remote IT resource augmentation',
   '/professional-services-crm-support-uk': 'Professional services CRM support',

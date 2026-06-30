@@ -1,4 +1,4 @@
-﻿import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
   ArrowRight,
@@ -86,19 +86,19 @@ const benefits = [
 const relatedLinks = [
   {
     title: 'CRM Integration Support UK',
-    href: '/crm-integration-support-uk',
+    href: '/crm-automation-support',
     text: 'For CRM integrations, workflow setup, lead routing, automation, and reporting improvements.',
     anchor: 'Explore CRM integration support',
   },
   {
     title: 'Website Maintenance Subscription UK',
-    href: '/website-maintenance-subscription-uk',
+    href: '/maintenance',
     text: 'For website updates, landing page fixes, tracking improvements, SEO foundations, and monthly support.',
     anchor: 'View website maintenance support',
   },
   {
     title: 'Software Development Subscription UK',
-    href: '/software-development-subscription-uk',
+    href: '/software-product-delivery',
     text: 'For ongoing software delivery, integrations, backlog support, automation, and technical improvements.',
     anchor: 'View software subscription',
   },
@@ -121,7 +121,7 @@ export const ProfessionalServicesCrmSupportUkPage = () => (
     <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-20 pt-24 text-white sm:px-6 lg:px-8">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.24),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(37,99,235,0.22),transparent_34%)]" />
 
-      <div className="relative mx-auto max-w-6xl">
+      <div className="relative mx-auto max-w-[1200px]">
         <Link
           to="/services"
           className="mb-10 inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white"
@@ -199,7 +199,7 @@ export const ProfessionalServicesCrmSupportUkPage = () => (
     </section>
 
     <section className="px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1200px]">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
             Common CRM and lead-flow issues
@@ -224,7 +224,7 @@ export const ProfessionalServicesCrmSupportUkPage = () => (
     </section>
 
     <section className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1200px]">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
             Service solution
@@ -256,7 +256,7 @@ export const ProfessionalServicesCrmSupportUkPage = () => (
     </section>
 
     <section className="px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+      <div className="mx-auto grid max-w-[1200px] gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
             Who this is for
@@ -281,7 +281,7 @@ export const ProfessionalServicesCrmSupportUkPage = () => (
     </section>
 
     <section className="bg-[#000A2D] px-4 py-20 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1200px]">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-300">
             What improves
@@ -307,7 +307,7 @@ export const ProfessionalServicesCrmSupportUkPage = () => (
     </section>
 
     <section className="px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1200px]">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
             Related support
@@ -341,7 +341,7 @@ export const ProfessionalServicesCrmSupportUkPage = () => (
     </section>
 
     <section className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-6xl gap-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm lg:grid-cols-[1fr_0.7fr] lg:items-center">
+      <div className="mx-auto grid max-w-[1200px] gap-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm lg:grid-cols-[1fr_0.7fr] lg:items-center">
         <div>
           <ShieldCheck className="h-10 w-10 text-emerald-700" />
           <h2 className="mt-4 text-3xl font-bold tracking-tight text-slate-950">

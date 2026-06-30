@@ -88,7 +88,7 @@ export const UkSmeDigitalVisibilityCheckerPage = () => (
       <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-16 pt-24 text-white sm:px-6 lg:px-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.22),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.22),transparent_34%)]" />
 
-        <div className="relative mx-auto max-w-6xl">
+        <div className="relative mx-auto max-w-[1200px]">
           <Link
             to="/"
             className="mb-10 inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white"
@@ -134,13 +134,13 @@ export const UkSmeDigitalVisibilityCheckerPage = () => (
       </section>
 
       <section id="audit-form" className="px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-4xl">
+        <div className="mx-auto max-w-[1200px]">
           <WebPresenceAuditForm variant="landing" showIntro={false} analyticsLocation="checker_page" />
         </div>
       </section>
 
       <section className="px-4 pb-16 sm:px-6 lg:px-8" aria-labelledby="checker-trust-heading">
-        <div className="mx-auto max-w-6xl rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:p-8">
+        <div className="mx-auto max-w-[1200px] rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:p-8">
           <div className="max-w-3xl">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Clear scope, useful output</p>
             <h2 id="checker-trust-heading" className="mt-2 text-2xl font-black tracking-tight text-slate-950">
@@ -163,7 +163,7 @@ export const UkSmeDigitalVisibilityCheckerPage = () => (
       </section>
 
       <section className="border-y border-slate-200 bg-slate-50 px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-[1200px]">
           <div className="max-w-3xl">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">Nine readiness categories</p>
             <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
@@ -201,7 +201,7 @@ export const UkSmeDigitalVisibilityCheckerPage = () => (
       </section>
 
       <section className="px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-[1200px]">
           <div className="flex items-start gap-4">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#000A2D] text-white">
               <Gauge className="h-5 w-5" />
@@ -235,7 +235,7 @@ export const UkSmeDigitalVisibilityCheckerPage = () => (
       </section>
 
       <section className="border-t border-slate-200 bg-slate-50 px-4 py-16 sm:px-6 lg:px-8" aria-labelledby="checker-faq-heading">
-        <div className="mx-auto max-w-4xl">
+        <div className="mx-auto max-w-[1200px]">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Checker FAQ</p>
           <h2 id="checker-faq-heading" className="mt-2 text-3xl font-black tracking-tight text-slate-950">
             What the free audit can and cannot confirm
@@ -255,7 +255,7 @@ export const UkSmeDigitalVisibilityCheckerPage = () => (
       </section>
 
       <section className="bg-[#000A2D] px-4 py-16 text-white sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+        <div className="mx-auto grid max-w-[1200px] gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-300">Built for practical decisions</p>
             <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Why this matters for UK SMEs</h2>

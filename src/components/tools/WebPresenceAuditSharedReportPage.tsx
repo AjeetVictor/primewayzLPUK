@@ -127,7 +127,7 @@ export function WebPresenceAuditSharedReportPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <Link to="/" className="inline-flex items-center gap-3">
             <img src={LOGO} alt="Primewayz UK" className="h-9 w-auto" />
             <span className="text-sm font-bold text-slate-900">Primewayz UK</span>
@@ -138,7 +138,7 @@ export function WebPresenceAuditSharedReportPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6 lg:px-8">
         {isLoading ? (
           <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-slate-600">
             <Loader2 className="h-8 w-8 animate-spin text-blue-700" />

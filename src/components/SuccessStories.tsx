@@ -1,4 +1,5 @@
 import { motion } from 'motion/react';
+import { useRevealMotion } from '../hooks/useRevealMotion';
 import { ArrowUpRight, Users, PhoneCall, Zap } from 'lucide-react';
 import { ShareButton } from './ShareButton';
 import { Link } from 'react-router-dom';
@@ -42,14 +43,16 @@ const stories = [
 ];
 
 export const SuccessStories = () => {
+  const reveal = useRevealMotion();
+
   return (
     <section id="success-stories" className="py-24 bg-white overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8">
           <div className="max-w-2xl">
             <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={reveal.initial({ opacity: 0, y: 20 })}
+              whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
               viewport={{ once: true }}
               className="text-3xl md:text-5xl font-bold tracking-tight text-zinc-900 mb-6"
             >
@@ -57,8 +60,8 @@ export const SuccessStories = () => {
               <span className="text-emerald-600 italic">UK small businesses</span>
             </motion.h2>
             <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={reveal.initial({ opacity: 0, y: 20 })}
+              whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
               className="text-lg text-zinc-600"
@@ -70,8 +73,8 @@ export const SuccessStories = () => {
           </div>
           <motion.a
             href={CONTACT_ENQUIRY_URL}
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={reveal.initial({ opacity: 0, x: 20 })}
+            whileInView={reveal.whileInView({ opacity: 1, x: 0 })}
             viewport={{ once: true }}
             whileHover={{ x: 5 }}
             whileTap={{ scale: 0.95 }}
@@ -86,8 +89,8 @@ export const SuccessStories = () => {
           {stories.map((story, index) => (
             <motion.div
               key={story.title}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={reveal.initial({ opacity: 0, y: 30 })}
+              whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
               className="group cursor-pointer"

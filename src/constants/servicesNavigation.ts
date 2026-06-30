@@ -13,6 +13,7 @@ import {
 import type { ServiceIconTone } from './designSystem';
 import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../lib/utm';
 import { AUDIT_CHECKER_PATH } from './navigation';
+import { CANONICAL_ROUTES } from './canonicalRoutes';
 
 export type ServiceNavItem = {
   name: string;
@@ -37,7 +38,7 @@ export const serviceNavGroups: ServiceNavGroup[] = [
       {
         name: 'Website Refinement',
         description: 'Landing pages, copy, CMS speed tuning, enquiry path improvements',
-        href: '/website-maintenance-subscription-uk',
+        href: CANONICAL_ROUTES.websiteVisibilitySupport,
         icon: Globe,
         iconTone: 'blue',
       },
@@ -63,21 +64,21 @@ export const serviceNavGroups: ServiceNavGroup[] = [
       {
         name: 'CRM Strategy & Synthesis',
         description: 'CRM cleanup, attribution, lead-flow and reporting support',
-        href: '/crm-integration-support-uk',
+        href: CANONICAL_ROUTES.crmAutomationSupport,
         icon: Network,
         iconTone: 'magenta',
       },
       {
         name: 'Workflow Automation',
         description: 'Connect tools with Zapier, Make, APIs and internal workflows',
-        href: '/crm-integration-support-uk',
+        href: CANONICAL_ROUTES.crmAutomationSupport,
         icon: Workflow,
         iconTone: 'blue',
       },
       {
         name: 'Custom API Integrations',
         description: 'Connect databases, business platforms and payment/CRM systems',
-        href: '/software-development-subscription-uk',
+        href: CANONICAL_ROUTES.softwareProductDelivery,
         icon: Plug,
         iconTone: 'navy',
       },
@@ -89,7 +90,7 @@ export const serviceNavGroups: ServiceNavGroup[] = [
       {
         name: 'Security & Maintenance',
         description: 'Encrypted backups, updates, monitoring and continuity support',
-        href: '/website-maintenance-subscription-uk',
+        href: CANONICAL_ROUTES.maintenance,
         icon: ShieldCheck,
         iconTone: 'blue',
       },
@@ -97,7 +98,7 @@ export const serviceNavGroups: ServiceNavGroup[] = [
         name: 'Remote IT Resources',
         description: 'Developers, QA, website support, digital support and project coordination',
         href: buildInternalUtmUrl(
-          '/remote-it-resource-augmentation',
+          CANONICAL_ROUTES.remoteItResources,
           'internal_nav',
           REMOTE_RESOURCE_CAMPAIGN,
           'services_dropdown',
@@ -109,7 +110,7 @@ export const serviceNavGroups: ServiceNavGroup[] = [
       {
         name: 'Monthly Technical Support',
         description: 'Ongoing improvements, fixes, reporting and technical delivery rhythm',
-        href: '/software-development-subscription-uk',
+        href: CANONICAL_ROUTES.softwareProductDelivery,
         icon: Code2,
         iconTone: 'navy',
       },
@@ -118,7 +119,7 @@ export const serviceNavGroups: ServiceNavGroup[] = [
 ];
 
 export const remoteItFooterHref = buildInternalUtmUrl(
-  '/remote-it-resource-augmentation',
+  CANONICAL_ROUTES.remoteItResources,
   'footer_nav',
   REMOTE_RESOURCE_CAMPAIGN,
   'footer_service_link',

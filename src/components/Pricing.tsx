@@ -510,8 +510,8 @@ const PlanCardBlock = ({ plan, featured }: { plan: PlanCard; featured?: boolean 
 export const Pricing = () => {
   return (
     <section id="pricing" className="bg-zinc-50 py-24">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-4xl text-center">
+      <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1200px] text-center">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -539,7 +539,7 @@ export const Pricing = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.12 }}
-          className="mx-auto mt-8 flex max-w-5xl flex-wrap justify-center gap-2.5"
+          className="mx-auto mt-8 flex max-w-[1200px] flex-wrap justify-center gap-2.5"
         >
           {clarityBadges.map((rule) => (
             <div

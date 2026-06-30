@@ -32,9 +32,9 @@ export const ProfessionalServicesCrmCleanupPage = () => (
       <div className="absolute -right-24 top-10 h-72 w-72 rounded-full bg-sky-200/30 blur-3xl" />
       <div className="absolute -left-24 bottom-0 h-72 w-72 rounded-full bg-pink-200/30 blur-3xl" />
 
-      <div className="relative mx-auto max-w-7xl px-6 py-8 lg:px-8">
+      <div className="relative mx-auto max-w-[1200px] px-6 py-8 lg:px-8">
         <Link
-          to="/#success-stories"
+          to="/success-stories"
           className="inline-flex items-center text-sm font-semibold text-slate-600 transition hover:text-sky-700"
         >
           ← Back to success stories
@@ -62,7 +62,7 @@ export const ProfessionalServicesCrmCleanupPage = () => (
                 Discuss your UK requirements
               </a>
               <a
-                href="/#pricing"
+                href="/pricing"
                 className="rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-bold text-slate-800 transition hover:-translate-y-0.5 hover:border-sky-300 hover:text-sky-700"
               >
                 View support plans
@@ -84,7 +84,7 @@ export const ProfessionalServicesCrmCleanupPage = () => (
       </div>
     </section>
 
-    <section className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
+    <section className="mx-auto max-w-[1200px] px-6 py-16 lg:px-8">
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="rounded-[1.75rem] border border-slate-200 bg-white p-7 shadow-sm">
           <h2 className="text-xl font-black text-slate-950">What we clean up</h2>

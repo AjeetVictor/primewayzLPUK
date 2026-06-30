@@ -57,27 +57,27 @@ const processSteps = [
 
 const heroLinks = [
   { label: 'All UK SME services', href: '/services' },
-  { label: 'Software subscription', href: '/software-development-subscription-uk' },
-  { label: 'Website maintenance', href: '/website-maintenance-subscription-uk' },
-  { label: 'CRM integration', href: '/crm-integration-support-uk' },
+  { label: 'Software subscription', href: '/software-product-delivery' },
+  { label: 'Website maintenance', href: '/maintenance' },
+  { label: 'CRM integration', href: '/crm-automation-support' },
 ];
 
 const relatedLinks = [
   {
     title: 'Software Development Subscription',
-    href: '/software-development-subscription-uk',
+    href: '/software-product-delivery',
     anchor: 'Software development subscription for UK SMEs',
     text: 'For UK SMEs that need ongoing software delivery across websites, dashboards, CRM workflows, automation, and integrations.',
   },
   {
     title: 'Website Maintenance Subscription',
-    href: '/website-maintenance-subscription-uk',
+    href: '/maintenance',
     anchor: 'Website maintenance subscription for UK SMEs',
     text: 'For businesses that need reliable website updates, fixes, technical SEO checks, analytics support, and monthly care.',
   },
   {
     title: 'CRM Integration & Support',
-    href: '/crm-integration-support-uk',
+    href: '/crm-automation-support',
     anchor: 'CRM integration support for UK SMEs',
     text: 'For teams that need cleaner lead capture, enquiry routing, CRM workflows, notifications, and reporting visibility.',
   },
@@ -101,7 +101,7 @@ export const RemoteItResourceAugmentationPage = () => (
     <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-20 pt-24 text-white sm:px-6 lg:px-8">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.22),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.22),transparent_34%)]" />
 
-      <div className="relative mx-auto max-w-6xl">
+      <div className="relative mx-auto max-w-[1200px]">
         <Link
           to="/"
           className="mb-10 inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white"
@@ -130,7 +130,7 @@ export const RemoteItResourceAugmentationPage = () => (
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <TrackedLink
                 href={buildInternalUtmUrl(
-                  '/remote-it-resource-augmentation',
+                  '/remote-it-resources',
                   'service_page',
                   REMOTE_RESOURCE_CAMPAIGN,
                   'service_page_primary_cta',
@@ -184,7 +184,7 @@ export const RemoteItResourceAugmentationPage = () => (
     <SelfAuditCta variant="inline" utmContent="remote_it_page" ctaLocation="remote_it_page" />
 
     <section id="remote-it-resources" className="px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1200px]">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
             What you can add
@@ -210,7 +210,7 @@ export const RemoteItResourceAugmentationPage = () => (
     </section>
 
     <section id="remote-it-engagement" className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1200px]">
         <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
@@ -239,7 +239,7 @@ export const RemoteItResourceAugmentationPage = () => (
     </section>
 
     <section id="remote-it-process" className="px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1200px]">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
             Delivery rhythm
@@ -266,7 +266,7 @@ export const RemoteItResourceAugmentationPage = () => (
     </section>
 
     <section id="remote-it-related-services" className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1200px]">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
             Related UK SME support paths
@@ -297,7 +297,7 @@ export const RemoteItResourceAugmentationPage = () => (
     </section>
 
     <section className="bg-[#000A2D] px-4 py-20 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-6xl gap-8 rounded-3xl border border-white/10 bg-white/10 p-8 backdrop-blur lg:grid-cols-[1fr_0.7fr] lg:items-center">
+      <div className="mx-auto grid max-w-[1200px] gap-8 rounded-3xl border border-white/10 bg-white/10 p-8 backdrop-blur lg:grid-cols-[1fr_0.7fr] lg:items-center">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Discuss your remote IT capacity needs</h2>
           <p className="mt-4 text-base leading-7 text-slate-200">

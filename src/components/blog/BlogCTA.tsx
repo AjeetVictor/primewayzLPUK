@@ -5,15 +5,15 @@ import { TrackedLink } from '../common/TrackedLink';
 const serviceLinks = [
   {
     label: 'Software development subscription',
-    href: '/software-development-subscription-uk',
+    href: '/software-product-delivery',
   },
   {
     label: 'Website maintenance subscription',
-    href: '/website-maintenance-subscription-uk',
+    href: '/maintenance',
   },
   {
     label: 'CRM integration support',
-    href: '/crm-integration-support-uk',
+    href: '/crm-automation-support',
   },
   {
     label: 'All UK SME support services',

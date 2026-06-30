@@ -45,15 +45,15 @@ const heroLinks = [
   },
   {
     label: 'Software subscription',
-    href: '/software-development-subscription-uk',
+    href: '/software-product-delivery',
   },
   {
     label: 'CRM integration',
-    href: '/crm-integration-support-uk',
+    href: '/crm-automation-support',
   },
   {
     label: 'UK SME examples',
-    href: '/#success-stories',
+    href: '/success-stories',
   },
 ];
 
@@ -66,13 +66,13 @@ const relatedLinks = [
   },
   {
     title: 'Software Development Subscription',
-    href: '/software-development-subscription-uk',
+    href: '/software-product-delivery',
     anchor: 'Software development subscription for UK SMEs',
     text: 'For UK SMEs that need ongoing software delivery across websites, dashboards, CRM workflows, automation, integrations, and maintenance.',
   },
   {
     title: 'CRM Integration & Support',
-    href: '/crm-integration-support-uk',
+    href: '/crm-automation-support',
     anchor: 'CRM integration support for UK SMEs',
     text: 'For UK businesses that need cleaner lead capture, enquiry routing, CRM workflows, notifications, reporting, and operational visibility.',
   },
@@ -89,7 +89,7 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => (
     <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-20 pt-24 text-white sm:px-6 lg:px-8">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.22),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.22),transparent_34%)]" />
 
-      <div className="relative mx-auto max-w-6xl">
+      <div className="relative mx-auto max-w-[1200px]">
         <Link
           to="/"
           className="mb-10 inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white"
@@ -127,7 +127,7 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => (
               </TrackedLink>
 
               <TrackedLink
-                href="/#pricing"
+                href="/pricing"
                 ctaText="View monthly plans"
                 ctaLocation="website_maintenance_hero"
                 eventType="pricing_plan_click"
@@ -169,7 +169,7 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => (
     <SelfAuditCta variant="inline" utmContent="maintenance_page" ctaLocation="maintenance_page" />
 
     <section id="website-maintenance-included" className="px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1200px]">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
             What is included
@@ -198,14 +198,14 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => (
           <p className="text-sm font-semibold leading-7 text-slate-700">
             Website maintenance often becomes more valuable when connected with{' '}
             <Link
-              to="/crm-integration-support-uk"
+              to="/crm-automation-support"
               className="font-black text-emerald-700 hover:text-emerald-800"
             >
               CRM integration support
             </Link>
             {' '}and a{' '}
             <Link
-              to="/software-development-subscription-uk"
+              to="/software-product-delivery"
               className="font-black text-emerald-700 hover:text-emerald-800"
             >
               software development subscription
@@ -217,7 +217,7 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => (
     </section>
 
     <section id="website-maintenance-rhythm" className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1200px]">
         <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
@@ -253,7 +253,7 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => (
     </section>
 
     <section id="website-maintenance-use-cases" className="px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-3">
+      <div className="mx-auto grid max-w-[1200px] gap-6 lg:grid-cols-3">
         <div className="rounded-3xl border border-slate-200 p-6">
           <h3 className="text-xl font-bold">For existing websites</h3>
           <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -281,7 +281,7 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => (
     </section>
 
     <section id="website-maintenance-related-services" className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1200px]">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
             Related UK SME support paths
@@ -320,7 +320,7 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => (
     </section>
 
     <section className="bg-[#000A2D] px-4 py-20 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-6xl gap-8 rounded-3xl border border-white/10 bg-white/10 p-8 backdrop-blur lg:grid-cols-[1fr_0.7fr] lg:items-center">
+      <div className="mx-auto grid max-w-[1200px] gap-8 rounded-3xl border border-white/10 bg-white/10 p-8 backdrop-blur lg:grid-cols-[1fr_0.7fr] lg:items-center">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Start with a maintenance review</h2>
 

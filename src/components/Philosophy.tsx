@@ -1,4 +1,5 @@
-﻿import { motion } from 'motion/react';
+import { motion } from 'motion/react';
+import { useRevealMotion } from '../hooks/useRevealMotion';
 import { X, Check, Zap, RefreshCw, ShieldCheck, ArrowRight } from 'lucide-react';
 
 const traditionalSteps = [
@@ -73,21 +74,23 @@ const benefits = [
 ];
 
 export const Philosophy = () => {
+  const reveal = useRevealMotion();
+
   return (
     <section className="py-16 bg-white overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={reveal.initial({ opacity: 0, y: 20 })}
+            whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
             viewport={{ once: true }}
             className="text-3xl md:text-5xl font-bold tracking-tight text-zinc-900 mb-6"
           >
             A better model for ongoing software delivery
           </motion.h2>
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={reveal.initial({ opacity: 0, y: 20 })}
+            whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
             className="text-lg text-zinc-600 max-w-3xl mx-auto"
@@ -103,8 +106,8 @@ export const Philosophy = () => {
             return (
               <motion.article
                 key={model.title}
-                initial={{ opacity: 0, y: 28 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={reveal.initial({ opacity: 0, y: 28 })}
+                whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
                 viewport={{ once: true, margin: '-80px' }}
                 transition={{ delay: index * 0.12 }}
                 className={[
@@ -240,8 +243,8 @@ export const Philosophy = () => {
           {benefits.map((benefit, i) => (
             <motion.div
               key={benefit.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={reveal.initial({ opacity: 0, y: 20 })}
+              whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
               className="group relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-slate-300"

@@ -58,7 +58,7 @@ const colorClasses = {
 export const Experience = () => {
   return (
     <section id="features" className="py-24 bg-zinc-900 text-white overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-16 text-center">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}

@@ -118,7 +118,7 @@ export function SelfAuditCta({
   if (variant === 'banner') {
     return (
       <section className="border-y border-brand-border bg-brand-surface/60 px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-4xl rounded-2xl border border-brand-border bg-white px-6 py-8 shadow-[0_16px_40px_-28px_rgba(0,10,45,0.25)] sm:px-8">
+        <div className="mx-auto max-w-[1200px] rounded-2xl border border-brand-border bg-white px-6 py-8 shadow-[0_16px_40px_-28px_rgba(0,10,45,0.25)] sm:px-8">
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand-blue">
             Free UK SME visibility tool
           </p>
@@ -151,7 +151,7 @@ export function SelfAuditCta({
   if (variant === 'inline') {
     return (
       <section className="px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-5xl flex-col gap-4 rounded-2xl border border-brand-border bg-brand-surface/50 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="mx-auto flex max-w-[1200px] flex-col gap-4 rounded-2xl border border-brand-border bg-brand-surface/50 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold text-brand-navy">
               See how your website looks to search engines and new visitors

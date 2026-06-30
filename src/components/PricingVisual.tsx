@@ -10,7 +10,7 @@ const comparisonData = [
 
 export const PricingVisual = () => {
   return (
-    <div className="mt-24 max-w-5xl mx-auto">
+    <div className="mt-24 max-w-[1200px] mx-auto">
       <div className="text-center mb-16">
         <h3 className="text-2xl md:text-3xl font-bold text-zinc-900 mb-4">
           Why <span className="text-emerald-600 italic">Subscription</span> Wins

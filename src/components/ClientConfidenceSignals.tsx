@@ -27,7 +27,7 @@ export const ClientConfidenceSignals = () => (
     className="border-y border-slate-200 bg-slate-50 py-16 sm:py-20"
     aria-labelledby="client-confidence-heading"
   >
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
       <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8 lg:p-10">
         <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
           <div>

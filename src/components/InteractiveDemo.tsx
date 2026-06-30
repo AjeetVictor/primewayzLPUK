@@ -77,7 +77,7 @@ export const InteractiveDemo = () => {
 
   return (
     <section id="demo" className="py-24 bg-zinc-50 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

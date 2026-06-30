@@ -32,7 +32,7 @@ import type {
 } from '../../lib/audit/types';
 import { getCategoryBand, getScoreBand } from '../../lib/audit/scoreBands';
 import { getSharedReportContactCtaUrl } from '../../lib/audit/share/disclaimers';
-import type { ShareLinkState } from '../../lib/audit/share/shareReportService';
+import type { ShareLinkState } from '../../lib/audit/share/types';
 import { WebPresenceAuditDisclaimer } from './WebPresenceAuditDisclaimer';
 import { WebPresenceAuditReportActions } from './WebPresenceAuditReportActions';
 import { WebPresenceAuditBenchmarkPanel } from './WebPresenceAuditBenchmarkPanel';

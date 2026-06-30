@@ -5,6 +5,7 @@ import { TrackedLink } from '../common/TrackedLink';
 import { RemoteItCapacityVisual } from '../visuals/RemoteItVisuals';
 import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../../lib/utm';
 import { BOOK_CALL_URL } from '../../constants/contactBooking';
+import { useRevealMotion } from '../../hooks/useRevealMotion';
 import { getDataLayerUtmPayload, pushDataLayer } from '../../lib/dataLayer';
 
 const benefits = [
@@ -15,7 +16,7 @@ const benefits = [
 ];
 
 const primaryHref = buildInternalUtmUrl(
-  '/remote-it-resource-augmentation',
+  '/remote-it-resources',
   'homepage_section',
   REMOTE_RESOURCE_CAMPAIGN,
   'remote_capacity_section_primary_cta',
@@ -51,6 +52,7 @@ function trackSectionCta(ctaText: string, destinationUrl: string): void {
 }
 
 export const RemoteItCapacitySection = () => {
+  const reveal = useRevealMotion();
   const sectionRef = useRef<HTMLElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: '-80px' });
 
@@ -61,10 +63,10 @@ export const RemoteItCapacitySection = () => {
   return (
   <section ref={sectionRef} className="relative overflow-hidden bg-white py-24 sm:py-28">
     <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-200 to-transparent" />
-    <div className="mx-auto max-w-7xl px-6 lg:px-8">
+    <div className="mx-auto max-w-[1200px] px-6 lg:px-8">
       <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        whileInView={{ opacity: 1, y: 0 }}
+        initial={reveal.initial({ opacity: 0, y: 24 })}
+        whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
         viewport={{ once: true, margin: '-80px' }}
         className="grid gap-12 lg:grid-cols-2 lg:items-center"
       >

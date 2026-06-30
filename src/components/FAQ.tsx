@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'motion/react';
+import { useRevealMotion } from '../hooks/useRevealMotion';
 import { Plus, Minus } from 'lucide-react';
 import { useState } from 'react';
 
@@ -46,15 +47,16 @@ const faqs = [
 ];
 
 export const FAQ = () => {
+  const reveal = useRevealMotion();
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   return (
     <section id="faq" className="py-24 bg-white">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[0.45fr_0.55fr] lg:gap-10">
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={reveal.initial({ opacity: 0, y: 24 })}
+            whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
             viewport={{ once: true }}
             className="rounded-3xl border border-zinc-200 bg-zinc-50/80 p-6 sm:p-7"
           >
@@ -99,16 +101,16 @@ export const FAQ = () => {
           <div>
             <div className="mb-7">
               <motion.h2
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={reveal.initial({ opacity: 0, y: 20 })}
+                whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
                 viewport={{ once: true }}
                 className="text-3xl font-bold tracking-tight text-zinc-900 md:text-4xl"
               >
                 Common questions
               </motion.h2>
               <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={reveal.initial({ opacity: 0, y: 20 })}
+                whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
                 viewport={{ once: true }}
                 transition={{ delay: 0.08 }}
                 className="mt-2 text-base text-zinc-600"
@@ -127,8 +129,8 @@ export const FAQ = () => {
                   },
                 },
               }}
-              initial="hidden"
-              whileInView="visible"
+              initial={reveal.ready ? 'hidden' : false}
+              whileInView={reveal.ready ? 'visible' : undefined}
               viewport={{ once: true }}
               className="space-y-3"
             >

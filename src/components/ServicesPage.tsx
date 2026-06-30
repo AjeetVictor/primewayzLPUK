@@ -18,7 +18,7 @@ import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../lib/utm';
 const serviceCards = [
   {
     title: 'Software Development Subscription',
-    href: '/software-development-subscription-uk',
+    href: '/software-product-delivery',
     icon: CodeXml,
     anchor: 'Software development subscription for UK SMEs',
     description:
@@ -31,7 +31,7 @@ const serviceCards = [
   },
   {
     title: 'Website Maintenance Subscription',
-    href: '/website-maintenance-subscription-uk',
+    href: '/maintenance',
     icon: LifeBuoy,
     anchor: 'Website maintenance subscription for UK SMEs',
     description:
@@ -44,7 +44,7 @@ const serviceCards = [
   },
   {
     title: 'CRM Integration & Support',
-    href: '/crm-integration-support-uk',
+    href: '/crm-automation-support',
     icon: Network,
     anchor: 'CRM integration support for UK SMEs',
     description:
@@ -58,7 +58,7 @@ const serviceCards = [
   {
     title: 'Remote IT Resources',
     href: buildInternalUtmUrl(
-      '/remote-it-resource-augmentation',
+      '/remote-it-resources',
       'services_hub',
       REMOTE_RESOURCE_CAMPAIGN,
       'services_hub_card',
@@ -120,15 +120,15 @@ const industryPaths = [
 const hubLinks = [
   {
     label: 'Software subscription',
-    href: '/software-development-subscription-uk',
+    href: '/software-product-delivery',
   },
   {
     label: 'Website maintenance',
-    href: '/website-maintenance-subscription-uk',
+    href: '/maintenance',
   },
   {
     label: 'CRM integration',
-    href: '/crm-integration-support-uk',
+    href: '/crm-automation-support',
   },
   {
     label: 'UK SME examples',
@@ -148,7 +148,7 @@ export const ServicesPage = () => (
     <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-20 pt-24 text-white sm:px-6 lg:px-8">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.22),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.22),transparent_34%)]" />
 
-      <div className="relative mx-auto max-w-6xl">
+      <div className="relative mx-auto max-w-[1200px]">
         <Link
           to="/"
           className="mb-10 inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white"
@@ -185,7 +185,7 @@ export const ServicesPage = () => (
               </TrackedLink>
 
               <TrackedLink
-                href="/#pricing"
+                href="/pricing"
                 ctaText="View monthly plans"
                 ctaLocation="services_hero"
                 eventType="pricing_plan_click"
@@ -227,7 +227,7 @@ export const ServicesPage = () => (
     <SelfAuditCta variant="inline" utmContent="services_page" ctaLocation="services_page" />
 
     <section className="border-y border-slate-200 bg-slate-50 px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-6 sm:flex-row sm:items-center sm:p-8">
+      <div className="mx-auto flex max-w-[1200px] flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-6 sm:flex-row sm:items-center sm:p-8">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-600">Free tool</p>
           <h2 className="mt-2 text-xl font-bold text-slate-950">Check if your website is enquiry-ready</h2>
@@ -245,7 +245,7 @@ export const ServicesPage = () => (
     </section>
 
     <section id="core-service-paths" className="px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1200px]">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
             Core service paths
@@ -309,21 +309,21 @@ export const ServicesPage = () => (
           <p className="text-sm font-semibold leading-7 text-slate-700">
             These services can work separately or together. Many UK SMEs start with{' '}
             <Link
-              to="/website-maintenance-subscription-uk"
+              to="/maintenance"
               className="font-black text-emerald-700 hover:text-emerald-800"
             >
               website maintenance
             </Link>
             , then add{' '}
             <Link
-              to="/crm-integration-support-uk"
+              to="/crm-automation-support"
               className="font-black text-emerald-700 hover:text-emerald-800"
             >
               CRM integration support
             </Link>{' '}
             or a{' '}
             <Link
-              to="/software-development-subscription-uk"
+              to="/software-product-delivery"
               className="font-black text-emerald-700 hover:text-emerald-800"
             >
               software development subscription
@@ -335,7 +335,7 @@ export const ServicesPage = () => (
     </section>
 
     <section id="support-areas" className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1200px]">
         <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
@@ -367,7 +367,7 @@ export const ServicesPage = () => (
     </section>
 
     <section id="uk-sme-use-cases" className="px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1200px]">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
             UK SME use cases
@@ -414,7 +414,7 @@ export const ServicesPage = () => (
     </section>
 
     <section className="bg-[#000A2D] px-4 py-20 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-6xl gap-8 rounded-3xl border border-white/10 bg-white/10 p-8 backdrop-blur lg:grid-cols-[1fr_0.7fr] lg:items-center">
+      <div className="mx-auto grid max-w-[1200px] gap-8 rounded-3xl border border-white/10 bg-white/10 p-8 backdrop-blur lg:grid-cols-[1fr_0.7fr] lg:items-center">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-300">
             Start with clarity

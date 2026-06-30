@@ -41,7 +41,7 @@ export const SuccessStoriesPage = () => (
     <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-20 pt-24 text-white sm:px-6 lg:px-8">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.22),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.22),transparent_34%)]" />
 
-      <div className="relative mx-auto max-w-6xl">
+      <div className="relative mx-auto max-w-[1200px]">
         <Link
           to="/"
           className="mb-10 inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white"
@@ -68,7 +68,7 @@ export const SuccessStoriesPage = () => (
     <SelfAuditCta variant="inline" utmContent="success_stories_page" ctaLocation="success_stories_page" />
 
     <section className="px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1200px]">
         <div className="grid gap-8 lg:grid-cols-3">
           {stories.map((story) => {
             const Icon = story.icon;

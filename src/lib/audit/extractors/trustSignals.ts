@@ -33,8 +33,8 @@ export function extractTrustSignals(context: AuditContext): AuditSignal[] {
   const addressSignals = includesAny(text, ['address', 'registered office', 'service area', 'serving ', 'based in ']);
 
   return [
-    trustSignal('trust-contact-page', includesAny(html, ['href="/contact', "href='/contact", 'contact-us']), 2, 'A contact page or link was found.', 'Add a clearly labelled contact page.', url),
-    trustSignal('trust-about-page', includesAny(html, ['href="/about', "href='/about", 'about-us']), 2, 'An about page or link was found.', 'Add an about page explaining who the business is.', url),
+    trustSignal('trust-contact-page', includesAny(html, ['href="/contact', "href='/contact", 'contact-us', '/contact-us']), 2, 'A contact page or link was found.', 'Add a clearly labelled contact page.', url),
+    trustSignal('trust-about-page', includesAny(html, ['href="/about', "href='/about", 'about-us', '/about-us']), 2, 'An about page or link was found.', 'Add an about page explaining who the business is.', url),
     trustSignal('trust-privacy-page', includesAny(html, ['privacy-policy', '>privacy<']), 2, 'A privacy page or link was found.', 'Publish and link a privacy policy.', url),
     trustSignal('trust-terms-page', includesAny(html, ['terms-and-conditions', 'terms-of-service', '>terms<']), 2, 'A terms page or link was found.', 'Publish and link business terms.', url),
     trustSignal('trust-business-name', text.includes(businessName), 2, `Business name found: ${context.input.businessName}.`, 'Display the business name clearly on the website.', url),
