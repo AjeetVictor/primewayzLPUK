@@ -1,6 +1,36 @@
 import type { BlogPost } from './types';
+import { fixedPriceVsSubscriptionSupportContent } from './content/fixedPriceVsSubscriptionSupport.ts';
 
 export const posts: BlogPost[] = [
+  {
+    id: 'fixed-price-vs-time-material-vs-subscription-support-uk-smes-saas-founders',
+    slug: 'fixed-price-vs-time-material-vs-subscription-support-uk-smes-saas-founders',
+    title: 'Fixed Price vs Time & Material vs Subscription Support: Which Model Works Better for UK SMEs and SaaS Founders?',
+    description:
+      'Compare fixed price, time and material, and subscription-based digital support models for UK SMEs, SaaS founders, and service businesses. Learn which model offers better flexibility, trust, and long-term growth.',
+    excerpt:
+      'Compare fixed price, time and material, and subscription-based digital support for UK SMEs and SaaS founders — and when a hybrid model works best.',
+    content: fixedPriceVsSubscriptionSupportContent,
+    date: 'June 30, 2026',
+    updatedDate: 'June 30, 2026',
+    readTime: '18 min read',
+    author: 'Primewayz UK Team',
+    category: 'Delivery Model',
+    tags: [
+      'Fixed price',
+      'Time and material',
+      'Subscription support',
+      'UK SMEs',
+      'SaaS founders',
+      'Monthly support',
+      'Digital delivery',
+    ],
+    image: '/images/blog/fixed-price-vs-time-material-vs-subscription-support.webp',
+    featured: true,
+    seoTitle: 'Fixed Price vs Time & Material vs Subscription Support for UK SMEs & SaaS Founders',
+    seoDescription:
+      'Compare fixed price, time and material, and subscription-based digital support models for UK SMEs, SaaS founders, and service businesses. Learn which model offers better flexibility, trust, and long-term growth.',
+  },
   {
     id: 'uk-sme-digital-adoption-roadmap-2026',
     slug: 'uk-sme-digital-adoption-roadmap-2026',
@@ -30,8 +60,8 @@ export const posts: BlogPost[] = [
     author: 'Primewayz UK Team',
     category: 'Digital Adoption',
     tags: ['Digital adoption', 'UK SMEs', 'CRM', 'Automation'],
-    image: 'https://picsum.photos/seed/uk-sme-digital-adoption-2026/800/500',
-    featured: true,
+    image: '/images/blog/a-practical-digital-adoption-roadmap-for-uk-smes-in-2026.webp',
+    featured: false,
     seoTitle: 'Digital Adoption Roadmap for UK SMEs in 2026',
     seoDescription:
       'A practical roadmap for UK SMEs improving websites, CRM workflows, automation, reporting, and monthly digital delivery in 2026.',
@@ -65,7 +95,7 @@ export const posts: BlogPost[] = [
     author: 'Primewayz UK Team',
     category: 'AI Operations',
     tags: ['AI readiness', 'Automation', 'CRM', 'Data quality'],
-    image: 'https://picsum.photos/seed/uk-ai-readiness-sme-operations/800/500',
+    image: '/images/blog/ai-readiness-for-uk-small-business-operations.webp',
     seoTitle: 'AI Readiness for UK Small Business Operations',
     seoDescription:
       'How UK small businesses can prepare websites, CRM data, workflows, and staff review before adopting practical AI tools.',
@@ -161,8 +191,8 @@ export const posts: BlogPost[] = [
     author: 'Primewayz UK Team',
     category: 'UK SMEs',
     tags: ['Monthly support', 'Digital operations', 'UK SMEs'],
-    image: 'https://picsum.photos/seed/uk-monthly-support/800/500',
-    featured: true,
+    image: '/images/blog/why-uk-smes-need-monthly-digital-support.webp',
+    featured: false,
     seoTitle: 'Monthly Digital Support for UK SMEs',
     seoDescription:
       'Learn why UK SMEs benefit from predictable monthly digital support across websites, SEO, CRM, automation, maintenance, and delivery.',
@@ -225,7 +255,7 @@ export const posts: BlogPost[] = [
     author: 'Primewayz UK Team',
     category: 'Delivery Model',
     tags: ['Foundation Sprint', 'Planning', 'Monthly delivery'],
-    image: 'https://picsum.photos/seed/uk-foundation-sprint/800/500',
+    image: '/images/blog/why-start-with-a-foundation-sprint-before-monthly-delivery.webp',
     seoDescription:
       'See how a focused foundation sprint reduces confusion before website, SEO, CRM, automation, or monthly digital delivery work begins.',
   },

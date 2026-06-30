@@ -3,9 +3,16 @@ import type { BlogPost } from './types';
 
 export const blogPosts: BlogPost[] = posts;
 
-export const getAllBlogPosts = () => blogPosts;
+export const getPostTimestamp = (post: BlogPost) => {
+  const timestamp = Date.parse(post.updatedDate || post.date);
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+};
 
-export const getFeaturedBlogPost = () => blogPosts.find((post) => post.featured) || blogPosts[0];
+export const getAllBlogPosts = () => [...blogPosts].sort((a, b) => getPostTimestamp(b) - getPostTimestamp(a));
+
+export const getLatestBlogPosts = (limit = 3) => getAllBlogPosts().slice(0, limit);
+
+export const getFeaturedBlogPost = () => getAllBlogPosts().find((post) => post.featured) || blogPosts[0];
 
 export const getBlogPostById = (id?: string) => {
   if (!id) return undefined;

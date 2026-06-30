@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { BlogCard } from './BlogCard';
 import { BlogCTA } from './BlogCTA';
 import { BlogLayout } from './BlogLayout';
-import { getAllBlogPosts, getFeaturedBlogPost } from '../../data/blog/utils';
+import { getAllBlogPosts, getFeaturedBlogPost, getPostTimestamp } from '../../data/blog/utils';
 import type { BlogPost } from '../../data/blog/types';
 import { apiUrl } from '../../utils/apiUrl';
 
@@ -36,9 +36,14 @@ const supportPathLinks = [
 ];
 
 export const BlogListPage = ({ initialPosts }: BlogListPageProps) => {
-  const [posts, setPosts] = useState<BlogPost[]>(initialPosts?.length ? initialPosts : getAllBlogPosts());
-  const featuredPost = posts.find((post) => post.featured) || getFeaturedBlogPost();
-  const remainingPosts = posts.filter((post) => post.id !== featuredPost.id);
+  const sortPosts = (items: BlogPost[]) =>
+    [...items].sort((a, b) => getPostTimestamp(b) - getPostTimestamp(a));
+
+  const [posts, setPosts] = useState<BlogPost[]>(() =>
+    sortPosts(initialPosts?.length ? initialPosts : getAllBlogPosts()),
+  );
+  const featuredPost = posts.find((post) => post.featured) ?? posts[0] ?? getFeaturedBlogPost();
+  const remainingPosts = posts.filter((post) => post.id !== featuredPost?.id);
   const categories = Array.from(new Set(posts.map((post) => post.category)));
 
   useEffect(() => {
@@ -47,10 +52,10 @@ export const BlogListPage = ({ initialPosts }: BlogListPageProps) => {
         const res = await fetch(apiUrl('/api/blog/posts'));
 
         if (res.ok) {
-          setPosts(await res.json());
+          setPosts(sortPosts(await res.json()));
         }
       } catch {
-        setPosts(getAllBlogPosts());
+        setPosts(sortPosts(getAllBlogPosts()));
       }
     };
 
