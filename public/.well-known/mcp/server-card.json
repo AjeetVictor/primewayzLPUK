@@ -1,0 +1,32 @@
+﻿{
+  "serverInfo": {
+    "name": "Primewayz UK",
+    "version": "0.1.0",
+    "description": "Primewayz UK public discovery card for service, audit, and insight resources."
+  },
+  "transport": {
+    "type": "none",
+    "endpoint": null,
+    "description": "Primewayz UK does not currently expose a public MCP transport endpoint."
+  },
+  "capabilities": {
+    "resources": [
+      {
+        "name": "Primewayz UK Services",
+        "url": "https://uk.primewayz.com/services",
+        "description": "Service discovery for UK SME digital support."
+      },
+      {
+        "name": "Primewayz UK Web Presence Audit",
+        "url": "https://uk.primewayz.com/uk-sme-digital-visibility-checker",
+        "description": "Free UK SME digital visibility checker."
+      },
+      {
+        "name": "Primewayz UK Blog Insights",
+        "url": "https://uk.primewayz.com/blog",
+        "description": "Practical digital support and visibility insights for UK SMEs."
+      }
+    ],
+    "tools": []
+  }
+}

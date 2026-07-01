@@ -1794,6 +1794,17 @@ for (const [fromPath, toPath] of Object.entries(LEGACY_ROUTE_REDIRECTS)) {
   });
 }
 
+// --- Agent discovery headers ---
+app.use((req, res, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    res.append('Link', '</llms.txt>; rel="llms"');
+    res.append('Link', '</auth.md>; rel="agent-auth"');
+    res.append('Link', '</.well-known/agent-skills/index.json>; rel="agent-skills"');
+    res.append('Link', '</.well-known/mcp/server-card.json>; rel="mcp-server-card"');
+  }
+  next();
+});
+
 // --- Static files ---
 if (isProd) {
   app.use(

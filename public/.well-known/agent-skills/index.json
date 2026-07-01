@@ -1,0 +1,29 @@
+﻿{
+  "$schema": "https://agentskills.io/schemas/agent-skills-index-v0.2.json",
+  "name": "Primewayz UK Agent Skills",
+  "description": "Public discovery index for Primewayz UK service, audit, and content resources.",
+  "url": "https://uk.primewayz.com/.well-known/agent-skills/index.json",
+  "skills": [
+    {
+      "name": "primewayz_uk_service_discovery",
+      "type": "service-discovery",
+      "description": "Helps agents discover Primewayz UK services for website visibility, CRM automation, software delivery, remote IT resources, and monthly digital support.",
+      "url": "https://uk.primewayz.com/services",
+      "sha256": "pending-public-service-discovery"
+    },
+    {
+      "name": "primewayz_uk_web_presence_audit",
+      "type": "website-audit-discovery",
+      "description": "Helps agents guide users to the free UK SME digital visibility checker and public web presence audit flow.",
+      "url": "https://uk.primewayz.com/uk-sme-digital-visibility-checker",
+      "sha256": "pending-web-presence-audit-discovery"
+    },
+    {
+      "name": "primewayz_uk_insights_discovery",
+      "type": "content-discovery",
+      "description": "Helps agents discover Primewayz UK blog insights on monthly digital support, CRM automation, technical SEO, SaaS support, and digital visibility.",
+      "url": "https://uk.primewayz.com/blog",
+      "sha256": "pending-insights-discovery"
+    }
+  ]
+}
