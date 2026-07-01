@@ -28,7 +28,7 @@ export const posts: BlogPost[] = [
     featured: true,
     seoTitle: 'Fixed Price vs T&M vs Subscription Support for UK SMEs',
     seoDescription:
-      'Compare fixed price, time and material, and subscription-based digital support models for UK SMEs, SaaS founders, and service businesses. Learn which model offers better flexibility, trust, and long-term growth.',
+      'Compare fixed price, time and material, and subscription support for UK SMEs and SaaS founders. Learn which model gives better flexibility and value.',
   },
   {
     id: 'uk-sme-digital-adoption-roadmap-2026',
