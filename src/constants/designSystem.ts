@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Locked Primewayz UK design system (Phase B).
  * Use these tokens for new UI work; legacy `emerald`/`indigo` Tailwind aliases map to brand blue/magenta in index.css.
  */
@@ -71,5 +71,6 @@ export const shellClasses = {
     'rounded-2xl border border-brand-border bg-white p-5 shadow-[0_24px_48px_-24px_rgba(0,10,45,0.18)]',
 } as const;
 
-export const LOGO_LIGHT_SRC = '/pw-uk-logo.png';
+export const LOGO_LIGHT_SRC = '/pw-uk-logo-320.webp';
 export const LOGO_DARK_SRC = '/primewayz-uk-dark-logo.png';
+
