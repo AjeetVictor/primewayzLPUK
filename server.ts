@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import path from 'path';
 import fs from 'fs/promises';
 import { PrismaClient } from '@prisma/client';
@@ -1758,7 +1758,7 @@ app.use('/api', (_req, res) => {
   res.status(404).json({ success: false, error: 'API route not found' });
 });
 
-// Bing Webmaster Tools XML verification — must run before static files and SSR catch-all.
+// Bing Webmaster Tools XML verification â€” must run before static files and SSR catch-all.
 const BING_SITE_AUTH_XML = `<?xml version="1.0"?>
 <users>
 \t<user>503A5E857E52D99A468198CE6BD47F45</user>
@@ -1775,7 +1775,7 @@ function serveBingSiteAuth(_req: Request, res: Response) {
 
 app.get('/BingSiteAuth.xml', serveBingSiteAuth);
 
-// IndexNow key verification — must run before static files and SSR catch-all.
+// IndexNow key verification â€” must run before static files and SSR catch-all.
 const INDEXNOW_KEY = 'b477408d1a358457fb3b6d0b8e032ee3';
 
 app.get(`/${INDEXNOW_KEY}.txt`, (_req: Request, res: Response) => {
@@ -1786,7 +1786,7 @@ app.get(`/${INDEXNOW_KEY}.txt`, (_req: Request, res: Response) => {
     .send(INDEXNOW_KEY);
 });
 
-// Legacy marketing URLs → canonical routes (before static files and SPA catch-all).
+// Legacy marketing URLs â†’ canonical routes (before static files and SPA catch-all).
 for (const [fromPath, toPath] of Object.entries(LEGACY_ROUTE_REDIRECTS)) {
   app.get(fromPath, (req, res) => {
     const suffix = req.originalUrl.slice(fromPath.length);
@@ -1835,7 +1835,7 @@ setInterval(async () => { /* daily lead summary */ }, 60 * 1000);
 // -------------------------
 async function createServer() {
   if (!isProd) {
-    // In dev: use Vite as middleware — handles HMR, TS/JSX transforms automatically
+    // In dev: use Vite as middleware â€” handles HMR, TS/JSX transforms automatically
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -1893,3 +1893,4 @@ async function createServer() {
 }
 
 createServer();
+
