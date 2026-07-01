@@ -5,9 +5,8 @@ export const posts: BlogPost[] = [
   {
     id: 'fixed-price-vs-time-material-vs-subscription-support-uk-smes-saas-founders',
     slug: 'fixed-price-vs-time-material-vs-subscription-support-uk-smes-saas-founders',
-    title: 'Fixed Price vs Time & Material vs Subscription Support: Which Model Works Better for UK SMEs and SaaS Founders?',
-    description:
-      'Compare fixed price, time and material, and subscription-based digital support models for UK SMEs, SaaS founders, and service businesses. Learn which model offers better flexibility, trust, and long-term growth.',
+    title: 'Fixed Price vs T&M vs Subscription Support for UK SMEs',
+    description: 'Compare fixed price, time and material, and subscription support for UK SMEs and SaaS founders. Learn which model gives better flexibility and value.',
     excerpt:
       'Compare fixed price, time and material, and subscription-based digital support for UK SMEs and SaaS founders — and when a hybrid model works best.',
     content: fixedPriceVsSubscriptionSupportContent,
@@ -27,7 +26,7 @@ export const posts: BlogPost[] = [
     ],
     image: '/images/blog/fixed-price-vs-time-material-vs-subscription-support.webp',
     featured: true,
-    seoTitle: 'Fixed Price vs Time & Material vs Subscription Support for UK SMEs & SaaS Founders',
+    seoTitle: 'Fixed Price vs T&M vs Subscription Support for UK SMEs',
     seoDescription:
       'Compare fixed price, time and material, and subscription-based digital support models for UK SMEs, SaaS founders, and service businesses. Learn which model offers better flexibility, trust, and long-term growth.',
   },
