@@ -1796,9 +1796,28 @@ for (const [fromPath, toPath] of Object.entries(LEGACY_ROUTE_REDIRECTS)) {
 
 // --- Static files ---
 if (isProd) {
-  app.use(express.static(path.join(__dirname, 'dist/client'), { index: false }));
+  app.use(
+    '/assets',
+    express.static(path.join(__dirname, 'dist/client/assets'), {
+      index: false,
+      immutable: true,
+      maxAge: '1y',
+    }),
+  );
+
+  app.use(
+    express.static(path.join(__dirname, 'dist/client'), {
+      index: false,
+      maxAge: '1h',
+    }),
+  );
 }
-app.use(express.static(path.join(__dirname, 'public')));
+
+app.use(
+  express.static(path.join(__dirname, 'public'), {
+    maxAge: '7d',
+  }),
+);
 
 // -------------------------
 // Local-safe Prisma wrappers
