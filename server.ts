@@ -1797,12 +1797,142 @@ for (const [fromPath, toPath] of Object.entries(LEGACY_ROUTE_REDIRECTS)) {
 // --- Agent discovery headers ---
 app.use((req, res, next) => {
   if (req.method === 'GET' || req.method === 'HEAD') {
+    res.append('Link', '</.well-known/api-catalog>; rel="api-catalog"');
+    res.append('Link', '</openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json"');
+    res.append('Link', '</docs/api.md>; rel="service-doc"; type="text/markdown"');
+    res.append('Link', '</api/health>; rel="status"; type="application/json"');
     res.append('Link', '</llms.txt>; rel="llms"');
     res.append('Link', '</auth.md>; rel="agent-auth"');
     res.append('Link', '</.well-known/agent-skills/index.json>; rel="agent-skills"');
     res.append('Link', '</.well-known/mcp/server-card.json>; rel="mcp-server-card"');
   }
   next();
+});
+
+app.get('/api/health', (_req, res) => {
+  res
+    .status(200)
+    .type('application/json')
+    .set('Cache-Control', 'public, max-age=300')
+    .json({
+      status: 'ok',
+      service: 'primewayz-uk',
+      publicApi: true,
+      timestamp: new Date().toISOString(),
+    });
+});
+
+app.get('/.well-known/api-catalog', (_req, res) => {
+  res
+    .status(200)
+    .type('application/linkset+json')
+    .set('Cache-Control', 'public, max-age=3600')
+    .json({
+      linkset: [
+        {
+          anchor: 'https://uk.primewayz.com/api/blog/posts',
+          'service-desc': [
+            {
+              href: 'https://uk.primewayz.com/openapi.json',
+              type: 'application/vnd.oai.openapi+json'
+            }
+          ],
+          'service-doc': [
+            {
+              href: 'https://uk.primewayz.com/docs/api.md',
+              type: 'text/markdown'
+            }
+          ],
+          status: [
+            {
+              href: 'https://uk.primewayz.com/api/health',
+              type: 'application/json'
+            }
+          ]
+        },
+        {
+          anchor: 'https://uk.primewayz.com/api/tools/web-presence-audit/report/{publicToken}',
+          'service-desc': [
+            {
+              href: 'https://uk.primewayz.com/openapi.json',
+              type: 'application/vnd.oai.openapi+json'
+            }
+          ],
+          'service-doc': [
+            {
+              href: 'https://uk.primewayz.com/docs/api.md',
+              type: 'text/markdown'
+            }
+          ],
+          status: [
+            {
+              href: 'https://uk.primewayz.com/api/health',
+              type: 'application/json'
+            }
+          ]
+        }
+      ]
+    });
+});
+
+const MARKDOWN_PUBLIC_ROUTES: Record<string, string> = {
+  '/': `# Primewayz UK
+
+Primewayz UK helps UK SMEs, founders, consultants, and service businesses improve digital visibility, website performance, CRM workflows, automation, software delivery, and monthly digital support.
+
+## Key resources
+
+- [Services](https://uk.primewayz.com/services)
+- [Website visibility support](https://uk.primewayz.com/website-visibility-support)
+- [CRM automation support](https://uk.primewayz.com/crm-automation-support)
+- [Software product delivery](https://uk.primewayz.com/software-product-delivery)
+- [Website maintenance and monthly support](https://uk.primewayz.com/maintenance)
+- [Free website audit](https://uk.primewayz.com/uk-sme-digital-visibility-checker)
+- [Blog insights](https://uk.primewayz.com/blog)
+- [Contact Primewayz UK](https://uk.primewayz.com/contact-us)
+`,
+  '/services': `# Primewayz UK Services
+
+Primewayz UK provides website visibility support, CRM automation support, software product delivery, remote IT resources, and monthly website maintenance support for UK SMEs.
+
+## Key services
+
+- [Website visibility support](https://uk.primewayz.com/website-visibility-support)
+- [CRM automation support](https://uk.primewayz.com/crm-automation-support)
+- [Software product delivery](https://uk.primewayz.com/software-product-delivery)
+- [Remote IT resources](https://uk.primewayz.com/remote-it-resources)
+- [Monthly website support](https://uk.primewayz.com/maintenance)
+`,
+  '/blog': `# Primewayz UK Insights
+
+Practical guidance for UK SMEs and SaaS founders on monthly digital support, CRM automation, website maintenance, technical SEO, AEO, GEO, and digital visibility.
+
+## Start here
+
+- [Fixed Price vs Time & Material vs Subscription Support](https://uk.primewayz.com/blog/fixed-price-vs-time-material-vs-subscription-support-uk-smes-saas-founders)
+- [Monthly Digital Support for UK SMEs](https://uk.primewayz.com/blog/monthly-digital-support-uk-smes)
+- [Foundation Sprint Before Monthly Delivery](https://uk.primewayz.com/blog/foundation-sprint-before-monthly-delivery)
+`
+};
+
+app.get(['/', '/services', '/blog'], (req, res, next) => {
+  const wantsMarkdown = req.accepts(['html', 'text/markdown']) === 'text/markdown'
+    || String(req.headers.accept || '').includes('text/markdown');
+
+  if (!wantsMarkdown) {
+    return next();
+  }
+
+  const markdown = MARKDOWN_PUBLIC_ROUTES[req.path];
+  if (!markdown) {
+    return next();
+  }
+
+  res
+    .status(200)
+    .type('text/markdown')
+    .set('Cache-Control', 'public, max-age=300')
+    .send(markdown);
 });
 
 // --- Static files ---
