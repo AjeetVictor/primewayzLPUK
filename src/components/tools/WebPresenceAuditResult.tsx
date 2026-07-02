@@ -1151,7 +1151,7 @@ export function WebPresenceAuditResult({
         </div>
       </section>
 
-      {!isShared && showSharePanel && report.score !== undefined && report.profile && report.metadata && Array.isArray(report.checks) ? (
+      {!isShared && showSharePanel ? (
         <WebPresenceAuditReportActions
           report={report as WebPresenceAuditReport}
           ctaLocation={ctaLocation}

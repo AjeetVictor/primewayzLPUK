@@ -15,6 +15,13 @@ import { trackEvent } from '../../lib/analytics';
 import { captureUtmParams, getUtmAnalyticsPayload } from '../../lib/utm';
 import { apiUrl } from '../../utils/apiUrl';
 import { normaliseWebsiteUrl } from '../../utils/normalizeWebsiteUrl';
+import { scrollToAuditSection } from '../../lib/audit/auditPageScroll';
+import {
+  clearAuditSession,
+  loadAuditFormSession,
+  resolveAuditPageEntry,
+  saveAuditFormSession,
+} from '../../lib/audit/sessionReportCache';
 import { WebPresenceAuditResult } from './WebPresenceAuditResult';
 
 const businessTypes = [
@@ -65,6 +72,9 @@ type FormErrors = Partial<Record<keyof FormState | 'form', string>>;
 export type WebPresenceAuditFormProps = {
   variant?: 'homepage' | 'landing';
   showIntro?: boolean;
+  showHonestMessaging?: boolean;
+  renderResultInline?: boolean;
+  onReportChange?: (report: Partial<WebPresenceAuditReport> | null) => void;
   analyticsLocation?: string;
   anchorId?: string;
   defaultTargetCountry?: string;
@@ -223,12 +233,16 @@ function AuditIntroPanel({ headingId }: { headingId: string }) {
 export function WebPresenceAuditForm({
   variant = 'homepage',
   showIntro,
+  showHonestMessaging,
+  renderResultInline = true,
+  onReportChange,
   analyticsLocation,
   anchorId,
   defaultTargetCountry = 'United Kingdom',
   defaultBusinessType = '',
 }: WebPresenceAuditFormProps = {}) {
   const resolvedShowIntro = showIntro ?? variant === 'homepage';
+  const resolvedShowHonestMessaging = showHonestMessaging ?? variant === 'homepage';
   const resolvedAnalyticsLocation = analyticsLocation ?? (variant === 'homepage' ? 'homepage_audit_section' : 'checker_page');
   const fieldIdPrefix = variant === 'landing' ? 'checker-audit' : 'audit';
   const headingId = useId();
@@ -250,17 +264,37 @@ export function WebPresenceAuditForm({
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    const entryMode = resolveAuditPageEntry();
+
+    if (entryMode === 'fresh') {
+      setForm(createInitialState(defaultTargetCountry, defaultBusinessType));
+      setReport(null);
+      onReportChange?.(null);
+      return;
+    }
+
     const websiteParam = new URLSearchParams(window.location.search).get('website');
-    if (!websiteParam) return;
+    if (websiteParam) {
+      const normalizedWebsite = normaliseWebsiteUrl(websiteParam);
+      if (isValidPublicWebsiteUrl(normalizedWebsite)) {
+        setForm((current) => ({ ...current, websiteUrl: normalizedWebsite }));
+      }
+      return;
+    }
 
-    const normalizedWebsite = normaliseWebsiteUrl(websiteParam);
-    if (!isValidPublicWebsiteUrl(normalizedWebsite)) return;
+    if (variant === 'landing') {
+      const cachedForm = loadAuditFormSession();
+      if (cachedForm) {
+        setForm((current) => ({ ...current, ...cachedForm }));
+      }
+    }
+  }, [defaultBusinessType, defaultTargetCountry, variant]);
 
-    setForm((current) => {
-      if (current.websiteUrl.trim()) return current;
-      return { ...current, websiteUrl: normalizedWebsite };
-    });
-  }, []);
+  useEffect(() => {
+    if (variant !== 'landing' || typeof window === 'undefined') return;
+    saveAuditFormSession(form);
+  }, [form, variant]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -293,6 +327,7 @@ export function WebPresenceAuditForm({
     setIsLoading(true);
     setErrors({});
     setReport(null);
+    onReportChange?.(null);
 
     const safeAnalyticsContext = {
       business_type: form.businessType,
@@ -328,7 +363,13 @@ export function WebPresenceAuditForm({
       }
 
       setForm((current) => ({ ...current, websiteUrl: validation.normalizedUrl! }));
-      setReport(data);
+
+      if (renderResultInline) {
+        setReport(data);
+      } else {
+        onReportChange?.(data);
+      }
+
       trackEvent('web_presence_audit_result_view', {
         ...safeAnalyticsContext,
         score: Number(data.score) || 0,
@@ -528,9 +569,9 @@ export function WebPresenceAuditForm({
       ctaLocation={resolvedAnalyticsLocation}
       onRunAnother={() => {
         setReport(null);
-        window.setTimeout(() => {
-          document.getElementById('audit-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 0);
+        onReportChange?.(null);
+        clearAuditSession();
+        window.setTimeout(() => scrollToAuditSection('audit-form', 'smooth'), 0);
       }}
     />
   ) : null;
@@ -552,8 +593,8 @@ export function WebPresenceAuditForm({
           formPanel
         )}
       </div>
-      {honestMessaging}
-      {resultPanel}
+      {resolvedShowHonestMessaging ? honestMessaging : null}
+      {renderResultInline ? resultPanel : null}
     </>
   );
 

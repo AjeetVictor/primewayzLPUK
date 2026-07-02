@@ -26,6 +26,8 @@ export function CampaignLandingHandler() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (location.pathname === AUDIT_CHECKER_PATH) return;
+
     const utm = captureUtmParams(location.search);
 
     if (hasUtmInSearch(location.search)) {

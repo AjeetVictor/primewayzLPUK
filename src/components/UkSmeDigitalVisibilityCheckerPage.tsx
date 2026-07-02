@@ -19,8 +19,10 @@ import type { WebPresenceAuditReport } from '../lib/audit/types';
 import {
   clearAuditSession,
   loadAuditReportSession,
+  resolveAuditPageEntry,
   saveAuditReportSession,
 } from '../lib/audit/sessionReportCache';
+import { scrollToAuditSection } from '../lib/audit/auditPageScroll';
 
 const badges = ['Free', 'No login required', 'UK SME focused'] as const;
 
@@ -48,21 +50,18 @@ const resultActions = [
 ] as const;
 
 export const UkSmeDigitalVisibilityCheckerPage = () => {
-  const initialReport = typeof window !== 'undefined' ? loadAuditReportSession() : null;
-  const [report, setReport] = useState<Partial<WebPresenceAuditReport> | null>(initialReport);
-  const [reportRestored, setReportRestored] = useState(Boolean(initialReport));
+  const [report, setReport] = useState<Partial<WebPresenceAuditReport> | null>(null);
+  const [reportRestored, setReportRestored] = useState(false);
 
   useEffect(() => {
-    if (!initialReport) return;
+    const entryMode = resolveAuditPageEntry();
+    if (entryMode !== 'restore-report') return;
 
-    const scrollToReport = () => {
-      document.getElementById('audit-report')?.scrollIntoView({ behavior: 'auto', block: 'start' });
-    };
+    const cachedReport = loadAuditReportSession();
+    if (!cachedReport) return;
 
-    const timeouts = [0, 120, 400].map((delay) => window.setTimeout(scrollToReport, delay));
-    return () => {
-      timeouts.forEach((timeout) => window.clearTimeout(timeout));
-    };
+    setReport(cachedReport);
+    setReportRestored(true);
   }, []);
 
   const handleReportChange = (nextReport: Partial<WebPresenceAuditReport> | null) => {
@@ -71,6 +70,7 @@ export const UkSmeDigitalVisibilityCheckerPage = () => {
 
     if (nextReport) {
       saveAuditReportSession(nextReport, nextReport.metadata?.auditedUrl || nextReport.profile?.websiteUrl);
+      window.setTimeout(() => scrollToAuditSection('audit-report', 'smooth'), 120);
       return;
     }
 
@@ -139,9 +139,7 @@ export const UkSmeDigitalVisibilityCheckerPage = () => {
               ctaLocation="checker_page"
               onRunAnother={() => {
                 handleReportChange(null);
-                window.setTimeout(() => {
-                  document.getElementById('audit-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 0);
+                window.setTimeout(() => scrollToAuditSection('audit-form', 'smooth'), 0);
               }}
             />
           </div>

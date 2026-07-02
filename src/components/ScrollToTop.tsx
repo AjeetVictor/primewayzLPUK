@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronUp } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import { scrollToAuditSection } from '../lib/audit/auditPageScroll';
 
 export const ScrollToTop = () => {
   const location = useLocation();
@@ -29,12 +30,8 @@ export const ScrollToTop = () => {
 
     const scrollToHashTarget = () => {
       const hashId = decodeURIComponent(location.hash.slice(1));
-      const target = document.getElementById(hashId);
-      if (!target) return;
-
-      const headerOffset = 112;
-      const targetTop = target.getBoundingClientRect().top + window.scrollY - headerOffset;
-      window.scrollTo({ top: Math.max(targetTop, 0), left: 0, behavior: 'smooth' });
+      if (!hashId) return;
+      scrollToAuditSection(hashId, 'smooth');
     };
 
     const timeouts = [80, 250, 650, 1200].map((delay) => window.setTimeout(scrollToHashTarget, delay));
