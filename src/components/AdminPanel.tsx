@@ -33,6 +33,18 @@ interface FormResponse {
   createdAt: string;
 }
 
+function isNewsletterFormResponse(response: FormResponse): boolean {
+  const haystack = `${response.name} ${response.message}`.toLowerCase();
+  return haystack.includes('newsletter subscriber')
+    || haystack.includes('footer_newsletter')
+    || haystack.includes('type: newsletter');
+}
+
+function getFormResponseSource(response: FormResponse): string | null {
+  if (isNewsletterFormResponse(response)) return 'Newsletter';
+  return null;
+}
+
 interface ToolLead {
   id: number;
   source: string;
@@ -1755,27 +1767,42 @@ const AdminPanelContent = () => {
                         </td>
                       </tr>
                     ) : (
-                      filteredForms.map((res) => (
-                        <tr key={res.id} className="hover:bg-zinc-50/50 transition-colors">
-                          <td className="px-6 py-4 text-sm text-zinc-500">
-                            {format(new Date(res.createdAt), 'MMM d, h:mm a')}
-                          </td>
-                          <td className="px-6 py-4 text-sm font-bold text-zinc-900">{res.name}</td>
-                          <td className="px-6 py-4 text-sm text-zinc-600">{res.email}</td>
-                          <td className="px-6 py-4 text-sm text-zinc-600 font-mono whitespace-nowrap">{res.phone || '-'}</td>
-                          <td className="px-6 py-4 text-sm text-zinc-500 max-w-xs truncate">{res.message}</td>
-                          <td className="px-6 py-4 text-right">
-                            {(isSuperAdmin(user?.role) || user?.role === 'editor') && (
-                              <button 
-                                onClick={() => requestAdminConfirm('deleteFormResponse', res.id)}
-                                className="p-2 text-zinc-400 hover:text-red-600 transition-colors"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))
+                      filteredForms.map((res) => {
+                        const source = getFormResponseSource(res);
+
+                        return (
+                          <tr key={res.id} className="hover:bg-zinc-50/50 transition-colors">
+                            <td className="px-6 py-4 text-sm text-zinc-500">
+                              {format(new Date(res.createdAt), 'MMM d, h:mm a')}
+                            </td>
+                            <td className="px-6 py-4 text-sm font-bold text-zinc-900">
+                              <div className="flex flex-col gap-1">
+                                <span>{res.name}</span>
+                                {source ? (
+                                  <span className="inline-flex w-fit rounded-full border border-cyan-100 bg-cyan-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-cyan-700">
+                                    {source}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-zinc-600">{res.email}</td>
+                            <td className="px-6 py-4 text-sm text-zinc-600 font-mono whitespace-nowrap">{res.phone || '-'}</td>
+                            <td className="px-6 py-4 text-sm text-zinc-500 max-w-sm">
+                              <div className="line-clamp-2" title={res.message}>{res.message}</div>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              {(isSuperAdmin(user?.role) || user?.role === 'editor') && (
+                                <button
+                                  onClick={() => requestAdminConfirm('deleteFormResponse', res.id)}
+                                  className="p-2 text-zinc-400 hover:text-red-600 transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>

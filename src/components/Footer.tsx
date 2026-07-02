@@ -15,10 +15,39 @@ import { CANONICAL_ROUTES } from '../constants/canonicalRoutes';
 import { AUDIT_CHECKER_PATH } from '../constants/navigation';
 import { apiUrl } from '../utils/apiUrl';
 import { SelfAuditCta } from './SelfAuditCta';
+import { getFirstUtmParams, getLatestUtmParams } from '../lib/utm';
 
 const TEAL = '#087E8B';
 const BORDER = '#D7E7EC';
 const BODY = '#334155';
+const NEWSLETTER_MESSAGE_PREFIX = 'Footer newsletter signup request.';
+
+function compactUtmLabel(label: string, utm: ReturnType<typeof getFirstUtmParams>): string | null {
+  const values = [utm.utm_source, utm.utm_medium, utm.utm_campaign, utm.utm_content]
+    .filter(Boolean)
+    .map((value) => String(value).replace(/\s+/g, '-').slice(0, 28));
+
+  return values.length ? `${label}:${values.join('/')}` : null;
+}
+
+function buildNewsletterMessage(): string {
+  if (typeof window === 'undefined') {
+    return `${NEWSLETTER_MESSAGE_PREFIX} Source: footer_newsletter. Type: newsletter.`;
+  }
+
+  const pagePath = `${window.location.pathname}${window.location.hash}`.slice(0, 70);
+  const firstUtm = compactUtmLabel('First', getFirstUtmParams());
+  const latestUtm = compactUtmLabel('Latest', getLatestUtmParams());
+
+  return [
+    NEWSLETTER_MESSAGE_PREFIX,
+    'Source: footer_newsletter.',
+    'Type: newsletter.',
+    `Page: ${pagePath || '/'}.`,
+    firstUtm,
+    latestUtm,
+  ].filter(Boolean).join(' ').slice(0, 185);
+}
 
 const serviceLinks = [
   { label: 'Website & Visibility Support', href: CANONICAL_ROUTES.websiteVisibilitySupport },
@@ -136,7 +165,7 @@ export const Footer = () => {
         body: JSON.stringify({
           name: 'Newsletter subscriber',
           email,
-          message: 'Footer newsletter signup request.',
+          message: buildNewsletterMessage(),
         }),
       });
 
