@@ -133,13 +133,13 @@ export const Hero = () => {
               </TrackedLink>
               <span className="hidden h-6 w-px bg-brand-border sm:inline-block" aria-hidden />
               <TrackedLink
-                href="/contact-us"
-                ctaText="Talk to a UK support specialist"
+                href="/uk-sme-digital-visibility-checker#sample-report"
+                ctaText="See sample audit"
                 ctaLocation="homepage_hero_secondary"
                 eventType="cta_click"
                 className="inline-flex items-center gap-2 text-brand-navy transition hover:text-brand-blue"
               >
-                Talk to a UK support specialist
+                See sample audit
                 <ArrowRight className="h-4 w-4 text-brand-cyan" strokeWidth={2.1} aria-hidden />
               </TrackedLink>
             </div>

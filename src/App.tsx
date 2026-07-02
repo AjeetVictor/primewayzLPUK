@@ -3,7 +3,6 @@ import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
-import { UKTrustStrip } from './components/UKTrustStrip';
 import { WebsiteProblemSection } from './components/sections/WebsiteProblemSection';
 import { OutcomePillarsSection } from './components/sections/OutcomePillarsSection';
 import { TrustPillarSection } from './components/sections/TrustPillarSection';
@@ -67,7 +66,6 @@ const MainContent = () => {
   return (
   <main>
     <Hero />
-    <UKTrustStrip />
     <WebsiteProblemSection />
     <OutcomePillarsSection />
     <TrustPillarSection />
