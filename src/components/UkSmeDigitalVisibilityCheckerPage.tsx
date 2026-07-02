@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   BarChart3,
   CheckCircle2,
   Gauge,
+  Globe2,
   Laptop,
   MousePointerClick,
   SearchCheck,
@@ -12,263 +14,230 @@ import {
   Wrench,
 } from 'lucide-react';
 import { WebPresenceAuditForm } from './tools/WebPresenceAuditForm';
+import { WebPresenceAuditResult } from './tools/WebPresenceAuditResult';
+import type { WebPresenceAuditReport } from '../lib/audit/types';
+import {
+  clearAuditSession,
+  loadAuditReportSession,
+  saveAuditReportSession,
+} from '../lib/audit/sessionReportCache';
 
-const heroBadges = ['Free', 'No login required', 'Built for UK SMEs'] as const;
+const badges = ['Free', 'No login required', 'UK SME focused'] as const;
 
-const heroBenefits = [
-  'Visibility and SEO basics',
-  'Trust, clarity and conversion flow',
-  'Mobile, performance and technical readiness',
+const checks = [
+  ['SEO basics', 'Search structure and content clarity.', SearchCheck],
+  ['Trust signals', 'Proof, policies and contact confidence.', ShieldCheck],
+  ['Enquiry path', 'CTAs, forms and booking routes.', MousePointerClick],
+  ['Mobile readiness', 'Small-screen clarity and usability.', Laptop],
+  ['Technical foundations', 'Indexing, metadata and page basics.', Wrench],
+  ['Tracking readiness', 'Analytics and conversion visibility.', BarChart3],
 ] as const;
 
-const reportIncludes = [
-  'Overall visibility readiness score',
-  'Priority fixes to review first',
-  'Category-by-category findings',
-  'Practical next actions',
-  'Suggested support route if help is needed',
+const sampleFixes = [
+  'Clarify first-screen message',
+  'Strengthen trust proof',
+  'Improve CTA tracking',
 ] as const;
 
-const diagnosticCards = [
-  {
-    title: 'SEO basics',
-    description: 'Can search engines and AI-assisted discovery understand the page structure and content?',
-    icon: SearchCheck,
-  },
-  {
-    title: 'Trust signals',
-    description: 'Does the site give first-time visitors enough confidence to enquire?',
-    icon: ShieldCheck,
-  },
-  {
-    title: 'Enquiry path',
-    description: 'Are CTAs, forms, booking paths and follow-up journeys clear?',
-    icon: MousePointerClick,
-  },
-  {
-    title: 'Mobile readiness',
-    description: 'Does the page feel usable and clear on smaller screens?',
-    icon: Laptop,
-  },
-  {
-    title: 'Technical foundations',
-    description: 'Are speed, indexing, metadata and basic technical signals in place?',
-    icon: Wrench,
-  },
-  {
-    title: 'Tracking readiness',
-    description: 'Can enquiries, CTA clicks and sources be measured properly?',
-    icon: BarChart3,
-  },
-] as const;
-
-const priorityFixes = [
-  'Clarify above-the-fold message',
-  'Strengthen trust proof and contact confidence',
-  'Improve CTA consistency and tracking',
-] as const;
-
-const sampleCategories = [
-  ['SEO basics', 'Good base'],
-  ['Trust signals', 'Needs attention'],
-  ['Enquiry path', 'Needs review'],
-  ['Mobile readiness', 'Improving'],
-  ['Technical foundations', 'Check basics'],
-  ['Tracking readiness', 'Partial'],
-] as const;
+const sampleChips = ['SEO basics', 'Trust signals', 'Enquiry path', 'Mobile', 'Technical', 'Tracking'] as const;
 
 const resultActions = [
   'Fix quick wins yourself',
   'Book a discovery call to discuss priorities',
-  'Use report to choose support route',
+  'Use the report to choose a support route',
 ] as const;
 
-export const UkSmeDigitalVisibilityCheckerPage = () => (
-  <main className="min-h-screen bg-[#F7FAFC] text-[#000A2D]">
-    <section className="relative overflow-hidden border-b border-[#D7E7EC] bg-white px-4 pb-14 pt-24 sm:px-6 lg:px-8">
-      <div className="absolute inset-x-0 top-0 h-28 bg-[#EAF8FB]" aria-hidden="true" />
-      <div className="relative mx-auto grid max-w-[1200px] gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
-        <div>
+export const UkSmeDigitalVisibilityCheckerPage = () => {
+  const initialReport = typeof window !== 'undefined' ? loadAuditReportSession() : null;
+  const [report, setReport] = useState<Partial<WebPresenceAuditReport> | null>(initialReport);
+  const [reportRestored, setReportRestored] = useState(Boolean(initialReport));
+
+  useEffect(() => {
+    if (!initialReport) return;
+
+    const scrollToReport = () => {
+      document.getElementById('audit-report')?.scrollIntoView({ behavior: 'auto', block: 'start' });
+    };
+
+    const timeouts = [0, 120, 400].map((delay) => window.setTimeout(scrollToReport, delay));
+    return () => {
+      timeouts.forEach((timeout) => window.clearTimeout(timeout));
+    };
+  }, []);
+
+  const handleReportChange = (nextReport: Partial<WebPresenceAuditReport> | null) => {
+    setReport(nextReport);
+    setReportRestored(false);
+
+    if (nextReport) {
+      saveAuditReportSession(nextReport, nextReport.metadata?.auditedUrl || nextReport.profile?.websiteUrl);
+      return;
+    }
+
+    clearAuditSession();
+  };
+
+  return (
+    <main className="min-h-screen bg-[#F7FAFC] text-[#000A2D]">
+      <section id="audit-form" className="border-b border-[#D7E7EC] bg-white px-4 pb-12 pt-24 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-[1200px] gap-8 lg:grid-cols-[0.78fr_1.22fr] lg:items-start">
+          <div className="lg:pt-5">
           <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-[#007C89]">
             <Sparkles className="h-4 w-4" />
             FREE UK WEBSITE VISIBILITY AUDIT
           </p>
-          <h1 className="mt-5 max-w-3xl text-4xl font-black leading-tight tracking-tight text-[#000A2D] sm:text-5xl">
-            See whether your website is easy to find, trust and enquire from.
+          <h1 className="mt-4 max-w-2xl text-4xl font-black leading-tight tracking-tight sm:text-5xl">
+            Check if your website is easy to find, trust and enquire from.
           </h1>
-          <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
-            Review SEO basics, trust signals, enquiry flow, mobile readiness, tracking and technical foundations, then turn the result into clear next actions.
+          <p className="mt-5 max-w-xl text-base leading-8 text-slate-600">
+            Enter your website URL and get a practical visibility, trust and enquiry-flow report in under a minute.
           </p>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            {heroBadges.map((badge) => (
+          <div className="mt-6 flex flex-wrap gap-2">
+            {badges.map((badge) => (
               <span key={badge} className="rounded-full border border-[#BFDDE5] bg-[#F3FBFD] px-4 py-2 text-xs font-bold text-[#005C68]">
                 {badge}
               </span>
             ))}
           </div>
-
-          <ul className="mt-8 grid gap-3 sm:grid-cols-3">
-            {heroBenefits.map((benefit) => (
-              <li key={benefit} className="flex items-start gap-3 rounded-2xl border border-[#D7E7EC] bg-white px-4 py-4 text-sm font-bold leading-6 shadow-sm shadow-slate-950/5">
-                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#008C9A]" />
-                {benefit}
-              </li>
-            ))}
-          </ul>
+          <p className="mt-6 rounded-2xl border border-[#D7E7EC] bg-[#F8FCFD] p-4 text-sm font-semibold leading-6 text-slate-700">
+            Checks SEO basics, trust signals, enquiry path, mobile readiness, technical foundations and tracking.
+          </p>
         </div>
 
-        <aside className="rounded-[22px] border border-[#CFE4EA] bg-white p-5 shadow-[0_22px_60px_rgba(0,10,45,0.10)] sm:p-7" aria-label="Audit report preview">
-          <div className="flex items-start justify-between gap-4 border-b border-[#D7E7EC] pb-5">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">Audit report preview</p>
-              <h2 className="mt-2 text-2xl font-black tracking-tight">Website readiness score</h2>
-            </div>
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#E8F7FA] text-2xl font-black text-[#000A2D]">
-              0-100
-            </div>
+          <WebPresenceAuditForm
+            variant="landing"
+            showIntro={false}
+            showHonestMessaging={false}
+            renderResultInline={false}
+            analyticsLocation="checker_page"
+            onReportChange={handleReportChange}
+          />
+        </div>
+        <div className="mx-auto mt-6 max-w-[1200px]">
+          <div className="flex flex-col gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 px-5 py-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+            <p className="flex items-center gap-2 font-semibold text-slate-800">
+              <Globe2 className="h-4 w-4 text-blue-700" />
+              Honest external-presence reporting
+            </p>
+            <p>Google and Bing presence are shown as not verified. This tool does not scrape search engines.</p>
           </div>
+        </div>
+      </section>
 
-          <div className="mt-6 grid gap-4">
-            {[
-              ['Priority fixes', 'The first changes to review before deeper work.'],
-              ['Category breakdown', 'Visibility, trust, enquiry flow, mobile, technical and tracking signals.'],
-              ['Recommended next step', 'A practical route based on the gaps found.'],
-            ].map(([title, description]) => (
-              <div key={title} className="rounded-2xl border border-[#D7E7EC] bg-[#F8FCFD] p-4">
-                <p className="text-sm font-black">{title}</p>
-                <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
-              </div>
-            ))}
+      {report ? (
+        <section id="audit-report" className="scroll-mt-28 px-4 py-10 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-[1200px]">
+            {reportRestored ? (
+              <p className="mb-4 rounded-xl border border-[#BFDDE5] bg-[#F3FBFD] px-4 py-3 text-sm font-semibold text-[#005C68]">
+                Your latest audit report was restored for this browser session.
+              </p>
+            ) : null}
+            <WebPresenceAuditResult
+              report={report}
+              mode="interactive"
+              showSharePanel
+              ctaLocation="checker_page"
+              onRunAnother={() => {
+                handleReportChange(null);
+                window.setTimeout(() => {
+                  document.getElementById('audit-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 0);
+              }}
+            />
           </div>
-        </aside>
-      </div>
-    </section>
+        </section>
+      ) : null}
 
-    <section id="audit-form" className="px-4 py-14 sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-[1200px] gap-6 lg:grid-cols-[1.08fr_0.92fr] lg:items-start">
-        <WebPresenceAuditForm variant="landing" showIntro={false} analyticsLocation="checker_page" />
-
-        <aside className="rounded-[22px] border border-[#D7E7EC] bg-white p-6 shadow-sm shadow-slate-950/5 sm:p-8">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">What your report includes</p>
-          <h2 className="mt-3 text-2xl font-black tracking-tight">A practical read on where to focus first.</h2>
-          <ul className="mt-6 space-y-4">
-            {reportIncludes.map((item) => (
-              <li key={item} className="flex items-start gap-3 text-sm font-semibold leading-6 text-slate-700">
-                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#008C9A]" />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </aside>
-      </div>
-    </section>
-
-    <section className="border-y border-[#D7E7EC] bg-white px-4 py-16 sm:px-6 lg:px-8">
+      <section className="px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1200px]">
-        <div className="max-w-3xl">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">What we check</p>
-          <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Six diagnostic views of your website readiness.</h2>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">What we check</p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight">Six public-signal checks</h2>
+          </div>
         </div>
-
-        <div className="mt-9 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {diagnosticCards.map(({ title, description, icon: Icon }) => (
-            <article key={title} className="rounded-2xl border border-[#D7E7EC] bg-[#F8FCFD] p-5 shadow-sm shadow-slate-950/5">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#E8F7FA] text-[#007C89]">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {checks.map(([title, description, Icon]) => (
+            <article key={title} className="flex items-start gap-3 rounded-2xl border border-[#D7E7EC] bg-white p-4 shadow-sm shadow-slate-950/5">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F7FA] text-[#007C89]">
                 <Icon className="h-5 w-5" />
+              </span>
+              <div>
+                <h3 className="text-sm font-black">{title}</h3>
+                <p className="mt-1 text-sm leading-5 text-slate-600">{description}</p>
               </div>
-              <h3 className="mt-5 text-lg font-black">{title}</h3>
-              <p className="mt-3 text-sm leading-7 text-slate-600">{description}</p>
             </article>
           ))}
         </div>
       </div>
-    </section>
+      </section>
 
-    <section id="sample-report" className="scroll-mt-28 px-4 py-16 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-[1200px]">
-        <div className="max-w-3xl">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">SAMPLE REPORT PREVIEW</p>
-          <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
-            A report that shows what to fix first - not just a vague score.
-          </h2>
+      <section id="sample-report" className="scroll-mt-28 border-y border-[#D7E7EC] bg-white px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto grid max-w-[1200px] gap-6 lg:grid-cols-[0.45fr_0.55fr] lg:items-center">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">Sample report preview</p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight">Compact, practical and action-first.</h2>
+          <p className="mt-3 text-sm leading-7 text-slate-600">
+            The real report uses your website data. This sample shows the shape: score, top fixes and category signals.
+          </p>
         </div>
-
-        <div className="mt-9 grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
-          <article className="rounded-[22px] border border-[#D7E7EC] bg-white p-6 shadow-sm shadow-slate-950/5 sm:p-8">
-            <div className="flex items-center justify-between gap-4">
+        <div className="rounded-[22px] border border-[#D7E7EC] bg-[#F8FCFD] p-5 shadow-sm">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <Gauge className="h-10 w-10 text-[#007C89]" />
               <div>
-                <p className="text-sm font-bold text-slate-500">Overall readiness</p>
-                <p className="mt-2 text-5xl font-black tracking-tight">68<span className="text-2xl text-slate-400">/100</span></p>
+                <p className="text-sm font-bold text-slate-500">Sample score</p>
+                <p className="text-4xl font-black">68<span className="text-xl text-slate-400">/100</span></p>
               </div>
-              <Gauge className="h-14 w-14 text-[#007C89]" />
             </div>
-            <div className="mt-8 grid gap-3">
-              <p className="rounded-xl border border-[#D7E7EC] bg-[#F8FCFD] px-4 py-3 text-sm font-bold">Status: Needs attention</p>
-              <p className="rounded-xl border border-[#D7E7EC] bg-[#F8FCFD] px-4 py-3 text-sm font-bold">
-                Best opportunity: Improve trust signals and enquiry flow.
-              </p>
-            </div>
-          </article>
-
-          <article className="rounded-[22px] border border-[#D7E7EC] bg-white p-6 shadow-sm shadow-slate-950/5 sm:p-8">
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#007C89]">Priority fixes</p>
-            <ol className="mt-5 space-y-4">
-              {priorityFixes.map((fix, index) => (
-                <li key={fix} className="flex items-start gap-4 rounded-2xl border border-[#D7E7EC] bg-[#F8FCFD] p-4">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#000A2D] text-sm font-black text-white">
-                    {index + 1}
-                  </span>
-                  <span className="pt-1 text-sm font-bold leading-6">{fix}</span>
+            <ol className="grid gap-2 text-sm font-bold text-slate-800">
+              {sampleFixes.map((fix, index) => (
+                <li key={fix} className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#000A2D] text-xs text-white">{index + 1}</span>
+                  {fix}
                 </li>
               ))}
             </ol>
-          </article>
-        </div>
-
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {sampleCategories.map(([category, status]) => (
-            <div key={category} className="rounded-2xl border border-[#D7E7EC] bg-white p-4">
-              <p className="text-sm font-black">{category}</p>
-              <p className="mt-1 text-sm font-semibold text-[#007C89]">{status}</p>
-            </div>
-          ))}
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {sampleChips.map((chip) => (
+              <span key={chip} className="rounded-full border border-[#BFDDE5] bg-white px-3 py-1 text-xs font-bold text-[#005C68]">
+                {chip}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
-    </section>
+      </section>
 
-    <section className="bg-[#000A2D] px-4 py-16 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-[1200px] gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+      <section className="bg-[#000A2D] px-4 py-12 text-white sm:px-6 lg:px-8">
+      <div className="mx-auto grid max-w-[1200px] gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#7FD5E0]">How to use the result</p>
-          <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">After the audit, you can choose the right next move.</h2>
+          <h2 className="mt-2 text-2xl font-black tracking-tight">See score, fix priorities, choose the next route.</h2>
         </div>
         <div>
           <ul className="grid gap-3 sm:grid-cols-3">
             {resultActions.map((action) => (
               <li key={action} className="rounded-2xl border border-white/15 bg-white/[0.08] px-4 py-4 text-sm font-bold leading-6 text-slate-100">
+                <CheckCircle2 className="mb-2 h-4 w-4 text-[#7FD5E0]" />
                 {action}
               </li>
             ))}
           </ul>
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <Link
-              to="/contact-us#book-call"
-              className="inline-flex min-h-[48px] items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-bold text-[#000A2D] transition hover:bg-[#E8F7FA]"
-            >
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Link to="/contact-us#book-call" className="inline-flex min-h-[48px] items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-bold text-[#000A2D] transition hover:bg-[#E8F7FA]">
               Book a discovery call
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
-            <Link
-              to="/#pricing"
-              className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-white/25 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10"
-            >
+            <Link to="/#pricing" className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-white/25 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10">
               View pricing routes
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </div>
         </div>
       </div>
-    </section>
-  </main>
-);
+      </section>
+    </main>
+  );
+};

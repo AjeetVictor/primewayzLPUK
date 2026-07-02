@@ -13,6 +13,8 @@ import {
   Lightbulb,
   Mail,
   MapPin,
+  Monitor,
+  MonitorSmartphone,
   Network,
   Phone,
   RefreshCw,
@@ -34,7 +36,6 @@ import type {
 import { getCategoryBand, getScoreBand } from '../../lib/audit/scoreBands';
 import { getSharedReportContactCtaUrl } from '../../lib/audit/share/disclaimers';
 import type { ShareLinkState } from '../../lib/audit/share/types';
-import { WebPresenceAuditDisclaimer } from './WebPresenceAuditDisclaimer';
 import { WebPresenceAuditReportActions } from './WebPresenceAuditReportActions';
 import { WebPresenceAuditBenchmarkPanel } from './WebPresenceAuditBenchmarkPanel';
 import { WebPresenceAuditClassificationPanel } from './WebPresenceAuditClassificationPanel';
@@ -73,6 +74,15 @@ type DiagnosticCategory = {
   fallbackFinding: string;
   fallbackAction: string;
 };
+
+type ActionSeverity = 'Critical' | 'Important' | 'Optional';
+
+const SIGNAL_GREEN = {
+  main: '#009688',
+  dark: '#00695C',
+  light: '#E0F5F2',
+  border: '#4DB6AC',
+} as const;
 
 const CATEGORY_HELP: Record<string, CategoryHelp> = {
   'website-basics': {
@@ -237,10 +247,34 @@ function getDiagnosticStatus(points: number, maxPoints: number, status?: string)
 }
 
 function diagnosticStatusClass(status: string) {
-  if (status === 'Good base') return 'border-[#9EDDE6] bg-[#E8F7FA] text-[#005C68]';
-  if (status === 'Improving') return 'border-[#BFDDE5] bg-[#F3FBFD] text-[#007C89]';
-  if (status === 'Priority fix') return 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800';
-  return 'border-slate-200 bg-slate-50 text-slate-700';
+  if (status === 'Good base') return 'border-[#4DB6AC] bg-[#E0F5F2] text-[#00695C]';
+  if (status === 'Improving') return 'border-amber-300 bg-amber-100 text-amber-900';
+  if (status === 'Priority fix') return 'border-rose-300 bg-rose-100 text-rose-900';
+  if (status === 'Needs review') return 'border-sky-300 bg-sky-100 text-sky-900';
+  return 'border-slate-300 bg-slate-100 text-slate-800';
+}
+
+function categoryScoreBarColor(ratio: number) {
+  if (ratio >= 80) return SIGNAL_GREEN.main;
+  if (ratio >= 60) return '#D97706';
+  if (ratio >= 40) return '#0284C7';
+  return '#E11D48';
+}
+
+function categoryFindingPanelClass(status: string) {
+  if (status === 'Good base') return 'border-[#4DB6AC] bg-[#E0F5F2]/90';
+  if (status === 'Improving') return 'border-amber-200 bg-amber-50/80';
+  if (status === 'Priority fix') return 'border-rose-200 bg-rose-50/80';
+  if (status === 'Needs review') return 'border-sky-200 bg-sky-50/80';
+  return 'border-slate-200 bg-slate-50';
+}
+
+function categoryCardAccentClass(status: string) {
+  if (status === 'Good base') return 'border-l-4 border-l-[#009688]';
+  if (status === 'Improving') return 'border-l-4 border-l-amber-500';
+  if (status === 'Priority fix') return 'border-l-4 border-l-rose-500';
+  if (status === 'Needs review') return 'border-l-4 border-l-sky-500';
+  return 'border-l-4 border-l-slate-400';
 }
 
 function buildPriorityFixes(checks: Partial<AuditCheck>[]): PriorityFix[] {
@@ -258,11 +292,23 @@ function buildPriorityFixes(checks: Partial<AuditCheck>[]): PriorityFix[] {
       whyItMatters: CATEGORY_HELP[String(check.id)]?.whyItMatters || 'Weak public signals can make it harder for visitors and search systems to understand the site.',
       recommendedAction: recommendation,
     })))
-    .filter((item, index, items) => items.findIndex((candidate) => candidate.recommendedAction === item.recommendedAction) === index)
+    .filter((item, index, items) => {
+      const itemKey = `${item.title}::${item.recommendedAction}`.toLowerCase();
+      return items.findIndex((candidate) => `${candidate.title}::${candidate.recommendedAction}`.toLowerCase() === itemKey) === index;
+    })
     .slice(0, 3)
     .map((item, index) => ({ ...item, label: `Priority ${index + 1}` }));
 
-  return mapped.length >= 3 ? mapped : FALLBACK_PRIORITY_FIXES;
+  if (mapped.length >= 3) return mapped;
+
+  const filled = [...mapped];
+  for (const fallback of FALLBACK_PRIORITY_FIXES) {
+    if (filled.length >= 3) break;
+    if (!filled.some((item) => item.title.toLowerCase() === fallback.title.toLowerCase())) {
+      filled.push({ ...fallback, label: `Priority ${filled.length + 1}` });
+    }
+  }
+  return filled.slice(0, 3);
 }
 
 
@@ -298,25 +344,30 @@ function BrandImage({ src, businessName }: { src?: string; businessName: string 
 
 function EvidenceList({ evidence }: { evidence?: AuditEvidence[] }) {
   if (!Array.isArray(evidence) || evidence.length === 0) return null;
+  const visibleEvidence = evidence.slice(0, 5);
+  const hiddenEvidenceCount = Math.max(0, evidence.length - visibleEvidence.length);
 
   return (
-    <div>
-      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+    <div className="rounded-2xl border border-[#CFE4EA] bg-[#F8FCFD] p-4 sm:p-5">
+      <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#007C89]">
         <FileSearch className="h-4 w-4" />
         Evidence found
       </p>
-      <ul className="mt-3 grid gap-3">
-        {evidence.map((item, index) => (
-          <li key={`${item.label}-${index}`} className="rounded-xl bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
-            <span className="font-bold text-slate-800">{item.label}</span>
-            {item.value ? `: ${item.value}` : ''}
+      <p className="mt-2 text-xs font-semibold text-slate-600">
+        Verified public signals detected during crawl.
+      </p>
+      <ul className="mt-4 grid gap-3">
+        {visibleEvidence.map((item, index) => (
+          <li key={`${item.label}-${index}`} className="rounded-xl border border-[#D7E7EC] bg-white px-4 py-3 text-sm leading-6 text-slate-700">
+            <p className="font-black text-[#000A2D]">{item.label}</p>
+            {item.value ? <p className="mt-1 text-sm font-semibold text-slate-800">{item.value}</p> : null}
             {item.snippet ? <span className="mt-1 block text-xs text-slate-500">{item.snippet}</span> : null}
             {item.url ? (
               <a
                 href={item.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:text-blue-900"
+                className="mt-2 inline-flex items-center gap-1 text-xs font-black text-[#007C89] hover:text-[#000A2D]"
               >
                 View source page
                 <ExternalLink className="h-3 w-3" />
@@ -325,30 +376,288 @@ function EvidenceList({ evidence }: { evidence?: AuditEvidence[] }) {
           </li>
         ))}
       </ul>
+      {hiddenEvidenceCount > 0 ? (
+        <p className="mt-3 text-xs font-semibold text-slate-500">
+          + {hiddenEvidenceCount} more evidence item{hiddenEvidenceCount === 1 ? '' : 's'} found in this category.
+        </p>
+      ) : null}
     </div>
   );
 }
 
 function RecommendationList({ recommendations }: { recommendations?: string[] }) {
   if (!Array.isArray(recommendations) || recommendations.length === 0) {
-    return <p className="text-sm text-[#007C89]">No immediate recommendation for this category.</p>;
+    return (
+      <div className="rounded-2xl border border-[#D7E7EC] bg-white p-4 sm:p-5">
+        <p className="text-sm font-semibold text-[#007C89]">No immediate priority action for this category.</p>
+      </div>
+    );
   }
 
   return (
-    <div>
-      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+    <div className="rounded-2xl border border-[#CFE4EA] bg-[#F3FBFD] p-4 sm:p-5">
+      <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#005C68]">
         <Lightbulb className="h-4 w-4" />
-        Recommendations
+        Priority actions
       </p>
-      <ul className="mt-3 space-y-3">
-        {recommendations.map((recommendation) => (
-          <li key={recommendation} className="flex gap-3 text-sm leading-6 text-slate-600">
-            <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-[#007C89]" />
-            <span>{recommendation}</span>
+      <p className="mt-2 text-xs font-semibold text-slate-600">
+        Apply these steps to improve visibility, trust, and enquiry readiness.
+      </p>
+      <ul className="mt-4 space-y-3">
+        {recommendations.map((recommendation, index) => (
+          <li key={recommendation} className="flex gap-3 rounded-xl border border-[#D7E7EC] bg-white px-4 py-3 text-sm leading-6 text-slate-700">
+            <span className="mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#000A2D] px-1 text-[10px] font-black text-white">
+              {index + 1}
+            </span>
+            <div className="min-w-0">
+              <span
+                className={`mb-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] ${
+                  severityClass(getActionSeverity(recommendation, index))
+                }`}
+              >
+                {getActionSeverity(recommendation, index)}
+              </span>
+              <p className="font-semibold">{recommendation}</p>
+            </div>
           </li>
         ))}
       </ul>
     </div>
+  );
+}
+
+function getActionSeverity(action: string, index: number): ActionSeverity {
+  const text = action.toLowerCase();
+  if (
+    text.includes('missing') ||
+    text.includes('not detected') ||
+    text.includes('not found') ||
+    text.includes('broken') ||
+    text.includes('error')
+  ) {
+    return 'Critical';
+  }
+  if (index === 0 || text.includes('add ') || text.includes('publish') || text.includes('fix') || text.includes('improve')) {
+    return 'Important';
+  }
+  return 'Optional';
+}
+
+function severityClass(severity: ActionSeverity) {
+  if (severity === 'Critical') return 'bg-rose-100 text-rose-800';
+  if (severity === 'Important') return 'bg-amber-100 text-amber-800';
+  return 'bg-slate-100 text-slate-700';
+}
+
+function PerformanceReadinessSection({
+  performanceCheck,
+  mobileReadiness,
+  auditedUrl,
+}: {
+  performanceCheck?: Partial<AuditCheck>;
+  mobileReadiness?: WebPresenceAuditReport['mobileReadiness'];
+  auditedUrl?: string;
+}) {
+  const [copiedChecklist, setCopiedChecklist] = useState<'mobile' | 'desktop' | null>(null);
+  const performancePoints = Number(performanceCheck?.points) || 0;
+  const performanceMaxPoints = Number(performanceCheck?.maxPoints) || 0;
+  const performanceRatio = performanceMaxPoints > 0 ? Math.round((performancePoints / performanceMaxPoints) * 100) : 0;
+  const desktopSignals = (performanceCheck?.evidence || []).slice(0, 4);
+  const mobileActions = (mobileReadiness?.recommendations || performanceCheck?.recommendations || []).slice(0, 4);
+  const desktopActions = [
+    'Run a Lighthouse Desktop test for Core Web Vitals and interaction bottlenecks.',
+    'Compress hero/media assets and keep above-the-fold payload lightweight.',
+    'Defer non-critical JavaScript and third-party tags until after first render.',
+    'Validate layout stability on common desktop breakpoints (1366px and 1920px).',
+  ];
+  const mobileConcerns = (mobileReadiness?.concerns?.length
+    ? mobileReadiness.concerns
+    : ['Run real-device checks for forms, CTA flow, and scroll readability.']).slice(0, 3);
+  const mobileScoreFromStatus = (() => {
+    if (mobileReadiness?.status === 'strong') return 85;
+    if (mobileReadiness?.status === 'workable') return 65;
+    if (mobileReadiness?.status === 'needs_review') return 40;
+    return 25;
+  })();
+  const desktopScore = Math.max(15, performanceRatio || 0);
+  const pagespeedMobileUrl = auditedUrl
+    ? `https://pagespeed.web.dev/analysis?url=${encodeURIComponent(auditedUrl)}&form_factor=mobile`
+    : 'https://pagespeed.web.dev/';
+  const pagespeedDesktopUrl = auditedUrl
+    ? `https://pagespeed.web.dev/analysis?url=${encodeURIComponent(auditedUrl)}&form_factor=desktop`
+    : 'https://pagespeed.web.dev/';
+  const metricLabel = (score: number) => {
+    if (score >= 80) return 'Strong';
+    if (score >= 60) return 'Workable';
+    if (score >= 40) return 'Needs improvement';
+    return 'Critical';
+  };
+
+  const copyChecklist = async (kind: 'mobile' | 'desktop') => {
+    const lines =
+      kind === 'mobile'
+        ? [
+            'Mobile Performance Checklist',
+            '',
+            'Detected concerns:',
+            ...mobileConcerns.map((item) => `- ${item}`),
+            '',
+            'Priority actions:',
+            ...mobileActions.map((item, index) => `- [${getActionSeverity(item, index)}] ${item}`),
+          ]
+        : [
+            'Desktop Performance Checklist',
+            '',
+            'Detected signals:',
+            ...(desktopSignals.length > 0
+              ? desktopSignals.map((item) => `- ${item.label}${item.value ? `: ${item.value}` : ''}`)
+              : ['- No desktop-specific field data returned in this report.']),
+            '',
+            'Priority actions:',
+            ...desktopActions.map((item, index) => `- [${getActionSeverity(item, index)}] ${item}`),
+          ];
+
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      setCopiedChecklist(kind);
+      window.setTimeout(() => setCopiedChecklist(null), 2200);
+    } catch {
+      setCopiedChecklist(null);
+    }
+  };
+
+  return (
+    <section className="rounded-[24px] border border-[#D7E7EC] bg-white p-6 shadow-sm sm:p-8">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">Performance focus</p>
+      <h2 className="mt-2 text-2xl font-black tracking-tight text-[#000A2D]">Mobile and desktop performance guidance</h2>
+      <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
+        This section converts performance-related signals into practical actions. Mobile reflects detected readiness signals; desktop highlights mandatory verification steps before scaling traffic.
+      </p>
+
+      <div className="mt-6 rounded-2xl border border-[#D7E7EC] bg-[#F8FCFD] p-5">
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-[#007C89]">Visual readiness plot (estimated)</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-[#D7E7EC] bg-white p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-black text-[#000A2D]">Mobile readiness</p>
+              <span className="text-sm font-black text-[#005C68]">{mobileScoreFromStatus}%</span>
+            </div>
+            <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-[#009688]" style={{ width: `${mobileScoreFromStatus}%` }} />
+            </div>
+            <p className="mt-2 text-xs font-semibold text-slate-600">{metricLabel(mobileScoreFromStatus)} - from audit signals</p>
+          </div>
+          <div className="rounded-xl border border-[#D7E7EC] bg-white p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-black text-[#000A2D]">Desktop baseline</p>
+              <span className="text-sm font-black text-[#005C68]">{desktopScore}%</span>
+            </div>
+            <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-[#1D4ED8]" style={{ width: `${desktopScore}%` }} />
+            </div>
+            <p className="mt-2 text-xs font-semibold text-slate-600">{metricLabel(desktopScore)} - verify with Lighthouse desktop</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-5 lg:grid-cols-2">
+        <article className="rounded-2xl border border-[#CFE4EA] bg-[#F8FCFD] p-5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="inline-flex items-center gap-2 text-sm font-black text-[#000A2D]">
+              <MonitorSmartphone className="h-4 w-4 text-[#007C89]" />
+              Mobile readiness
+            </p>
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-[#005C68]">
+              {mobileReadiness?.status ? mobileReadiness.status.replace('_', ' ') : `${performanceRatio}% baseline`}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => copyChecklist('mobile')}
+            className="mt-3 inline-flex min-h-[38px] items-center justify-center rounded-lg border border-[#BFDDE5] bg-white px-3 py-2 text-xs font-black text-[#005C68] transition hover:bg-[#E8F7FA]"
+          >
+            {copiedChecklist === 'mobile' ? 'Copied mobile checklist' : 'Copy mobile checklist'}
+          </button>
+          <a
+            href={pagespeedMobileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-2 mt-3 inline-flex min-h-[38px] items-center justify-center rounded-lg border border-[#BFDDE5] bg-white px-3 py-2 text-xs font-black text-[#005C68] transition hover:bg-[#E8F7FA]"
+          >
+            Run mobile validation
+            <ExternalLink className="ml-1 h-3.5 w-3.5" />
+          </a>
+
+          <ul className="mt-4 space-y-3">
+            {mobileConcerns.map((item) => (
+                <li key={item} className="rounded-xl border border-[#D7E7EC] bg-white px-4 py-3 text-sm font-semibold text-slate-700">
+                  {item}
+                </li>
+              ))}
+          </ul>
+
+          <div className="mt-4 space-y-2">
+            {mobileActions.map((action, index) => (
+              <div key={action} className="rounded-xl border border-[#D7E7EC] bg-white px-4 py-3 text-sm text-slate-700">
+                <span className={`mr-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] ${severityClass(getActionSeverity(action, index))}`}>
+                  {getActionSeverity(action, index)}
+                </span>
+                <span className="font-semibold">{action}</span>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="rounded-2xl border border-[#D7E7EC] bg-white p-5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="inline-flex items-center gap-2 text-sm font-black text-[#000A2D]">
+              <Monitor className="h-4 w-4 text-[#007C89]" />
+              Desktop performance
+            </p>
+            <span className="rounded-full bg-[#F8FCFD] px-3 py-1 text-xs font-black text-slate-700">Verification required</span>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            The free audit checks HTML/CSS performance signals only. Use Lighthouse Desktop to confirm real render, script execution, and interaction quality.
+          </p>
+          <button
+            type="button"
+            onClick={() => copyChecklist('desktop')}
+            className="mt-3 inline-flex min-h-[38px] items-center justify-center rounded-lg border border-[#BFDDE5] bg-white px-3 py-2 text-xs font-black text-[#005C68] transition hover:bg-[#E8F7FA]"
+          >
+            {copiedChecklist === 'desktop' ? 'Copied desktop checklist' : 'Copy desktop checklist'}
+          </button>
+          <a
+            href={pagespeedDesktopUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-2 mt-3 inline-flex min-h-[38px] items-center justify-center rounded-lg border border-[#BFDDE5] bg-white px-3 py-2 text-xs font-black text-[#005C68] transition hover:bg-[#E8F7FA]"
+          >
+            Run desktop validation
+            <ExternalLink className="ml-1 h-3.5 w-3.5" />
+          </a>
+          <ul className="mt-4 space-y-3">
+            {(desktopSignals.length > 0
+              ? desktopSignals.map((item) => `${item.label}${item.value ? `: ${item.value}` : ''}`)
+              : ['No desktop-specific field data returned in this report.'])
+              .map((signal) => (
+                <li key={signal} className="rounded-xl border border-[#D7E7EC] bg-[#F8FCFD] px-4 py-3 text-sm font-semibold text-slate-700">
+                  {signal}
+                </li>
+              ))}
+          </ul>
+          <div className="mt-4 space-y-2">
+            {desktopActions.map((action, index) => (
+              <div key={action} className="rounded-xl border border-[#D7E7EC] bg-white px-4 py-3 text-sm text-slate-700">
+                <span className={`mr-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] ${severityClass(getActionSeverity(action, index))}`}>
+                  {getActionSeverity(action, index)}
+                </span>
+                <span className="font-semibold">{action}</span>
+              </div>
+            ))}
+          </div>
+        </article>
+      </div>
+    </section>
   );
 }
 
@@ -419,7 +728,7 @@ function CategoryCard({
 
       <details className="group border-t border-slate-100">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-bold text-slate-800 transition hover:bg-slate-50 sm:px-6">
-          View evidence and actions
+          Evidence and priority actions
           <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
         </summary>
         <div className="grid gap-6 border-t border-slate-100 px-5 py-5 sm:px-6 lg:grid-cols-2">
@@ -428,6 +737,50 @@ function CategoryCard({
         </div>
       </details>
     </article>
+  );
+}
+
+function DetailedCheckAccordion({
+  title,
+  check,
+}: {
+  title: string;
+  check?: Partial<AuditCheck>;
+}) {
+  return (
+    <details className="group rounded-2xl border border-[#D7E7EC] bg-white">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-sm font-black text-[#000A2D] transition hover:bg-[#F8FCFD]">
+        {title}
+        <ChevronDown className="h-4 w-4 shrink-0 text-[#007C89] transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="border-t border-[#D7E7EC] px-5 py-5">
+        {check ? (
+          <div className="space-y-5">
+            <div className="rounded-2xl border border-[#D7E7EC] bg-white p-4 sm:p-5">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#007C89]">Problem observed</p>
+              <p className="mt-2 text-sm font-semibold leading-7 text-slate-700">
+                {check.explanation || 'This category did not include an explanation.'}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="inline-flex items-center rounded-full border border-[#BFDDE5] bg-[#F3FBFD] px-3 py-1 text-xs font-black text-[#005C68]">
+                  Score: {Number(check.points) || 0} / {Number(check.maxPoints) || 0}
+                </span>
+                <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600">
+                  Status: {safeStatus(check.status).replace('_', ' ')}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-2">
+              <EvidenceList evidence={check.evidence} />
+              <RecommendationList recommendations={check.recommendations} />
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm leading-6 text-slate-600">No detailed signals were returned for this section.</p>
+        )}
+      </div>
+    </details>
   );
 }
 
@@ -525,28 +878,6 @@ export function WebPresenceAuditResult({
   const validGeneratedAt = generatedAt && !Number.isNaN(generatedAt.getTime());
   const businessName = profile?.businessName || 'Your website';
   const brandImage = profile?.logoUrl || profile?.faviconUrl || profile?.openGraphImage;
-  const weakCheckActionIds = checks.flatMap((check): AuditActionCategoryId[] => {
-    const status = safeStatus(check.status);
-    const categoryId = typeof check.id === 'string' ? check.id : '';
-    if (
-      (status === 'partial' || status === 'gap')
-      && categoryId in AUDIT_CATEGORY_ACTION_LINKS
-    ) {
-      return [categoryId as AuditActionCategoryId];
-    }
-    return [];
-  });
-  const weakActionCategoryIds = Array.from(new Set<AuditActionCategoryId>([
-    ...weakCheckActionIds,
-    ...(report.mobileReadiness?.status === 'needs_review' ? ['mobile-readiness' as const] : []),
-    ...(report.headReadiness && (
-      report.headReadiness.title === 'missing'
-      || report.headReadiness.metaDescription === 'missing'
-      || report.headReadiness.canonical === 'missing'
-      || report.headReadiness.robotsMeta === 'noindex_detected'
-      || report.headReadiness.structuredData === 'missing'
-    ) ? ['head-readiness' as const] : []),
-  ])).slice(0, 6);
 
   useEffect(() => {
     trackEvent('result_meaning_viewed', {
@@ -573,7 +904,8 @@ export function WebPresenceAuditResult({
   const auditStatus = getAuditStatus(score);
   const statusCopy = report.summary || getAuditStatusCopy(score);
   const priorityFixes = buildPriorityFixes(checks);
-  const recommendedRoute = getRecommendedRoute(score);
+  const primaryOpportunity = priorityFixes[0]?.title || getRecommendedRoute(score);
+  const performanceCheck = checks.find((item) => item.id === 'performance-ux');
   const diagnosticCategoryResults = DIAGNOSTIC_CATEGORIES.map((category) => {
     const check = checks.find((item) => item.id === category.id);
     const points = Number(check?.points) || 0;
@@ -591,9 +923,9 @@ export function WebPresenceAuditResult({
   });
 
   return (
-    <div className="mt-12 space-y-8" aria-live="polite">
+    <div className="mt-12 space-y-7" aria-live="polite">
       <section className="overflow-hidden rounded-[28px] border border-[#CFE4EA] bg-white shadow-[0_24px_70px_rgba(0,10,45,0.10)]">
-        <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="grid gap-0 lg:grid-cols-[1fr_auto]">
           <div className="p-6 sm:p-8 lg:p-10">
             <div className="flex items-center gap-4">
               <BrandImage src={brandImage} businessName={businessName} />
@@ -615,6 +947,10 @@ export function WebPresenceAuditResult({
             </div>
 
             <p className="mt-7 max-w-3xl text-base leading-8 text-slate-700">{statusCopy}</p>
+            <div className="mt-5 rounded-2xl border border-[#D7E7EC] bg-[#F8FCFD] p-4">
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-[#007C89]">Primary opportunity</p>
+              <p className="mt-2 text-base font-black text-[#000A2D]">{primaryOpportunity}</p>
+            </div>
 
             <div className="mt-7 flex flex-wrap gap-3 text-xs font-semibold text-slate-600">
               <span className="inline-flex items-center gap-2 rounded-full border border-[#D7E7EC] bg-[#F8FCFD] px-3 py-2">
@@ -636,8 +972,8 @@ export function WebPresenceAuditResult({
             </a>
           </div>
 
-          <div className="border-t border-[#D7E7EC] bg-[#F3FBFD] p-6 sm:p-8 lg:border-l lg:border-t-0 lg:p-10">
-            <div className="rounded-[24px] border border-[#BFDDE5] bg-white p-6 shadow-sm">
+          <div className="border-t border-[#D7E7EC] bg-[#F3FBFD] p-6 sm:p-8 lg:w-[420px] lg:border-l lg:border-t-0 lg:p-10">
+            <div className="rounded-[24px] border border-[#BFDDE5] bg-white p-6 shadow-sm lg:sticky lg:top-24">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#007C89]">Overall readiness score</p>
               <div className="mt-6 flex items-center gap-6">
                 <div className="relative flex h-32 w-32 shrink-0 items-center justify-center rounded-full bg-[#E8F7FA]">
@@ -660,27 +996,43 @@ export function WebPresenceAuditResult({
         </div>
       </section>
 
-      <WebPresenceAuditDisclaimer />
-
       <section className="rounded-[24px] border border-[#D7E7EC] bg-white p-6 shadow-sm sm:p-8">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">Fix these first</p>
-        <h2 className="mt-2 text-2xl font-black tracking-tight text-[#000A2D]">Fix these first</h2>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">Recommended focus</p>
+        <h2 className="mt-2 text-2xl font-black tracking-tight text-[#000A2D]">Recommended focus</h2>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
           These are the highest-impact items to review before investing more into traffic or campaigns.
         </p>
         <div className="mt-7 grid gap-4 lg:grid-cols-3">
           {priorityFixes.map((priority) => (
-            <article key={`${priority.label}-${priority.title}`} className="rounded-2xl border border-[#D7E7EC] bg-[#F8FCFD] p-5">
+            <article key={`${priority.label}-${priority.title}`} className="rounded-2xl border border-[#D7E7EC] bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-[#007C89]">{priority.label}</p>
               <h3 className="mt-3 text-lg font-black leading-6 text-[#000A2D]">{priority.title}</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{priority.explanation}</p>
-              <div className="mt-5 border-t border-[#D7E7EC] pt-4">
-                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Why it matters</p>
-                <p className="mt-2 text-sm leading-6 text-slate-700">{priority.whyItMatters}</p>
+
+              <div className="mt-4 rounded-xl border-2 border-rose-300 bg-rose-100 p-4">
+                <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-rose-900">
+                  <span className="h-2 w-2 rounded-full bg-rose-600" aria-hidden />
+                  Problem identified
+                </p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-rose-950">{priority.explanation}</p>
               </div>
-              <div className="mt-4">
-                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Recommended action</p>
-                <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">{priority.recommendedAction}</p>
+
+              <div className="mt-3 rounded-xl border-2 border-sky-300 bg-sky-100 p-4">
+                <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-sky-900">
+                  <span className="h-2 w-2 rounded-full bg-sky-600" aria-hidden />
+                  Why it matters
+                </p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-sky-950">{priority.whyItMatters}</p>
+              </div>
+
+              <div
+                className="mt-3 rounded-xl border-2 p-4 shadow-sm"
+                style={{ borderColor: SIGNAL_GREEN.main, backgroundColor: SIGNAL_GREEN.light }}
+              >
+                <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em]" style={{ color: SIGNAL_GREEN.dark }}>
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: SIGNAL_GREEN.main }} aria-hidden />
+                  Recommended fix
+                </p>
+                <p className="mt-2 text-sm font-bold leading-6" style={{ color: SIGNAL_GREEN.dark }}>{priority.recommendedAction}</p>
               </div>
             </article>
           ))}
@@ -691,27 +1043,73 @@ export function WebPresenceAuditResult({
         <div className="mb-6">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">Category breakdown</p>
           <h2 className="mt-2 text-2xl font-black tracking-tight text-[#000A2D]">Category breakdown</h2>
+          <div className="mt-4 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.1em]">
+            <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-[#4DB6AC] bg-[#E0F5F2] px-2.5 py-1 text-[#00695C]">
+              <span className="h-2 w-2 rounded-full bg-[#009688]" aria-hidden />
+              Good base
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-amber-300 bg-amber-100 px-2.5 py-1 text-amber-900">
+              <span className="h-2 w-2 rounded-full bg-amber-600" aria-hidden />
+              Improving
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-sky-300 bg-sky-100 px-2.5 py-1 text-sky-900">
+              <span className="h-2 w-2 rounded-full bg-sky-600" aria-hidden />
+              Needs review
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-rose-300 bg-rose-100 px-2.5 py-1 text-rose-900">
+              <span className="h-2 w-2 rounded-full bg-rose-600" aria-hidden />
+              Priority fix
+            </span>
+          </div>
         </div>
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {diagnosticCategoryResults.map(({ id, name, icon: Icon, points, maxPoints, status, finding, action }) => (
-            <article key={id} className="rounded-2xl border border-[#D7E7EC] bg-white p-5 shadow-sm">
+          {diagnosticCategoryResults.map(({ id, name, icon: Icon, points, maxPoints, status, finding, action }) => {
+            const scoreRatio = maxPoints > 0 ? Math.round((points / maxPoints) * 100) : 0;
+            return (
+            <article
+              key={id}
+              className={`rounded-2xl border border-[#D7E7EC] bg-white p-5 shadow-sm ${categoryCardAccentClass(status)}`}
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#E8F7FA] text-[#007C89]">
                   <Icon className="h-5 w-5" />
                 </div>
-                <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${diagnosticStatusClass(status)}`}>
+                <span className={`rounded-full border-2 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${diagnosticStatusClass(status)}`}>
                   {status}
                 </span>
               </div>
               <h3 className="mt-5 text-lg font-black text-[#000A2D]">{name}</h3>
-              <p className="mt-2 text-xs font-bold text-slate-500">{maxPoints > 0 ? `${points} / ${maxPoints} points` : 'Signal review'}</p>
-              <p className="mt-4 text-sm leading-6 text-slate-600">{finding}</p>
-              <div className="mt-5 rounded-xl border border-[#D7E7EC] bg-[#F8FCFD] p-4">
-                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Recommended next action</p>
-                <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">{action}</p>
+              <div className="mt-3">
+                <div className="flex items-center justify-between text-xs font-black">
+                  <span className="text-slate-600">{maxPoints > 0 ? `${points} / ${maxPoints} points` : 'Signal review'}</span>
+                  {maxPoints > 0 ? <span style={{ color: categoryScoreBarColor(scoreRatio) }}>{scoreRatio}%</span> : null}
+                </div>
+                {maxPoints > 0 ? (
+                  <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${scoreRatio}%`, backgroundColor: categoryScoreBarColor(scoreRatio) }}
+                    />
+                  </div>
+                ) : null}
+              </div>
+              <div className={`mt-4 rounded-xl border p-4 ${categoryFindingPanelClass(status)}`}>
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-700">What we found</p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">{finding}</p>
+              </div>
+              <div
+                className="mt-4 rounded-xl border-2 p-4 shadow-sm"
+                style={{ borderColor: SIGNAL_GREEN.main, backgroundColor: SIGNAL_GREEN.light }}
+              >
+                <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em]" style={{ color: SIGNAL_GREEN.dark }}>
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: SIGNAL_GREEN.main }} aria-hidden />
+                  Fix this by
+                </p>
+                <p className="mt-2 text-sm font-bold leading-6" style={{ color: SIGNAL_GREEN.dark }}>{action}</p>
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -732,51 +1130,25 @@ export function WebPresenceAuditResult({
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[28px] bg-[#000A2D] p-6 text-white sm:p-8">
-        <div className="grid gap-7 lg:grid-cols-[1fr_auto] lg:items-center">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#7FD5E0]">Recommended next step</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight">Recommended next step</h2>
-            <p className="mt-3 max-w-2xl text-base font-semibold leading-7 text-slate-100">{recommendedRoute}</p>
-            <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
-              Use this report to decide whether quick internal fixes are enough or whether a structured Primewayz support route would help you move faster.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
-            <a
-              href={isShared ? sharedContactHref : '/contact-us#book-call'}
-              className="inline-flex min-h-[48px] items-center justify-center rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#000A2D] transition hover:bg-[#E8F7FA]"
-            >
-              Book a discovery call
-              <ArrowUpRight className="ml-2 h-4 w-4" />
-            </a>
-            <a
-              href="/pricing"
-              className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-white/25 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"
-            >
-              View pricing routes
-              <ArrowUpRight className="ml-2 h-4 w-4" />
-            </a>
-            {!isShared && onRunAnother ? (
-              <button
-                type="button"
-                onClick={onRunAnother}
-                className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-white/25 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"
-              >
-                Run another audit
-                <RefreshCw className="ml-2 h-4 w-4" />
-              </button>
-            ) : null}
-          </div>
-        </div>
-      </section>
+      <PerformanceReadinessSection
+        performanceCheck={performanceCheck}
+        mobileReadiness={report.mobileReadiness}
+        auditedUrl={metadata?.auditedUrl}
+      />
 
-      <section className="rounded-[24px] border border-[#D7E7EC] bg-white p-6 shadow-sm sm:p-8">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">Detailed findings</p>
-        <h2 className="mt-2 text-2xl font-black tracking-tight text-[#000A2D]">Detailed findings</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-          The sections below preserve the supporting audit detail, evidence, benchmark notes, profile signals and limitations behind the summary above.
-        </p>
+      <section>
+        <div className="mb-5">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">Detailed checks</p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight text-[#000A2D]">Detailed checks</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
+            Expand each section to review the supporting evidence and recommendations behind the dashboard.
+          </p>
+        </div>
+        <div className="grid gap-3">
+          {diagnosticCategoryResults.map(({ id, name, check }) => (
+            <DetailedCheckAccordion key={id} title={name} check={check} />
+          ))}
+        </div>
       </section>
 
       {!isShared && showSharePanel && report.score !== undefined && report.profile && report.metadata && Array.isArray(report.checks) ? (
@@ -788,36 +1160,44 @@ export function WebPresenceAuditResult({
         />
       ) : null}
 
-      {report.benchmark ? (
-        <WebPresenceAuditBenchmarkPanel
-          benchmark={report.benchmark}
-          businessType={profile?.businessType}
-          ctaLocation={ctaLocation}
-          score={score}
-        />
-      ) : null}
+      <details className="group rounded-2xl border border-slate-200 bg-white">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-sm font-black text-[#000A2D] transition hover:bg-slate-50">
+          Additional audit context
+          <ChevronDown className="h-4 w-4 shrink-0 text-[#007C89] transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="space-y-5 border-t border-slate-200 p-5">
+          {report.benchmark ? (
+            <WebPresenceAuditBenchmarkPanel
+              benchmark={report.benchmark}
+              businessType={profile?.businessType}
+              ctaLocation={ctaLocation}
+              score={score}
+            />
+          ) : null}
 
-      {report.classification ? (
-        <WebPresenceAuditClassificationPanel classification={report.classification} />
-      ) : null}
+          {report.classification ? (
+            <WebPresenceAuditClassificationPanel classification={report.classification} />
+          ) : null}
 
-      {report.mobileReadiness ? (
-        <WebPresenceAuditMobileReadinessPanel
-          mobileReadiness={report.mobileReadiness}
-          scoreBand={scoreBandValue}
-          scoreLabel={scoreBand.label}
-          ctaLocation={ctaLocation}
-        />
-      ) : null}
+          {report.mobileReadiness ? (
+            <WebPresenceAuditMobileReadinessPanel
+              mobileReadiness={report.mobileReadiness}
+              scoreBand={scoreBandValue}
+              scoreLabel={scoreBand.label}
+              ctaLocation={ctaLocation}
+            />
+          ) : null}
 
-      {report.headReadiness ? (
-        <WebPresenceAuditHeadReadinessPanel
-          headReadiness={report.headReadiness}
-          scoreBand={scoreBandValue}
-          scoreLabel={scoreBand.label}
-          ctaLocation={ctaLocation}
-        />
-      ) : null}
+          {report.headReadiness ? (
+            <WebPresenceAuditHeadReadinessPanel
+              headReadiness={report.headReadiness}
+              scoreBand={scoreBandValue}
+              scoreLabel={scoreBand.label}
+              ctaLocation={ctaLocation}
+            />
+          ) : null}
+        </div>
+      </details>
 
       {profile ? (
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
@@ -848,42 +1228,12 @@ export function WebPresenceAuditResult({
         </section>
       ) : null}
 
-      <RecommendedActions
-        categoryIds={weakActionCategoryIds}
-        scoreBand={scoreBandValue}
-        scoreLabel={scoreBand.label}
-        ctaLocation={ctaLocation}
-      />
-
-      {checks.length > 0 ? (
-        <section>
-          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Score breakdown</p>
-              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">All audit categories</h2>
-            </div>
-            <p className="max-w-lg text-sm leading-6 text-slate-600">Open each category to review detected evidence, limitations, and suggested next actions.</p>
-          </div>
-          <div className="grid gap-5 lg:grid-cols-2">
-            {checks.map((check, index) => (
-              <CategoryCard
-                key={check.id || `${check.name}-${index}`}
-                check={check}
-                scoreBand={scoreBandValue}
-                scoreLabel={scoreBand.label}
-                ctaLocation={ctaLocation}
-              />
-            ))}
-          </div>
-        </section>
-      ) : null}
-
       <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-7">
         <div className="flex items-center gap-3">
           <CircleHelp className="h-6 w-6 text-slate-500" />
           <div>
-            <h2 className="text-lg font-black text-slate-950">Not verified in this free audit</h2>
-            <p className="mt-1 text-sm text-slate-600">These items were not checked or could not be confirmed in this free version.</p>
+            <h2 className="text-lg font-black text-slate-950">Report limitations</h2>
+            <p className="mt-1 text-sm text-slate-600">This free report is based on publicly visible website signals.</p>
           </div>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -900,6 +1250,31 @@ export function WebPresenceAuditResult({
         <p className="mt-2 text-xs leading-5 text-slate-500">
           This report does not scrape Google or Bing and does not call an IP geolocation provider.
         </p>
+      </section>
+
+      <section className="rounded-[24px] border border-[#D7E7EC] bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">Report action bar</p>
+            <h2 className="mt-2 text-xl font-black text-[#000A2D]">Choose the next action</h2>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <a href={isShared ? sharedContactHref : '/contact-us#book-call'} className="inline-flex min-h-[46px] items-center justify-center rounded-xl bg-[#000A2D] px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-950">
+              Book a discovery call
+              <ArrowUpRight className="ml-2 h-4 w-4" />
+            </a>
+            <a href="/pricing" className="inline-flex min-h-[46px] items-center justify-center rounded-xl border border-[#BFDDE5] bg-[#F8FCFD] px-5 py-3 text-sm font-bold text-[#000A2D] transition hover:bg-[#E8F7FA]">
+              View pricing routes
+              <ArrowUpRight className="ml-2 h-4 w-4" />
+            </a>
+            {!isShared && onRunAnother ? (
+              <button type="button" onClick={onRunAnother} className="inline-flex min-h-[46px] items-center justify-center rounded-xl border border-[#BFDDE5] bg-white px-5 py-3 text-sm font-bold text-[#000A2D] transition hover:bg-[#F8FCFD]">
+                Run another audit
+                <RefreshCw className="ml-2 h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
+        </div>
       </section>
 
       {checks.length === 0 ? (
