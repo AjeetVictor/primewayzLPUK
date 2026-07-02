@@ -365,9 +365,13 @@ export function WebPresenceAuditForm({
           <SearchCheck className="h-5 w-5" />
         </div>
         <div>
-          <h3 className="text-2xl font-black tracking-tight text-slate-950">Check my website</h3>
+          <h3 className="text-2xl font-black tracking-tight text-slate-950">
+            {variant === 'landing' ? 'Start your free audit' : 'Check my website'}
+          </h3>
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            Enter your details for a personalised, evidence-based report. Nothing is stored.
+            {variant === 'landing'
+              ? 'Enter your website and a few business details so the report can be interpreted in context.'
+              : 'Enter your details for a personalised, evidence-based report. Nothing is stored.'}
           </p>
         </div>
       </div>
@@ -494,7 +498,7 @@ export function WebPresenceAuditForm({
             </>
           ) : (
             <>
-              Check my website
+              {variant === 'landing' ? 'Run free audit' : 'Check my website'}
               <ArrowRight className="ml-2 h-4 w-4" />
             </>
           )}

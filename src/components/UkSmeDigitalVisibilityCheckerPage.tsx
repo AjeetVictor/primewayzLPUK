@@ -1,269 +1,274 @@
 import { Link } from 'react-router-dom';
 import {
-  ArrowLeft,
+  ArrowRight,
   BarChart3,
-  FileSearch,
+  CheckCircle2,
   Gauge,
-  Globe2,
-  MapPin,
+  Laptop,
   MousePointerClick,
-  ScanSearch,
-  Share2,
-  Shield,
-  SlidersHorizontal,
+  SearchCheck,
+  ShieldCheck,
   Sparkles,
-  Star,
-  Users,
-  Zap,
+  Wrench,
 } from 'lucide-react';
-import type { AuditCategoryId } from '../lib/audit/types';
-import { CATEGORY_CONFIG, CATEGORY_ORDER } from '../lib/audit/scoring/scoringConfig';
-import { SCORE_BANDS_HIGH_TO_LOW, formatScoreBandRange } from '../lib/audit/scoreBands';
 import { WebPresenceAuditForm } from './tools/WebPresenceAuditForm';
 
-const categoryDescriptions: Record<AuditCategoryId, string> = {
-  'website-basics': 'Checks homepage reachability, HTTPS, title, and readable HTML content.',
-  'technical-seo': 'Reviews title tags, meta descriptions, canonicals, robots, sitemap, and OpenGraph basics.',
-  'trust-signals': 'Looks for contact, about, privacy, and credibility signals that help visitors feel confident.',
-  'lead-capture': 'Reviews whether the site has clear CTAs such as contact, enquiry, quote, booking, or call actions.',
-  'local-visibility': 'Checks UK/local wording, phone, address or service-area signals, and structured data.',
-  'external-presence': 'Flags Google and Bing presence as not verified without scraping search engines.',
-  'reviews-reputation': 'Looks for testimonials, case studies, success stories, and portfolio or client evidence.',
-  'performance-ux': 'Reviews homepage HTML size and responsive viewport basics.',
-  'analytics-readiness': 'Checks for analytics or tag-manager readiness signals on the public site.',
-};
+const heroBadges = ['Free', 'No login required', 'Built for UK SMEs'] as const;
 
-const categoryIcons: Record<AuditCategoryId, typeof FileSearch> = {
-  'website-basics': Globe2,
-  'technical-seo': FileSearch,
-  'trust-signals': Shield,
-  'lead-capture': MousePointerClick,
-  'local-visibility': MapPin,
-  'external-presence': Globe2,
-  'reviews-reputation': Star,
-  'performance-ux': Zap,
-  'analytics-readiness': BarChart3,
-};
+const heroBenefits = [
+  'Visibility and SEO basics',
+  'Trust, clarity and conversion flow',
+  'Mobile, performance and technical readiness',
+] as const;
 
-const trustPoints = [
+const reportIncludes = [
+  'Overall visibility readiness score',
+  'Priority fixes to review first',
+  'Category-by-category findings',
+  'Practical next actions',
+  'Suggested support route if help is needed',
+] as const;
+
+const diagnosticCards = [
   {
-    title: 'Built for UK SMEs',
-    description: 'Questions, categories, and recommendations use practical UK small-business context.',
-    icon: Users,
+    title: 'SEO basics',
+    description: 'Can search engines and AI-assisted discovery understand the page structure and content?',
+    icon: SearchCheck,
   },
   {
-    title: 'Public-signal overview',
-    description: 'The free audit reviews visible website signals, not private accounts or authenticated platform data.',
-    icon: ScanSearch,
+    title: 'Trust signals',
+    description: 'Does the site give first-time visitors enough confidence to enquire?',
+    icon: ShieldCheck,
   },
   {
-    title: 'Shareable HTML report',
-    description: 'Create a privacy-filtered report link that can be reviewed without exposing submitted contact details.',
-    icon: Share2,
+    title: 'Enquiry path',
+    description: 'Are CTAs, forms, booking paths and follow-up journeys clear?',
+    icon: MousePointerClick,
   },
   {
-    title: 'Sector-aware recommendations',
-    description: 'Guidance is organised around the supplied business type and the signals found on public pages.',
-    icon: SlidersHorizontal,
+    title: 'Mobile readiness',
+    description: 'Does the page feel usable and clear on smaller screens?',
+    icon: Laptop,
+  },
+  {
+    title: 'Technical foundations',
+    description: 'Are speed, indexing, metadata and basic technical signals in place?',
+    icon: Wrench,
+  },
+  {
+    title: 'Tracking readiness',
+    description: 'Can enquiries, CTA clicks and sources be measured properly?',
+    icon: BarChart3,
   },
 ] as const;
 
-const checkerFaqs = [
-  {
-    question: 'What does the free UK SME web presence audit check?',
-    answer: 'It reviews visible public-page signals across website basics, technical SEO readiness, trust, enquiry paths, UK/local relevance, reputation evidence, performance foundations, and analytics readiness.',
-  },
-  {
-    question: 'Does this tool verify Google or Bing rankings?',
-    answer: 'No. It does not scrape search engines or claim to verify rankings. Google Search, Bing Search, Google Business Profile, external review platforms, and other authenticated sources are clearly marked as not verified.',
-  },
-  {
-    question: 'Can I request a deeper audit?',
-    answer: 'Yes. Primewayz UK can provide an in-depth review using verified platform access, manual checks, and business-specific context when those permissions are available.',
-  },
+const priorityFixes = [
+  'Clarify above-the-fold message',
+  'Strengthen trust proof and contact confidence',
+  'Improve CTA consistency and tracking',
+] as const;
+
+const sampleCategories = [
+  ['SEO basics', 'Good base'],
+  ['Trust signals', 'Needs attention'],
+  ['Enquiry path', 'Needs review'],
+  ['Mobile readiness', 'Improving'],
+  ['Technical foundations', 'Check basics'],
+  ['Tracking readiness', 'Partial'],
+] as const;
+
+const resultActions = [
+  'Fix quick wins yourself',
+  'Book a discovery call to discuss priorities',
+  'Use report to choose support route',
 ] as const;
 
 export const UkSmeDigitalVisibilityCheckerPage = () => (
-    <main className="min-h-screen bg-white text-slate-950">
-      <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-16 pt-24 text-white sm:px-6 lg:px-8">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.22),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.22),transparent_34%)]" />
+  <main className="min-h-screen bg-[#F7FAFC] text-[#000A2D]">
+    <section className="relative overflow-hidden border-b border-[#D7E7EC] bg-white px-4 pb-14 pt-24 sm:px-6 lg:px-8">
+      <div className="absolute inset-x-0 top-0 h-28 bg-[#EAF8FB]" aria-hidden="true" />
+      <div className="relative mx-auto grid max-w-[1200px] gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
+        <div>
+          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-[#007C89]">
+            <Sparkles className="h-4 w-4" />
+            FREE UK WEBSITE VISIBILITY AUDIT
+          </p>
+          <h1 className="mt-5 max-w-3xl text-4xl font-black leading-tight tracking-tight text-[#000A2D] sm:text-5xl">
+            See whether your website is easy to find, trust and enquire from.
+          </h1>
+          <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
+            Review SEO basics, trust signals, enquiry flow, mobile readiness, tracking and technical foundations, then turn the result into clear next actions.
+          </p>
 
-        <div className="relative mx-auto max-w-[1200px]">
-          <Link
-            to="/"
-            className="mb-10 inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Primewayz UK
-          </Link>
+          <div className="mt-6 flex flex-wrap gap-3">
+            {heroBadges.map((badge) => (
+              <span key={badge} className="rounded-full border border-[#BFDDE5] bg-[#F3FBFD] px-4 py-2 text-xs font-bold text-[#005C68]">
+                {badge}
+              </span>
+            ))}
+          </div>
 
-          <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <ul className="mt-8 grid gap-3 sm:grid-cols-3">
+            {heroBenefits.map((benefit) => (
+              <li key={benefit} className="flex items-start gap-3 rounded-2xl border border-[#D7E7EC] bg-white px-4 py-4 text-sm font-bold leading-6 shadow-sm shadow-slate-950/5">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#008C9A]" />
+                {benefit}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <aside className="rounded-[22px] border border-[#CFE4EA] bg-white p-5 shadow-[0_22px_60px_rgba(0,10,45,0.10)] sm:p-7" aria-label="Audit report preview">
+          <div className="flex items-start justify-between gap-4 border-b border-[#D7E7EC] pb-5">
             <div>
-              <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-200">
-                <Sparkles className="h-3.5 w-3.5" />
-                Free UK SME Tool
-              </p>
-
-              <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">
-                Free UK SME Web Presence Audit
-              </h1>
-
-              <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-200">
-                Check whether your website is clear, discoverable, trustworthy, and ready to generate enquiries.
-              </p>
-
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
-                Enter your website details and get a practical 100-point audit across nine readiness categories. The report reviews public pages only and does not scrape Google or Bing.
-              </p>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">Audit report preview</p>
+              <h2 className="mt-2 text-2xl font-black tracking-tight">Website readiness score</h2>
             </div>
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#E8F7FA] text-2xl font-black text-[#000A2D]">
+              0-100
+            </div>
+          </div>
 
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm sm:p-8">
-              <div className="flex flex-col items-center text-center">
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-300">
-                  <Gauge className="h-8 w-8" />
-                </div>
-                <p className="text-sm font-semibold text-emerald-200">Web presence score</p>
-                <p className="mt-2 text-3xl font-black text-white">0–100</p>
-                <p className="mt-3 max-w-xs text-xs leading-6 text-slate-300">
-                  Nine categories covering website basics, SEO, trust, lead capture, local visibility, reputation, performance, and analytics readiness.
-                </p>
+          <div className="mt-6 grid gap-4">
+            {[
+              ['Priority fixes', 'The first changes to review before deeper work.'],
+              ['Category breakdown', 'Visibility, trust, enquiry flow, mobile, technical and tracking signals.'],
+              ['Recommended next step', 'A practical route based on the gaps found.'],
+            ].map(([title, description]) => (
+              <div key={title} className="rounded-2xl border border-[#D7E7EC] bg-[#F8FCFD] p-4">
+                <p className="text-sm font-black">{title}</p>
+                <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="audit-form" className="px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[1200px]">
-          <WebPresenceAuditForm variant="landing" showIntro={false} analyticsLocation="checker_page" />
-        </div>
-      </section>
-
-      <section className="px-4 pb-16 sm:px-6 lg:px-8" aria-labelledby="checker-trust-heading">
-        <div className="mx-auto max-w-[1200px] rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:p-8">
-          <div className="max-w-3xl">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Clear scope, useful output</p>
-            <h2 id="checker-trust-heading" className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-              A transparent starting point for digital decisions
-            </h2>
-          </div>
-          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {trustPoints.map(({ title, description, icon: Icon }) => (
-              <article key={title} className="border-l-2 border-blue-200 pl-4">
-                <Icon className="h-5 w-5 text-blue-700" />
-                <h3 className="mt-3 text-sm font-black text-slate-950">{title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
-              </article>
             ))}
           </div>
-          <p className="mt-7 border-t border-slate-200 pt-5 text-sm leading-6 text-slate-600">
-            An in-depth audit is available when verified platform checks, manual review, and business-specific context are needed.
-          </p>
+        </aside>
+      </div>
+    </section>
+
+    <section id="audit-form" className="px-4 py-14 sm:px-6 lg:px-8">
+      <div className="mx-auto grid max-w-[1200px] gap-6 lg:grid-cols-[1.08fr_0.92fr] lg:items-start">
+        <WebPresenceAuditForm variant="landing" showIntro={false} analyticsLocation="checker_page" />
+
+        <aside className="rounded-[22px] border border-[#D7E7EC] bg-white p-6 shadow-sm shadow-slate-950/5 sm:p-8">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">What your report includes</p>
+          <h2 className="mt-3 text-2xl font-black tracking-tight">A practical read on where to focus first.</h2>
+          <ul className="mt-6 space-y-4">
+            {reportIncludes.map((item) => (
+              <li key={item} className="flex items-start gap-3 text-sm font-semibold leading-6 text-slate-700">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#008C9A]" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </aside>
+      </div>
+    </section>
+
+    <section className="border-y border-[#D7E7EC] bg-white px-4 py-16 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1200px]">
+        <div className="max-w-3xl">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">What we check</p>
+          <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Six diagnostic views of your website readiness.</h2>
         </div>
-      </section>
 
-      <section className="border-y border-slate-200 bg-slate-50 px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[1200px]">
-          <div className="max-w-3xl">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">Nine readiness categories</p>
-            <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-              What the audit reviews
-            </h2>
-            <p className="mt-4 text-base leading-7 text-slate-600">
-              The score brings together public-site signals that influence search visibility, customer confidence, and the ease of making an enquiry.
-            </p>
-          </div>
-
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {CATEGORY_ORDER.map((categoryId) => {
-              const config = CATEGORY_CONFIG[categoryId];
-              const Icon = categoryIcons[categoryId];
-              return (
-                <article
-                  key={categoryId}
-                  className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                      {config.maxPoints} pts
-                    </span>
-                  </div>
-                  <h3 className="mt-5 text-base font-black text-slate-950">{config.name}</h3>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">{categoryDescriptions[categoryId]}</p>
-                </article>
-              );
-            })}
-          </div>
+        <div className="mt-9 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {diagnosticCards.map(({ title, description, icon: Icon }) => (
+            <article key={title} className="rounded-2xl border border-[#D7E7EC] bg-[#F8FCFD] p-5 shadow-sm shadow-slate-950/5">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#E8F7FA] text-[#007C89]">
+                <Icon className="h-5 w-5" />
+              </div>
+              <h3 className="mt-5 text-lg font-black">{title}</h3>
+              <p className="mt-3 text-sm leading-7 text-slate-600">{description}</p>
+            </article>
+          ))}
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section className="px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[1200px]">
-          <div className="flex items-start gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#000A2D] text-white">
-              <Gauge className="h-5 w-5" />
+    <section id="sample-report" className="scroll-mt-28 px-4 py-16 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1200px]">
+        <div className="max-w-3xl">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">SAMPLE REPORT PREVIEW</p>
+          <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
+            A report that shows what to fix first - not just a vague score.
+          </h2>
+        </div>
+
+        <div className="mt-9 grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
+          <article className="rounded-[22px] border border-[#D7E7EC] bg-white p-6 shadow-sm shadow-slate-950/5 sm:p-8">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-bold text-slate-500">Overall readiness</p>
+                <p className="mt-2 text-5xl font-black tracking-tight">68<span className="text-2xl text-slate-400">/100</span></p>
+              </div>
+              <Gauge className="h-14 w-14 text-[#007C89]" />
             </div>
-            <div>
-              <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">How to read your score</h2>
-              <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
-                Use the score as a practical starting point. The category breakdown shows where focused improvements can create the clearest benefit.
+            <div className="mt-8 grid gap-3">
+              <p className="rounded-xl border border-[#D7E7EC] bg-[#F8FCFD] px-4 py-3 text-sm font-bold">Status: Needs attention</p>
+              <p className="rounded-xl border border-[#D7E7EC] bg-[#F8FCFD] px-4 py-3 text-sm font-bold">
+                Best opportunity: Improve trust signals and enquiry flow.
               </p>
             </div>
-          </div>
+          </article>
 
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {SCORE_BANDS_HIGH_TO_LOW.map((band) => (
-              <article
-                key={band.min}
-                className="rounded-xl border p-5"
-                style={{
-                  borderColor: band.borderColor,
-                  backgroundColor: band.bgColor,
-                  color: band.textColor,
-                }}
-              >
-                <p className="text-2xl font-black">{formatScoreBandRange(band)}</p>
-                <p className="mt-2 text-sm font-bold">{band.label}</p>
-                <p className="mt-2 text-sm leading-6 opacity-90">{band.helper}</p>
-              </article>
+          <article className="rounded-[22px] border border-[#D7E7EC] bg-white p-6 shadow-sm shadow-slate-950/5 sm:p-8">
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#007C89]">Priority fixes</p>
+            <ol className="mt-5 space-y-4">
+              {priorityFixes.map((fix, index) => (
+                <li key={fix} className="flex items-start gap-4 rounded-2xl border border-[#D7E7EC] bg-[#F8FCFD] p-4">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#000A2D] text-sm font-black text-white">
+                    {index + 1}
+                  </span>
+                  <span className="pt-1 text-sm font-bold leading-6">{fix}</span>
+                </li>
+              ))}
+            </ol>
+          </article>
+        </div>
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {sampleCategories.map(([category, status]) => (
+            <div key={category} className="rounded-2xl border border-[#D7E7EC] bg-white p-4">
+              <p className="text-sm font-black">{category}</p>
+              <p className="mt-1 text-sm font-semibold text-[#007C89]">{status}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section className="bg-[#000A2D] px-4 py-16 text-white sm:px-6 lg:px-8">
+      <div className="mx-auto grid max-w-[1200px] gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#7FD5E0]">How to use the result</p>
+          <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">After the audit, you can choose the right next move.</h2>
+        </div>
+        <div>
+          <ul className="grid gap-3 sm:grid-cols-3">
+            {resultActions.map((action) => (
+              <li key={action} className="rounded-2xl border border-white/15 bg-white/[0.08] px-4 py-4 text-sm font-bold leading-6 text-slate-100">
+                {action}
+              </li>
             ))}
+          </ul>
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <Link
+              to="/contact-us#book-call"
+              className="inline-flex min-h-[48px] items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-bold text-[#000A2D] transition hover:bg-[#E8F7FA]"
+            >
+              Book a discovery call
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+            <Link
+              to="/#pricing"
+              className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-white/25 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10"
+            >
+              View pricing routes
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
           </div>
         </div>
-      </section>
-
-      <section className="border-t border-slate-200 bg-slate-50 px-4 py-16 sm:px-6 lg:px-8" aria-labelledby="checker-faq-heading">
-        <div className="mx-auto max-w-[1200px]">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Checker FAQ</p>
-          <h2 id="checker-faq-heading" className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-            What the free audit can and cannot confirm
-          </h2>
-          <div className="mt-8 divide-y divide-slate-200 border-y border-slate-200">
-            {checkerFaqs.map((item) => (
-              <details key={item.question} className="group py-5">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-black text-slate-950">
-                  {item.question}
-                  <span className="text-xl font-normal text-blue-700 group-open:rotate-45">+</span>
-                </summary>
-                <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">{item.answer}</p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-[#000A2D] px-4 py-16 text-white sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-[1200px] gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-300">Built for practical decisions</p>
-            <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Why this matters for UK SMEs</h2>
-          </div>
-          <p className="text-base leading-8 text-slate-200 sm:text-lg">
-            A website should do more than exist online. It should explain what you offer, build trust, support search visibility, and make it easy for customers to enquire. This audit gives you a quick starting point before investing in SEO, redesign, CRM, automation, or ongoing website support.
-          </p>
-        </div>
-      </section>
-    </main>
+      </div>
+    </section>
+  </main>
 );
