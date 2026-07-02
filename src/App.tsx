@@ -13,7 +13,6 @@ import { MonthlySupportRhythmSection } from './components/sections/MonthlySuppor
 import { AuditLedProcessSection } from './components/sections/AuditLedProcessSection';
 import { WhatWeReviewFirstSection } from './components/sections/WhatWeReviewFirstSection';
 import { CommercialClaritySection } from './components/sections/CommercialClaritySection';
-import { SupportModelOverviewSection } from './components/sections/SupportModelOverviewSection';
 import { InsightsSection } from './components/sections/InsightsSection';
 import { HomepageContactSection } from './components/sections/HomepageContactSection';
 import { RemoteItCapacitySection } from './components/sections/RemoteItCapacitySection';
@@ -23,7 +22,7 @@ import { TechStack } from './components/TechStack';
 import { FAQ } from './components/FAQ';
 import { SuccessStories } from './components/SuccessStories';
 import { Footer } from './components/Footer';
-import { ScrollToTop } from './components/ScrollToTop';
+import { ScrollToTop, ScrollToTopButton } from './components/ScrollToTop';
 import { LazyLiveChat } from './components/LazyLiveChat';
 import { AdminPanel } from './components/AdminPanel';
 import { AdminMobileChat } from './components/AdminMobileChat';
@@ -49,6 +48,7 @@ import { WebPresenceAuditSharedReportPage } from './components/tools/WebPresence
 import { CampaignLandingHandler } from './components/CampaignLandingHandler';
 import { RemoteItResourceAugmentationPage } from './components/RemoteItResourceAugmentationPage';
 import { ContactRedirect } from './components/ContactRedirect';
+import { Pricing } from './components/Pricing';
 import { useRevealMotion } from './hooks/useRevealMotion';
 
 // SSR-safe: use static path for logo
@@ -77,7 +77,6 @@ const MainContent = () => {
     <AuditLedProcessSection />
     <WhatWeReviewFirstSection />
     <CommercialClaritySection />
-    <SupportModelOverviewSection />
     <InsightsSection />
     <Philosophy />
     <motion.div initial={reveal.initial({ opacity: 0 })} whileInView={reveal.whileInView({ opacity: 1 })} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 1 }}>
@@ -111,8 +110,9 @@ export const App = ({ initialData }: AppProps) => {
     <div className="relative min-h-screen bg-white font-sans selection:bg-emerald-100 selection:text-emerald-900">
       <AnalyticsTracker />
       <CampaignLandingHandler />
+      <ScrollToTop />
       {showSiteChrome ? <Navbar /> : null}
-      {showSiteChrome ? <ScrollToTop /> : null}
+      {showSiteChrome ? <ScrollToTopButton /> : null}
 
       <Routes>
         <Route path="/" element={<MainContent />} />
@@ -130,7 +130,7 @@ export const App = ({ initialData }: AppProps) => {
         <Route path="/crm-automation-support" element={<CrmIntegrationSupportUkPage />} />
         <Route path="/software-product-delivery" element={<SoftwareDevelopmentSubscriptionUkPage />} />
         <Route path="/remote-it-resources" element={<RemoteItResourceAugmentationPage />} />
-        <Route path="/pricing" element={<Navigate to="/#pricing" replace />} />
+        <Route path="/pricing" element={<Pricing />} />
         <Route path="/how-it-works" element={<Navigate to="/#how-it-works" replace />} />
         <Route path="/about-us" element={<AboutUsPage />} />
         <Route path="/about" element={<Navigate to="/about-us" replace />} />

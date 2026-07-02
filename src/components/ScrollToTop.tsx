@@ -1,8 +1,53 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronUp } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 export const ScrollToTop = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (!location.hash) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      const timeouts = [80, 250, 650].map((delay) => window.setTimeout(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      }, delay));
+
+      return () => {
+        timeouts.forEach((timeout) => window.clearTimeout(timeout));
+      };
+    }
+
+    const scrollToHashTarget = () => {
+      const hashId = decodeURIComponent(location.hash.slice(1));
+      const target = document.getElementById(hashId);
+      if (!target) return;
+
+      const headerOffset = 112;
+      const targetTop = target.getBoundingClientRect().top + window.scrollY - headerOffset;
+      window.scrollTo({ top: Math.max(targetTop, 0), left: 0, behavior: 'smooth' });
+    };
+
+    const timeouts = [80, 250, 650, 1200].map((delay) => window.setTimeout(scrollToHashTarget, delay));
+
+    return () => {
+      timeouts.forEach((timeout) => window.clearTimeout(timeout));
+    };
+  }, [location.pathname, location.hash]);
+
+  return null;
+};
+
+export const ScrollToTopButton = () => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
