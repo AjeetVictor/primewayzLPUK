@@ -526,6 +526,12 @@ export function WebPresenceAuditForm({
       mode="interactive"
       showSharePanel
       ctaLocation={resolvedAnalyticsLocation}
+      onRunAnother={() => {
+        setReport(null);
+        window.setTimeout(() => {
+          document.getElementById('audit-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 0);
+      }}
     />
   ) : null;
 
