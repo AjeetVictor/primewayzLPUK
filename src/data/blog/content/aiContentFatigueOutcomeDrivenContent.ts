@@ -44,7 +44,7 @@ export const aiContentFatigueOutcomeDrivenContent = `
 
       <p>This is not an anti-AI argument. AI solved a real production problem. It did not solve attention, trust, positioning, distribution, conversion, or follow-up. For UK SMEs, SaaS founders, consultants, agencies, and professional service teams, the next advantage is not simply publishing more. It is building an outcome-driven visibility system.</p>
 
-      <p><img src="/images/blog/ai-fatigue-blog/aicontent-fatique-article.webp" alt="AI content fatigue showing content overload turning into outcome-driven visibility for UK SMEs" class="blog-content-image" loading="lazy" decoding="async" /></p>
+      <p><img src="/images/blog/ai-fatigue-blog/ai-content-fatigue-to-outcome-driven-business-growth.webp" alt="AI content fatigue UK SMEs content overload turning into outcome-driven visibility, trust, enquiries, and CRM follow-up" class="blog-content-image" loading="lazy" decoding="async" /></p>
 
       <h2>AI solved the content production problem</h2>
       <p>For years, one of the biggest barriers to content was production capacity. Founders knew they needed to explain their services, publish useful articles, share ideas on LinkedIn, improve service pages, and keep newsletters moving. The difficulty was time.</p>
