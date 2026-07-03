@@ -44,7 +44,7 @@ export const aiContentFatigueOutcomeDrivenContent = `
 
       <p>This is not an anti-AI argument. AI solved a real production problem. It did not solve attention, trust, positioning, distribution, conversion, or follow-up. For UK SMEs, SaaS founders, consultants, agencies, and professional service teams, the next advantage is not simply publishing more. It is building an outcome-driven visibility system.</p>
 
-      <p><img src="/images/blog/ai-content-fatigue-outcome-driven-content.webp" alt="AI content fatigue showing content overload turning into outcome-driven visibility for UK SMEs" class="blog-content-image" loading="lazy" decoding="async" /></p>
+      <p><img src="/images/blog/ai-fatigue-blog/aicontent-fatique-article.webp" alt="AI content fatigue showing content overload turning into outcome-driven visibility for UK SMEs" class="blog-content-image" loading="lazy" decoding="async" /></p>
 
       <h2>AI solved the content production problem</h2>
       <p>For years, one of the biggest barriers to content was production capacity. Founders knew they needed to explain their services, publish useful articles, share ideas on LinkedIn, improve service pages, and keep newsletters moving. The difficulty was time.</p>
@@ -74,14 +74,14 @@ export const aiContentFatigueOutcomeDrivenContent = `
 
       <p>When everything sounds useful in the same way, differentiation drops. A UK consultant may publish sensible posts about leadership, operations, AI, productivity, and growth, but if the posts could belong to almost any consultant, the market does not build a strong memory. The content creates activity, but not association.</p>
 
-      <p><img src="/images/blog/audience-seeing-too-much-sameness.webp" alt="Audience seeing too much sameness in AI-generated content and social media posts" class="blog-content-image" loading="lazy" decoding="async" /></p>
+      <p><img src="/images/blog/ai-fatigue-blog/differentiation-in-a-sea-of-milarity.webp" alt="Audience seeing too much sameness in AI-generated content and social media posts" class="blog-content-image" loading="lazy" decoding="async" /></p>
 
       <h3>AI-polished content often lacks lived experience</h3>
       <p>AI can help structure an idea, but it cannot automatically know what the last client struggled with. It does not know why a project got delayed, what prospects ask before buying, which objections appear in sales calls, which service pages get traffic but no enquiries, or what the team learned from delivery.</p>
 
       <p>That lived experience is often the best content source. A founder who has seen three CRM projects fail for the same reason has a sharper article than a generic AI prompt can produce. A service team that knows exactly where enquiries go cold can write a more useful page than one built from broad keyword ideas alone.</p>
 
-      <p><img src="/images/blog/ai-polished-content-lacks-lived-experience.webp" alt="Human-centred content planning showing lived experience behind strong content strategy" class="blog-content-image" loading="lazy" decoding="async" /></p>
+      <p><img src="/images/blog/ai-fatigue-blog/realwork.webp" alt="Human-centred content planning showing lived experience behind strong content strategy" class="blog-content-image" loading="lazy" decoding="async" /></p>
 
       <h3>Random topics weaken positioning</h3>
       <p>Many small businesses post whatever feels current: AI, leadership, hiring, productivity, founder life, marketing tips, customer service, tools, trends, and industry news. The content may be individually good, but collectively unclear.</p>
@@ -95,14 +95,14 @@ export const aiContentFatigueOutcomeDrivenContent = `
 
       <p>For example, a LinkedIn post about poor enquiry flow should connect to a relevant page about <a href="${crm('buyer_journey_crm_follow_up')}">CRM follow-up</a> or a practical audit. A post about unclear service pages should connect to <a href="${visibility('buyer_journey_visibility_support')}">website visibility support</a>. A SaaS founder article should support a page about <a href="${software('buyer_journey_saas_delivery')}">software product delivery</a>, not leave the reader with nowhere useful to go next.</p>
 
-      <p><img src="/images/blog/no-clear-buyer-journey-no-clear-action.webp" alt="Buyer journey map connecting awareness, trust, enquiry, and action for content strategy" class="blog-content-image" loading="lazy" decoding="async" /></p>
+      <p><img src="/images/blog/ai-fatigue-blog/buyer%20journey%20startegy%20overview.webp" alt="Buyer journey map connecting awareness, trust, enquiry, and action for content strategy" class="blog-content-image" loading="lazy" decoding="async" /></p>
 
       <h3>Metrics focus on posting activity, not business movement</h3>
       <p>Likes, views, reach, and post count are incomplete. They can help you understand distribution, but they do not prove commercial progress. A post with modest engagement may still send the right prospect to a service page. A high-reach post may create no movement at all.</p>
 
       <p>UK SMEs should also track profile visits, website visits, service page clicks, audit starts, form submissions, booked calls, CRM leads, follow-up completion, and enquiry quality. That is where <a href="${audit('metrics_free_website_audit')}">a free website visibility audit</a> can be more useful than another content calendar review.</p>
 
-      <p><img src="/images/blog/posting-activity-not-business-movement.webp" alt="Comparison of vanity content metrics and real business movement metrics" class="blog-content-image" loading="lazy" decoding="async" /></p>
+      <p><img src="/images/blog/ai-fatigue-blog/vanity-matrix-vs-real-growth.webp" alt="Comparison of vanity content metrics and real business movement metrics" class="blog-content-image" loading="lazy" decoding="async" /></p>
 
       <div class="blog-callout blog-callout-tip">
         <strong>Not sure whether your content is creating visibility, trust, or enquiries?</strong>
@@ -127,7 +127,7 @@ export const aiContentFatigueOutcomeDrivenContent = `
 
       <p>If those answers are unclear, AI will simply help the business publish uncertainty faster. The output may look polished, but the market will not know what to associate the business with.</p>
 
-      <p><img src="/images/blog/problem-ownership-content-strategy.webp" alt="Team identifying the repeated problem their content strategy should own" class="blog-content-image" loading="lazy" decoding="async" /></p>
+      <p><img src="/images/blog/ai-fatigue-blog/what-problem-we-own.webp" alt="Team identifying the repeated problem their content strategy should own" class="blog-content-image" loading="lazy" decoding="async" /></p>
 
       <h2>How UK SMEs can keep content rapid but outcome-centric</h2>
 
@@ -161,7 +161,7 @@ export const aiContentFatigueOutcomeDrivenContent = `
         <li><strong>Improvement:</strong> monthly changes completed, weak pages improved, follow-up gaps reduced.</li>
       </ul>
 
-      <p><img src="/images/blog/content-supports-visibility-trust-enquiry.webp" alt="Content strategy supporting visibility, trust, and enquiry for UK SMEs" class="blog-content-image" loading="lazy" decoding="async" /></p>
+      <p><img src="/images/blog/ai-fatigue-blog/content-strategy-professional-insight.webp" alt="Content strategy supporting visibility, trust, and enquiry for UK SMEs" class="blog-content-image" loading="lazy" decoding="async" /></p>
 
       <h2>How can UK SMEs make content outcome-driven?</h2>
       <p>UK SMEs can make content outcome-driven by starting with the business movement they want, then planning backwards. If the goal is better visibility, the content should support searchable topics, stronger service pages, and technical SEO foundations. If the goal is more enquiries, the content should send readers to clear CTAs, relevant pages, and reliable forms. If the goal is better sales follow-up, the content should connect to CRM workflows and team ownership.</p>
