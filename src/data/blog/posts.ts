@@ -1,7 +1,45 @@
 import type { BlogPost } from './types';
 import { fixedPriceVsSubscriptionSupportContent } from './content/fixedPriceVsSubscriptionSupport.ts';
+import {
+  aiContentFatigueFaqs,
+  aiContentFatigueOutcomeDrivenContent,
+} from './content/aiContentFatigueOutcomeDrivenContent.ts';
 
 export const posts: BlogPost[] = [
+  {
+    id: 'ai-content-fatigue-uk-smes-outcome-driven-content',
+    slug: 'ai-content-fatigue-uk-smes-outcome-driven-content',
+    title: 'AI Content Fatigue: Why More Posts Are Not Creating More Outcomes for UK SMEs',
+    description:
+      'AI has made content creation faster, but not always more effective. Learn how UK SMEs can avoid content fatigue and build outcome-driven visibility.',
+    excerpt:
+      'AI has made content creation faster, but not always more effective. Learn why UK SMEs need outcome-driven visibility, not random content volume.',
+    content: aiContentFatigueOutcomeDrivenContent,
+    date: 'July 03, 2026',
+    updatedDate: 'July 03, 2026',
+    readTime: '8 min read',
+    author: 'Primewayz UK Team',
+    category: 'Digital Visibility',
+    tags: [
+      'AI Content',
+      'UK SMEs',
+      'Digital Strategy',
+      'SEO',
+      'AEO',
+      'GEO',
+      'Content Marketing',
+      'Business Growth',
+      'Monthly Digital Support',
+    ],
+    image: '/images/blog/ai-content-fatigue-outcome-driven-content.webp',
+    imageAlt:
+      'AI content fatigue showing content overload turning into outcome-driven visibility for UK SMEs',
+    featured: true,
+    seoTitle: 'AI Content Fatigue and Outcome-Driven Content for UK SMEs',
+    seoDescription:
+      'AI has made content creation faster, but not always more effective. Learn how UK SMEs can avoid content fatigue and build outcome-driven visibility.',
+    faqs: aiContentFatigueFaqs,
+  },
   {
     id: 'fixed-price-vs-time-material-vs-subscription-support-uk-smes-saas-founders',
     slug: 'fixed-price-vs-time-material-vs-subscription-support-uk-smes-saas-founders',
@@ -25,7 +63,7 @@ export const posts: BlogPost[] = [
       'Digital delivery',
     ],
     image: '/images/blog/fixed-price-vs-time-material-vs-subscription-support.webp',
-    featured: true,
+    featured: false,
     seoTitle: 'Fixed Price vs T&M vs Subscription Support for UK SMEs',
     seoDescription:
       'Compare fixed price, time and material, and subscription support for UK SMEs and SaaS founders. Learn which model gives better flexibility and value.',

@@ -290,7 +290,7 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
             transition={{ delay: 0.2 }}
             className="mb-14 aspect-[21/9] overflow-hidden rounded-[2rem] shadow-2xl shadow-emerald-900/10"
           >
-            <img src={post.image} alt={post.title} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+            <img src={post.image} alt={post.imageAlt || post.title} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
           </motion.div>
         )}
 

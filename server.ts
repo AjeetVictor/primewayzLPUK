@@ -396,6 +396,12 @@ function toIsoDate(value?: string) {
   return new Date(Number.isNaN(timestamp) ? Date.now() : timestamp).toISOString();
 }
 
+function toAbsoluteSiteUrl(value?: string) {
+  if (!value) return undefined;
+  if (/^https?:\/\//i.test(value)) return value;
+  return `${siteUrl}${value.startsWith('/') ? value : `/${value}`}`;
+}
+
 function cmsPostToBlogPost(post: any): BlogPost {
   const date = post.date || post.publishedAt || post.createdAt;
   const tags = Array.isArray(post.tags)
@@ -421,6 +427,7 @@ function cmsPostToBlogPost(post: any): BlogPost {
     author: post.author || 'Primewayz UK Team',
     readTime: post.readTime || '5 min read',
     image: post.image || undefined,
+    imageAlt: post.imageAlt || undefined,
     content: post.content || '',
     featured: Boolean(post.featured),
     seoTitle: post.seoTitle || undefined,
@@ -584,12 +591,12 @@ function buildWebPresenceAuditStructuredData(canonical: string, description: str
 }
 
 function buildArticleStructuredData(post: BlogPost, canonical: string) {
-  return {
-    '@context': 'https://schema.org',
+  const article = {
     '@type': 'Article',
+    '@id': `${canonical}#article`,
     headline: post.title,
     description: post.seoDescription || post.description || post.excerpt,
-    image: post.image ? [post.image] : [`${siteUrl}/og-primewayz-uk.jpg`],
+    image: post.image ? [toAbsoluteSiteUrl(post.image)] : [`${siteUrl}/og-primewayz-uk.jpg`],
     datePublished: toIsoDate(post.date),
     dateModified: toIsoDate(post.updatedDate || post.date),
     author: { '@type': 'Organization', name: post.author || 'Primewayz UK Team' },
@@ -602,6 +609,32 @@ function buildArticleStructuredData(post: BlogPost, canonical: string) {
     articleSection: post.category,
     keywords: post.tags.join(', '),
   };
+
+  if (!post.faqs?.length) {
+    return {
+      '@context': 'https://schema.org',
+      ...article,
+    };
+  }
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      article,
+      {
+        '@type': 'FAQPage',
+        '@id': `${canonical}#faq`,
+        mainEntity: post.faqs.map((faq) => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: faq.answer,
+          },
+        })),
+      },
+    ],
+  };
 }
 
 function buildSeoTags(options: {
@@ -612,7 +645,7 @@ function buildSeoTags(options: {
   image?: string;
   structuredData: unknown;
 }) {
-  const image = options.image || `${siteUrl}/og-primewayz-uk.jpg`;
+  const image = toAbsoluteSiteUrl(options.image) || `${siteUrl}/og-primewayz-uk.jpg`;
   return `
     <title>${escapeHtml(options.title)}</title>
     <meta name="description" content="${escapeHtml(options.description)}" />
@@ -625,6 +658,7 @@ function buildSeoTags(options: {
     <meta property="og:description" content="${escapeHtml(options.description)}" />
     <meta property="og:url" content="${escapeHtml(options.canonical)}" />
     <meta property="og:image" content="${escapeHtml(image)}" />
+    <meta property="og:image:alt" content="${escapeHtml(options.title)}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${escapeHtml(options.title)}" />
     <meta name="twitter:description" content="${escapeHtml(options.description)}" />

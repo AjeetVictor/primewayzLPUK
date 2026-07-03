@@ -11,9 +11,14 @@ export interface BlogPost {
   author: string;
   readTime: string;
   image?: string;
+  imageAlt?: string;
   content: string;
   featured?: boolean;
   seoTitle?: string;
   seoDescription?: string;
+  faqs?: {
+    question: string;
+    answer: string;
+  }[];
 }
 

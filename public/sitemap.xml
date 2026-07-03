@@ -14,9 +14,15 @@
   </url>
   <url>
     <loc>https://uk.primewayz.com/blog</loc>
-    <lastmod>2026-06-30</lastmod>
+    <lastmod>2026-07-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://uk.primewayz.com/blog/ai-content-fatigue-uk-smes-outcome-driven-content</loc>
+    <lastmod>2026-07-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
   </url>
   <url>
     <loc>https://uk.primewayz.com/blog/fixed-price-vs-time-material-vs-subscription-support-uk-smes-saas-founders</loc>
