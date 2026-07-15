@@ -8,10 +8,13 @@ const EXTERNAL_PRESENCE_NOT_DETECTED_EXPLANATION =
   'External links or presence signals were not detected on the audited pages. This does not confirm absence from Google, Bing, social platforms, or directories.';
 
 const ANALYTICS_DETECTED_EXPLANATION =
-  'Analytics or tracking tags were detected in the audited HTML. Platform setup, event accuracy, consent mode, and conversion tracking are not verified in this free audit.';
+  'Analytics technology was detected in the audited HTML. However, event accuracy, consent configuration and enquiry-conversion tracking could not be fully verified through this automated audit.';
 
 const ANALYTICS_NOT_DETECTED_EXPLANATION =
   'Analytics or tracking tags were not detected in the audited HTML. Tags may still exist through consent tools, server-side tracking, or scripts not visible to this free checker.';
+
+const ANALYTICS_PARTIAL_EXPLANATION =
+  'Analytics technology was detected in the audited HTML. However, event accuracy, consent configuration and enquiry-conversion tracking could not be fully verified through this automated audit.';
 
 const CATEGORY_EXPLANATIONS: Partial<Record<AuditCategoryId, Partial<Record<AuditCheckStatus, string>>>> = {
   'external-presence': {
@@ -28,7 +31,7 @@ const CATEGORY_EXPLANATIONS: Partial<Record<AuditCategoryId, Partial<Record<Audi
   },
   'analytics-readiness': {
     good: ANALYTICS_DETECTED_EXPLANATION,
-    partial: ANALYTICS_DETECTED_EXPLANATION,
+    partial: ANALYTICS_PARTIAL_EXPLANATION,
     gap: ANALYTICS_NOT_DETECTED_EXPLANATION,
     not_verified: 'Analytics configuration was not verified beyond visible page HTML in this free audit.',
   },
@@ -50,9 +53,11 @@ const CATEGORY_FALLBACK_RECOMMENDATIONS: Partial<Record<AuditCategoryId, string[
     'Connect review/profile sources later for external reputation verification.',
   ],
   'analytics-readiness': [
-    'Install GA4 or an equivalent analytics platform if tracking is not already configured.',
-    'Use a tag manager where multiple marketing tags need governance.',
-    'Verify analytics in GA4/GTM directly for confirmation.',
+    'Confirm that GA4 and relevant conversion events are configured correctly.',
+    'Review consent mode and cookie handling where applicable.',
+    'Use a tag manager where multiple tags require central governance.',
+    'Add Meta Pixel only when Meta advertising is actively used.',
+    'Add the LinkedIn Insight Tag only when LinkedIn campaigns or conversion audiences are in use.',
   ],
 };
 
@@ -82,7 +87,9 @@ function explanationForStatus(
   }
 
   if (categoryId === 'analytics-readiness') {
-    return hasDetected ? ANALYTICS_DETECTED_EXPLANATION : ANALYTICS_NOT_DETECTED_EXPLANATION;
+    if (!hasDetected) return ANALYTICS_NOT_DETECTED_EXPLANATION;
+    if (status === 'good') return ANALYTICS_DETECTED_EXPLANATION;
+    return ANALYTICS_PARTIAL_EXPLANATION;
   }
 
   const custom = CATEGORY_EXPLANATIONS[categoryId]?.[status];
@@ -106,7 +113,7 @@ function fallbackEvidenceLabel(categoryId: AuditCategoryId, name: string, catego
   }
   if (categoryId === 'analytics-readiness') {
     return hasDetectedCategorySignals(categorySignals)
-      ? 'Analytics or tracking tags were detected in the audited HTML.'
+      ? 'Analytics technology was detected in the audited HTML.'
       : 'No analytics or tracking tags were detected in the audited HTML.';
   }
   return `No positive ${name.toLowerCase()} signals were detected in the audited pages.`;
@@ -117,21 +124,31 @@ function resolveRecommendations(
   status: AuditCheckStatus,
   signalRecommendations: string[],
 ): string[] {
-  const recommendations = [...new Set(signalRecommendations)];
+  // Keep related tips grouped on the category — never flatten into separate findings here.
+  const recommendations = [...new Set(signalRecommendations.map((item) => item.trim()).filter(Boolean))];
   if (recommendations.length === 0 && (status === 'gap' || status === 'partial')) {
     recommendations.push(...(CATEGORY_FALLBACK_RECOMMENDATIONS[categoryId] || []));
   }
   return recommendations;
 }
 
+/**
+ * Optional advertising tags (maxPoints 0) must not influence scored totals.
+ * Core analytics score comes only from scored signals such as GA / tag manager.
+ */
+function scoredPointsForCategory(categorySignals: AuditSignal[], maxPoints: number): number {
+  const scored = categorySignals.reduce((total, signal) => {
+    if (signal.maxPoints <= 0) return total;
+    return total + signal.points;
+  }, 0);
+  return Math.min(maxPoints, scored);
+}
+
 export function scoreAudit(signals: AuditSignal[]): { score: number; checks: AuditCheck[] } {
   const checks = CATEGORY_ORDER.map((category) => {
     const config = CATEGORY_CONFIG[category];
     const categorySignals = signals.filter((signal) => signal.category === category);
-    const points = Math.min(
-      config.maxPoints,
-      categorySignals.reduce((total, signal) => total + signal.points, 0),
-    );
+    const points = scoredPointsForCategory(categorySignals, config.maxPoints);
     const status = statusForSignals(categorySignals, points, config.maxPoints);
     const evidence = categorySignals.flatMap((signal) => signal.evidence).slice(0, 12);
 

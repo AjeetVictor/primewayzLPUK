@@ -34,6 +34,7 @@ import type {
   WebPresenceAuditReport,
 } from '../../lib/audit/types';
 import { getCategoryBand, getScoreBand } from '../../lib/audit/scoreBands';
+import { buildRecommendedFocus } from '../../lib/audit/report/buildRecommendedFocus';
 import { getSharedReportContactCtaUrl } from '../../lib/audit/share/disclaimers';
 import type { ShareLinkState } from '../../lib/audit/share/types';
 import { WebPresenceAuditReportActions } from './WebPresenceAuditReportActions';
@@ -57,14 +58,6 @@ type CategoryHelp = {
   whyItMatters: string;
   goodLooksLike: string;
   notVerified: string;
-};
-
-type PriorityFix = {
-  label: string;
-  title: string;
-  explanation: string;
-  whyItMatters: string;
-  recommendedAction: string;
 };
 
 type DiagnosticCategory = {
@@ -135,7 +128,7 @@ const CATEGORY_HELP: Record<string, CategoryHelp> = {
   },
   'analytics-readiness': {
     checked: 'Visible analytics, tag-manager, and selected marketing-tag installation signals.',
-    whyItMatters: 'Governed tracking helps teams understand whether important enquiry actions are being measured.',
+    whyItMatters: 'Without reliable tracking, the business cannot confidently identify which channels, pages or campaigns generate meaningful enquiries.',
     goodLooksLike: 'A deliberate analytics setup with relevant conversion events and consent-aware governance.',
     notVerified: 'Account access, data accuracy, consent configuration, event quality, or attribution.',
   },
@@ -183,30 +176,6 @@ const DIAGNOSTIC_CATEGORIES: DiagnosticCategory[] = [
     icon: Sparkles,
     fallbackFinding: 'Enquiry and source measurement may not be complete enough for decisions.',
     fallbackAction: 'Review analytics, tag manager, conversion events, consent and CRM handoff tracking.',
-  },
-];
-
-const FALLBACK_PRIORITY_FIXES: PriorityFix[] = [
-  {
-    label: 'Priority 1',
-    title: 'Clarify the first-screen message',
-    explanation: 'The first screen should make the offer, audience and next step immediately clear.',
-    whyItMatters: 'Visitors should quickly understand what you do, who you help and what action to take.',
-    recommendedAction: 'Strengthen hero copy, service clarity and primary CTA hierarchy.',
-  },
-  {
-    label: 'Priority 2',
-    title: 'Strengthen trust signals',
-    explanation: 'The report should show enough proof and reassurance for a new visitor to continue.',
-    whyItMatters: 'First-time visitors need proof and reassurance before enquiring.',
-    recommendedAction: 'Add visible proof, company details, testimonials, security/privacy reassurance and contact confidence markers.',
-  },
-  {
-    label: 'Priority 3',
-    title: 'Improve enquiry flow and tracking',
-    explanation: 'The path from interest to enquiry should be easy to follow and measurable.',
-    whyItMatters: 'Even good traffic can be wasted if forms, booking paths and source tracking are unclear.',
-    recommendedAction: 'Review CTAs, form placement, booking paths, CRM flow and analytics events.',
   },
 ];
 
@@ -276,41 +245,6 @@ function categoryCardAccentClass(status: string) {
   if (status === 'Needs review') return 'border-l-4 border-l-sky-500';
   return 'border-l-4 border-l-slate-400';
 }
-
-function buildPriorityFixes(checks: Partial<AuditCheck>[]): PriorityFix[] {
-  const mapped = checks
-    .filter((check) => safeStatus(check.status) !== 'good' && safeStatus(check.status) !== 'not_verified')
-    .sort((a, b) => {
-      const aRatio = Number(a.maxPoints) ? Number(a.points) / Number(a.maxPoints) : 1;
-      const bRatio = Number(b.maxPoints) ? Number(b.points) / Number(b.maxPoints) : 1;
-      return aRatio - bRatio;
-    })
-    .flatMap((check) => (check.recommendations || []).map((recommendation): PriorityFix => ({
-      label: '',
-      title: check.name || 'Priority website improvement',
-      explanation: check.explanation || 'This area showed a gap or partial signal in the public audit.',
-      whyItMatters: CATEGORY_HELP[String(check.id)]?.whyItMatters || 'Weak public signals can make it harder for visitors and search systems to understand the site.',
-      recommendedAction: recommendation,
-    })))
-    .filter((item, index, items) => {
-      const itemKey = `${item.title}::${item.recommendedAction}`.toLowerCase();
-      return items.findIndex((candidate) => `${candidate.title}::${candidate.recommendedAction}`.toLowerCase() === itemKey) === index;
-    })
-    .slice(0, 3)
-    .map((item, index) => ({ ...item, label: `Priority ${index + 1}` }));
-
-  if (mapped.length >= 3) return mapped;
-
-  const filled = [...mapped];
-  for (const fallback of FALLBACK_PRIORITY_FIXES) {
-    if (filled.length >= 3) break;
-    if (!filled.some((item) => item.title.toLowerCase() === fallback.title.toLowerCase())) {
-      filled.push({ ...fallback, label: `Priority ${filled.length + 1}` });
-    }
-  }
-  return filled.slice(0, 3);
-}
-
 
 function safeStatus(status?: string): AuditCheckStatus {
   if (status === 'good' || status === 'partial' || status === 'gap' || status === 'not_verified') {
@@ -903,8 +837,8 @@ export function WebPresenceAuditResult({
     ];
   const auditStatus = getAuditStatus(score);
   const statusCopy = report.summary || getAuditStatusCopy(score);
-  const priorityFixes = buildPriorityFixes(checks);
-  const primaryOpportunity = priorityFixes[0]?.title || getRecommendedRoute(score);
+  const priorityFixes = buildRecommendedFocus(checks, CATEGORY_HELP);
+  const primaryOpportunity = priorityFixes[0]?.categoryTitle || getRecommendedRoute(score);
   const performanceCheck = checks.find((item) => item.id === 'performance-ux');
   const diagnosticCategoryResults = DIAGNOSTIC_CATEGORIES.map((category) => {
     const check = checks.find((item) => item.id === category.id);
@@ -1002,18 +936,18 @@ export function WebPresenceAuditResult({
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
           These are the highest-impact items to review before investing more into traffic or campaigns.
         </p>
-        <div className="mt-7 grid gap-4 lg:grid-cols-3">
+        <div className={`mt-7 grid gap-4 ${priorityFixes.length >= 3 ? 'lg:grid-cols-3' : priorityFixes.length === 2 ? 'lg:grid-cols-2' : 'lg:grid-cols-1 lg:max-w-xl'}`}>
           {priorityFixes.map((priority) => (
-            <article key={`${priority.label}-${priority.title}`} className="rounded-2xl border border-[#D7E7EC] bg-white p-5 shadow-sm">
+            <article key={`${priority.label}-${priority.categoryId}`} className="rounded-2xl border border-[#D7E7EC] bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-[#007C89]">{priority.label}</p>
-              <h3 className="mt-3 text-lg font-black leading-6 text-[#000A2D]">{priority.title}</h3>
+              <h3 className="mt-3 text-lg font-black leading-6 text-[#000A2D]">{priority.categoryTitle}</h3>
 
               <div className="mt-4 rounded-xl border-2 border-rose-300 bg-rose-100 p-4">
                 <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-rose-900">
                   <span className="h-2 w-2 rounded-full bg-rose-600" aria-hidden />
                   Problem identified
                 </p>
-                <p className="mt-2 text-sm font-semibold leading-6 text-rose-950">{priority.explanation}</p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-rose-950">{priority.problem}</p>
               </div>
 
               <div className="mt-3 rounded-xl border-2 border-sky-300 bg-sky-100 p-4">
@@ -1030,9 +964,19 @@ export function WebPresenceAuditResult({
               >
                 <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em]" style={{ color: SIGNAL_GREEN.dark }}>
                   <span className="h-2 w-2 rounded-full" style={{ backgroundColor: SIGNAL_GREEN.main }} aria-hidden />
-                  Recommended fix
+                  {priority.recommendedActions.length > 1 ? 'Recommended actions' : 'Recommended fix'}
                 </p>
-                <p className="mt-2 text-sm font-bold leading-6" style={{ color: SIGNAL_GREEN.dark }}>{priority.recommendedAction}</p>
+                {priority.recommendedActions.length > 1 ? (
+                  <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm font-bold leading-6" style={{ color: SIGNAL_GREEN.dark }}>
+                    {priority.recommendedActions.map((action) => (
+                      <li key={action}>{action}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-sm font-bold leading-6" style={{ color: SIGNAL_GREEN.dark }}>
+                    {priority.recommendedActions[0]}
+                  </p>
+                )}
               </div>
             </article>
           ))}
