@@ -1,5 +1,14 @@
 import type { AuditContext, AuditSignal } from '../types.ts';
 
+const TRACKING_VERIFY_GA =
+  'Verify that Google Analytics and key enquiry-conversion events are configured and recording correctly.';
+const TRACKING_TAG_MANAGER =
+  'Use a tag manager where multiple marketing tags require central governance.';
+const TRACKING_META =
+  'Add Meta Pixel only when Meta advertising is actively used.';
+const TRACKING_LINKEDIN =
+  'Add the LinkedIn Insight Tag only when LinkedIn campaigns or conversion audiences are in use.';
+
 function coreTrackingSignal(
   key: string,
   pattern: RegExp,
@@ -54,7 +63,7 @@ export function extractAnalyticsSignals(context: AuditContext): AuditSignal[] {
       /googletagmanager\.com\/gtag\/js|google-analytics\.com|gtag\s*\(/i,
       3,
       'Google Analytics or gtag was detected in the audited HTML.',
-      'Confirm that GA4 or an equivalent analytics platform is installed and that important enquiry events are configured.',
+      TRACKING_VERIFY_GA,
       context,
     ),
     coreTrackingSignal(
@@ -62,7 +71,7 @@ export function extractAnalyticsSignals(context: AuditContext): AuditSignal[] {
       /googletagmanager\.com\/gtm\.js|GTM-[A-Z0-9]+/i,
       2,
       'Google Tag Manager was detected in the audited HTML.',
-      'Use a tag manager where multiple tags require central governance.',
+      TRACKING_TAG_MANAGER,
       context,
     ),
   ];
@@ -72,14 +81,14 @@ export function extractAnalyticsSignals(context: AuditContext): AuditSignal[] {
       'analytics-meta',
       /connect\.facebook\.net|fbq\s*\(/i,
       'Meta Pixel was detected in the audited HTML.',
-      'Add Meta Pixel only when Meta advertising is actively used.',
+      TRACKING_META,
       context,
     ),
     optionalAdPlatformSignal(
       'analytics-linkedin',
       /snap\.licdn\.com|linkedin insight|_linkedin_partner_id/i,
       'LinkedIn Insight Tag was detected in the audited HTML.',
-      'Add the LinkedIn Insight Tag only when LinkedIn campaigns or conversion audiences are in use.',
+      TRACKING_LINKEDIN,
       context,
     ),
   ];
@@ -87,6 +96,7 @@ export function extractAnalyticsSignals(context: AuditContext): AuditSignal[] {
   const hasCoreGap = coreSignals.some((signal) => signal.status === 'missing');
   // Keep optional platform tips grouped with a weak analytics finding only.
   // Do not surface them when core analytics signals already look complete.
+  // scoreAudit owns the final ordered canonical analytics action list for gap/partial.
   if (!hasCoreGap) {
     return [
       ...coreSignals,

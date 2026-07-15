@@ -35,6 +35,13 @@ import type {
 } from '../../lib/audit/types';
 import { getCategoryBand, getScoreBand } from '../../lib/audit/scoreBands';
 import { buildRecommendedFocus } from '../../lib/audit/report/buildRecommendedFocus';
+import {
+  classifyActionImportance,
+  getFindingLabel,
+  normalizeRecommendationActions,
+  type ActionImportance,
+  type RecommendationAction,
+} from '../../lib/audit/report/recommendationActions';
 import { getSharedReportContactCtaUrl } from '../../lib/audit/share/disclaimers';
 import type { ShareLinkState } from '../../lib/audit/share/types';
 import { WebPresenceAuditReportActions } from './WebPresenceAuditReportActions';
@@ -67,8 +74,6 @@ type DiagnosticCategory = {
   fallbackFinding: string;
   fallbackAction: string;
 };
-
-type ActionSeverity = 'Critical' | 'Important' | 'Optional';
 
 const SIGNAL_GREEN = {
   main: '#009688',
@@ -319,8 +324,15 @@ function EvidenceList({ evidence }: { evidence?: AuditEvidence[] }) {
   );
 }
 
-function RecommendationList({ recommendations }: { recommendations?: string[] }) {
-  if (!Array.isArray(recommendations) || recommendations.length === 0) {
+function RecommendationList({
+  recommendations,
+  categoryId,
+}: {
+  recommendations?: string[];
+  categoryId?: string;
+}) {
+  const actions = normalizeRecommendationActions(recommendations, categoryId);
+  if (actions.length === 0) {
     return (
       <div className="rounded-2xl border border-[#D7E7EC] bg-white p-4 sm:p-5">
         <p className="text-sm font-semibold text-[#007C89]">No immediate priority action for this category.</p>
@@ -338,20 +350,20 @@ function RecommendationList({ recommendations }: { recommendations?: string[] })
         Apply these steps to improve visibility, trust, and enquiry readiness.
       </p>
       <ul className="mt-4 space-y-3">
-        {recommendations.map((recommendation, index) => (
-          <li key={recommendation} className="flex gap-3 rounded-xl border border-[#D7E7EC] bg-white px-4 py-3 text-sm leading-6 text-slate-700">
+        {actions.map((action, index) => (
+          <li key={action.text} className="flex gap-3 rounded-xl border border-[#D7E7EC] bg-white px-4 py-3 text-sm leading-6 text-slate-700">
             <span className="mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#000A2D] px-1 text-[10px] font-black text-white">
               {index + 1}
             </span>
             <div className="min-w-0">
               <span
                 className={`mb-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] ${
-                  severityClass(getActionSeverity(recommendation, index))
+                  importanceClass(action.importance)
                 }`}
               >
-                {getActionSeverity(recommendation, index)}
+                {action.importance}
               </span>
-              <p className="font-semibold">{recommendation}</p>
+              <p className="font-semibold">{action.text}</p>
             </div>
           </li>
         ))}
@@ -360,27 +372,48 @@ function RecommendationList({ recommendations }: { recommendations?: string[] })
   );
 }
 
-function getActionSeverity(action: string, index: number): ActionSeverity {
-  const text = action.toLowerCase();
-  if (
-    text.includes('missing') ||
-    text.includes('not detected') ||
-    text.includes('not found') ||
-    text.includes('broken') ||
-    text.includes('error')
-  ) {
-    return 'Critical';
-  }
-  if (index === 0 || text.includes('add ') || text.includes('publish') || text.includes('fix') || text.includes('improve')) {
-    return 'Important';
-  }
-  return 'Optional';
+function importanceClass(importance: ActionImportance) {
+  if (importance === 'important') return 'bg-amber-100 text-amber-800';
+  if (importance === 'recommended') return 'bg-sky-100 text-sky-800';
+  return 'border border-slate-300 bg-slate-50 text-slate-600';
 }
 
-function severityClass(severity: ActionSeverity) {
-  if (severity === 'Critical') return 'bg-rose-100 text-rose-800';
-  if (severity === 'Important') return 'bg-amber-100 text-amber-800';
-  return 'bg-slate-100 text-slate-700';
+function FocusActionList({
+  actions,
+}: {
+  actions: RecommendationAction[];
+}) {
+  if (actions.length === 0) return null;
+
+  if (actions.length === 1) {
+    return (
+      <div className="mt-2">
+        <span
+          className={`mb-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] ${importanceClass(actions[0].importance)}`}
+        >
+          {actions[0].importance}
+        </span>
+        <p className="text-sm font-bold leading-6" style={{ color: SIGNAL_GREEN.dark }}>
+          {actions[0].text}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <ul className="mt-2 space-y-2.5">
+      {actions.map((action) => (
+        <li key={action.text} className="text-sm font-bold leading-6" style={{ color: SIGNAL_GREEN.dark }}>
+          <span
+            className={`mb-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] ${importanceClass(action.importance)}`}
+          >
+            {action.importance}
+          </span>
+          <span className="mt-1 block">{action.text}</span>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 function PerformanceReadinessSection({
@@ -437,7 +470,7 @@ function PerformanceReadinessSection({
             ...mobileConcerns.map((item) => `- ${item}`),
             '',
             'Priority actions:',
-            ...mobileActions.map((item, index) => `- [${getActionSeverity(item, index)}] ${item}`),
+            ...mobileActions.map((item) => `- [${classifyActionImportance(item, 'performance-ux')}] ${item}`),
           ]
         : [
             'Desktop Performance Checklist',
@@ -448,7 +481,7 @@ function PerformanceReadinessSection({
               : ['- No desktop-specific field data returned in this report.']),
             '',
             'Priority actions:',
-            ...desktopActions.map((item, index) => `- [${getActionSeverity(item, index)}] ${item}`),
+            ...desktopActions.map((item) => `- [${classifyActionImportance(item, 'performance-ux')}] ${item}`),
           ];
 
     try {
@@ -531,14 +564,17 @@ function PerformanceReadinessSection({
           </ul>
 
           <div className="mt-4 space-y-2">
-            {mobileActions.map((action, index) => (
+            {mobileActions.map((action) => {
+              const importance = classifyActionImportance(action, 'performance-ux');
+              return (
               <div key={action} className="rounded-xl border border-[#D7E7EC] bg-white px-4 py-3 text-sm text-slate-700">
-                <span className={`mr-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] ${severityClass(getActionSeverity(action, index))}`}>
-                  {getActionSeverity(action, index)}
+                <span className={`mr-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] ${importanceClass(importance)}`}>
+                  {importance}
                 </span>
                 <span className="font-semibold">{action}</span>
               </div>
-            ))}
+              );
+            })}
           </div>
         </article>
 
@@ -580,14 +616,17 @@ function PerformanceReadinessSection({
               ))}
           </ul>
           <div className="mt-4 space-y-2">
-            {desktopActions.map((action, index) => (
+            {desktopActions.map((action) => {
+              const importance = classifyActionImportance(action, 'performance-ux');
+              return (
               <div key={action} className="rounded-xl border border-[#D7E7EC] bg-white px-4 py-3 text-sm text-slate-700">
-                <span className={`mr-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] ${severityClass(getActionSeverity(action, index))}`}>
-                  {getActionSeverity(action, index)}
+                <span className={`mr-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] ${importanceClass(importance)}`}>
+                  {importance}
                 </span>
                 <span className="font-semibold">{action}</span>
               </div>
-            ))}
+              );
+            })}
           </div>
         </article>
       </div>
@@ -667,7 +706,7 @@ function CategoryCard({
         </summary>
         <div className="grid gap-6 border-t border-slate-100 px-5 py-5 sm:px-6 lg:grid-cols-2">
           <EvidenceList evidence={check.evidence} />
-          <RecommendationList recommendations={check.recommendations} />
+          <RecommendationList recommendations={check.recommendations} categoryId={categoryId} />
         </div>
       </details>
     </article>
@@ -681,6 +720,21 @@ function DetailedCheckAccordion({
   title: string;
   check?: Partial<AuditCheck>;
 }) {
+  const findingStatus = safeStatus(check?.status);
+  const findingLabel = getFindingLabel(findingStatus);
+  const findingToneClass =
+    findingStatus === 'good'
+      ? 'border-[#4DB6AC] bg-[#E0F5F2]'
+      : findingStatus === 'partial' || findingStatus === 'not_verified'
+        ? 'border-sky-300 bg-sky-50'
+        : 'border-rose-300 bg-rose-50';
+  const findingLabelClass =
+    findingStatus === 'good'
+      ? 'text-[#00695C]'
+      : findingStatus === 'partial' || findingStatus === 'not_verified'
+        ? 'text-sky-900'
+        : 'text-rose-900';
+
   return (
     <details className="group rounded-2xl border border-[#D7E7EC] bg-white">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-sm font-black text-[#000A2D] transition hover:bg-[#F8FCFD]">
@@ -690,8 +744,8 @@ function DetailedCheckAccordion({
       <div className="border-t border-[#D7E7EC] px-5 py-5">
         {check ? (
           <div className="space-y-5">
-            <div className="rounded-2xl border border-[#D7E7EC] bg-white p-4 sm:p-5">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#007C89]">Problem observed</p>
+            <div className={`rounded-2xl border p-4 sm:p-5 ${findingToneClass}`}>
+              <p className={`text-xs font-black uppercase tracking-[0.16em] ${findingLabelClass}`}>{findingLabel}</p>
               <p className="mt-2 text-sm font-semibold leading-7 text-slate-700">
                 {check.explanation || 'This category did not include an explanation.'}
               </p>
@@ -700,14 +754,17 @@ function DetailedCheckAccordion({
                   Score: {Number(check.points) || 0} / {Number(check.maxPoints) || 0}
                 </span>
                 <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600">
-                  Status: {safeStatus(check.status).replace('_', ' ')}
+                  Status: {findingStatus.replace('_', ' ')}
                 </span>
               </div>
             </div>
 
             <div className="grid gap-5 lg:grid-cols-2">
               <EvidenceList evidence={check.evidence} />
-              <RecommendationList recommendations={check.recommendations} />
+              <RecommendationList
+                recommendations={check.recommendations}
+                categoryId={typeof check.id === 'string' ? check.id : undefined}
+              />
             </div>
           </div>
         ) : (
@@ -937,17 +994,40 @@ export function WebPresenceAuditResult({
           These are the highest-impact items to review before investing more into traffic or campaigns.
         </p>
         <div className={`mt-7 grid gap-4 ${priorityFixes.length >= 3 ? 'lg:grid-cols-3' : priorityFixes.length === 2 ? 'lg:grid-cols-2' : 'lg:grid-cols-1 lg:max-w-xl'}`}>
-          {priorityFixes.map((priority) => (
+          {priorityFixes.map((priority) => {
+            const focusActions = normalizeRecommendationActions(
+              priority.recommendedActions,
+              priority.categoryId,
+            );
+            const findingLabel = getFindingLabel(priority.status);
+            const findingPanelClass =
+              priority.status === 'partial' || priority.status === 'not_verified'
+                ? 'border-2 border-sky-300 bg-sky-100'
+                : 'border-2 border-rose-300 bg-rose-100';
+            const findingLabelClass =
+              priority.status === 'partial' || priority.status === 'not_verified'
+                ? 'text-sky-900'
+                : 'text-rose-900';
+            const findingDotClass =
+              priority.status === 'partial' || priority.status === 'not_verified'
+                ? 'bg-sky-600'
+                : 'bg-rose-600';
+            const findingTextClass =
+              priority.status === 'partial' || priority.status === 'not_verified'
+                ? 'text-sky-950'
+                : 'text-rose-950';
+
+            return (
             <article key={`${priority.label}-${priority.categoryId}`} className="rounded-2xl border border-[#D7E7EC] bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-[#007C89]">{priority.label}</p>
               <h3 className="mt-3 text-lg font-black leading-6 text-[#000A2D]">{priority.categoryTitle}</h3>
 
-              <div className="mt-4 rounded-xl border-2 border-rose-300 bg-rose-100 p-4">
-                <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-rose-900">
-                  <span className="h-2 w-2 rounded-full bg-rose-600" aria-hidden />
-                  Problem identified
+              <div className={`mt-4 rounded-xl p-4 ${findingPanelClass}`}>
+                <p className={`inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] ${findingLabelClass}`}>
+                  <span className={`h-2 w-2 rounded-full ${findingDotClass}`} aria-hidden />
+                  {findingLabel}
                 </p>
-                <p className="mt-2 text-sm font-semibold leading-6 text-rose-950">{priority.problem}</p>
+                <p className={`mt-2 text-sm font-semibold leading-6 ${findingTextClass}`}>{priority.problem}</p>
               </div>
 
               <div className="mt-3 rounded-xl border-2 border-sky-300 bg-sky-100 p-4">
@@ -964,22 +1044,13 @@ export function WebPresenceAuditResult({
               >
                 <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em]" style={{ color: SIGNAL_GREEN.dark }}>
                   <span className="h-2 w-2 rounded-full" style={{ backgroundColor: SIGNAL_GREEN.main }} aria-hidden />
-                  {priority.recommendedActions.length > 1 ? 'Recommended actions' : 'Recommended fix'}
+                  {focusActions.length > 1 ? 'Recommended actions' : 'Recommended fix'}
                 </p>
-                {priority.recommendedActions.length > 1 ? (
-                  <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm font-bold leading-6" style={{ color: SIGNAL_GREEN.dark }}>
-                    {priority.recommendedActions.map((action) => (
-                      <li key={action}>{action}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-2 text-sm font-bold leading-6" style={{ color: SIGNAL_GREEN.dark }}>
-                    {priority.recommendedActions[0]}
-                  </p>
-                )}
+                <FocusActionList actions={focusActions} />
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -1007,8 +1078,9 @@ export function WebPresenceAuditResult({
           </div>
         </div>
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {diagnosticCategoryResults.map(({ id, name, icon: Icon, points, maxPoints, status, finding, action }) => {
+          {diagnosticCategoryResults.map(({ id, name, icon: Icon, points, maxPoints, status, finding, action, check }) => {
             const scoreRatio = maxPoints > 0 ? Math.round((points / maxPoints) * 100) : 0;
+            const findingLabel = getFindingLabel(check?.status || (status === 'Good base' ? 'good' : status === 'Priority fix' ? 'gap' : 'partial'));
             return (
             <article
               key={id}
@@ -1038,7 +1110,7 @@ export function WebPresenceAuditResult({
                 ) : null}
               </div>
               <div className={`mt-4 rounded-xl border p-4 ${categoryFindingPanelClass(status)}`}>
-                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-700">What we found</p>
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-700">{findingLabel}</p>
                 <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">{finding}</p>
               </div>
               <div

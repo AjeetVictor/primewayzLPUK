@@ -53,12 +53,33 @@ const CATEGORY_FALLBACK_RECOMMENDATIONS: Partial<Record<AuditCategoryId, string[
     'Connect review/profile sources later for external reputation verification.',
   ],
   'analytics-readiness': [
-    'Confirm that GA4 and relevant conversion events are configured correctly.',
-    'Review consent mode and cookie handling where applicable.',
-    'Use a tag manager where multiple tags require central governance.',
+    'Verify that Google Analytics and key enquiry-conversion events are configured and recording correctly.',
+    'Review cookie consent and consent-mode behaviour where applicable.',
+    'Use a tag manager where multiple marketing tags require central governance.',
     'Add Meta Pixel only when Meta advertising is actively used.',
     'Add the LinkedIn Insight Tag only when LinkedIn campaigns or conversion audiences are in use.',
   ],
+};
+
+/** Natural good-state copy keyed by category — avoids awkward `${name} signals` duplication. */
+const NATURAL_GOOD_EXPLANATIONS: Partial<Record<AuditCategoryId, string>> = {
+  'website-basics': 'Core website and technical foundation signals are well represented across the audited pages.',
+  'technical-seo': 'Technical SEO foundations are well represented across the audited pages.',
+  'trust-signals': 'Trust signals are well represented across the audited pages.',
+  'lead-capture': 'Lead-capture and enquiry-path signals are well represented across the audited pages.',
+  'local-visibility': 'UK / local visibility signals are well represented across the audited pages.',
+  'external-presence': EXTERNAL_PRESENCE_DETECTED_EXPLANATION,
+  'reviews-reputation': 'Review, testimonial, or reputation signals were detected on the audited pages.',
+  'performance-ux': 'Mobile and user-experience basics are well represented across the audited pages.',
+  'analytics-readiness': ANALYTICS_DETECTED_EXPLANATION,
+};
+
+const NATURAL_PARTIAL_EXPLANATIONS: Partial<Record<AuditCategoryId, string>> = {
+  'website-basics': 'Some core website foundation signals were detected, but several areas could be strengthened.',
+  'technical-seo': 'Some technical SEO signals were detected on the audited pages, but several areas could be strengthened.',
+  'trust-signals': 'Some trust signals were detected on the audited pages, but several areas could be strengthened.',
+  'lead-capture': 'Some lead-capture signals were detected on the audited pages, but several areas could be strengthened.',
+  'performance-ux': 'Some mobile and user-experience basics were detected, but several areas could be strengthened.',
 };
 
 function statusForSignals(signals: AuditSignal[], points: number, maxPoints: number): AuditCheckStatus {
@@ -94,9 +115,13 @@ function explanationForStatus(
 
   const custom = CATEGORY_EXPLANATIONS[categoryId]?.[status];
   if (custom) return custom;
-  if (status === 'good') return `${name} signals are well represented across the audited pages.`;
+  if (status === 'good') {
+    return NATURAL_GOOD_EXPLANATIONS[categoryId]
+      || `${name} are well represented across the audited pages.`;
+  }
   if (status === 'partial') {
-    return `Some ${name.toLowerCase()} signals were detected on the audited pages, but several areas could be strengthened.`;
+    return NATURAL_PARTIAL_EXPLANATIONS[categoryId]
+      || `Some ${name.toLowerCase()} signals were detected on the audited pages, but several areas could be strengthened.`;
   }
   if (status === 'not_verified') return `${name} was not verified in this free version.`;
   return `Limited ${name.toLowerCase()} signals were detected in the audited pages. This is based on visible website content only and does not confirm absence elsewhere.`;
@@ -124,6 +149,12 @@ function resolveRecommendations(
   status: AuditCheckStatus,
   signalRecommendations: string[],
 ): string[] {
+  // Tracking readiness always uses the ordered canonical action set so GA
+  // verification and consent review lead Meta/LinkedIn tips when the category is weak.
+  if (categoryId === 'analytics-readiness' && (status === 'gap' || status === 'partial')) {
+    return [...(CATEGORY_FALLBACK_RECOMMENDATIONS['analytics-readiness'] || [])];
+  }
+
   // Keep related tips grouped on the category — never flatten into separate findings here.
   const recommendations = [...new Set(signalRecommendations.map((item) => item.trim()).filter(Boolean))];
   if (recommendations.length === 0 && (status === 'gap' || status === 'partial')) {
