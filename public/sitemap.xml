@@ -8,9 +8,69 @@
   </url>
   <url>
     <loc>https://uk.primewayz.com/software-development-subscription-uk</loc>
-    <lastmod>2026-06-03</lastmod>
+    <lastmod>2026-07-16</lastmod>
     <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://uk.primewayz.com/insights/subscription-based-software-development</loc>
+    <lastmod>2026-07-16</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://uk.primewayz.com/insights/software-development-subscription-vs-fixed-price</loc>
+    <lastmod>2026-07-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://uk.primewayz.com/insights/software-development-subscription-use-cases</loc>
+    <lastmod>2026-07-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.77</priority>
+  </url>
+  <url>
+    <loc>https://uk.primewayz.com/insights/how-monthly-software-development-capacity-works</loc>
+    <lastmod>2026-07-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://uk.primewayz.com/insights/how-to-prioritise-software-development-requests</loc>
+    <lastmod>2026-07-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://uk.primewayz.com/insights/application-rescue-and-stabilisation-before-ongoing-development</loc>
+    <lastmod>2026-07-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://uk.primewayz.com/insights/technical-debt-explained-for-business-owners</loc>
+    <lastmod>2026-07-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://uk.primewayz.com/insights/why-businesses-move-to-continuous-software-development</loc>
+    <lastmod>2026-07-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://uk.primewayz.com/insights/software-maintenance-vs-continuous-product-development</loc>
+    <lastmod>2026-07-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://uk.primewayz.com/insights/how-to-choose-a-software-development-partner</loc>
+    <lastmod>2026-07-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
   </url>
   <url>
     <loc>https://uk.primewayz.com/blog</loc>

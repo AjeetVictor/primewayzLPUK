@@ -15,7 +15,7 @@ const servicePaths = [
     title: 'Software Development Subscription',
     description:
       'Monthly software delivery support for websites, automation, integrations, SEO foundations, and ongoing digital improvements.',
-    href: '/software-product-delivery',
+    href: '/software-development-subscription-uk',
     icon: Code2,
     anchor: 'Software development subscription for UK SMEs',
   },

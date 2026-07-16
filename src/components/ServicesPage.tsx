@@ -17,16 +17,16 @@ import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../lib/utm';
 
 const serviceCards = [
   {
-    title: 'Software Development Subscription',
-    href: '/software-product-delivery',
+    title: 'Software Development as a Subscription',
+    href: '/software-development-subscription-uk',
     icon: CodeXml,
-    anchor: 'Software development subscription for UK SMEs',
+    anchor: 'Software development as a subscription for UK businesses',
     description:
-      'Monthly software delivery support for UK SMEs that need steady progress across websites, dashboards, admin panels, CRM workflows, automation, integrations, SEO foundations, maintenance, and controlled feature updates.',
+      'Structured monthly software development capacity for UK businesses that need continuous improvements, integrations, fixes and feature work—without restarting procurement for every requirement.',
     bestFor: [
-      'Ongoing software improvements',
-      'Business systems and dashboards',
-      'CRM, automation, and integration work',
+      'Ongoing product and application improvements',
+      'Integrations, backlog delivery and stabilisation',
+      'Prioritised monthly development capacity',
     ],
   },
   {
@@ -119,8 +119,8 @@ const industryPaths = [
 
 const hubLinks = [
   {
-    label: 'Software subscription',
-    href: '/software-product-delivery',
+    label: 'Software development subscription',
+    href: '/software-development-subscription-uk',
   },
   {
     label: 'Website maintenance',
@@ -306,7 +306,10 @@ export const ServicesPage = () => (
         </div>
 
         <div className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-semibold leading-7 text-slate-700">
+          <h3 className="text-lg font-bold text-slate-950">
+            Need continuous delivery rather than a one-off project?
+          </h3>
+          <p className="mt-3 text-sm font-semibold leading-7 text-slate-700">
             These services can work separately or together. Many UK SMEs start with{' '}
             <Link
               to="/maintenance"
@@ -321,12 +324,12 @@ export const ServicesPage = () => (
             >
               CRM integration support
             </Link>{' '}
-            or a{' '}
+            or{' '}
             <Link
-              to="/software-product-delivery"
+              to="/software-development-subscription-uk"
               className="font-black text-emerald-700 hover:text-emerald-800"
             >
-              software development subscription
+              software development as a subscription
             </Link>{' '}
             when the monthly improvement backlog becomes clearer.
           </p>

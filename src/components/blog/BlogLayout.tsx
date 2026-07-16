@@ -15,7 +15,7 @@ const serviceNavLinks = [
   },
   {
     label: 'Software subscription',
-    href: '/software-product-delivery',
+    href: '/software-development-subscription-uk',
   },
   {
     label: 'Website maintenance',

@@ -1,4 +1,6 @@
-﻿# Primewayz UK Agent Authentication
+# Auth.md
+
+## Primewayz UK Agent Authentication
 
 Primewayz UK is a public marketing and digital support website for UK SMEs, founders, consultants, and service-led businesses.
 
@@ -14,7 +16,7 @@ No OAuth-protected public API is currently offered for third-party agents.
 - [Services](https://uk.primewayz.com/services)
 - [Website visibility support](https://uk.primewayz.com/website-visibility-support)
 - [CRM automation support](https://uk.primewayz.com/crm-automation-support)
-- [Software product delivery](https://uk.primewayz.com/software-product-delivery)
+- [Software product delivery](https://uk.primewayz.com/software-development-subscription-uk)
 - [Website maintenance and monthly support](https://uk.primewayz.com/maintenance)
 - [Free website audit](https://uk.primewayz.com/uk-sme-digital-visibility-checker)
 - [Blog insights](https://uk.primewayz.com/blog)
@@ -31,3 +33,4 @@ Agents should not submit forms, create leads, or make business commitments on be
 For business enquiries, use the public contact page:
 
 [Contact Primewayz UK](https://uk.primewayz.com/contact-us)
+

@@ -114,7 +114,7 @@ const heroLinks = [
   },
   {
     label: 'Software subscription',
-    href: '/software-product-delivery',
+    href: '/software-development-subscription-uk',
   },
   {
     label: 'Website maintenance',
@@ -135,9 +135,9 @@ const relatedLinks = [
   },
   {
     title: 'Software Development Subscription',
-    href: '/software-product-delivery',
-    anchor: 'Software development subscription for UK SMEs',
-    text: 'For UK SMEs that need ongoing software delivery across websites, dashboards, CRM workflows, automation, integrations, and maintenance.',
+    href: '/software-development-subscription-uk',
+    anchor: 'Software development as a subscription for UK businesses',
+    text: 'For businesses with an ongoing backlog of improvements, integrations and feature work that need structured monthly development capacity.',
   },
   {
     title: 'Website Maintenance Subscription',
@@ -269,30 +269,26 @@ export function CrmIntegrationSupportUkPage() {
           </div>
 
           <div className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-semibold leading-7 text-slate-700">
+            <h3 className="text-lg font-bold text-slate-950">
+              Automation requirements often evolve after the first workflow
+            </h3>
+            <p className="mt-3 text-sm font-semibold leading-7 text-slate-700">
               CRM integration works best when your website forms, tracking, support process, and monthly delivery backlog are connected.
-              Many UK SMEs combine{' '}
-              <Link
-                to="/crm-automation-support"
-                className="font-black text-emerald-700 hover:text-emerald-800"
-              >
-                CRM integration support
-              </Link>
-              {' '}with{' '}
+              Many UK SMEs combine CRM support with{' '}
               <Link
                 to="/maintenance"
                 className="font-black text-emerald-700 hover:text-emerald-800"
               >
                 website maintenance
               </Link>
-              {' '}and a{' '}
+              {' '}and{' '}
               <Link
-                to="/software-product-delivery"
+                to="/software-development-subscription-uk"
                 className="font-black text-emerald-700 hover:text-emerald-800"
               >
-                software development subscription
+                ongoing software development support
               </Link>
-              {' '}to keep lead capture, follow-up, reporting, and system improvements moving together.
+              {' '}so lead capture, follow-up, reporting, and system improvements keep moving together. Monthly development capacity can support continuous refinement and integration after the first workflow is delivered.
             </p>
           </div>
         </div>

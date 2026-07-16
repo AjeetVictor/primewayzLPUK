@@ -52,7 +52,7 @@ function buildNewsletterMessage(): string {
 const serviceLinks = [
   { label: 'Website & Visibility Support', href: CANONICAL_ROUTES.websiteVisibilitySupport },
   { label: 'CRM & Automation Support', href: CANONICAL_ROUTES.crmAutomationSupport },
-  { label: 'Software & Product Delivery', href: CANONICAL_ROUTES.softwareProductDelivery },
+  { label: 'Software Development as a Subscription', href: CANONICAL_ROUTES.softwareDevelopmentSubscription },
   { label: 'Remote IT Resources', href: CANONICAL_ROUTES.remoteItResources },
   { label: 'Maintenance Support', href: CANONICAL_ROUTES.maintenance },
 ] as const;

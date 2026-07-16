@@ -4,12 +4,11 @@ const FIRST_LANDING_KEY = 'primewayz_first_landing_page';
 
 const SERVICE_PATH_MAP: Record<string, string> = {
   '/website-visibility-support': 'Website visibility support',
-  '/software-product-delivery': 'Software development subscription',
+  '/software-development-subscription-uk': 'Software development subscription',
   '/maintenance': 'Website maintenance subscription',
   '/crm-automation-support': 'CRM integration support',
   '/remote-it-resources': 'Remote IT resource augmentation',
   '/website-maintenance-subscription-uk': 'Website maintenance subscription',
-  '/software-development-subscription-uk': 'Software development subscription',
   '/crm-integration-support-uk': 'CRM integration support',
   '/remote-it-resource-augmentation': 'Remote IT resource augmentation',
   '/professional-services-crm-support-uk': 'Professional services CRM support',
@@ -38,6 +37,7 @@ function detectDeviceType(userAgent: string): string {
 export function inferServiceInterest(pathname: string): string | null {
   if (SERVICE_PATH_MAP[pathname]) return SERVICE_PATH_MAP[pathname];
   if (pathname.startsWith('/blog/')) return 'Blog article';
+  if (pathname.startsWith('/insights/')) return 'Insights article';
   if (pathname.startsWith('/success-stories/')) return 'Success story';
   return null;
 }

@@ -57,7 +57,7 @@ const processSteps = [
 
 const heroLinks = [
   { label: 'All UK SME services', href: '/services' },
-  { label: 'Software subscription', href: '/software-product-delivery' },
+  { label: 'Software subscription', href: '/software-development-subscription-uk' },
   { label: 'Website maintenance', href: '/maintenance' },
   { label: 'CRM integration', href: '/crm-automation-support' },
 ];
@@ -65,7 +65,7 @@ const heroLinks = [
 const relatedLinks = [
   {
     title: 'Software Development Subscription',
-    href: '/software-product-delivery',
+    href: '/software-development-subscription-uk',
     anchor: 'Software development subscription for UK SMEs',
     text: 'For UK SMEs that need ongoing software delivery across websites, dashboards, CRM workflows, automation, and integrations.',
   },

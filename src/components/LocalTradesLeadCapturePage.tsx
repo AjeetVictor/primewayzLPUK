@@ -280,7 +280,7 @@ export const LocalTradesLeadCapturePage = () => {
               <Phone className="h-4 w-4" />
             </Link>
             <Link
-              to="/software-product-delivery"
+              to="/software-development-subscription-uk"
               className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-7 py-3 text-sm font-black text-[#000A2D] transition hover:border-[#2FA8DF]/40 hover:text-[#0057C8]"
             >
               View subscription model

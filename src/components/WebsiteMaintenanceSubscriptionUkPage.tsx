@@ -45,7 +45,7 @@ const heroLinks = [
   },
   {
     label: 'Software subscription',
-    href: '/software-product-delivery',
+    href: '/software-development-subscription-uk',
   },
   {
     label: 'CRM integration',
@@ -66,9 +66,9 @@ const relatedLinks = [
   },
   {
     title: 'Software Development Subscription',
-    href: '/software-product-delivery',
-    anchor: 'Software development subscription for UK SMEs',
-    text: 'For UK SMEs that need ongoing software delivery across websites, dashboards, CRM workflows, automation, integrations, and maintenance.',
+    href: '/software-development-subscription-uk',
+    anchor: 'Explore monthly software development capacity',
+    text: 'For UK businesses that need continuous software delivery support rather than repeated fixed-scope projects.',
   },
   {
     title: 'CRM Integration & Support',
@@ -195,22 +195,25 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => (
         </div>
 
         <div className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-semibold leading-7 text-slate-700">
-            Website maintenance often becomes more valuable when connected with{' '}
+          <h3 className="text-lg font-bold text-slate-950">
+            Need continuous delivery rather than a one-off project?
+          </h3>
+          <p className="mt-3 text-sm font-semibold leading-7 text-slate-700">
+            After stabilisation, ongoing improvement can continue through a structured{' '}
+            <Link
+              to="/software-development-subscription-uk"
+              className="font-black text-emerald-700 hover:text-emerald-800"
+            >
+              monthly development capacity
+            </Link>
+            {' '}model. Website maintenance also pairs well with{' '}
             <Link
               to="/crm-automation-support"
               className="font-black text-emerald-700 hover:text-emerald-800"
             >
               CRM integration support
             </Link>
-            {' '}and a{' '}
-            <Link
-              to="/software-product-delivery"
-              className="font-black text-emerald-700 hover:text-emerald-800"
-            >
-              software development subscription
-            </Link>
-            {' '}for controlled monthly improvement across your website, forms, tracking, workflows, and support systems.
+            {' '}when forms, tracking and follow-up need joined-up ownership.
           </p>
         </div>
       </div>

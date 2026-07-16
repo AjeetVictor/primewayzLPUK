@@ -5,7 +5,7 @@ import { TrackedLink } from '../common/TrackedLink';
 const serviceLinks = [
   {
     label: 'Software development subscription',
-    href: '/software-product-delivery',
+    href: '/software-development-subscription-uk',
   },
   {
     label: 'Website maintenance subscription',

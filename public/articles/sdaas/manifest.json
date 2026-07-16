@@ -1,0 +1,62 @@
+[
+  {
+    "slug": "monthly-delivery-workflow",
+    "basePath": "/articles/sdaas/monthly-delivery-workflow",
+    "width": 1693,
+    "height": 929
+  },
+  {
+    "slug": "delivery-models-comparison",
+    "basePath": "/articles/sdaas/delivery-models-comparison",
+    "width": 1535,
+    "height": 1024
+  },
+  {
+    "slug": "scattered-to-structured",
+    "basePath": "/articles/sdaas/scattered-to-structured",
+    "width": 1536,
+    "height": 1024
+  },
+  {
+    "slug": "delivery-process",
+    "basePath": "/articles/sdaas/delivery-process",
+    "width": 1536,
+    "height": 1024
+  },
+  {
+    "slug": "monthly-capacity",
+    "basePath": "/articles/sdaas/monthly-capacity",
+    "width": 1536,
+    "height": 1024
+  },
+  {
+    "slug": "subscription-vs-fixed-price",
+    "basePath": "/articles/sdaas/subscription-vs-fixed-price",
+    "width": 1536,
+    "height": 1024
+  },
+  {
+    "slug": "onboarding-journey",
+    "basePath": "/articles/sdaas/onboarding-journey",
+    "width": 1536,
+    "height": 1024
+  },
+  {
+    "slug": "consultation-cta",
+    "basePath": "/articles/sdaas/consultation-cta",
+    "width": 1536,
+    "height": 1024
+  },
+  {
+    "slug": "trust-and-governance",
+    "basePath": "/articles/sdaas/trust-and-governance",
+    "width": 1536,
+    "height": 1024
+  },
+  {
+    "slug": "capabilities-overview",
+    "basePath": "/articles/sdaas/capabilities-overview",
+    "width": 1536,
+    "height": 1024
+  }
+]

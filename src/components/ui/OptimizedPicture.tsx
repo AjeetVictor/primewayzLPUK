@@ -12,6 +12,7 @@ type OptimizedPictureProps = {
   imgClassName?: string;
   loading?: 'lazy' | 'eager';
   fetchPriority?: 'high' | 'low' | 'auto';
+  sizes?: string;
 };
 
 export function OptimizedPicture({
@@ -24,6 +25,7 @@ export function OptimizedPicture({
   imgClassName,
   loading = 'lazy',
   fetchPriority,
+  sizes,
 }: OptimizedPictureProps) {
   const webpSrc = `${basePath}.webp`;
   const fallbackSrc = `${basePath}.${fallbackExtension}`;
@@ -39,6 +41,7 @@ export function OptimizedPicture({
         loading={loading}
         decoding="async"
         fetchPriority={fetchPriority}
+        sizes={sizes}
         className={cn('block h-full w-full', imgClassName ?? 'object-contain object-center')}
       />
     </picture>

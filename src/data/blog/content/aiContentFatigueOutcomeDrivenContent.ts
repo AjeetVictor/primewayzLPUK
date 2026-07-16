@@ -4,7 +4,7 @@ const audit = (content: string) => aiContentFatigueArticleHref('/uk-sme-digital-
 const visibility = (content: string) => aiContentFatigueArticleHref('/website-visibility-support', content);
 const crm = (content: string) => aiContentFatigueArticleHref('/crm-automation-support', content);
 const maintenance = (content: string) => aiContentFatigueArticleHref('/maintenance', content);
-const software = (content: string) => aiContentFatigueArticleHref('/software-product-delivery', content);
+const software = (content: string) => aiContentFatigueArticleHref('/software-development-subscription-uk', content);
 const blog = (content: string) => aiContentFatigueArticleHref('/blog', content);
 
 export const aiContentFatigueFaqs = [

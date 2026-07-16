@@ -2,7 +2,7 @@ import { fixedPriceArticleHref } from '../blogArticleLinks.ts';
 
 const audit = (content: string) => fixedPriceArticleHref('/uk-sme-digital-visibility-checker', content);
 const maintenance = (content: string) => fixedPriceArticleHref('/maintenance', content);
-const software = (content: string) => fixedPriceArticleHref('/software-product-delivery', content);
+const software = (content: string) => fixedPriceArticleHref('/software-development-subscription-uk', content);
 const crm = (content: string) => fixedPriceArticleHref('/crm-automation-support', content);
 const remoteIt = (content: string) => fixedPriceArticleHref('/remote-it-resources', content);
 const contact = (content: string) => fixedPriceArticleHref('/contact-us#book-call', content);

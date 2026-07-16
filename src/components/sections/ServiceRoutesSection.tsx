@@ -48,10 +48,10 @@ const serviceRoutes: ServiceRouteCard[] = [
     eventName: 'service_card_click_crm_automation',
   },
   {
-    title: 'Software & Product Delivery',
+    title: 'Software Development as a Subscription',
     description:
-      'Web applications, portals, dashboards, APIs, integrations and product development support.',
-    href: '/software-product-delivery',
+      'Ongoing monthly development capacity for businesses with evolving digital needs.',
+    href: '/software-development-subscription-uk',
     icon: Code2,
     eventName: 'service_card_click_software_delivery',
   },

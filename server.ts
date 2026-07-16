@@ -25,6 +25,35 @@ import {
 import type { NextFunction, Request, Response } from 'express';
 import type { BlogPost } from './src/data/blog/types.ts';
 import { LEGACY_ROUTE_REDIRECTS } from './src/constants/canonicalRoutes.ts';
+import { SDAAS_DEFINITION, SDAAS_SEO, sdaasFaqs } from './src/data/sdaas/commercialPage.ts';
+import {
+  buildSdaasImageObjectSchema,
+  SDAAS_CLUSTER_REUSABLE_IMAGES,
+  SDAAS_COMMERCIAL_IMAGES,
+} from './src/data/sdaas/images.ts';
+import {
+  pillarFaqs,
+  SDAAS_PILLAR_OG_IMAGE,
+  SDAAS_PILLAR_PATH,
+  SDAAS_PILLAR_SEO,
+} from './src/data/sdaas/pillarArticle.ts';
+import {
+  comparisonFaqs,
+  SDAAS_COMPARISON_OG_IMAGE,
+  SDAAS_COMPARISON_PATH,
+  SDAAS_COMPARISON_SEO,
+} from './src/data/sdaas/comparisonArticle.ts';
+import {
+  useCasesFaqs,
+  SDAAS_USE_CASES_OG_IMAGE,
+  SDAAS_USE_CASES_PATH,
+  SDAAS_USE_CASES_SEO,
+} from './src/data/sdaas/useCasesArticle.ts';
+import {
+  SDAAS_SUPPORTING_ARTICLES,
+  getSdaasSupportingArticleByPath,
+} from './src/data/sdaas/supportingArticlesRegistry.ts';
+import type { SupportingArticleDefinition } from './src/data/sdaas/supportingArticleTypes.ts';
 
 dotenv.config({ path: '.env.local', override: false });
 dotenv.config({ override: false });
@@ -495,8 +524,102 @@ function buildDefaultStructuredData(canonical: string, description: string) {
       'Enquiry flow optimisation',
       'CRM integration support',
       'Ongoing digital delivery support',
+      'Software Development as a Subscription',
     ],
     audience: { '@type': 'BusinessAudience', audienceType: 'UK small businesses and SMEs' },
+  };
+}
+
+function buildSdaasStructuredData(canonical: string, description: string) {
+  const providerId = `${siteUrl}/#primewayz-uk`;
+  const webpageId = `${canonical}#webpage`;
+  const serviceId = `${canonical}#service`;
+  const heroImage = SDAAS_COMMERCIAL_IMAGES.heroWorkflow;
+  const heroImageId = `${siteUrl}${heroImage.basePath}.webp#image`;
+  const imageObjects = Object.values(SDAAS_COMMERCIAL_IMAGES).map((image) =>
+    buildSdaasImageObjectSchema(siteUrl, canonical, image),
+  );
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': providerId,
+        name: 'Primewayz UK',
+        url: siteUrl,
+        logo: `${siteUrl}/primewayz-uk-dark-logo.png`,
+        parentOrganization: {
+          '@type': 'Organization',
+          name: 'Primewayz Infotech Pvt. Ltd.',
+          url: 'https://primewayz.com/',
+        },
+      },
+      {
+        '@type': 'WebPage',
+        '@id': webpageId,
+        url: canonical,
+        name: SDAAS_SEO.title,
+        description,
+        inLanguage: 'en-GB',
+        isPartOf: { '@id': `${siteUrl}/#website` },
+        about: { '@id': serviceId },
+        breadcrumb: { '@id': `${canonical}#breadcrumb` },
+        primaryImageOfPage: { '@id': heroImageId },
+        image: imageObjects.map((image) => ({ '@id': image['@id'] })),
+      },
+      {
+        '@type': 'Service',
+        '@id': serviceId,
+        name: 'Software Development as a Subscription',
+        serviceType: 'Software Development as a Subscription',
+        description: SDAAS_DEFINITION,
+        url: canonical,
+        provider: { '@id': providerId },
+        areaServed: { '@type': 'Country', name: 'United Kingdom' },
+        audience: {
+          '@type': 'BusinessAudience',
+          audienceType: 'UK SMEs and growing digital businesses with continuous development needs',
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${canonical}#breadcrumb`,
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: `${siteUrl}/`,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Services',
+            item: `${siteUrl}/services`,
+          },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: 'Software Development as a Subscription',
+            item: canonical,
+          },
+        ],
+      },
+      {
+        '@type': 'FAQPage',
+        '@id': `${canonical}#faq`,
+        mainEntity: sdaasFaqs.map((faq) => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: faq.answer,
+          },
+        })),
+      },
+      ...imageObjects,
+    ],
   };
 }
 
@@ -590,6 +713,388 @@ function buildWebPresenceAuditStructuredData(canonical: string, description: str
   };
 }
 
+function buildSdaasPillarStructuredData(canonical: string) {
+  const providerId = `${siteUrl}/#primewayz-uk`;
+  const webpageId = `${canonical}#webpage`;
+  const articleId = `${canonical}#article`;
+  const ogImage = `${siteUrl}${SDAAS_PILLAR_OG_IMAGE}`;
+  const reusableImages = SDAAS_CLUSTER_REUSABLE_IMAGES.slice(0, 4).map((image) =>
+    buildSdaasImageObjectSchema(siteUrl, canonical, image),
+  );
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': providerId,
+        name: 'Primewayz UK',
+        url: siteUrl,
+        logo: `${siteUrl}/primewayz-uk-dark-logo.png`,
+      },
+      {
+        '@type': 'WebPage',
+        '@id': webpageId,
+        url: canonical,
+        name: SDAAS_PILLAR_SEO.title,
+        description: SDAAS_PILLAR_SEO.description,
+        inLanguage: 'en-GB',
+        isPartOf: { '@id': `${siteUrl}/#website` },
+        breadcrumb: { '@id': `${canonical}#breadcrumb` },
+        primaryImageOfPage: { '@id': `${ogImage}#image` },
+        about: { '@id': articleId },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${canonical}#breadcrumb`,
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl },
+          { '@type': 'ListItem', position: 2, name: 'Insights', item: `${siteUrl}/blog` },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: 'Subscription-Based Software Development',
+            item: canonical,
+          },
+        ],
+      },
+      {
+        '@type': 'Article',
+        '@id': articleId,
+        headline: SDAAS_PILLAR_SEO.h1,
+        description: SDAAS_PILLAR_SEO.description,
+        image: [ogImage, ...reusableImages.map((image) => image.contentUrl)],
+        datePublished: `${SDAAS_PILLAR_SEO.datePublished}T09:00:00+01:00`,
+        dateModified: `${SDAAS_PILLAR_SEO.dateModified}T09:00:00+01:00`,
+        author: { '@type': 'Organization', '@id': providerId, name: SDAAS_PILLAR_SEO.author },
+        publisher: {
+          '@type': 'Organization',
+          '@id': providerId,
+          name: 'Primewayz UK',
+          logo: { '@type': 'ImageObject', url: `${siteUrl}/primewayz-uk-dark-logo.png` },
+        },
+        mainEntityOfPage: { '@type': 'WebPage', '@id': webpageId },
+        articleSection: SDAAS_PILLAR_SEO.category,
+        keywords: SDAAS_PILLAR_SEO.keywords.join(', '),
+        inLanguage: 'en-GB',
+        about: [
+          { '@type': 'Thing', name: 'Subscription-based software development' },
+          { '@type': 'Thing', name: 'Software Development as a Subscription' },
+          { '@type': 'Thing', name: 'SaaS subscription model' },
+        ],
+        mentions: [
+          { '@type': 'Thing', name: 'Monthly development capacity' },
+          { '@type': 'Thing', name: 'Fixed-price software development' },
+          { '@type': 'Thing', name: 'Shared backlog' },
+        ],
+      },
+      {
+        '@type': 'FAQPage',
+        '@id': `${canonical}#faq`,
+        mainEntity: pillarFaqs.map((faq) => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: faq.answer,
+          },
+        })),
+      },
+      ...reusableImages,
+    ],
+  };
+}
+
+function buildSdaasComparisonStructuredData(canonical: string) {
+  const providerId = `${siteUrl}/#primewayz-uk`;
+  const webpageId = `${canonical}#webpage`;
+  const articleId = `${canonical}#article`;
+  const ogImage = `${siteUrl}${SDAAS_COMPARISON_OG_IMAGE}`;
+  const comparisonImages = [
+    SDAAS_COMMERCIAL_IMAGES.subscriptionVsFixedPrice,
+    SDAAS_COMMERCIAL_IMAGES.monthlyCapacity,
+  ].map((image) => buildSdaasImageObjectSchema(siteUrl, canonical, image));
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': providerId,
+        name: 'Primewayz UK',
+        url: siteUrl,
+        logo: `${siteUrl}/primewayz-uk-dark-logo.png`,
+      },
+      {
+        '@type': 'WebPage',
+        '@id': webpageId,
+        url: canonical,
+        name: SDAAS_COMPARISON_SEO.title,
+        description: SDAAS_COMPARISON_SEO.description,
+        inLanguage: 'en-GB',
+        isPartOf: { '@id': `${siteUrl}/#website` },
+        breadcrumb: { '@id': `${canonical}#breadcrumb` },
+        primaryImageOfPage: { '@id': `${ogImage}#image` },
+        about: { '@id': articleId },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${canonical}#breadcrumb`,
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl },
+          { '@type': 'ListItem', position: 2, name: 'Insights', item: `${siteUrl}/blog` },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: 'Software Development Subscription vs Fixed-Price',
+            item: canonical,
+          },
+        ],
+      },
+      {
+        '@type': 'Article',
+        '@id': articleId,
+        headline: SDAAS_COMPARISON_SEO.h1,
+        description: SDAAS_COMPARISON_SEO.description,
+        image: [ogImage, ...comparisonImages.map((image) => image.contentUrl)],
+        datePublished: `${SDAAS_COMPARISON_SEO.datePublished}T09:00:00+01:00`,
+        dateModified: `${SDAAS_COMPARISON_SEO.dateModified}T09:00:00+01:00`,
+        author: {
+          '@type': 'Organization',
+          '@id': providerId,
+          name: SDAAS_COMPARISON_SEO.author,
+        },
+        publisher: {
+          '@type': 'Organization',
+          '@id': providerId,
+          name: 'Primewayz UK',
+          logo: { '@type': 'ImageObject', url: `${siteUrl}/primewayz-uk-dark-logo.png` },
+        },
+        mainEntityOfPage: { '@type': 'WebPage', '@id': webpageId },
+        articleSection: SDAAS_COMPARISON_SEO.category,
+        keywords: SDAAS_COMPARISON_SEO.keywords.join(', '),
+        inLanguage: 'en-GB',
+        about: [
+          { '@type': 'Thing', name: 'Fixed-price software development' },
+          { '@type': 'Thing', name: 'Software Development as a Subscription' },
+          { '@type': 'Thing', name: 'Software procurement' },
+        ],
+        mentions: [
+          { '@type': 'Thing', name: 'Monthly development capacity' },
+          { '@type': 'Thing', name: 'Software project planning' },
+          { '@type': 'Thing', name: 'Hybrid delivery model' },
+          { '@type': 'Thing', name: 'Discovery phase' },
+        ],
+      },
+      {
+        '@type': 'FAQPage',
+        '@id': `${canonical}#faq`,
+        mainEntity: comparisonFaqs.map((faq) => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: faq.answer,
+          },
+        })),
+      },
+      ...comparisonImages,
+    ],
+  };
+}
+
+function buildSdaasUseCasesStructuredData(canonical: string) {
+  const providerId = `${siteUrl}/#primewayz-uk`;
+  const webpageId = `${canonical}#webpage`;
+  const articleId = `${canonical}#article`;
+  const ogImage = `${siteUrl}${SDAAS_USE_CASES_OG_IMAGE}`;
+  const useCaseImages = [
+    SDAAS_COMMERCIAL_IMAGES.scatteredToStructured,
+    SDAAS_COMMERCIAL_IMAGES.monthlyCapacity,
+    SDAAS_COMMERCIAL_IMAGES.deliveryProcess,
+  ].map((image) => buildSdaasImageObjectSchema(siteUrl, canonical, image));
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': providerId,
+        name: 'Primewayz UK',
+        url: siteUrl,
+        logo: `${siteUrl}/primewayz-uk-dark-logo.png`,
+      },
+      {
+        '@type': 'WebPage',
+        '@id': webpageId,
+        url: canonical,
+        name: SDAAS_USE_CASES_SEO.title,
+        description: SDAAS_USE_CASES_SEO.description,
+        inLanguage: 'en-GB',
+        isPartOf: { '@id': `${siteUrl}/#website` },
+        breadcrumb: { '@id': `${canonical}#breadcrumb` },
+        primaryImageOfPage: { '@id': `${ogImage}#image` },
+        about: { '@id': articleId },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${canonical}#breadcrumb`,
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl },
+          { '@type': 'ListItem', position: 2, name: 'Insights', item: `${siteUrl}/blog` },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: 'Software Development Subscription Use Cases',
+            item: canonical,
+          },
+        ],
+      },
+      {
+        '@type': 'Article',
+        '@id': articleId,
+        headline: SDAAS_USE_CASES_SEO.h1,
+        description: SDAAS_USE_CASES_SEO.description,
+        image: [ogImage, ...useCaseImages.map((image) => image.contentUrl)],
+        datePublished: `${SDAAS_USE_CASES_SEO.datePublished}T09:00:00+01:00`,
+        dateModified: `${SDAAS_USE_CASES_SEO.dateModified}T09:00:00+01:00`,
+        author: {
+          '@type': 'Organization',
+          '@id': providerId,
+          name: SDAAS_USE_CASES_SEO.author,
+        },
+        publisher: {
+          '@type': 'Organization',
+          '@id': providerId,
+          name: 'Primewayz UK',
+          logo: { '@type': 'ImageObject', url: `${siteUrl}/primewayz-uk-dark-logo.png` },
+        },
+        mainEntityOfPage: { '@type': 'WebPage', '@id': webpageId },
+        articleSection: SDAAS_USE_CASES_SEO.category,
+        keywords: SDAAS_USE_CASES_SEO.keywords.join(', '),
+        inLanguage: 'en-GB',
+        about: [
+          { '@type': 'Thing', name: 'Software Development as a Subscription' },
+          { '@type': 'Thing', name: 'SaaS product development' },
+          { '@type': 'Thing', name: 'Application modernisation' },
+          { '@type': 'Thing', name: 'Monthly development capacity' },
+        ],
+        mentions: [
+          { '@type': 'Thing', name: 'API integration' },
+          { '@type': 'Thing', name: 'Business-process automation' },
+          { '@type': 'Thing', name: 'Technical debt' },
+          { '@type': 'Thing', name: 'Software maintenance' },
+        ],
+      },
+      {
+        '@type': 'FAQPage',
+        '@id': `${canonical}#faq`,
+        mainEntity: useCasesFaqs.map((faq) => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: faq.answer,
+          },
+        })),
+      },
+      ...useCaseImages,
+    ],
+  };
+}
+
+function buildSdaasSupportingArticleStructuredData(
+  article: SupportingArticleDefinition,
+  canonical: string,
+) {
+  const providerId = `${siteUrl}/#primewayz-uk`;
+  const webpageId = `${canonical}#webpage`;
+  const articleId = `${canonical}#article`;
+  const ogImage = `${siteUrl}${article.ogImage}`;
+  const supportingImages = Object.values(SDAAS_COMMERCIAL_IMAGES)
+    .filter((image) => article.reusableVisuals.includes(image.basePath))
+    .slice(0, 2)
+    .map((image) => buildSdaasImageObjectSchema(siteUrl, canonical, image));
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': providerId,
+        name: 'Primewayz UK',
+        url: siteUrl,
+        logo: `${siteUrl}/primewayz-uk-dark-logo.png`,
+      },
+      {
+        '@type': 'WebPage',
+        '@id': webpageId,
+        url: canonical,
+        name: article.seo.title,
+        description: article.seo.description,
+        inLanguage: 'en-GB',
+        isPartOf: { '@id': `${siteUrl}/#website` },
+        breadcrumb: { '@id': `${canonical}#breadcrumb` },
+        primaryImageOfPage: { '@id': `${ogImage}#image` },
+        about: { '@id': articleId },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${canonical}#breadcrumb`,
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl },
+          { '@type': 'ListItem', position: 2, name: 'Insights', item: `${siteUrl}/blog` },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: article.breadcrumbLabel,
+            item: canonical,
+          },
+        ],
+      },
+      {
+        '@type': 'Article',
+        '@id': articleId,
+        headline: article.seo.h1,
+        description: article.seo.description,
+        image: [ogImage, ...supportingImages.map((image) => image.contentUrl)],
+        datePublished: `${article.seo.datePublished}T09:00:00+01:00`,
+        dateModified: `${article.seo.dateModified}T09:00:00+01:00`,
+        author: {
+          '@type': 'Organization',
+          '@id': providerId,
+          name: article.seo.author,
+        },
+        publisher: {
+          '@type': 'Organization',
+          '@id': providerId,
+          name: 'Primewayz UK',
+          logo: { '@type': 'ImageObject', url: `${siteUrl}/primewayz-uk-dark-logo.png` },
+        },
+        mainEntityOfPage: { '@type': 'WebPage', '@id': webpageId },
+        articleSection: article.seo.category,
+        keywords: article.seo.keywords.join(', '),
+        inLanguage: 'en-GB',
+        about: article.aboutEntities.map((name) => ({ '@type': 'Thing', name })),
+        mentions: article.mentionEntities.map((name) => ({ '@type': 'Thing', name })),
+      },
+      {
+        '@type': 'FAQPage',
+        '@id': `${canonical}#faq`,
+        mainEntity: article.faqs.map((faq) => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: faq.answer,
+          },
+        })),
+      },
+      ...supportingImages,
+    ],
+  };
+}
+
 function buildArticleStructuredData(post: BlogPost, canonical: string) {
   const article = {
     '@type': 'Article',
@@ -643,13 +1148,17 @@ function buildSeoTags(options: {
   canonical: string;
   ogType?: 'website' | 'article';
   image?: string;
+  noindex?: boolean;
   structuredData: unknown;
 }) {
   const image = toAbsoluteSiteUrl(options.image) || `${siteUrl}/og-primewayz-uk.jpg`;
+  const robots = options.noindex
+    ? 'noindex, follow'
+    : 'index, follow, max-image-preview:large';
   return `
     <title>${escapeHtml(options.title)}</title>
     <meta name="description" content="${escapeHtml(options.description)}" />
-    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="robots" content="${robots}" />
     <link rel="canonical" href="${escapeHtml(options.canonical)}" />
     <meta property="og:type" content="${options.ogType || 'website'}" />
     <meta property="og:locale" content="en_GB" />
@@ -754,9 +1263,34 @@ async function getInitialDataAndSeo(pathname: string) {
         'Explore Primewayz UK services for UK SMEs, including software development, website maintenance, CRM integration, automation, SEO, and support.',
     },
     '/software-development-subscription-uk': {
-      title: 'Software Development Subscription for UK SMEs | Primewayz UK',
+      title: SDAAS_SEO.title,
+      description: SDAAS_SEO.description,
+    },
+    [SDAAS_PILLAR_PATH]: {
+      title: `${SDAAS_PILLAR_SEO.title} | Primewayz UK`,
+      description: SDAAS_PILLAR_SEO.description,
+    },
+    [SDAAS_COMPARISON_PATH]: {
+      title: `${SDAAS_COMPARISON_SEO.title} | Primewayz UK`,
+      description: SDAAS_COMPARISON_SEO.description,
+    },
+    [SDAAS_USE_CASES_PATH]: {
+      title: `${SDAAS_USE_CASES_SEO.title} | Primewayz UK`,
+      description: SDAAS_USE_CASES_SEO.description,
+    },
+    ...Object.fromEntries(
+      SDAAS_SUPPORTING_ARTICLES.map((article) => [
+        article.path,
+        {
+          title: `${article.seo.title} | Primewayz UK`,
+          description: article.seo.description,
+        },
+      ]),
+    ),
+    '/software-development-subscription-uk/request-capacity': {
+      title: 'Request Capacity Recommendation | Primewayz UK',
       description:
-        'Primewayz UK provides monthly software development subscriptions for UK SMEs, covering websites, CRM, automation, integrations, technical SEO, and support.',
+        'Request a recommended monthly software development capacity plan from Primewayz UK.',
     },
     '/website-maintenance-subscription-uk': {
       title: 'Website Maintenance Subscription for UK SMEs | Primewayz UK',
@@ -824,9 +1358,8 @@ async function getInitialDataAndSeo(pathname: string) {
         'Primewayz UK provides CRM integration support for UK SMEs, covering lead capture, workflow cleanup, automation, reporting, and customer data.',
     },
     '/software-product-delivery': {
-      title: 'Software Development Subscription for UK SMEs | Primewayz UK',
-      description:
-        'Primewayz UK provides monthly software development subscriptions for UK SMEs, covering websites, CRM, automation, integrations, technical SEO, and support.',
+      title: SDAAS_SEO.title,
+      description: SDAAS_SEO.description,
     },
     '/remote-it-resources': {
       title: 'Remote IT Resources for UK SMEs | Primewayz UK',
@@ -837,15 +1370,43 @@ async function getInitialDataAndSeo(pathname: string) {
 
   const pageSeo = staticPageSeo[pathname] || staticPageSeo['/'];
 
+  let structuredData: unknown = buildDefaultStructuredData(canonical, pageSeo.description);
+  let ogType: 'website' | 'article' | undefined;
+  let image: string | undefined;
+
+  if (pathname === '/uk-sme-digital-visibility-checker') {
+    structuredData = buildWebPresenceAuditStructuredData(canonical, pageSeo.description);
+  } else if (pathname === '/software-development-subscription-uk') {
+    structuredData = buildSdaasStructuredData(canonical, pageSeo.description);
+  } else if (pathname === SDAAS_PILLAR_PATH) {
+    structuredData = buildSdaasPillarStructuredData(canonical);
+    ogType = 'article';
+    image = SDAAS_PILLAR_OG_IMAGE;
+  } else if (pathname === SDAAS_COMPARISON_PATH) {
+    structuredData = buildSdaasComparisonStructuredData(canonical);
+    ogType = 'article';
+    image = SDAAS_COMPARISON_OG_IMAGE;
+  } else if (pathname === SDAAS_USE_CASES_PATH) {
+    structuredData = buildSdaasUseCasesStructuredData(canonical);
+    ogType = 'article';
+    image = SDAAS_USE_CASES_OG_IMAGE;
+  } else if (getSdaasSupportingArticleByPath(pathname)) {
+    const article = getSdaasSupportingArticleByPath(pathname)!;
+    structuredData = buildSdaasSupportingArticleStructuredData(article, canonical);
+    ogType = 'article';
+    image = article.ogImage;
+  }
+
   return {
     initialData: {},
     seoTags: buildSeoTags({
       title: pageSeo.title,
       description: pageSeo.description,
       canonical,
-      structuredData: pathname === '/uk-sme-digital-visibility-checker'
-        ? buildWebPresenceAuditStructuredData(canonical, pageSeo.description)
-        : buildDefaultStructuredData(canonical, pageSeo.description),
+      ogType,
+      image,
+      noindex: pathname === '/software-development-subscription-uk/request-capacity',
+      structuredData,
     }),
   };
 }
@@ -1909,6 +2470,10 @@ app.get('/.well-known/api-catalog', (_req, res) => {
     });
 });
 
+const SDAAS_SUPPORTING_ARTICLE_MARKDOWN_LINKS = SDAAS_SUPPORTING_ARTICLES.map(
+  (article) => `- [${article.seo.title}](https://uk.primewayz.com${article.path})`,
+).join('\n');
+
 const MARKDOWN_PUBLIC_ROUTES: Record<string, string> = {
   '/': `# Primewayz UK
 
@@ -1919,7 +2484,11 @@ Primewayz UK helps UK SMEs, founders, consultants, and service businesses improv
 - [Services](https://uk.primewayz.com/services)
 - [Website visibility support](https://uk.primewayz.com/website-visibility-support)
 - [CRM automation support](https://uk.primewayz.com/crm-automation-support)
-- [Software product delivery](https://uk.primewayz.com/software-product-delivery)
+- [Software Development as a Subscription](https://uk.primewayz.com/software-development-subscription-uk)
+- [Subscription-Based Software Development Guide](https://uk.primewayz.com/insights/subscription-based-software-development)
+- [Software Development Subscription vs Fixed-Price](https://uk.primewayz.com/insights/software-development-subscription-vs-fixed-price)
+- [Software Development Subscription Use Cases](https://uk.primewayz.com/insights/software-development-subscription-use-cases)
+${SDAAS_SUPPORTING_ARTICLE_MARKDOWN_LINKS}
 - [Website maintenance and monthly support](https://uk.primewayz.com/maintenance)
 - [Free website audit](https://uk.primewayz.com/uk-sme-digital-visibility-checker)
 - [Blog insights](https://uk.primewayz.com/blog)
@@ -1933,9 +2502,16 @@ Primewayz UK provides website visibility support, CRM automation support, softwa
 
 - [Website visibility support](https://uk.primewayz.com/website-visibility-support)
 - [CRM automation support](https://uk.primewayz.com/crm-automation-support)
-- [Software product delivery](https://uk.primewayz.com/software-product-delivery)
+- [Software Development as a Subscription](https://uk.primewayz.com/software-development-subscription-uk)
 - [Remote IT resources](https://uk.primewayz.com/remote-it-resources)
 - [Monthly website support](https://uk.primewayz.com/maintenance)
+
+## Software development insights
+
+- [Subscription-Based Software Development Guide](https://uk.primewayz.com/insights/subscription-based-software-development)
+- [Software Development Subscription vs Fixed-Price](https://uk.primewayz.com/insights/software-development-subscription-vs-fixed-price)
+- [Software Development Subscription Use Cases](https://uk.primewayz.com/insights/software-development-subscription-use-cases)
+${SDAAS_SUPPORTING_ARTICLE_MARKDOWN_LINKS}
 `,
   '/blog': `# Primewayz UK Insights
 
@@ -1943,6 +2519,10 @@ Practical guidance for UK SMEs and SaaS founders on monthly digital support, CRM
 
 ## Start here
 
+- [Subscription-Based Software Development Guide](https://uk.primewayz.com/insights/subscription-based-software-development)
+- [Software Development Subscription vs Fixed-Price](https://uk.primewayz.com/insights/software-development-subscription-vs-fixed-price)
+- [Software Development Subscription Use Cases](https://uk.primewayz.com/insights/software-development-subscription-use-cases)
+${SDAAS_SUPPORTING_ARTICLE_MARKDOWN_LINKS}
 - [Fixed Price vs Time & Material vs Subscription Support](https://uk.primewayz.com/blog/fixed-price-vs-time-material-vs-subscription-support-uk-smes-saas-founders)
 - [Monthly Digital Support for UK SMEs](https://uk.primewayz.com/blog/monthly-digital-support-uk-smes)
 - [Foundation Sprint Before Monthly Delivery](https://uk.primewayz.com/blog/foundation-sprint-before-monthly-delivery)

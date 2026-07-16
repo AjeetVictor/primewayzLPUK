@@ -98,7 +98,7 @@ const relatedLinks = [
   },
   {
     title: 'Software Development Subscription UK',
-    href: '/software-product-delivery',
+    href: '/software-development-subscription-uk',
     text: 'For ongoing software delivery, integrations, backlog support, automation, and technical improvements.',
     anchor: 'View software subscription',
   },

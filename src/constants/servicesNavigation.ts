@@ -78,7 +78,7 @@ export const serviceNavGroups: ServiceNavGroup[] = [
       {
         name: 'Custom API Integrations',
         description: 'Connect databases, business platforms and payment/CRM systems',
-        href: CANONICAL_ROUTES.softwareProductDelivery,
+        href: CANONICAL_ROUTES.softwareDevelopmentSubscription,
         icon: Plug,
         iconTone: 'navy',
       },
@@ -108,9 +108,9 @@ export const serviceNavGroups: ServiceNavGroup[] = [
         isNew: true,
       },
       {
-        name: 'Monthly Technical Support',
-        description: 'Ongoing improvements, fixes, reporting and technical delivery rhythm',
-        href: CANONICAL_ROUTES.softwareProductDelivery,
+        name: 'Software Development as a Subscription',
+        description: 'Structured monthly development capacity for ongoing improvements and integrations',
+        href: CANONICAL_ROUTES.softwareDevelopmentSubscription,
         icon: Code2,
         iconTone: 'navy',
       },

@@ -32,6 +32,19 @@ import type { BlogPost as BlogPostData } from './data/blog/types';
 import LegalPage from './components/LegalPage';
 import AnalyticsTracker from './components/AnalyticsTracker';
 import { SoftwareDevelopmentSubscriptionUkPage } from './components/SoftwareDevelopmentSubscriptionUkPage';
+import { SdaasCapacityRequestPage } from './components/sdaas/SdaasCapacityRequestPage';
+import { SubscriptionBasedSoftwareDevelopmentPage } from './components/insights/SubscriptionBasedSoftwareDevelopmentPage';
+import { SoftwareDevelopmentSubscriptionVsFixedPricePage } from './components/insights/SoftwareDevelopmentSubscriptionVsFixedPricePage';
+import { SoftwareDevelopmentSubscriptionUseCasesPage } from './components/insights/SoftwareDevelopmentSubscriptionUseCasesPage';
+import {
+  HowMonthlySoftwareDevelopmentCapacityWorksPage,
+  HowToPrioritiseSoftwareDevelopmentRequestsPage,
+  ApplicationRescueAndStabilisationPage,
+  TechnicalDebtExplainedForBusinessOwnersPage,
+  WhyBusinessesMoveToContinuousSoftwareDevelopmentPage,
+  SoftwareMaintenanceVsContinuousProductDevelopmentPage,
+  HowToChooseASoftwareDevelopmentPartnerPage,
+} from './components/insights/SdaasSupportingArticlePages';
 import { WebsiteMaintenanceSubscriptionUkPage } from './components/WebsiteMaintenanceSubscriptionUkPage';
 import { CrmIntegrationSupportUkPage } from './components/CrmIntegrationSupportUkPage';
 import { ProfessionalServicesCrmSupportUkPage } from './components/ProfessionalServicesCrmSupportUkPage';
@@ -126,7 +139,55 @@ export const App = ({ initialData }: AppProps) => {
         <Route path="/website-visibility-support" element={<WebsiteMaintenanceSubscriptionUkPage />} />
         <Route path="/maintenance" element={<WebsiteMaintenanceSubscriptionUkPage />} />
         <Route path="/crm-automation-support" element={<CrmIntegrationSupportUkPage />} />
-        <Route path="/software-product-delivery" element={<SoftwareDevelopmentSubscriptionUkPage />} />
+        <Route path="/software-development-subscription-uk" element={<SoftwareDevelopmentSubscriptionUkPage />} />
+        <Route
+          path="/software-development-subscription-uk/request-capacity"
+          element={<SdaasCapacityRequestPage />}
+        />
+        <Route
+          path="/insights/subscription-based-software-development"
+          element={<SubscriptionBasedSoftwareDevelopmentPage />}
+        />
+        <Route
+          path="/insights/software-development-subscription-vs-fixed-price"
+          element={<SoftwareDevelopmentSubscriptionVsFixedPricePage />}
+        />
+        <Route
+          path="/insights/software-development-subscription-use-cases"
+          element={<SoftwareDevelopmentSubscriptionUseCasesPage />}
+        />
+        <Route
+          path="/insights/how-monthly-software-development-capacity-works"
+          element={<HowMonthlySoftwareDevelopmentCapacityWorksPage />}
+        />
+        <Route
+          path="/insights/how-to-prioritise-software-development-requests"
+          element={<HowToPrioritiseSoftwareDevelopmentRequestsPage />}
+        />
+        <Route
+          path="/insights/application-rescue-and-stabilisation-before-ongoing-development"
+          element={<ApplicationRescueAndStabilisationPage />}
+        />
+        <Route
+          path="/insights/technical-debt-explained-for-business-owners"
+          element={<TechnicalDebtExplainedForBusinessOwnersPage />}
+        />
+        <Route
+          path="/insights/why-businesses-move-to-continuous-software-development"
+          element={<WhyBusinessesMoveToContinuousSoftwareDevelopmentPage />}
+        />
+        <Route
+          path="/insights/software-maintenance-vs-continuous-product-development"
+          element={<SoftwareMaintenanceVsContinuousProductDevelopmentPage />}
+        />
+        <Route
+          path="/insights/how-to-choose-a-software-development-partner"
+          element={<HowToChooseASoftwareDevelopmentPartnerPage />}
+        />
+        <Route
+          path="/software-product-delivery"
+          element={<Navigate to="/software-development-subscription-uk" replace />}
+        />
         <Route path="/remote-it-resources" element={<RemoteItResourceAugmentationPage />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/how-it-works" element={<Navigate to="/#how-it-works" replace />} />
@@ -137,7 +198,6 @@ export const App = ({ initialData }: AppProps) => {
         <Route path="/website-maintenance-subscription-uk" element={<Navigate to="/maintenance" replace />} />
         <Route path="/remote-it-resource-augmentation" element={<Navigate to="/remote-it-resources" replace />} />
         <Route path="/web-presence-audit/report/:publicToken" element={<WebPresenceAuditSharedReportPage />} />
-        <Route path="/software-development-subscription-uk" element={<Navigate to="/software-product-delivery" replace />} />
         <Route path="/crm-integration-support-uk" element={<Navigate to="/crm-automation-support" replace />} />
         <Route path="/professional-services-crm-support-uk" element={<ProfessionalServicesCrmSupportUkPage />} />
         <Route path="/success-stories" element={<SuccessStoriesPage />} />

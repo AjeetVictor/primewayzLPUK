@@ -1,4 +1,4 @@
-﻿# Primewayz UK
+# Primewayz UK
 
 Primewayz UK helps UK SMEs, founders, consultants, service businesses, and growing teams improve digital visibility, websites, CRM workflows, automation, software delivery, and ongoing monthly digital support.
 
@@ -8,7 +8,17 @@ Primewayz UK helps UK SMEs, founders, consultants, service businesses, and growi
 - [Services](https://uk.primewayz.com/services)
 - [Website visibility support](https://uk.primewayz.com/website-visibility-support)
 - [CRM automation support](https://uk.primewayz.com/crm-automation-support)
-- [Software product delivery](https://uk.primewayz.com/software-product-delivery)
+- [Software Development as a Subscription](https://uk.primewayz.com/software-development-subscription-uk)
+- [Subscription-Based Software Development Guide](https://uk.primewayz.com/insights/subscription-based-software-development)
+- [Software Development Subscription vs Fixed-Price](https://uk.primewayz.com/insights/software-development-subscription-vs-fixed-price)
+- [Software Development Subscription Use Cases](https://uk.primewayz.com/insights/software-development-subscription-use-cases)
+- [How Monthly Software Development Capacity Works](https://uk.primewayz.com/insights/how-monthly-software-development-capacity-works)
+- [How to Prioritise Software Development Requests](https://uk.primewayz.com/insights/how-to-prioritise-software-development-requests)
+- [Application Rescue and Stabilisation](https://uk.primewayz.com/insights/application-rescue-and-stabilisation-before-ongoing-development)
+- [Technical Debt Explained for Business Owners](https://uk.primewayz.com/insights/technical-debt-explained-for-business-owners)
+- [Why Businesses Move to Continuous Development](https://uk.primewayz.com/insights/why-businesses-move-to-continuous-software-development)
+- [Software Maintenance vs Continuous Product Development](https://uk.primewayz.com/insights/software-maintenance-vs-continuous-product-development)
+- [How to Choose a Software Development Partner](https://uk.primewayz.com/insights/how-to-choose-a-software-development-partner)
 - [Remote IT resources](https://uk.primewayz.com/remote-it-resources)
 - [Website maintenance and monthly support](https://uk.primewayz.com/maintenance)
 - [Free website audit](https://uk.primewayz.com/uk-sme-digital-visibility-checker)
@@ -17,6 +27,16 @@ Primewayz UK helps UK SMEs, founders, consultants, service businesses, and growi
 
 ## Important articles
 
+- [Subscription-Based Software Development: Models & Examples](https://uk.primewayz.com/insights/subscription-based-software-development)
+- [Software Development Subscription vs Fixed-Price Development](https://uk.primewayz.com/insights/software-development-subscription-vs-fixed-price)
+- [10 Software Development Subscription Use Cases](https://uk.primewayz.com/insights/software-development-subscription-use-cases)
+- [How Monthly Software Development Capacity Works](https://uk.primewayz.com/insights/how-monthly-software-development-capacity-works)
+- [How to Prioritise Software Development Requests](https://uk.primewayz.com/insights/how-to-prioritise-software-development-requests)
+- [Application Rescue and Stabilisation](https://uk.primewayz.com/insights/application-rescue-and-stabilisation-before-ongoing-development)
+- [Technical Debt Explained for Business Owners](https://uk.primewayz.com/insights/technical-debt-explained-for-business-owners)
+- [Why Businesses Move to Continuous Development](https://uk.primewayz.com/insights/why-businesses-move-to-continuous-software-development)
+- [Software Maintenance vs Continuous Product Development](https://uk.primewayz.com/insights/software-maintenance-vs-continuous-product-development)
+- [How to Choose a Software Development Partner](https://uk.primewayz.com/insights/how-to-choose-a-software-development-partner)
 - [Fixed Price vs Time & Material vs Subscription Support](https://uk.primewayz.com/blog/fixed-price-vs-time-material-vs-subscription-support-uk-smes-saas-founders)
 - [Monthly Digital Support for UK SMEs](https://uk.primewayz.com/blog/monthly-digital-support-uk-smes)
 - [Foundation Sprint Before Monthly Delivery](https://uk.primewayz.com/blog/foundation-sprint-before-monthly-delivery)
