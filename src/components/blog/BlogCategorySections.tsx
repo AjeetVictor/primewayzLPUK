@@ -1,8 +1,10 @@
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { BlogPost } from '../../data/blog/types';
+import { getArticleCategoryDisplayName } from '../../data/blog/categories';
 import { getBlogThumbnailImage } from '../../data/blog/imageFallbacks';
 import type { EditorialSection } from '../../data/blog/editorialSections';
+import { getEditorialSectionViewAllHref } from '../../data/blog/editorialSections';
 
 type BlogCategorySectionsProps = {
   sections: Array<{
@@ -30,7 +32,7 @@ const SectionCard = ({ post }: { post: BlogPost }) => {
 
       <div className="flex flex-1 flex-col pt-4">
         <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-600">
-          {post.category}
+          {getArticleCategoryDisplayName(post)}
         </span>
         <h3 className="mt-2 line-clamp-3 text-lg font-bold leading-snug tracking-tight text-zinc-900">
           <Link to={postHref} className="transition-colors hover:text-emerald-700">
@@ -53,6 +55,8 @@ export const BlogCategorySections = ({ sections }: BlogCategorySectionsProps) =>
         return null;
       }
 
+      const viewAllHref = getEditorialSectionViewAllHref(section);
+
       return (
         <section key={section.id} id={`section-${section.id}`} aria-labelledby={`heading-${section.id}`}>
           <div className="mb-8 flex items-end justify-between gap-4 border-b border-zinc-200 pb-4">
@@ -63,8 +67,8 @@ export const BlogCategorySections = ({ sections }: BlogCategorySectionsProps) =>
               {section.title}
             </h2>
             <Link
-              to={`/blog#section-${section.id}`}
-              className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-emerald-700 transition hover:text-emerald-800"
+              to={viewAllHref}
+              className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-emerald-700 transition hover:text-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
             >
               View all
               <ArrowRight className="h-4 w-4" aria-hidden />

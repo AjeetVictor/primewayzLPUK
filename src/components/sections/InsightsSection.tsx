@@ -4,6 +4,10 @@ import { ArrowRight, BarChart2, Layers, Target, User, type LucideIcon } from 'lu
 import { Link } from 'react-router-dom';
 import { getLatestBlogPosts } from '../../data/blog/utils';
 import type { BlogPost } from '../../data/blog/types';
+import {
+  getArticleCategoryDisplayName,
+  getArticlePrimaryCategory,
+} from '../../data/blog/categories';
 import { getBlogThumbnailImage } from '../../data/blog/imageFallbacks';
 import { buildInternalUtmUrl } from '../../lib/utm';
 import { FIXED_PRICE_ARTICLE_CAMPAIGN } from '../../data/blog/blogArticleLinks';
@@ -15,14 +19,25 @@ const SECTION_BG = '#F8F9FC';
 const BODY = '#334155';
 
 const categoryIcons: Record<string, LucideIcon> = {
+  'software-development': Layers,
+  'ai-automation': Target,
+  'technical-seo': Target,
+  'digital-transformation': BarChart2,
+  'web-development': BarChart2,
+  'software-support': Layers,
+  'product-development': Layers,
+  'business-strategy': User,
+  'legacy-modernisation': Layers,
+  'mobile-app-development': Target,
   'Delivery Model': Layers,
   'Digital Adoption': BarChart2,
   'AI Operations': Target,
-  'Maintenance': BarChart2,
-  'CRM': User,
+  Maintenance: BarChart2,
+  CRM: User,
   'UK SMEs': Layers,
   'Digital Operations': Target,
   SEO: Target,
+  'Digital Visibility': Target,
 };
 
 function getInsightHref(post: BlogPost, index: number) {
@@ -43,7 +58,12 @@ function InsightCardItem({
   post: BlogPost;
   href: string;
 }) {
-  const CategoryIcon = categoryIcons[post.category] || BarChart2;
+  const primarySlug = getArticlePrimaryCategory(post);
+  const CategoryIcon =
+    (primarySlug && categoryIcons[primarySlug]) ||
+    categoryIcons[post.category] ||
+    BarChart2;
+  const categoryLabel = getArticleCategoryDisplayName(post);
 
   return (
     <article
@@ -66,7 +86,7 @@ function InsightCardItem({
           style={{ backgroundColor: CHIP_BG, color: TEAL }}
         >
           <CategoryIcon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-          {post.category}
+          {categoryLabel}
         </span>
 
         <h3 className="text-xl font-bold leading-snug text-brand-navy sm:text-[1.35rem]">

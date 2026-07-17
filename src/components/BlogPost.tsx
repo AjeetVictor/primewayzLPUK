@@ -13,6 +13,8 @@ import { useEffect, useMemo, useRef, useState, FormEvent, useCallback } from 're
 import { BlogCard } from './blog/BlogCard';
 import { BlogArticleCTA } from './blog/BlogArticleCTA';
 import { BlogFaqSection } from './blog/BlogFaqSection';
+import { BlogBreadcrumbs } from './blog/BlogBreadcrumbs';
+import { BlogCategoryNav } from './blog/BlogCategoryNav';
 import {
   BlogArticleSidebar,
   BlogAuthorSection,
@@ -24,6 +26,14 @@ import {
   getBlogPostById,
   getRelatedBlogPosts,
 } from '../data/blog/utils';
+import {
+  buildArticleBreadcrumbs,
+  getArticlePrimaryCategory,
+  getArticleSecondaryCategories,
+  getBlogCategoryBySlug,
+  getCategoryArticleCount,
+  getNavigableCategories,
+} from '../data/blog/categories';
 import { getBlogBannerImage } from '../data/blog/imageFallbacks';
 import { extractArticleHeadings, injectHeadingIds } from '../data/blog/contentUtils';
 import type { BlogPost as BlogPostData } from '../data/blog/types';
@@ -49,11 +59,37 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
   const { id } = useParams<{ id: string }>();
   const [post, setPost] = useState<BlogPostData | null>(() => initialPost || getBlogPostById(id) || null);
   const [isPostLoading, setIsPostLoading] = useState(Boolean(id && !initialPost && !getBlogPostById(id)));
-  const relatedPosts = useMemo(() => (post ? getRelatedBlogPosts(post, 3) : []), [post]);
-  const recentPosts = useMemo(
-    () => getAllBlogPosts().filter((candidate) => candidate.id !== post?.id).slice(0, 4),
-    [post?.id],
+  const [postsPool, setPostsPool] = useState<BlogPostData[]>(() => getAllBlogPosts());
+  const relatedPosts = useMemo(
+    () => (post ? getRelatedBlogPosts(post, 3, postsPool) : []),
+    [post, postsPool],
   );
+  const recentPosts = useMemo(
+    () => postsPool.filter((candidate) => candidate.id !== post?.id).slice(0, 4),
+    [post?.id, postsPool],
+  );
+  const primaryCategorySlug = post ? getArticlePrimaryCategory(post) : undefined;
+  const primaryCategory = primaryCategorySlug
+    ? getBlogCategoryBySlug(primaryCategorySlug)
+    : undefined;
+  const secondaryCategories = useMemo(() => {
+    if (!post) return [];
+    return getArticleSecondaryCategories(post)
+      .map((slug) => getBlogCategoryBySlug(slug))
+      .filter((category): category is NonNullable<typeof category> => Boolean(category));
+  }, [post]);
+  const breadcrumbs = useMemo(
+    () => (post ? buildArticleBreadcrumbs(post, primaryCategory) : []),
+    [post, primaryCategory],
+  );
+  const navigableCategories = useMemo(() => getNavigableCategories(postsPool), [postsPool]);
+  const articleCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const category of navigableCategories) {
+      counts[category.slug] = getCategoryArticleCount(category.slug, postsPool);
+    }
+    return counts;
+  }, [navigableCategories, postsPool]);
   const heroImage = getBlogBannerImage(post?.image);
   const articleHeadings = useMemo(
     () => (post ? extractArticleHeadings(post.content) : []),
@@ -149,7 +185,19 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
       }
     };
 
+    const fetchPostsPool = async () => {
+      try {
+        const res = await fetch(apiUrl('/api/blog/posts'));
+        if (res.ok) {
+          setPostsPool(await res.json());
+        }
+      } catch {
+        setPostsPool(getAllBlogPosts());
+      }
+    };
+
     fetchPost();
+    fetchPostsPool();
   }, [id, initialPost]);
 
   useEffect(() => {
@@ -157,10 +205,10 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
     trackEvent('blog_article_view', {
       article_id: post.id,
       article_title: post.title,
-      article_category: post.category,
+      article_category: primaryCategorySlug || post.category,
       article_tags: post.tags.join(','),
     });
-  }, [post?.id]);
+  }, [post?.id, primaryCategorySlug]);
 
   useEffect(() => {
     if (!id) {
@@ -298,24 +346,50 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
   return (
     <main className="min-h-screen bg-white pt-32 pb-24">
       <article className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        <motion.nav initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} className="mb-10">
-          <Link
-            to="/blog"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-500 transition-colors hover:text-emerald-600"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to insights
-          </Link>
-        </motion.nav>
+        <div className="mb-8 space-y-4">
+          <BlogBreadcrumbs items={breadcrumbs} />
+          {navigableCategories.length ? (
+            <BlogCategoryNav
+              categories={navigableCategories}
+              activeSlug={primaryCategorySlug}
+              articleCounts={articleCounts}
+            />
+          ) : null}
+        </div>
 
         <header className="mx-auto mb-14 max-w-3xl text-center">
-          <motion.p
+          <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-[11px] font-bold uppercase tracking-[0.24em] text-emerald-600"
+            className="flex flex-wrap items-center justify-center gap-2"
           >
-            {post.category}
-          </motion.p>
+            {primaryCategory ? (
+              <Link
+                to={primaryCategory.canonicalPath}
+                className="text-[11px] font-bold uppercase tracking-[0.24em] text-emerald-600 transition hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+              >
+                {primaryCategory.name}
+              </Link>
+            ) : (
+              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-emerald-600">
+                {post.category}
+              </p>
+            )}
+          </motion.div>
+
+          {secondaryCategories.length ? (
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              {secondaryCategories.map((category) => (
+                <Link
+                  key={category.slug}
+                  to={category.canonicalPath}
+                  className="rounded-full border border-zinc-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 transition hover:border-emerald-200 hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                >
+                  {category.shortName || category.name}
+                </Link>
+              ))}
+            </div>
+          ) : null}
 
           <motion.h1
             initial={{ opacity: 0, y: 16 }}

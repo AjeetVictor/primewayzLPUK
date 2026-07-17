@@ -6,7 +6,17 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { getAllBlogPosts, getBlogPostById } from './src/data/blog/utils.ts';
+import { getAllBlogPosts, getBlogPostById, getPostTimestamp } from './src/data/blog/utils.ts';
+import {
+  buildArticleBreadcrumbs,
+  buildCategoryBreadcrumbs,
+  getArticleCategoryDisplayName,
+  getArticlePrimaryCategory,
+  getBlogCategoryBySlug,
+  getCategoryPageArticles,
+  isPublishableCategoryPage,
+  normaliseBlogPostCategories,
+} from './src/data/blog/categories.ts';
 import { runDigitalVisibilityCheck } from './src/lib/digitalVisibilityCheck.ts';
 import { runWebPresenceAudit } from './src/lib/audit/runWebPresenceAudit.ts';
 import { AuditInputError } from './src/lib/audit/types.ts';
@@ -23,7 +33,7 @@ import {
   validateAuditLeadAdminStatus,
 } from './src/lib/audit/leads/adminAuditLeadsService.ts';
 import type { NextFunction, Request, Response } from 'express';
-import type { BlogPost } from './src/data/blog/types.ts';
+import type { BlogCategory, BlogPost, BreadcrumbItem } from './src/data/blog/types.ts';
 import { LEGACY_ROUTE_REDIRECTS } from './src/constants/canonicalRoutes.ts';
 import { SDAAS_DEFINITION, SDAAS_SEO, sdaasFaqs } from './src/data/sdaas/commercialPage.ts';
 import {
@@ -415,11 +425,6 @@ function safeJson(value: unknown) {
   return JSON.stringify(value).replace(/</g, '\\u003c');
 }
 
-function getPostTimestamp(post: BlogPost) {
-  const timestamp = Date.parse(post.updatedDate || post.date);
-  return Number.isNaN(timestamp) ? 0 : timestamp;
-}
-
 function toIsoDate(value?: string) {
   const timestamp = value ? Date.parse(value) : NaN;
   return new Date(Number.isNaN(timestamp) ? Date.now() : timestamp).toISOString();
@@ -439,13 +444,18 @@ function cmsPostToBlogPost(post: any): BlogPost {
       ? post.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean)
       : [];
 
-  return {
+  const mapped: BlogPost = {
     id: post.slug,
     slug: post.slug,
     title: post.title,
     description: post.description || post.excerpt || stripHtml(post.content || '').slice(0, 160),
     excerpt: post.excerpt || post.description || stripHtml(post.content || '').slice(0, 220),
     category: post.category || 'Digital Operations',
+    primaryCategory: typeof post.primaryCategory === 'string' ? post.primaryCategory : undefined,
+    secondaryCategories: Array.isArray(post.secondaryCategories)
+      ? post.secondaryCategories.map(String)
+      : undefined,
+    categorySlug: typeof post.categorySlug === 'string' ? post.categorySlug : undefined,
     tags,
     date: date ? new Date(date).toLocaleDateString('en-GB', { month: 'long', day: 'numeric', year: 'numeric' }) : '',
     updatedDate: post.updatedDate
@@ -463,6 +473,13 @@ function cmsPostToBlogPost(post: any): BlogPost {
     seoDescription: post.seoDescription || undefined,
     linkedInEmbedHtml: post.linkedInEmbedHtml || undefined,
     linkedInPostUrl: post.linkedInPostUrl || undefined,
+  };
+
+  const normalised = normaliseBlogPostCategories(mapped);
+  return {
+    ...mapped,
+    primaryCategory: normalised.primaryCategory,
+    secondaryCategories: normalised.secondaryCategories,
   };
 }
 
@@ -1097,7 +1114,103 @@ function buildSdaasSupportingArticleStructuredData(
   };
 }
 
+function buildBreadcrumbList(items: BreadcrumbItem[], siteBaseUrl: string) {
+  return {
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.label,
+      ...(item.href
+        ? { item: `${siteBaseUrl}${item.href === '/' ? '/' : item.href}` }
+        : {}),
+    })),
+  };
+}
+
+function buildCategoryStructuredData(
+  category: BlogCategory,
+  posts: BlogPost[],
+  canonical: string,
+) {
+  const { featured, articles, essentialGuides } = getCategoryPageArticles(category.slug, posts);
+  const visibleArticles = [
+    ...(featured ? [featured] : []),
+    ...essentialGuides,
+    ...articles,
+  ];
+  const breadcrumbs = buildCategoryBreadcrumbs(category);
+  const breadcrumb = buildBreadcrumbList(breadcrumbs, siteUrl);
+  const itemList = {
+    '@type': 'ItemList',
+    '@id': `${canonical}#itemlist`,
+    itemListElement: visibleArticles.map((post, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      url: `${siteUrl}/blog/${post.id}`,
+      name: post.title,
+    })),
+  };
+
+  const collectionPage: Record<string, unknown> = {
+    '@type': 'CollectionPage',
+    '@id': `${canonical}#collection`,
+    name: category.title,
+    description: category.seoDescription || category.description,
+    url: canonical,
+    isPartOf: {
+      '@type': 'Blog',
+      '@id': `${siteUrl}/blog#blog`,
+      name: 'Primewayz UK Insights',
+      url: `${siteUrl}/blog`,
+    },
+    breadcrumb: { '@id': `${canonical}#breadcrumb` },
+    mainEntity: { '@id': `${canonical}#itemlist` },
+  };
+
+  const heroImage = category.heroImage || featured?.image || featured?.thumbnailImage;
+  if (heroImage) {
+    collectionPage.primaryImageOfPage = {
+      '@type': 'ImageObject',
+      url: toAbsoluteSiteUrl(heroImage),
+      ...(category.heroImageAlt ? { caption: category.heroImageAlt } : {}),
+    };
+  }
+
+  const graph: Record<string, unknown>[] = [
+    collectionPage,
+    { ...breadcrumb, '@id': `${canonical}#breadcrumb` },
+    itemList,
+  ];
+
+  if (category.faq?.length) {
+    graph.push({
+      '@type': 'FAQPage',
+      '@id': `${canonical}#faq`,
+      mainEntity: category.faq.map((faq) => ({
+        '@type': 'Question',
+        name: faq.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: faq.answer,
+        },
+      })),
+    });
+  }
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': graph,
+  };
+}
+
 function buildArticleStructuredData(post: BlogPost, canonical: string) {
+  const primarySlug = getArticlePrimaryCategory(post);
+  const primaryCategory = primarySlug ? getBlogCategoryBySlug(primarySlug) : undefined;
+  const articleSection = getArticleCategoryDisplayName(post);
+  const breadcrumbs = buildArticleBreadcrumbs(post, primaryCategory);
+  const breadcrumb = buildBreadcrumbList(breadcrumbs, siteUrl);
+
   const article = {
     '@type': 'Article',
     '@id': `${canonical}#article`,
@@ -1117,34 +1230,33 @@ function buildArticleStructuredData(post: BlogPost, canonical: string) {
       logo: { '@type': 'ImageObject', url: `${siteUrl}/primewayz-uk-dark-logo.png` },
     },
     mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
-    articleSection: post.category,
+    articleSection,
     keywords: post.tags.join(', '),
   };
 
-  if (!post.faqs?.length) {
-    return {
-      '@context': 'https://schema.org',
-      ...article,
-    };
+  const graph: Record<string, unknown>[] = [
+    article,
+    { ...breadcrumb, '@id': `${canonical}#breadcrumb` },
+  ];
+
+  if (post.faqs?.length) {
+    graph.push({
+      '@type': 'FAQPage',
+      '@id': `${canonical}#faq`,
+      mainEntity: post.faqs.map((faq) => ({
+        '@type': 'Question',
+        name: faq.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: faq.answer,
+        },
+      })),
+    });
   }
 
   return {
     '@context': 'https://schema.org',
-    '@graph': [
-      article,
-      {
-        '@type': 'FAQPage',
-        '@id': `${canonical}#faq`,
-        mainEntity: post.faqs.map((faq) => ({
-          '@type': 'Question',
-          name: faq.question,
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: faq.answer,
-          },
-        })),
-      },
-    ],
+    '@graph': graph,
   };
 }
 
@@ -1214,7 +1326,11 @@ function stripExistingSeoTags(html: string) {
     .replace(/<script\s+type=["']application\/ld\+json["'][\s\S]*?<\/script>/gi, '');
 }
 
-async function getInitialDataAndSeo(pathname: string) {
+async function getInitialDataAndSeo(pathname: string): Promise<{
+  initialData: Record<string, unknown>;
+  seoTags: string;
+  statusCode?: number;
+}> {
   const canonical = `${siteUrl}${pathname === '/' ? '/' : pathname}`;
 
   const sharedReportMatch = pathname.match(/^\/web-presence-audit\/report\/([^/]+)$/);
@@ -1239,6 +1355,7 @@ async function getInitialDataAndSeo(pathname: string) {
         structuredData: {
           '@context': 'https://schema.org',
           '@type': 'Blog',
+          '@id': `${canonical}#blog`,
           name: 'Primewayz UK Insights',
           url: canonical,
           blogPost: blogPosts.slice(0, 10).map((post) => ({
@@ -1248,6 +1365,39 @@ async function getInitialDataAndSeo(pathname: string) {
             description: post.description,
           })),
         },
+      }),
+    };
+  }
+
+  const blogCategoryMatch = pathname.match(/^\/blog\/category\/([^/]+)$/);
+  if (blogCategoryMatch) {
+    const slug = decodeURIComponent(blogCategoryMatch[1]);
+    const blogPosts = await getPublicBlogPosts();
+    const blogCategory = getBlogCategoryBySlug(slug);
+
+    if (!blogCategory || !isPublishableCategoryPage(slug, blogPosts)) {
+      return {
+        initialData: { blogCategory: null, blogPosts, notFound: true },
+        statusCode: 404,
+        seoTags: buildNoIndexSeoTags({
+          title: 'Category Not Found | Primewayz UK',
+          description: 'This blog category is not available on Primewayz UK.',
+        }),
+      };
+    }
+
+    const categoryCanonical = `${siteUrl}${blogCategory.canonicalPath}`;
+    const { featured } = getCategoryPageArticles(blogCategory.slug, blogPosts);
+
+    return {
+      initialData: { blogCategory, blogPosts },
+      seoTags: buildSeoTags({
+        title: blogCategory.seoTitle,
+        description: blogCategory.seoDescription,
+        canonical: categoryCanonical,
+        ogType: 'website',
+        image: blogCategory.heroImage || featured?.image || featured?.thumbnailImage,
+        structuredData: buildCategoryStructuredData(blogCategory, blogPosts, categoryCanonical),
       }),
     };
   }
@@ -1268,6 +1418,15 @@ async function getInitialDataAndSeo(pathname: string) {
         }),
       };
     }
+
+    return {
+      initialData: { blogPost: null, notFound: true },
+      statusCode: 404,
+      seoTags: buildNoIndexSeoTags({
+        title: 'Article Not Found | Primewayz UK',
+        description: 'This blog article is not available on Primewayz UK.',
+      }),
+    };
   }
 
   const staticPageSeo: Record<string, { title: string; description: string }> = {
@@ -1438,7 +1597,7 @@ type SsrRenderFn = (
 
 async function sendSsrPage(req: Request, res: Response, indexHtml: string, render: SsrRenderFn) {
   const pathname = new URL(req.originalUrl, siteUrl).pathname;
-  const { initialData, seoTags } = await getInitialDataAndSeo(pathname);
+  const { initialData, seoTags, statusCode = 200 } = await getInitialDataAndSeo(pathname);
   const { html: appHtml } = render(req.originalUrl, '/', initialData);
   const cleanAppHtml = stripExistingSeoTags(appHtml);
   const initialDataScript = `<script>window.__PRIMEWAYZ_INITIAL_DATA__=${safeJson(initialData)};</script>`;
@@ -1459,7 +1618,7 @@ async function sendSsrPage(req: Request, res: Response, indexHtml: string, rende
     `${initialDataScript}\n<script type="module"`,
   );
 
-  return res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
+  return res.status(statusCode).set({ 'Content-Type': 'text/html' }).end(html);
 }
 
 // --- Middleware ---

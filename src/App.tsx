@@ -28,7 +28,8 @@ import { AdminMobileChat } from './components/AdminMobileChat';
 import { AdminForgotPassword, AdminResetPassword } from './components/AdminPasswordReset';
 import { BlogPost } from './components/BlogPost';
 import { BlogListPage } from './components/blog/BlogListPage';
-import type { BlogPost as BlogPostData } from './data/blog/types';
+import { BlogCategoryPage } from './components/blog/BlogCategoryPage';
+import type { BlogCategory, BlogPost as BlogPostData } from './data/blog/types';
 import LegalPage from './components/LegalPage';
 import AnalyticsTracker from './components/AnalyticsTracker';
 import { SoftwareDevelopmentSubscriptionUkPage } from './components/SoftwareDevelopmentSubscriptionUkPage';
@@ -105,6 +106,8 @@ const MainContent = () => {
 export type InitialAppData = {
   blogPosts?: BlogPostData[];
   blogPost?: BlogPostData | null;
+  blogCategory?: BlogCategory | null;
+  notFound?: boolean;
 };
 
 type AppProps = {
@@ -133,6 +136,15 @@ export const App = ({ initialData }: AppProps) => {
         <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
         <Route path="/admin/reset-password" element={<AdminResetPassword />} />
         <Route path="/blog" element={<BlogListPage initialPosts={initialData?.blogPosts} />} />
+        <Route
+          path="/blog/category/:slug"
+          element={
+            <BlogCategoryPage
+              initialCategory={initialData?.blogCategory}
+              initialPosts={initialData?.blogPosts}
+            />
+          }
+        />
         <Route path="/blog/:id" element={<BlogPost initialPost={initialData?.blogPost} />} />
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/uk-sme-digital-visibility-checker" element={<UkSmeDigitalVisibilityCheckerPage />} />

@@ -1,6 +1,7 @@
 import { Calendar, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { BlogPost } from '../../data/blog/types';
+import { getArticleCategoryDisplayName } from '../../data/blog/categories';
 import { getBlogThumbnailImage } from '../../data/blog/imageFallbacks';
 
 type BlogEditorialGridProps = {
@@ -44,7 +45,7 @@ const SecondaryStoryCard = ({ post }: { post: BlogPost }) => {
       </Link>
 
       <div className="mt-4">
-        <CategoryLabel>{post.category}</CategoryLabel>
+        <CategoryLabel>{getArticleCategoryDisplayName(post)}</CategoryLabel>
         <h3 className="mt-2 text-lg font-bold leading-snug tracking-tight text-zinc-900">
           <Link to={postHref} className="transition-colors hover:text-emerald-700">
             {post.title}
@@ -74,7 +75,7 @@ const FeaturedStoryCard = ({ post }: { post: BlogPost }) => {
       </Link>
 
       <div className="mt-6">
-        <CategoryLabel>{post.category}</CategoryLabel>
+        <CategoryLabel>{getArticleCategoryDisplayName(post)}</CategoryLabel>
         <h2 className="mt-3 text-2xl font-bold leading-tight tracking-tight text-zinc-900 sm:text-3xl lg:text-[2rem]">
           <Link to={postHref} className="transition-colors hover:text-emerald-700">
             {post.title}

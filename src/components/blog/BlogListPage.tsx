@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BlogLayout } from './BlogLayout';
 import { BlogEditorialGrid } from './BlogEditorialGrid';
 import { BlogCategorySections } from './BlogCategorySections';
+import { BlogCategoryNav } from './BlogCategoryNav';
 import { BlogEssentialGuides } from './BlogEssentialGuides';
 import { BlogServiceBridge } from './BlogServiceBridge';
 import { getAllBlogPosts, getFeaturedBlogPost, getPostTimestamp } from '../../data/blog/utils';
@@ -10,6 +11,10 @@ import {
   getAllEditorialTags,
   getPostsForEditorialSection,
 } from '../../data/blog/editorialSections';
+import {
+  getCategoryArticleCount,
+  getNavigableCategories,
+} from '../../data/blog/categories';
 import type { BlogPost } from '../../data/blog/types';
 import { apiUrl } from '../../utils/apiUrl';
 
@@ -46,6 +51,14 @@ export const BlogListPage = ({ initialPosts }: BlogListPageProps) => {
     posts: getPostsForEditorialSection(posts, section, heroExcludedIds, 4),
   }));
   const topicTags = getAllEditorialTags(posts);
+  const navigableCategories = useMemo(() => getNavigableCategories(posts), [posts]);
+  const articleCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const category of navigableCategories) {
+      counts[category.slug] = getCategoryArticleCount(category.slug, posts);
+    }
+    return counts;
+  }, [navigableCategories, posts]);
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -68,16 +81,19 @@ export const BlogListPage = ({ initialPosts }: BlogListPageProps) => {
       title="Primewayz UK Insights"
       description="Practical guidance on AI automation, digital systems, SEO, CRM, websites, and operational stability for UK SMEs."
       introActions={
-        <div className="flex flex-wrap gap-2">
-          {sectionNavItems.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className="rounded-full border border-zinc-200 bg-zinc-50 px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-700 transition hover:border-emerald-200 hover:bg-white hover:text-emerald-700"
-            >
-              {item.label}
-            </a>
-          ))}
+        <div className="space-y-5">
+          <BlogCategoryNav categories={navigableCategories} articleCounts={articleCounts} />
+          <div className="flex flex-wrap gap-2">
+            {sectionNavItems.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-600 transition hover:border-emerald-200 hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
         </div>
       }
     >

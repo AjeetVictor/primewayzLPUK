@@ -1,6 +1,7 @@
 import { Calendar, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { BlogPost } from '../../data/blog/types';
+import { getArticleCategoryDisplayName } from '../../data/blog/categories';
 import { getBlogThumbnailImage } from '../../data/blog/imageFallbacks';
 
 type BlogCardProps = {
@@ -27,7 +28,7 @@ export const BlogCard = ({ post, variant = 'related' }: BlogCardProps) => {
 
       <div className="flex flex-1 flex-col pt-4">
         <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-600">
-          {post.category}
+          {getArticleCategoryDisplayName(post)}
         </span>
         <h3 className="mt-2 line-clamp-3 text-lg font-bold leading-snug tracking-tight text-zinc-900">
           <Link to={postHref} className="transition-colors hover:text-emerald-700">
