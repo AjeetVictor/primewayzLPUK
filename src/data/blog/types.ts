@@ -21,5 +21,7 @@ export interface BlogPost {
     question: string;
     answer: string;
   }[];
+  linkedInEmbedHtml?: string;
+  linkedInPostUrl?: string;
 }
 

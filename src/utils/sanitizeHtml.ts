@@ -18,7 +18,7 @@ const ALLOWED_TAGS = new Set([
   'ul',
 ]);
 
-const ALLOWED_ATTRS = new Set(['alt', 'class', 'href', 'rel', 'src', 'target', 'title']);
+const ALLOWED_ATTRS = new Set(['alt', 'class', 'href', 'id', 'rel', 'src', 'target', 'title']);
 
 function isSafeUrl(value: string): boolean {
   const trimmed = value.trim().toLowerCase();
@@ -33,8 +33,14 @@ function isSafeUrl(value: string): boolean {
 function sanitizeClassName(value: string): string {
   return value
     .split(/\s+/)
-    .filter((token) => /^(blog-|cms-|attachment-|callout-|prose-|quote-)[a-z0-9_-]*$/i.test(token))
+    .filter((token) =>
+      /^(blog-|cms-|attachment-|callout-|prose-|quote-|scroll-mt-)[a-z0-9_-]*$/i.test(token),
+    )
     .join(' ');
+}
+
+function isSafeHeadingId(value: string): boolean {
+  return /^[a-z0-9][a-z0-9-]*$/i.test(value);
 }
 
 function sanitizeWithDomParser(html: string): string {
@@ -70,6 +76,11 @@ function sanitizeWithDomParser(html: string): string {
         }
 
         if ((name === 'href' || name === 'src') && !isSafeUrl(value)) {
+          element.removeAttribute(attr.name);
+          return;
+        }
+
+        if (name === 'id' && !isSafeHeadingId(value)) {
           element.removeAttribute(attr.name);
           return;
         }

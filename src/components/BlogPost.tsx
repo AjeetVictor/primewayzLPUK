@@ -2,25 +2,37 @@ import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
-  Calendar,
-  Clock,
   User,
   MessageSquare,
   Send,
   Twitter,
   Linkedin,
   Mail,
-  Link as LinkIcon,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, FormEvent } from 'react';
-import { BlogCTA } from './blog/BlogCTA';
+import { useEffect, useMemo, useRef, useState, FormEvent, useCallback } from 'react';
 import { BlogCard } from './blog/BlogCard';
-import { getBlogPostById, getRelatedBlogPosts } from '../data/blog/utils';
+import { BlogArticleCTA } from './blog/BlogArticleCTA';
+import { BlogFaqSection } from './blog/BlogFaqSection';
+import {
+  BlogArticleSidebar,
+  BlogAuthorSection,
+  BlogRecentSidebar,
+} from './blog/BlogArticleSidebars';
+import { BlogLinkedInEmbed } from './blog/BlogLinkedInEmbed';
+import {
+  getAllBlogPosts,
+  getBlogPostById,
+  getRelatedBlogPosts,
+} from '../data/blog/utils';
 import { getBlogBannerImage } from '../data/blog/imageFallbacks';
+import { extractArticleHeadings, injectHeadingIds } from '../data/blog/contentUtils';
 import type { BlogPost as BlogPostData } from '../data/blog/types';
 import { apiUrl } from '../utils/apiUrl';
 import { sanitizeBlogHtml } from '../utils/sanitizeHtml';
 import { trackEvent } from '../lib/analytics';
+import { sanitizeLinkedInEmbedHtml } from '../utils/linkedInEmbed';
+import { scrollToArticleHeading } from '../utils/articleAnchorScroll';
+import { useActiveArticleHeading } from '../hooks/useActiveArticleHeading';
 
 interface Comment {
   id: number;
@@ -38,7 +50,37 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
   const [post, setPost] = useState<BlogPostData | null>(() => initialPost || getBlogPostById(id) || null);
   const [isPostLoading, setIsPostLoading] = useState(Boolean(id && !initialPost && !getBlogPostById(id)));
   const relatedPosts = useMemo(() => (post ? getRelatedBlogPosts(post, 3) : []), [post]);
+  const recentPosts = useMemo(
+    () => getAllBlogPosts().filter((candidate) => candidate.id !== post?.id).slice(0, 4),
+    [post?.id],
+  );
   const heroImage = getBlogBannerImage(post?.image);
+  const articleHeadings = useMemo(
+    () => (post ? extractArticleHeadings(post.content) : []),
+    [post?.content],
+  );
+  const articleContent = useMemo(
+    () => (post ? injectHeadingIds(post.content, articleHeadings) : ''),
+    [post, articleHeadings],
+  );
+  const renderedArticleContent = useMemo(
+    () => (articleContent ? sanitizeBlogHtml(articleContent) : ''),
+    [articleContent],
+  );
+  const hasLinkedInEmbed = Boolean(sanitizeLinkedInEmbedHtml(post?.linkedInEmbedHtml));
+  const articleContentRef = useRef<HTMLDivElement>(null);
+  const headingIds = useMemo(() => articleHeadings.map((heading) => heading.id), [articleHeadings]);
+  const { activeId, setActiveId } = useActiveArticleHeading(
+    articleContentRef,
+    headingIds,
+    renderedArticleContent,
+  );
+  const handleHeadingActivate = useCallback(
+    (headingId: string) => {
+      setActiveId(headingId);
+    },
+    [setActiveId],
+  );
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [name, setName] = useState('');
@@ -48,8 +90,42 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
   const [commentsApiEnabled, setCommentsApiEnabled] = useState(true);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
+    if (!window.location.hash) {
+      window.scrollTo(0, 0);
+    }
   }, [id]);
+
+  useEffect(() => {
+    if (!post?.id || !window.location.hash) return undefined;
+
+    const headingId = decodeURIComponent(window.location.hash.slice(1));
+
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const tryScroll = () => {
+      attempts += 1;
+
+      const didScroll = scrollToArticleHeading(headingId, attempts === 1 ? 'auto' : 'smooth');
+
+      if (didScroll) {
+        setActiveId(headingId);
+      }
+
+      if (!didScroll && attempts < 10) {
+        timer = setTimeout(tryScroll, 100);
+      }
+    };
+
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(tryScroll);
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      if (timer) clearTimeout(timer);
+    };
+  }, [post?.id, renderedArticleContent, setActiveId]);
 
   useEffect(() => {
     const localPost = initialPost?.id === id || initialPost?.slug === id ? initialPost : getBlogPostById(id);
@@ -102,7 +178,7 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
         } else {
           setCommentsApiEnabled(false);
         }
-      } catch (error) {
+      } catch {
         setCommentsApiEnabled(false);
       } finally {
         setIsLoadingComments(false);
@@ -131,7 +207,7 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
       } else {
         setCommentsApiEnabled(false);
       }
-    } catch (error) {
+    } catch {
       setCommentsApiEnabled(false);
     } finally {
       setIsSubmitting(false);
@@ -189,7 +265,7 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
 
   if (isPostLoading) {
     return (
-      <main className="min-h-screen bg-zinc-50 pt-32 pb-24">
+      <main className="min-h-screen bg-white pt-32 pb-24">
         <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
           <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
           <p className="font-medium text-zinc-500">Loading article...</p>
@@ -200,7 +276,7 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
 
   if (!post) {
     return (
-      <main className="min-h-screen bg-zinc-50 pt-32 pb-24">
+      <main className="min-h-screen bg-white pt-32 pb-24">
         <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
           <p className="mb-4 text-xs font-bold uppercase tracking-[0.24em] text-emerald-600">Article not found</p>
           <h1 className="text-4xl font-bold tracking-tight text-zinc-900">This insight is not available</h1>
@@ -212,7 +288,7 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
             className="mt-8 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-emerald-700"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to blog
+            Back to insights
           </Link>
         </div>
       </main>
@@ -228,27 +304,24 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
             className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-500 transition-colors hover:text-emerald-600"
           >
             <ArrowLeft className="h-4 w-4" />
-            Primewayz UK Insights
+            Back to insights
           </Link>
         </motion.nav>
 
-        <header className="mb-12">
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex flex-wrap gap-2">
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
-              {post.category}
-            </span>
-            {post.tags.slice(0, 3).map((tag) => (
-              <span key={tag} className="rounded-full bg-zinc-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-                {tag}
-              </span>
-            ))}
-          </motion.div>
+        <header className="mx-auto mb-14 max-w-3xl text-center">
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-[11px] font-bold uppercase tracking-[0.24em] text-emerald-600"
+          >
+            {post.category}
+          </motion.p>
 
           <motion.h1
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="text-4xl font-bold leading-tight tracking-tight text-zinc-900 md:text-6xl"
+            className="mt-5 text-4xl font-bold leading-tight tracking-tight text-zinc-900 md:text-5xl"
           >
             {post.title}
           </motion.h1>
@@ -257,7 +330,7 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="mt-6 text-xl leading-8 text-zinc-600"
+            className="mt-6 text-lg leading-8 text-zinc-600"
           >
             {post.description || post.excerpt}
           </motion.p>
@@ -266,76 +339,107 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="mt-8 flex flex-wrap items-center gap-6 border-b border-zinc-100 pb-8 text-sm text-zinc-500"
+            className="mt-8 flex flex-wrap items-center justify-center gap-4 text-xs font-bold uppercase tracking-[0.16em] text-zinc-400"
           >
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100">
-                <User className="h-5 w-5 text-zinc-400" />
-              </div>
-              <span className="font-semibold text-zinc-900">{post.author}</span>
-            </div>
-            <span className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              {post.date}
-            </span>
-            <span className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              {post.readTime}
+            <span>{post.date}</span>
+            <span aria-hidden>·</span>
+            <span>{post.readTime}</span>
+            <span aria-hidden>·</span>
+            <span className="inline-flex items-center gap-2 normal-case tracking-normal text-zinc-600">
+              <User className="h-4 w-4" aria-hidden />
+              {post.author}
             </span>
           </motion.div>
         </header>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
-          className="mb-14 aspect-[16/9] overflow-hidden rounded-[2rem] shadow-2xl shadow-emerald-900/10"
-        >
-          <img
-            src={heroImage}
-            alt={post.imageAlt || post.title}
-            className="h-full w-full object-cover"
-            referrerPolicy="no-referrer"
+        <div className="grid gap-12 lg:grid-cols-[230px_minmax(0,1fr)_260px] lg:gap-10 xl:gap-12">
+          <BlogArticleSidebar
+            headings={articleHeadings}
+            activeId={activeId}
+            onHeadingActivate={handleHeadingActivate}
+            linkedInEmbedHtml={post.linkedInEmbedHtml}
+            linkedInPostUrl={post.linkedInPostUrl}
+            onShareTwitter={shareOnTwitter}
+            onShareLinkedIn={shareOnLinkedIn}
+            onShareEmail={shareViaEmail}
+            onCopyLink={copyToClipboard}
           />
-        </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="prose prose-lg prose-zinc max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-headings:text-zinc-900 prose-p:leading-relaxed prose-p:text-zinc-600 prose-strong:text-zinc-900"
-        >
-          <div className="blog-content-preview" dangerouslySetInnerHTML={{ __html: sanitizeBlogHtml(post.content) }} />
-        </motion.div>
+          <div className="min-w-0">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 }}
+              className="mb-10 aspect-[16/9] overflow-hidden bg-zinc-100"
+            >
+              <img
+                src={heroImage}
+                alt={post.imageAlt || post.title}
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </motion.div>
 
-        <section className="mt-16">
-          <BlogCTA />
-        </section>
+            <motion.div
+              ref={articleContentRef}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="article-content blog-content-preview max-w-none text-[1.05rem] leading-[1.85] text-zinc-700"
+            >
+              <div dangerouslySetInnerHTML={{ __html: renderedArticleContent }} />
+            </motion.div>
 
-        <section className="mt-16 border-t border-zinc-100 pt-10">
-          <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="mr-2 text-xs font-bold uppercase tracking-widest text-zinc-400">Share article</span>
-              <button onClick={shareOnTwitter} className="rounded-full bg-zinc-50 p-3 text-zinc-600 transition-colors hover:bg-blue-50 hover:text-blue-600" title="Share on Twitter">
-                <Twitter className="h-5 w-5" />
-              </button>
-              <button onClick={shareOnLinkedIn} className="rounded-full bg-zinc-50 p-3 text-zinc-600 transition-colors hover:bg-blue-50 hover:text-blue-700" title="Share on LinkedIn">
-                <Linkedin className="h-5 w-5" />
-              </button>
-              <button onClick={shareViaEmail} className="rounded-full bg-zinc-50 p-3 text-zinc-600 transition-colors hover:bg-emerald-50 hover:text-emerald-600" title="Share via Email">
-                <Mail className="h-5 w-5" />
-              </button>
-              <button onClick={copyToClipboard} className="rounded-full bg-zinc-50 p-3 text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900" title="Copy Link">
-                <LinkIcon className="h-5 w-5" />
-              </button>
+            <div className="mt-10 border-t border-zinc-200 pt-8 lg:hidden">
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-zinc-400">Share</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={shareOnTwitter}
+                  className="rounded-full border border-zinc-200 p-2.5 text-zinc-600"
+                  title="Share on Twitter"
+                >
+                  <Twitter className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={shareOnLinkedIn}
+                  className="rounded-full border border-zinc-200 p-2.5 text-zinc-600"
+                  title="Share on LinkedIn"
+                >
+                  <Linkedin className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={shareViaEmail}
+                  className="rounded-full border border-zinc-200 p-2.5 text-zinc-600"
+                  title="Share via email"
+                >
+                  <Mail className="h-4 w-4" />
+                </button>
+              </div>
             </div>
+
+            {hasLinkedInEmbed ? (
+              <div className="lg:hidden">
+                <BlogLinkedInEmbed
+                  embedHtml={post.linkedInEmbedHtml}
+                  postUrl={post.linkedInPostUrl}
+                  variant="inline"
+                />
+              </div>
+            ) : null}
           </div>
-        </section>
+
+          <BlogRecentSidebar posts={recentPosts} />
+        </div>
+
+        <BlogAuthorSection />
 
         {relatedPosts.length > 0 && (
-          <section className="mt-20">
-            <h2 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900">Related insights</h2>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <section className="mt-16">
+            <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Related insights</h2>
+            <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-3">
               {relatedPosts.map((relatedPost) => (
                 <BlogCard key={relatedPost.id} post={relatedPost} />
               ))}
@@ -343,13 +447,17 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
           </section>
         )}
 
+        {post.faqs?.length ? <BlogFaqSection faqs={post.faqs} /> : null}
+
+        <BlogArticleCTA post={post} />
+
         <section className="mt-20">
           <div className="mb-8 flex items-center gap-3">
             <MessageSquare className="h-6 w-6 text-emerald-600" />
             <h2 className="text-2xl font-bold text-zinc-900">Comments ({comments.length})</h2>
           </div>
 
-          <div className="mb-12 rounded-[2rem] border border-zinc-100 bg-zinc-50 p-6 sm:p-8">
+          <div className="mb-12 border border-zinc-200 bg-zinc-50 p-6 sm:p-8">
             <h3 className="mb-6 text-lg font-bold text-zinc-900">Leave a comment</h3>
             <form onSubmit={handleSubmitComment} className="space-y-6">
               <div>
@@ -405,7 +513,7 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="rounded-[1.5rem] border border-zinc-100 bg-white p-6 shadow-sm shadow-zinc-900/5"
+                    className="border border-zinc-200 bg-white p-6"
                   >
                     <div className="mb-4 flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50">
@@ -427,7 +535,7 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
                 ))}
               </AnimatePresence>
             ) : (
-              <div className="rounded-[1.5rem] border border-dashed border-zinc-200 bg-zinc-50 py-10 text-center">
+              <div className="border border-dashed border-zinc-200 bg-zinc-50 py-10 text-center">
                 <p className="font-medium text-zinc-500">No comments yet.</p>
               </div>
             )}

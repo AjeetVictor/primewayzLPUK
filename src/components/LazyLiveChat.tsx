@@ -1,21 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { isContactPagePath } from '../constants/contactBooking';
 import { LiveChat } from './LiveChat';
 
 const CHAT_LOAD_DELAY_MS = 1500;
 
 export function LazyLiveChat() {
-  const location = useLocation();
   const [ready, setReady] = useState(false);
-  const hideOnContact = isContactPagePath(location.pathname);
 
   useEffect(() => {
-    if (hideOnContact) {
-      setReady(false);
-      return;
-    }
-
     let cancelled = false;
     let timeoutId = 0;
     let idleId: number | undefined;
@@ -37,9 +28,9 @@ export function LazyLiveChat() {
         window.cancelIdleCallback(idleId);
       }
     };
-  }, [hideOnContact]);
+  }, []);
 
-  if (hideOnContact || !ready) return null;
+  if (!ready) return null;
 
   if (import.meta.env.VITE_DISABLE_CHAT === 'true') {
     return null;

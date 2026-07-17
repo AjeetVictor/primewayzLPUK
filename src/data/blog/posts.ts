@@ -40,6 +40,9 @@ export const posts: BlogPost[] = [
     seoDescription:
       'AI has made content creation faster, but not always more effective. Learn how UK SMEs can avoid content fatigue and build outcome-driven visibility.',
     faqs: aiContentFatigueFaqs,
+    linkedInPostUrl:
+      'https://www.linkedin.com/pulse/ai-trending-clarity-still-converts-manish-mishra-keigc',
+    linkedInEmbedHtml: `<blockquote class="linkedin-embed" data-id="https://www.linkedin.com/pulse/ai-trending-clarity-still-converts-manish-mishra-keigc" data-height="399" data-width="504"></blockquote>`,
   },
   {
     id: 'fixed-price-vs-time-material-vs-subscription-support-uk-smes-saas-founders',

@@ -461,6 +461,8 @@ function cmsPostToBlogPost(post: any): BlogPost {
     featured: Boolean(post.featured),
     seoTitle: post.seoTitle || undefined,
     seoDescription: post.seoDescription || undefined,
+    linkedInEmbedHtml: post.linkedInEmbedHtml || undefined,
+    linkedInPostUrl: post.linkedInPostUrl || undefined,
   };
 }
 
@@ -2341,11 +2343,16 @@ app.get('/api/blog/posts/:id', async (req, res) => {
 });
 
 app.get('/api/blog/:id/comments', async (req, res) => {
-  const comments = await prisma.blogPostComment.findMany({
-    where: { postId: req.params.id },
-    orderBy: { createdAt: 'desc' },
-  });
-  res.json(comments);
+  try {
+    const comments = await prisma.blogPostComment.findMany({
+      where: { postId: req.params.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(comments);
+  } catch (err) {
+    console.warn('[local-safe] Blog comments unavailable:', err instanceof Error ? err.message : err);
+    res.json([]);
+  }
 });
 
 app.post('/api/blog/:id/comments', async (req, res) => {
