@@ -32,6 +32,7 @@ export const posts: BlogPost[] = [
       'Monthly Digital Support',
     ],
     image: '/images/blog/ai-fatigue-blog/aicontent-fatique-article.webp',
+    thumbnailImage: '/images/blog/ai-content-fatigue-thumbnail.webp',
     imageAlt:
       'AI content fatigue showing content overload turning into outcome-driven visibility for UK SMEs',
     featured: true,

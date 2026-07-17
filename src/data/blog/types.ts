@@ -11,6 +11,7 @@ export interface BlogPost {
   author: string;
   readTime: string;
   image?: string;
+  thumbnailImage?: string;
   imageAlt?: string;
   content: string;
   featured?: boolean;

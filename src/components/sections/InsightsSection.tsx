@@ -4,6 +4,7 @@ import { ArrowRight, BarChart2, Layers, Target, User, type LucideIcon } from 'lu
 import { Link } from 'react-router-dom';
 import { getLatestBlogPosts } from '../../data/blog/utils';
 import type { BlogPost } from '../../data/blog/types';
+import { getBlogThumbnailImage } from '../../data/blog/imageFallbacks';
 import { buildInternalUtmUrl } from '../../lib/utm';
 import { FIXED_PRICE_ARTICLE_CAMPAIGN } from '../../data/blog/blogArticleLinks';
 
@@ -51,8 +52,8 @@ function InsightCardItem({
     >
       <Link to={href} className="block aspect-[16/10] overflow-hidden bg-slate-100" aria-label={`Read article: ${post.title}`}>
         <img
-          src={post.image || '/images/visibility.webp'}
-          alt={post.title}
+          src={getBlogThumbnailImage(post.thumbnailImage, post.image)}
+          alt={post.imageAlt || post.title}
           className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
           loading="lazy"
           decoding="async"

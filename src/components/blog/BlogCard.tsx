@@ -1,6 +1,7 @@
 import { ArrowRight, Calendar, Clock, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { BlogPost } from '../../data/blog/types';
+import { getBlogThumbnailImage } from '../../data/blog/imageFallbacks';
 
 type BlogCardProps = {
   post: BlogPost;
@@ -40,6 +41,7 @@ const getServiceHint = (post: BlogPost) => {
 export const BlogCard = ({ post, featured = false }: BlogCardProps) => {
   const serviceHint = getServiceHint(post);
   const postHref = `/blog/${post.id}`;
+  const cardImage = getBlogThumbnailImage(post.thumbnailImage, post.image);
 
   return (
     <article
@@ -47,15 +49,15 @@ export const BlogCard = ({ post, featured = false }: BlogCardProps) => {
         featured ? 'rounded-[2rem] lg:grid lg:grid-cols-[1.05fr_0.95fr]' : 'flex flex-col rounded-[1.75rem]'
       }`}
     >
-      {post.image && (
+      {cardImage && (
         <Link
           to={postHref}
           aria-label={`Read Primewayz UK insight: ${post.title}`}
           className={`relative block overflow-hidden ${featured ? 'min-h-[280px] lg:min-h-full' : 'aspect-[16/10]'}`}
         >
           <img
-            src={post.image}
-            alt={post.title}
+            src={cardImage}
+            alt={post.imageAlt || post.title}
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
             referrerPolicy="no-referrer"
             loading={featured ? 'eager' : 'lazy'}

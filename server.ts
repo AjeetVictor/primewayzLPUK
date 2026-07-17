@@ -1101,7 +1101,11 @@ function buildArticleStructuredData(post: BlogPost, canonical: string) {
     '@id': `${canonical}#article`,
     headline: post.title,
     description: post.seoDescription || post.description || post.excerpt,
-    image: post.image ? [toAbsoluteSiteUrl(post.image)] : [`${siteUrl}/og-primewayz-uk.jpg`],
+    image: [
+      toAbsoluteSiteUrl(
+        post.image || '/images/blog/primewayzuk-article-banner-placeholder.webp',
+      ),
+    ],
     datePublished: toIsoDate(post.date),
     dateModified: toIsoDate(post.updatedDate || post.date),
     author: { '@type': 'Organization', name: post.author || 'Primewayz UK Team' },

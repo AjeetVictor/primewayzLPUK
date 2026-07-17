@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState, FormEvent } from 'react';
 import { BlogCTA } from './blog/BlogCTA';
 import { BlogCard } from './blog/BlogCard';
 import { getBlogPostById, getRelatedBlogPosts } from '../data/blog/utils';
+import { getBlogBannerImage } from '../data/blog/imageFallbacks';
 import type { BlogPost as BlogPostData } from '../data/blog/types';
 import { apiUrl } from '../utils/apiUrl';
 import { sanitizeBlogHtml } from '../utils/sanitizeHtml';
@@ -37,6 +38,7 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
   const [post, setPost] = useState<BlogPostData | null>(() => initialPost || getBlogPostById(id) || null);
   const [isPostLoading, setIsPostLoading] = useState(Boolean(id && !initialPost && !getBlogPostById(id)));
   const relatedPosts = useMemo(() => (post ? getRelatedBlogPosts(post, 3) : []), [post]);
+  const heroImage = getBlogBannerImage(post?.image);
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [name, setName] = useState('');
@@ -283,16 +285,19 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
           </motion.div>
         </header>
 
-        {post.image && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="mb-14 aspect-[21/9] overflow-hidden rounded-[2rem] shadow-2xl shadow-emerald-900/10"
-          >
-            <img src={post.image} alt={post.imageAlt || post.title} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-          </motion.div>
-        )}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+          className="mb-14 aspect-[16/9] overflow-hidden rounded-[2rem] shadow-2xl shadow-emerald-900/10"
+        >
+          <img
+            src={heroImage}
+            alt={post.imageAlt || post.title}
+            className="h-full w-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 16 }}
