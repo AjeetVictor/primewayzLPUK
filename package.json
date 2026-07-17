@@ -11,7 +11,7 @@
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "lint": "tsc --noEmit",
     "lint:native-dialogs": "node scripts/check-no-native-dialogs.mjs",
-    "test": "tsx --test src/lib/audit/report/buildRecommendedFocus.test.ts src/lib/audit/report/recommendationActions.test.ts src/data/sdaas/commercialPage.test.ts src/data/sdaas/pillarArticle.test.ts src/data/sdaas/comparisonArticle.test.ts src/data/sdaas/useCasesArticle.test.ts src/data/sdaas/supportingArticles.test.ts src/data/blog/categories.test.ts",
+    "test": "tsx --test src/lib/audit/report/buildRecommendedFocus.test.ts src/lib/audit/report/recommendationActions.test.ts src/data/sdaas/commercialPage.test.ts src/data/sdaas/pillarArticle.test.ts src/data/sdaas/comparisonArticle.test.ts src/data/sdaas/useCasesArticle.test.ts src/data/sdaas/supportingArticles.test.ts src/data/blog/categories.test.ts src/data/blog/legacyRedirects.test.ts",
     "images:sdaas": "node scripts/optimize-sdaas-images.mjs",
     "start": "tsx scripts/start-server.ts",
     "prisma:generate": "prisma generate",

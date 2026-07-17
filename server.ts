@@ -35,6 +35,12 @@ import {
 import type { NextFunction, Request, Response } from 'express';
 import type { BlogCategory, BlogPost, BreadcrumbItem } from './src/data/blog/types.ts';
 import { LEGACY_ROUTE_REDIRECTS } from './src/constants/canonicalRoutes.ts';
+import {
+  buildRedirectLocation,
+  isLiveInsightsSlug,
+  normalizeInsightsPathname,
+  resolveInsightsToBlogRedirect,
+} from './src/data/blog/legacyRedirects.ts';
 import { SDAAS_DEFINITION, SDAAS_SEO, sdaasFaqs } from './src/data/sdaas/commercialPage.ts';
 import {
   buildSdaasImageObjectSchema,
@@ -2564,13 +2570,62 @@ app.get(`/${INDEXNOW_KEY}.txt`, (_req: Request, res: Response) => {
     .send(INDEXNOW_KEY);
 });
 
-// Legacy marketing URLs â†’ canonical routes (before static files and SPA catch-all).
+// Legacy marketing URLs → canonical routes (before static files and SPA catch-all).
 for (const [fromPath, toPath] of Object.entries(LEGACY_ROUTE_REDIRECTS)) {
   app.get(fromPath, (req, res) => {
     const suffix = req.originalUrl.slice(fromPath.length);
     res.redirect(301, `${toPath}${suffix}`);
   });
 }
+
+/**
+ * Legacy `/insights/:slug` → `/blog/:slug` (or explicit mapped slug) when a published
+ * blog article exists. Live SDaaS educational pages under `/insights/*` are not redirected.
+ * Unknown non-SDaaS insights slugs return 404 without React SSR HTML.
+ */
+app.get(['/insights/:slug', '/insights/:slug/'], async (req, res, next) => {
+  const slugParam = typeof req.params.slug === 'string' ? req.params.slug : '';
+  const normalizedSlug = normalizeInsightsPathname(`/insights/${slugParam}`) || slugParam.replace(/\/+$/, '');
+
+  if (!normalizedSlug) {
+    return next();
+  }
+
+  try {
+    const publishedPosts = await getPublicBlogPosts();
+    const publishedSlugs = new Set(publishedPosts.flatMap((post) => [post.id, post.slug]));
+    const destination = resolveInsightsToBlogRedirect(normalizedSlug, { publishedSlugs });
+
+    if (destination) {
+      const location = buildRedirectLocation(destination, req.originalUrl);
+      return res.redirect(301, location);
+    }
+
+    if (isLiveInsightsSlug(normalizedSlug)) {
+      return next();
+    }
+
+    return res
+      .status(404)
+      .type('html')
+      .set('Cache-Control', 'no-store')
+      .send(`<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Insight Not Found | Primewayz UK</title>
+</head>
+<body>
+  <p>This insight page is not available.</p>
+  <p><a href="/blog">Browse Primewayz UK insights</a></p>
+</body>
+</html>`);
+  } catch (error) {
+    console.error('Insights redirect handling failed:', error);
+    return next();
+  }
+});
 
 // --- Agent discovery headers ---
 app.use((req, res, next) => {
