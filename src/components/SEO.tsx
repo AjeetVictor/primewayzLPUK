@@ -15,6 +15,18 @@ export const SEO = ({
 }: SEOProps) => {
   const siteTitle = `${title} | Primewayz UK`;
 
+  const getImageMimeType = (imageUrl: string) => {
+    const cleanUrl = imageUrl.split('?')[0].toLowerCase();
+
+    if (cleanUrl.endsWith('.png')) return 'image/png';
+    if (cleanUrl.endsWith('.webp')) return 'image/webp';
+    if (cleanUrl.endsWith('.gif')) return 'image/gif';
+
+    return 'image/jpeg';
+  };
+
+  const ogImageType = getImageMimeType(ogImage);
+
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'ProfessionalService',
@@ -86,6 +98,8 @@ export const SEO = ({
       <meta property="og:description" content={description} />
       <meta property="og:url" content={canonical} />
       <meta property="og:image" content={ogImage} />
+      <meta property="og:image:secure_url" content={ogImage} />
+      <meta property="og:image:type" content={ogImageType} />
       <meta
         property="og:image:alt"
         content="Primewayz UK monthly digital delivery for UK small businesses"

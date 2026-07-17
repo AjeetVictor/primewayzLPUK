@@ -1155,6 +1155,16 @@ function buildSeoTags(options: {
   const robots = options.noindex
     ? 'noindex, follow'
     : 'index, follow, max-image-preview:large';
+
+  const cleanImageUrl = image.split('?')[0].toLowerCase();
+  const imageType = cleanImageUrl.endsWith('.png')
+    ? 'image/png'
+    : cleanImageUrl.endsWith('.webp')
+      ? 'image/webp'
+      : cleanImageUrl.endsWith('.gif')
+        ? 'image/gif'
+        : 'image/jpeg';
+
   return `
     <title>${escapeHtml(options.title)}</title>
     <meta name="description" content="${escapeHtml(options.description)}" />
@@ -1167,11 +1177,14 @@ function buildSeoTags(options: {
     <meta property="og:description" content="${escapeHtml(options.description)}" />
     <meta property="og:url" content="${escapeHtml(options.canonical)}" />
     <meta property="og:image" content="${escapeHtml(image)}" />
+    <meta property="og:image:secure_url" content="${escapeHtml(image)}" />
+    <meta property="og:image:type" content="${imageType}" />
     <meta property="og:image:alt" content="${escapeHtml(options.title)}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${escapeHtml(options.title)}" />
     <meta name="twitter:description" content="${escapeHtml(options.description)}" />
     <meta name="twitter:image" content="${escapeHtml(image)}" />
+    <meta name="twitter:image:alt" content="${escapeHtml(options.title)}" />
     <script type="application/ld+json">${safeJson(options.structuredData)}</script>
   `;
 }

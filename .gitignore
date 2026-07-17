@@ -62,3 +62,4 @@ data/web-presence-audit-reports/*.json
 # Web presence audit email leads (file-store fallback)
 data/web-presence-audit-leads/
 data/web-presence-audit-leads/*.json
+dist.bak-*/
