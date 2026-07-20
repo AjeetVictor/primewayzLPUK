@@ -32,6 +32,7 @@ import {
   updateAdminAuditLeadStatus,
   validateAuditLeadAdminStatus,
 } from './src/lib/audit/leads/adminAuditLeadsService.ts';
+import { registerAutopilotAdminRoutes } from './src/lib/autopilot/registerAutopilotAdminRoutes.ts';
 import type { NextFunction, Request, Response } from 'express';
 import type { BlogCategory, BlogPost, BreadcrumbItem } from './src/data/blog/types.ts';
 import { LEGACY_ROUTE_REDIRECTS } from './src/constants/canonicalRoutes.ts';
@@ -2105,6 +2106,13 @@ app.post('/api/admin/uploads', requireAdmin, requireRole(isBlogAuthor), (_req, r
 
 app.post('/api/admin/chat/uploads', requireAdmin, requireRole(isOperationsRole), (_req, res) => {
   res.status(501).json({ error: 'Chat uploads are not configured on this server yet.' });
+});
+
+registerAutopilotAdminRoutes({
+  app,
+  prisma,
+  requireAdmin,
+  requireRole,
 });
 
 app.post('/api/contact', async (req, res) => {

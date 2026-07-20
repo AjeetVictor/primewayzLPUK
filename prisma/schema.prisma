@@ -13,14 +13,14 @@ model FormResponse {
   name      String
   email     String
   message   String
-  phone     String?  // nullable
+  phone     String? // nullable
   createdAt DateTime @default(now())
 }
 
 // --- Tool Leads (visibility checker, etc.) ---
 model ToolLead {
   id           Int      @id @default(autoincrement())
-  source       String   // e.g. "Digital Visibility Checker"
+  source       String // e.g. "Digital Visibility Checker"
   websiteUrl   String
   score        Int?
   businessType String?
@@ -71,7 +71,7 @@ model ChatMessage {
   id             Int              @id @default(autoincrement())
   sessionId      String
   session        ChatSession      @relation(fields: [sessionId], references: [id])
-  sender         String           // 'user', 'bot', 'admin'
+  sender         String // 'user', 'bot', 'admin'
   text           String           @db.Text
   answered       Boolean          @default(false)
   isInternalNote Boolean          @default(false)
@@ -140,13 +140,28 @@ model AdminPresence {
 
 // --- Users ---
 model User {
-  id                     Int      @id @default(autoincrement())
-  email                  String   @unique
+  id                     Int       @id @default(autoincrement())
+  email                  String    @unique
   password               String
-  role                   String   @default("viewer")
+  role                   String    @default("viewer")
   resetPasswordTokenHash String?
   resetPasswordExpiresAt DateTime?
-  createdAt              DateTime @default(now())
+  createdAt              DateTime  @default(now())
+
+  // Article Autopilot relations (SetNull — preserve Autopilot rows if admin is removed)
+  autopilotTopicsAssigned             AutopilotTopic[]              @relation("AutopilotTopicAssignedTo")
+  autopilotTopicsCreated              AutopilotTopic[]              @relation("AutopilotTopicCreatedBy")
+  autopilotTopicsUpdated              AutopilotTopic[]              @relation("AutopilotTopicUpdatedBy")
+  autopilotTopicsDecided              AutopilotTopic[]              @relation("AutopilotTopicDecidedBy")
+  autopilotActivityLogs               AutopilotActivityLog[]        @relation("AutopilotActivityLogActor")
+  autopilotWorkflowRuns               AutopilotWorkflowRun[]        @relation("AutopilotWorkflowRunCreatedBy")
+  autopilotSettingsUpdated            AutopilotSetting[]            @relation("AutopilotSettingUpdatedBy")
+  autopilotKeywordImportBatches       AutopilotKeywordImportBatch[] @relation("AutopilotKeywordImportBatchCreatedBy")
+  autopilotKeywordCandidatesReviewed  AutopilotKeywordCandidate[]   @relation("AutopilotKeywordCandidateReviewedBy")
+  autopilotKeywordCandidatesConverted AutopilotKeywordCandidate[]   @relation("AutopilotKeywordCandidateConvertedBy")
+  autopilotResearchSnapshotsCreated   AutopilotResearchSnapshot[]   @relation("AutopilotResearchSnapshotCreatedBy")
+  autopilotResearchSnapshotsUpdated   AutopilotResearchSnapshot[]   @relation("AutopilotResearchSnapshotUpdatedBy")
+  autopilotResearchSnapshotsConfirmed AutopilotResearchSnapshot[]   @relation("AutopilotResearchSnapshotConfirmedBy")
 }
 
 // --- CMS / Blog ---
@@ -211,4 +226,307 @@ model LeadSummaryEmail {
   @@unique([dateKey, summaryType])
   @@index([dateKey])
   @@index([status])
+}
+
+// --- Article Autopilot 2.0 (Phase 1B.2 foundation) ---
+// Statuses are strings (project convention). Defaults match src/data/autopilot/status.ts.
+// Secrets must remain in environment variables — AutopilotSetting is not a secrets store.
+
+model AutopilotTopic {
+  id                  Int     @id @default(autoincrement())
+  workingTitle        String
+  primaryKeyword      String
+  supportingKeywords  Json    @default("[]")
+  keywordVariants     Json    @default("[]")
+  userProblem         String  @db.Text
+  audience            String
+  market              String  @default("United Kingdom")
+  language            String  @default("en-GB")
+  location            String?
+  source              String  @default("manual")
+  proposedSlug        String?
+  primaryCategory     String?
+  secondaryCategories Json    @default("[]")
+
+  topicStatus       String @default("DISCOVERED")
+  decisionStatus    String @default("NOT_READY")
+  briefStatus       String @default("NOT_STARTED")
+  draftStatus       String @default("NOT_STARTED")
+  mediaStatus       String @default("NOT_REQUIRED")
+  publishingStatus  String @default("NOT_READY")
+  performanceStatus String @default("NOT_TRACKED")
+
+  searchIntent           Json?
+  serpEvidence           Json?
+  businessAlignment      Json?
+  contentArchitecture    Json?
+  riskAssessment         Json?
+  categoryRecommendation Json?
+  scoreBreakdown         Json?
+  aiMetadata             Json?
+
+  serviceRelevance            Decimal? @db.Decimal(5, 1)
+  businessValue               Decimal? @db.Decimal(5, 1)
+  buyerIntent                 Decimal? @db.Decimal(5, 1)
+  topicalAuthorityFit         Decimal? @db.Decimal(5, 1)
+  contentGap                  Decimal? @db.Decimal(5, 1)
+  differentiationPotential    Decimal? @db.Decimal(5, 1)
+  rankingFeasibility          Decimal? @db.Decimal(5, 1)
+  evidenceConfidence          Decimal? @db.Decimal(5, 1)
+  internalLinkOpportunity     Decimal? @db.Decimal(5, 1)
+  commercialPageSupport       Decimal? @db.Decimal(5, 1)
+  cannibalisationPenalty      Decimal? @db.Decimal(5, 1)
+  unsupportedClaimRiskPenalty Decimal? @db.Decimal(5, 1)
+  rawScore                    Decimal? @db.Decimal(5, 1)
+  totalScore                  Decimal? @db.Decimal(5, 1)
+  scoringVersion              String?
+
+  assignedToId      Int?
+  createdById       Int?
+  updatedById       Int?
+  decidedById       Int?
+  decidedAt         DateTime?
+  decisionRationale String?   @db.Text
+  mergeIntoTopicId  Int?
+
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  assignedTo User? @relation("AutopilotTopicAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdBy  User? @relation("AutopilotTopicCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy  User? @relation("AutopilotTopicUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  decidedBy  User? @relation("AutopilotTopicDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  mergeIntoTopic   AutopilotTopic?  @relation("AutopilotTopicMerge", fields: [mergeIntoTopicId], references: [id], onDelete: SetNull)
+  mergedFromTopics AutopilotTopic[] @relation("AutopilotTopicMerge")
+
+  keywordCandidatesMatched   AutopilotKeywordCandidate[] @relation("AutopilotKeywordCandidateMatchedTopic")
+  keywordCandidatesConverted AutopilotKeywordCandidate[] @relation("AutopilotKeywordCandidateConvertedTopic")
+  researchSnapshots          AutopilotResearchSnapshot[]
+
+  @@index([proposedSlug])
+  @@index([topicStatus])
+  @@index([decisionStatus])
+  @@index([primaryCategory])
+  @@index([totalScore])
+  @@index([assignedToId])
+  @@index([updatedAt])
+  @@index([archivedAt])
+  @@index([topicStatus, decisionStatus, updatedAt])
+  @@index([decisionStatus, totalScore])
+  @@index([mergeIntoTopicId])
+}
+
+model AutopilotActivityLog {
+  id               Int      @id @default(autoincrement())
+  entityType       String
+  entityId         String
+  eventType        String
+  actorType        String
+  actorId          Int?
+  actorDisplayName String?
+  source           String
+  previousValue    Json?
+  newValue         Json?
+  metadata         Json?
+  reason           String?  @db.Text
+  correlationId    String?
+  createdAt        DateTime @default(now())
+
+  actor User? @relation("AutopilotActivityLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId, createdAt])
+  @@index([eventType, createdAt])
+  @@index([actorId, createdAt])
+  @@index([correlationId])
+  @@index([createdAt])
+}
+
+model AutopilotWorkflowRun {
+  id               Int       @id @default(autoincrement())
+  workflowType     String
+  entityType       String
+  entityId         String
+  status           String    @default("queued")
+  currentStep      String?
+  totalSteps       Int?
+  progress         Int       @default(0)
+  attempt          Int       @default(1)
+  startedAt        DateTime?
+  completedAt      DateTime?
+  errorCode        String?
+  errorMessage     String?   @db.Text
+  /// Provider/model/token/cost metadata only — never API keys or secrets.
+  providerMetadata Json?
+  inputHash        String?
+  correlationId    String?
+  createdById      Int?
+  retryOfRunId     Int?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  createdBy User? @relation("AutopilotWorkflowRunCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  retryOf AutopilotWorkflowRun?  @relation("AutopilotWorkflowRunRetry", fields: [retryOfRunId], references: [id], onDelete: SetNull)
+  retries AutopilotWorkflowRun[] @relation("AutopilotWorkflowRunRetry")
+
+  @@index([workflowType, entityType, entityId, inputHash])
+  @@index([status, createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@index([correlationId])
+  @@index([retryOfRunId])
+  @@index([createdById])
+}
+
+model AutopilotSetting {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
+  value       Json
+  description String?  @db.Text
+  isLocked    Boolean  @default(false)
+  updatedById Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  updatedBy User? @relation("AutopilotSettingUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([updatedById])
+}
+
+// --- Article Autopilot 2.0 (Phase 2A keyword imports) ---
+// Statuses are strings. Source metrics are nullable and never inferred.
+
+model AutopilotKeywordImportBatch {
+  id                Int       @id @default(autoincrement())
+  sourceType        String
+  sourceName        String?
+  originalFileName  String?
+  status            String    @default("previewed")
+  totalRows         Int       @default(0)
+  validRows         Int       @default(0)
+  invalidRows       Int       @default(0)
+  duplicateRows     Int       @default(0)
+  createdTopicCount Int       @default(0)
+  columnMapping     Json?
+  importOptions     Json?
+  summary           Json?
+  errorSummary      Json?
+  createdById       Int?
+  completedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  createdBy  User?                       @relation("AutopilotKeywordImportBatchCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  candidates AutopilotKeywordCandidate[]
+
+  @@index([status])
+  @@index([sourceType])
+  @@index([createdById])
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([sourceType, createdAt])
+}
+
+model AutopilotKeywordCandidate {
+  id                     Int       @id @default(autoincrement())
+  batchId                Int?
+  keyword                String
+  normalisedKeyword      String
+  sourceRowNumber        Int?
+  sourceType             String
+  sourceData             Json?
+  impressions            Int?
+  clicks                 Int?
+  ctr                    Decimal?  @db.Decimal(10, 6)
+  averagePosition        Decimal?  @db.Decimal(10, 4)
+  searchVolume           Int?
+  keywordDifficulty      Decimal?  @db.Decimal(5, 2)
+  currentUrl             String?   @db.Text
+  country                String?
+  language               String?
+  status                 String    @default("new")
+  duplicateReason        String?   @db.Text
+  duplicateOfCandidateId Int?
+  matchedTopicId         Int?
+  convertedTopicId       Int?
+  reviewNotes            String?   @db.Text
+  reviewedById           Int?
+  reviewedAt             DateTime?
+  convertedById          Int?
+  convertedAt            DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  batch          AutopilotKeywordImportBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  duplicateOf    AutopilotKeywordCandidate?   @relation("AutopilotKeywordCandidateDuplicate", fields: [duplicateOfCandidateId], references: [id], onDelete: SetNull)
+  duplicates     AutopilotKeywordCandidate[]  @relation("AutopilotKeywordCandidateDuplicate")
+  matchedTopic   AutopilotTopic?              @relation("AutopilotKeywordCandidateMatchedTopic", fields: [matchedTopicId], references: [id], onDelete: SetNull)
+  convertedTopic AutopilotTopic?              @relation("AutopilotKeywordCandidateConvertedTopic", fields: [convertedTopicId], references: [id], onDelete: SetNull)
+  reviewedBy     User?                        @relation("AutopilotKeywordCandidateReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  convertedBy    User?                        @relation("AutopilotKeywordCandidateConvertedBy", fields: [convertedById], references: [id], onDelete: SetNull)
+
+  @@index([batchId])
+  @@index([status])
+  @@index([normalisedKeyword])
+  @@index([sourceType])
+  @@index([convertedTopicId])
+  @@index([matchedTopicId])
+  @@index([duplicateOfCandidateId])
+  @@index([createdAt])
+  @@index([batchId, status])
+  @@index([status, createdAt])
+  @@index([normalisedKeyword, status])
+  @@index([impressions])
+  @@index([clicks])
+}
+
+// --- Article Autopilot 2.0 (Phase 2B research snapshots) ---
+// Versioned, auditable research records. Confirmed snapshots are immutable.
+// Deleting/archiving a topic must not cascade-delete research history (Restrict).
+
+model AutopilotResearchSnapshot {
+  id         Int    @id @default(autoincrement())
+  topicId    Int
+  version    Int
+  status     String @default("draft")
+  sourceType String @default("manual")
+
+  query    String?
+  market   String?
+  language String?
+  location String?
+
+  searchIntent        Json?
+  serpEvidence        Json?
+  businessAlignment   Json?
+  contentArchitecture Json?
+  riskAssessment      Json?
+  overlapAnalysis     Json?
+  clusterHints        Json?
+  internalLinkHints   Json?
+  researchNotes       String? @db.Text
+
+  evidenceQuality      String   @default("not_assessed")
+  evidenceCompleteness Decimal? @db.Decimal(5, 1)
+
+  createdById   Int?
+  updatedById   Int?
+  confirmedById Int?
+  confirmedAt   DateTime?
+  supersededAt  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  topic       AutopilotTopic @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  createdBy   User?          @relation("AutopilotResearchSnapshotCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?          @relation("AutopilotResearchSnapshotUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  confirmedBy User?          @relation("AutopilotResearchSnapshotConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
+
+  @@unique([topicId, version])
+  @@index([topicId, status, createdAt])
+  @@index([status, updatedAt])
+  @@index([createdById])
+  @@index([confirmedById])
+  @@index([confirmedAt])
 }

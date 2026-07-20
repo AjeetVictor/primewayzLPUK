@@ -20,6 +20,7 @@ yarn-error.log*
 
 # Database backups / dumps
 *.sql
+!prisma/migrations/**/*.sql
 prisma-db-backup.sql
 
 # Editor / IDE

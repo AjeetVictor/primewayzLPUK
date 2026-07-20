@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send, FileText, Save, UploadCloud, Archive, Star, Bell, BellOff, Paperclip, Image as ImageIcon, CalendarClock, StickyNote, Pencil, X, Check, Reply, Gauge } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send, FileText, Save, UploadCloud, Archive, Star, Bell, BellOff, Paperclip, Image as ImageIcon, CalendarClock, StickyNote, Pencil, X, Check, Reply, Gauge, Bot } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiUrl } from '../utils/apiUrl';
 import { PasswordInput } from './ui/PasswordInput';
@@ -10,6 +10,7 @@ import { AppConfirmDialog } from './ui/AppConfirmDialog';
 import { ToastProvider, useToast } from './ui/AppToast';
 import { RichBlogEditor } from './admin/RichBlogEditor';
 import { AdminAuditLeadsPanel } from './admin/AdminAuditLeadsPanel';
+import { AutopilotPanel } from './admin/autopilot/AutopilotPanel';
 import { ChatConfirmDialog } from './admin/ChatConfirmDialog';
 import { sanitizeBlogHtml } from '../utils/sanitizeHtml';
 import {
@@ -23,6 +24,7 @@ import {
 } from '../lib/chatTypes';
 import { QuotedMessagePreview } from './chat/QuotedMessagePreview';
 import { trackAdminChatReply, trackChatLeadConverted } from '../lib/analytics';
+import { canShowAutopilotTab } from '../lib/autopilot/adminAutopilotCapabilities';
 
 interface FormResponse {
   id: number;
@@ -1368,6 +1370,7 @@ const AdminPanelContent = () => {
   }
 
   const canViewOperations = isOperationsRole(user?.role);
+  const canViewAutopilot = canShowAutopilotTab(user?.role);
   const availabilityDotClass = chatAvailability?.status === 'online'
     ? 'bg-emerald-500'
     : chatAvailability?.status === 'away'
@@ -1715,6 +1718,15 @@ const AdminPanelContent = () => {
                 <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
                   {cmsBlogPosts.length}
                 </span>
+              </Tabs.Trigger>
+            )}
+            {canViewAutopilot && (
+              <Tabs.Trigger
+                value="autopilot"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
+              >
+                <Bot className="w-4 h-4" />
+                Autopilot
               </Tabs.Trigger>
             )}
             {canViewOperations && (
@@ -2445,6 +2457,12 @@ const AdminPanelContent = () => {
           </Tabs.Content>
 
             </>
+          )}
+
+          {canViewAutopilot && (
+            <Tabs.Content value="autopilot" className="outline-none">
+              <AutopilotPanel role={user?.role} />
+            </Tabs.Content>
           )}
 
           {isBlogAuthor(user?.role) && (
