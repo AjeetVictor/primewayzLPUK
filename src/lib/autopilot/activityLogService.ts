@@ -185,8 +185,14 @@ export function buildActivitySummary(
       return 'Google Search Console connected';
     case 'gsc_connection_failed':
       return 'Google Search Console connection failed';
+    case 'gsc_identity_verified':
+      return 'Google Search Console identity verified';
+    case 'gsc_identity_mismatch':
+      return 'Google Search Console identity mismatch';
     case 'gsc_property_selected':
       return 'Google Search Console property selected';
+    case 'gsc_property_validation_failed':
+      return 'Google Search Console property validation failed';
     case 'gsc_sync_started':
       return 'Google Search Console sync started';
     case 'gsc_sync_completed':

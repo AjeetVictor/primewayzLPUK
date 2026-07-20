@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link2, RefreshCcw, Unplug } from 'lucide-react';
 import {
   AutopilotClientError,
@@ -16,12 +16,18 @@ type GscConnectionPanelProps = {
 
 type GscStatus = Awaited<ReturnType<typeof adminAutopilotApi.getGscStatus>>;
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DEFAULT_REQUESTED_SITE_URL = 'https://uk.primewayz.com/';
+
 const btnPrimary =
   'inline-flex min-w-[8.5rem] items-center justify-center gap-2 rounded-xl bg-zinc-900 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 active:bg-zinc-950 disabled:cursor-not-allowed disabled:opacity-50';
 const btnSecondary =
   'inline-flex min-w-[8.5rem] items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-400 active:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50';
 const btnDanger =
   'inline-flex min-w-[8.5rem] items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm font-semibold text-rose-700 transition-colors hover:bg-rose-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 active:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50';
+
+const inputClass =
+  'mt-1 w-full max-w-xl rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-400 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:opacity-60';
 
 function statusLabel(status: string | undefined): string {
   switch (status) {
@@ -40,6 +46,20 @@ function statusLabel(status: string | undefined): string {
   }
 }
 
+function isLikelyGscProperty(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (trimmed.toLowerCase().startsWith('sc-domain:')) {
+    return trimmed.length > 'sc-domain:'.length;
+  }
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export function GscConnectionPanel({ refreshKey, canManageGsc }: GscConnectionPanelProps) {
   const { showToast } = useToast();
   const [data, setData] = useState<GscStatus | null>(null);
@@ -47,13 +67,13 @@ export function GscConnectionPanel({ refreshKey, canManageGsc }: GscConnectionPa
   const [error, setError] = useState<AutopilotClientError | Error | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
+  const [requestedSiteUrl, setRequestedSiteUrl] = useState(DEFAULT_REQUESTED_SITE_URL);
+  const [expectedEmail, setExpectedEmail] = useState('');
   const [connecting, setConnecting] = useState(false);
-  const [loadingProperties, setLoadingProperties] = useState(false);
-  const [properties, setProperties] = useState<
+  const [accessibleDiagnostics, setAccessibleDiagnostics] = useState<
     Array<{ siteUrl: string; permissionLevel: string | null }>
   >([]);
-  const [selectedSiteUrl, setSelectedSiteUrl] = useState('');
-  const [savingProperty, setSavingProperty] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -64,8 +84,13 @@ export function GscConnectionPanel({ refreshKey, canManageGsc }: GscConnectionPa
     try {
       const status = await adminAutopilotApi.getGscStatus();
       setData(status);
-      if (status.connection?.siteUrl) {
-        setSelectedSiteUrl(status.connection.siteUrl);
+      if (status.connection?.requestedSiteUrl) {
+        setRequestedSiteUrl(status.connection.requestedSiteUrl);
+      } else if (status.connection?.siteUrl) {
+        setRequestedSiteUrl(status.connection.siteUrl);
+      }
+      if (status.connection?.expectedEmail) {
+        setExpectedEmail(status.connection.expectedEmail);
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
@@ -83,30 +108,53 @@ export function GscConnectionPanel({ refreshKey, canManageGsc }: GscConnectionPa
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const gsc = params.get('gsc');
-    if (gsc === 'connected') {
-      setStatusMessage('Google Search Console connected. Select a property to activate sync.');
-      showToast({ type: 'success', message: 'Google Search Console connected.' });
-    } else if (gsc === 'error') {
+    if (gsc === 'error') {
       const msg = params.get('gscMessage') || 'Google Search Console connection failed.';
-      setStatusMessage(msg);
+      const lower = msg.toLowerCase();
+      if (lower.includes('does not match the expected email') || lower.includes('email')) {
+        setStatusMessage(
+          'The Google account authorised during consent does not match the expected email.',
+        );
+      } else if (
+        lower.includes('does not have access') ||
+        lower.includes('property') ||
+        lower.includes('accessible')
+      ) {
+        setStatusMessage(
+          'The authorised Google account does not have access to the requested Search Console property.',
+        );
+      } else {
+        setStatusMessage(msg);
+      }
       showToast({ type: 'error', message: msg });
     }
   }, [showToast]);
 
   const connection = data?.connection ?? null;
   const configured = data?.configuration.configured ?? false;
-  const isUnconfigured = connection?.status === 'CONNECTED_UNCONFIGURED';
   const isActive = connection?.status === 'ACTIVE';
   const needsReauth = connection?.status === 'NEEDS_REAUTHENTICATION';
-  const busy =
-    connecting || loadingProperties || savingProperty || syncing || disconnecting;
+  const isDisconnected = !connection || connection.status === 'DISCONNECTED';
+  const showOnboarding =
+    isDisconnected || needsReauth || connection?.status === 'CONNECTED_UNCONFIGURED';
+  const busy = connecting || syncing || disconnecting;
+
+  const formValid = useMemo(() => {
+    const email = expectedEmail.trim();
+    return isLikelyGscProperty(requestedSiteUrl) && EMAIL_REGEX.test(email);
+  }, [requestedSiteUrl, expectedEmail]);
 
   const handleConnect = async () => {
-    if (!canManageGsc || connecting) return;
+    if (!canManageGsc || connecting || !formValid) return;
     setConnecting(true);
     setStatusMessage(null);
+    setAccessibleDiagnostics([]);
+    setShowDiagnostics(false);
     try {
-      const result = await adminAutopilotApi.createGscAuthUrl();
+      const result = await adminAutopilotApi.createGscAuthUrl({
+        requestedSiteUrl: requestedSiteUrl.trim(),
+        expectedEmail: expectedEmail.trim(),
+      });
       window.location.assign(result.authorizationUrl);
     } catch (err) {
       setConnecting(false);
@@ -116,60 +164,39 @@ export function GscConnectionPanel({ refreshKey, canManageGsc }: GscConnectionPa
           : err instanceof Error
             ? err.message
             : 'Unable to start Google authorisation.';
-      setStatusMessage(message);
-      showToast({ type: 'error', message });
-    }
-  };
-
-  const handleLoadProperties = async () => {
-    if (!canManageGsc || loadingProperties) return;
-    setLoadingProperties(true);
-    setStatusMessage(null);
-    try {
-      const result = await adminAutopilotApi.listGscProperties();
-      setProperties(result.properties);
-      if (result.properties.length === 1) {
-        setSelectedSiteUrl(result.properties[0].siteUrl);
+      const details =
+        err instanceof AutopilotClientError &&
+        err.details &&
+        typeof err.details === 'object'
+          ? (err.details as {
+              accessibleProperties?: Array<{
+                siteUrl: string;
+                permissionLevel: string | null;
+              }>;
+            })
+          : null;
+      if (details?.accessibleProperties?.length) {
+        setAccessibleDiagnostics(details.accessibleProperties);
       }
-      setStatusMessage(
-        result.properties.length
-          ? `Loaded ${result.properties.length} accessible propert${result.properties.length === 1 ? 'y' : 'ies'}.`
-          : 'No Search Console properties are accessible for this Google account.',
-      );
-    } catch (err) {
-      const message =
-        err instanceof AutopilotClientError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Unable to list properties.';
-      setStatusMessage(message);
+      if (
+        err instanceof AutopilotClientError &&
+        (err.code === 'GSC_EMAIL_MISMATCH' || message.toLowerCase().includes('expected email'))
+      ) {
+        setStatusMessage(
+          'The Google account authorised during consent does not match the expected email.',
+        );
+      } else if (
+        err instanceof AutopilotClientError &&
+        (err.code === 'GSC_PROPERTY_NOT_ACCESSIBLE' ||
+          message.toLowerCase().includes('requested search console property'))
+      ) {
+        setStatusMessage(
+          'The authorised Google account does not have access to the requested Search Console property.',
+        );
+      } else {
+        setStatusMessage(message);
+      }
       showToast({ type: 'error', message });
-    } finally {
-      setLoadingProperties(false);
-    }
-  };
-
-  const handleSaveProperty = async () => {
-    if (!canManageGsc || savingProperty || !selectedSiteUrl) return;
-    setSavingProperty(true);
-    setStatusMessage(null);
-    try {
-      await adminAutopilotApi.selectGscProperty(selectedSiteUrl);
-      showToast({ type: 'success', message: 'Search Console property saved.' });
-      setStatusMessage('Property saved. You can run a manual sync.');
-      await load();
-    } catch (err) {
-      const message =
-        err instanceof AutopilotClientError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Unable to save property.';
-      setStatusMessage(message);
-      showToast({ type: 'error', message });
-    } finally {
-      setSavingProperty(false);
     }
   };
 
@@ -206,8 +233,9 @@ export function GscConnectionPanel({ refreshKey, canManageGsc }: GscConnectionPa
     try {
       await adminAutopilotApi.disconnectGsc();
       setDisconnectOpen(false);
-      setProperties([]);
-      setSelectedSiteUrl('');
+      setAccessibleDiagnostics([]);
+      setRequestedSiteUrl(DEFAULT_REQUESTED_SITE_URL);
+      setExpectedEmail('');
       showToast({ type: 'success', message: 'Google Search Console disconnected.' });
       setStatusMessage('Google Search Console is not connected.');
       await load();
@@ -240,11 +268,6 @@ export function GscConnectionPanel({ refreshKey, canManageGsc }: GscConnectionPa
     return <AutopilotErrorState error={error} onRetry={() => void load()} />;
   }
 
-  const selectedPermission =
-    properties.find((p) => p.siteUrl === selectedSiteUrl)?.permissionLevel ??
-    connection?.permissionLevel ??
-    null;
-
   return (
     <section
       className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm"
@@ -254,7 +277,7 @@ export function GscConnectionPanel({ refreshKey, canManageGsc }: GscConnectionPa
         <div>
           <h3 className="text-lg font-bold text-zinc-900">Google Search Console</h3>
           <p className="mt-1 text-sm text-zinc-500">
-            Connect GSC, select the Primewayz UK property, and run a manual performance sync.
+            Connect the Primewayz UK Search Console property with a verified Google account.
           </p>
         </div>
         <button
@@ -282,88 +305,101 @@ export function GscConnectionPanel({ refreshKey, canManageGsc }: GscConnectionPa
         </div>
       ) : null}
 
-      {!connection || connection.status === 'DISCONNECTED' ? (
-        <div className="mt-4 space-y-3">
-          <p className="text-sm font-medium text-zinc-800">
-            Google Search Console is not connected
-          </p>
-          {canManageGsc ? (
-            <button
-              type="button"
-              onClick={() => void handleConnect()}
-              disabled={!configured || connecting}
-              className={btnPrimary}
-            >
-              <Link2 className="h-4 w-4" />
-              {connecting ? 'Connecting…' : 'Connect'}
-            </button>
-          ) : (
-            <p className="text-sm text-zinc-500">Ask a super admin to connect Search Console.</p>
-          )}
-        </div>
-      ) : null}
-
-      {connection && isUnconfigured ? (
+      {showOnboarding && canManageGsc ? (
         <div className="mt-4 space-y-4">
-          <p className="text-sm text-emerald-700">
-            Connection successful. Select an accessible Search Console property.
-          </p>
-          {canManageGsc ? (
-            <>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => void handleLoadProperties()}
-                  disabled={loadingProperties}
-                  className={btnSecondary}
-                >
-                  {loadingProperties ? 'Loading…' : 'Load properties'}
-                </button>
-              </div>
-              {properties.length > 0 ? (
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold uppercase tracking-widest text-zinc-400">
-                    Property
-                  </label>
-                  <select
-                    value={selectedSiteUrl}
-                    onChange={(event) => setSelectedSiteUrl(event.target.value)}
-                    disabled={savingProperty}
-                    className="w-full max-w-xl rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800"
-                  >
-                    <option value="">Select a property…</option>
-                    {properties.map((property) => (
-                      <option key={property.siteUrl} value={property.siteUrl}>
-                        {property.siteUrl}
-                        {property.permissionLevel ? ` (${property.permissionLevel})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {selectedPermission ? (
-                    <p className="text-xs text-zinc-500">
-                      Permission level: {selectedPermission}
-                    </p>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => void handleSaveProperty()}
-                    disabled={!selectedSiteUrl || savingProperty}
-                    className={btnPrimary}
-                  >
-                    {savingProperty ? 'Saving…' : 'Save property'}
-                  </button>
-                </div>
-              ) : null}
-            </>
-          ) : (
-            <p className="text-sm text-zinc-500">
-              A super admin must select the property before sync can run.
+          <h4 className="text-base font-bold text-zinc-900">
+            Connect Primewayz UK Search Console
+          </h4>
+          <div>
+            <label
+              htmlFor="gsc-requested-site-url"
+              className="block text-xs font-bold uppercase tracking-widest text-zinc-400"
+            >
+              Primewayz UK property
+            </label>
+            <input
+              id="gsc-requested-site-url"
+              type="text"
+              value={requestedSiteUrl}
+              onChange={(event) => setRequestedSiteUrl(event.target.value)}
+              disabled={connecting || !configured}
+              className={inputClass}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="gsc-expected-email"
+              className="block text-xs font-bold uppercase tracking-widest text-zinc-400"
+            >
+              Expected Google email
+            </label>
+            <input
+              id="gsc-expected-email"
+              type="email"
+              value={expectedEmail}
+              onChange={(event) => setExpectedEmail(event.target.value)}
+              disabled={connecting || !configured}
+              className={inputClass}
+              autoComplete="email"
+              placeholder="authorised-google-account@example.com"
+            />
+            <p className="mt-1.5 text-xs text-zinc-500">
+              Use the Google account that already has access to this property in Search Console.
             </p>
-          )}
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleConnect()}
+            disabled={!configured || connecting || !formValid}
+            className={btnPrimary}
+          >
+            <Link2 className="h-4 w-4" />
+            {connecting ? 'Connecting…' : 'Connect GSC'}
+          </button>
+          {needsReauth ? (
+            <p className="text-sm text-amber-800">
+              Reauthentication is required. Complete Connect GSC again with the same property and
+              Google email.
+            </p>
+          ) : null}
         </div>
       ) : null}
 
-      {connection && (isActive || needsReauth || connection.status === 'ERROR') ? (
+      {showOnboarding && !canManageGsc ? (
+        <div className="mt-4">
+          <p className="text-sm text-zinc-500">Ask a super admin to connect Search Console.</p>
+        </div>
+      ) : null}
+
+      {accessibleDiagnostics.length > 0 ? (
+        <div className="mt-4">
+          <button
+            type="button"
+            className="text-sm font-semibold text-zinc-700 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-400"
+            onClick={() => setShowDiagnostics((open) => !open)}
+            aria-expanded={showDiagnostics}
+          >
+            {showDiagnostics ? 'Hide' : 'Show'} accessible property diagnostics
+          </button>
+          {showDiagnostics ? (
+            <ul className="mt-2 space-y-1 rounded-2xl border border-zinc-100 bg-zinc-50 px-3 py-3 text-sm text-zinc-700">
+              {accessibleDiagnostics.map((property) => (
+                <li key={property.siteUrl} className="break-all">
+                  {property.siteUrl}
+                  {property.permissionLevel ? ` · ${property.permissionLevel}` : ''}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <p className="mt-2 text-xs text-zinc-500">
+            Diagnostics are informational only. Another property is never activated automatically.
+          </p>
+        </div>
+      ) : null}
+
+      {connection && (isActive || connection.status === 'ERROR') ? (
         <div className="mt-4 space-y-4">
           <dl className="grid gap-3 sm:grid-cols-2">
             <div>
@@ -376,7 +412,27 @@ export function GscConnectionPanel({ refreshKey, canManageGsc }: GscConnectionPa
             </div>
             <div>
               <dt className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-                Permission
+                Authorised Google email
+              </dt>
+              <dd className="mt-1 text-sm text-zinc-800 break-all">
+                {connection.authorisedEmail || '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                Email verified
+              </dt>
+              <dd className="mt-1 text-sm text-zinc-800">
+                {connection.authorisedEmailVerified === true
+                  ? 'Yes'
+                  : connection.authorisedEmailVerified === false
+                    ? 'No'
+                    : '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                Permission level
               </dt>
               <dd className="mt-1 text-sm text-zinc-800">
                 {connection.permissionLevel || '—'}
@@ -384,13 +440,13 @@ export function GscConnectionPanel({ refreshKey, canManageGsc }: GscConnectionPa
             </div>
             <div>
               <dt className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-                Health
+                Connection status
               </dt>
               <dd className="mt-1 text-sm text-zinc-800">{statusLabel(connection.status)}</dd>
             </div>
             <div>
               <dt className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-                Last successful sync
+                Last sync
               </dt>
               <dd className="mt-1 text-sm text-zinc-800">
                 {connection.lastSuccessfulSyncAt
@@ -408,25 +464,30 @@ export function GscConnectionPanel({ refreshKey, canManageGsc }: GscConnectionPa
 
           {canManageGsc ? (
             <div className="flex flex-wrap gap-2">
-              {needsReauth ? (
-                <button
-                  type="button"
-                  onClick={() => void handleConnect()}
-                  disabled={connecting}
-                  className={btnPrimary}
-                >
-                  {connecting ? 'Connecting…' : 'Reconnect'}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => void handleSync()}
-                  disabled={syncing || connection.syncLocked}
-                  className={btnPrimary}
-                >
-                  {syncing ? 'Syncing…' : 'Sync now'}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => void handleSync()}
+                disabled={syncing || connection.syncLocked || connection.status !== 'ACTIVE'}
+                className={btnPrimary}
+              >
+                {syncing ? 'Syncing…' : 'Sync now'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (connection.requestedSiteUrl) {
+                    setRequestedSiteUrl(connection.requestedSiteUrl);
+                  }
+                  if (connection.expectedEmail) {
+                    setExpectedEmail(connection.expectedEmail);
+                  }
+                  void handleConnect();
+                }}
+                disabled={connecting || !formValid}
+                className={btnSecondary}
+              >
+                {connecting ? 'Connecting…' : 'Reconnect'}
+              </button>
               <button
                 type="button"
                 onClick={() => setDisconnectOpen(true)}

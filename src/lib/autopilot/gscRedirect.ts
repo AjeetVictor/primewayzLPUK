@@ -11,7 +11,7 @@ const ALLOWED_GSC_ADMIN_REDIRECTS = new Set([
 
 export function resolveGscAdminRedirect(outcome: 'connected' | 'error', message?: string): string {
   if (outcome === 'connected') {
-    return '/admin?tab=autopilot&gsc=connected';
+    return '/admin?tab=autopilot';
   }
   const params = new URLSearchParams({ tab: 'autopilot', gsc: 'error' });
   if (message) {

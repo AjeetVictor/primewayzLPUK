@@ -675,8 +675,13 @@ export const adminAutopilotApi = {
       connection: {
         id: number;
         status: string;
+        requestedSiteUrl: string | null;
         siteUrl: string | null;
+        expectedEmail: string | null;
+        authorisedEmail: string | null;
+        authorisedEmailVerified: boolean | null;
         permissionLevel: string | null;
+        identityValidatedAt: string | null;
         scope: string;
         connectedAt: string;
         lastValidatedAt: string | null;
@@ -692,12 +697,15 @@ export const adminAutopilotApi = {
     }>('/api/admin/autopilot/gsc/status', { signal });
   },
 
-  createGscAuthUrl(signal?: AbortSignal) {
+  createGscAuthUrl(
+    body: { requestedSiteUrl: string; expectedEmail: string },
+    signal?: AbortSignal,
+  ) {
     return autopilotRequest<{
       authorizationUrl: string;
       expiresAt: string;
       correlationId: string;
-    }>('/api/admin/autopilot/gsc/auth-url', { method: 'POST', signal });
+    }>('/api/admin/autopilot/gsc/auth-url', { method: 'POST', body, signal });
   },
 
   listGscProperties(signal?: AbortSignal) {

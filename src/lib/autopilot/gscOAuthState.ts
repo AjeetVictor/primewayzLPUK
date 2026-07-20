@@ -1,5 +1,7 @@
 /**
  * Signed, one-time OAuth state for Google Search Console CSRF protection.
+ * Onboarding values (requestedSiteUrl, expectedEmail) live in the DB row;
+ * the browser only carries an opaque signed reference (userId + nonce + times).
  */
 
 import { createHmac, createHash, randomBytes, timingSafeEqual } from 'node:crypto';
@@ -17,12 +19,20 @@ export type GscOAuthStatePayload = {
   expiresAt: number;
 };
 
+export type GscOAuthOnboardingContext = {
+  requestedSiteUrl: string;
+  expectedEmail: string;
+};
+
 export type IssuedGscOAuthState = {
   state: string;
   nonceHash: string;
   expiresAt: Date;
   payload: Omit<GscOAuthStatePayload, 'nonce'>;
+  onboarding: GscOAuthOnboardingContext;
 };
+
+export type ConsumedGscOAuthState = GscOAuthStatePayload & GscOAuthOnboardingContext;
 
 function resolveStateSecret(env: NodeJS.ProcessEnv = process.env): string {
   const secret = env.AUTOPILOT_GSC_OAUTH_STATE_SECRET?.trim() ?? '';
@@ -136,6 +146,7 @@ export function verifyGscOAuthState(
 export async function issueGscOAuthState(
   db: PrismaLike,
   userId: number,
+  onboarding: GscOAuthOnboardingContext,
   options?: { now?: Date; secret?: string },
 ): Promise<IssuedGscOAuthState> {
   const now = options?.now ?? new Date();
@@ -156,6 +167,8 @@ export async function issueGscOAuthState(
     data: {
       nonceHash,
       userId,
+      requestedSiteUrl: onboarding.requestedSiteUrl,
+      expectedEmail: onboarding.expectedEmail,
       expiresAt,
     },
   });
@@ -169,18 +182,20 @@ export async function issueGscOAuthState(
       issuedAt,
       expiresAt: expiresAtMs,
     },
+    onboarding,
   };
 }
 
 /**
  * Verify signature + consume one-time nonce transactionally.
+ * Returns onboarding values from the server-side row (never from browser query params).
  */
 export async function consumeGscOAuthState(
   prisma: PrismaClient,
   state: string,
   expectedUserId: number,
   options?: { now?: Date; secret?: string },
-): Promise<GscOAuthStatePayload> {
+): Promise<ConsumedGscOAuthState> {
   const payload = verifyGscOAuthState(state, {
     expectedUserId,
     now: options?.now,
@@ -189,7 +204,7 @@ export async function consumeGscOAuthState(
   const nonceHash = hashGscOAuthNonce(payload.nonce);
   const now = options?.now ?? new Date();
 
-  await prisma.$transaction(async (tx) => {
+  const consumed = await prisma.$transaction(async (tx) => {
     const row = await tx.gscOAuthState.findUnique({ where: { nonceHash } });
     if (!row) {
       throw new AutopilotError('GSC_OAUTH_STATE_INVALID', 'OAuth state was not found.', 400);
@@ -208,6 +223,18 @@ export async function consumeGscOAuthState(
       throw new AutopilotError('GSC_OAUTH_STATE_EXPIRED', 'OAuth state has expired.', 400);
     }
 
+    const requestedSiteUrl =
+      typeof row.requestedSiteUrl === 'string' ? row.requestedSiteUrl.trim() : '';
+    const expectedEmail =
+      typeof row.expectedEmail === 'string' ? row.expectedEmail.trim().toLowerCase() : '';
+    if (!requestedSiteUrl || !expectedEmail) {
+      throw new AutopilotError(
+        'GSC_OAUTH_STATE_INVALID',
+        'OAuth state is missing onboarding context.',
+        400,
+      );
+    }
+
     const updated = await tx.gscOAuthState.updateMany({
       where: { id: row.id, consumedAt: null },
       data: { consumedAt: now },
@@ -215,7 +242,13 @@ export async function consumeGscOAuthState(
     if (updated.count !== 1) {
       throw new AutopilotError('GSC_OAUTH_STATE_REPLAY', 'OAuth state has already been used.', 400);
     }
+
+    return { requestedSiteUrl, expectedEmail };
   });
 
-  return payload;
+  return {
+    ...payload,
+    requestedSiteUrl: consumed.requestedSiteUrl,
+    expectedEmail: consumed.expectedEmail,
+  };
 }

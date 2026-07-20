@@ -7,6 +7,7 @@ import { google } from 'googleapis';
 import { AutopilotError, AUTOPILOT_ERROR_CODES } from './apiErrors.ts';
 import {
   assertGscConfigured,
+  GSC_OAUTH_SCOPES,
   GSC_WEBMASTERS_READONLY_SCOPE,
   type GscEnvConfig,
 } from './gscConfig.ts';
@@ -37,16 +38,28 @@ export type GscSearchAnalyticsQueryInput = {
   startRow: number;
 };
 
+export type GscVerifiedIdentity = {
+  sub: string;
+  email: string;
+  emailVerified: boolean;
+};
+
 export type GscTokenExchangeResult = {
   refreshToken: string | null;
   accessToken: string | null;
+  idToken: string | null;
   scope: string | null;
   expiryDate: number | null;
 };
 
+export type GscGenerateAuthUrlOptions = {
+  loginHint?: string;
+};
+
 export type GscGoogleApi = {
-  generateAuthUrl: (state: string) => string;
+  generateAuthUrl: (state: string, options?: GscGenerateAuthUrlOptions) => string;
   exchangeCode: (code: string) => Promise<GscTokenExchangeResult>;
+  verifyIdToken: (idToken: string) => Promise<GscVerifiedIdentity>;
   listSites: (refreshToken: string) => Promise<GscSiteEntry[]>;
   querySearchAnalytics: (
     refreshToken: string,
@@ -57,7 +70,7 @@ export type GscGoogleApi = {
 type GscOAuth2Client = InstanceType<typeof google.auth.OAuth2>;
 
 const SENSITIVE_FRAGMENT =
-  /(?:refresh[_-]?token|access[_-]?token|client[_-]?secret|authorization[_-]?code|bearer\s+[a-z0-9._-]+)/gi;
+  /(?:refresh[_-]?token|access[_-]?token|id[_-]?token|client[_-]?secret|authorization[_-]?code|bearer\s+[a-z0-9._-]+)/gi;
 
 export function sanitizeGscErrorMessage(raw: unknown): string {
   if (raw == null) return 'Google Search Console request failed.';
@@ -110,19 +123,91 @@ export function createGscOAuth2Client(config: GscEnvConfig = assertGscConfigured
   return new google.auth.OAuth2(config.clientId, config.clientSecret, config.redirectUri);
 }
 
+/**
+ * Verify Google ID token claims server-side. Never log or persist the token.
+ */
+export async function verifyGscIdToken(
+  idToken: string,
+  config: GscEnvConfig = assertGscConfigured(),
+  oauth2: GscOAuth2Client = createGscOAuth2Client(config),
+): Promise<GscVerifiedIdentity> {
+  if (!idToken || !idToken.trim()) {
+    throw new AutopilotError(
+      AUTOPILOT_ERROR_CODES.GSC_IDENTITY_REQUIRED,
+      'Google did not return an ID token for identity verification.',
+      400,
+    );
+  }
+
+  try {
+    const ticket = await oauth2.verifyIdToken({
+      idToken: idToken.trim(),
+      audience: config.clientId,
+    });
+    const payload = ticket.getPayload();
+    if (!payload) {
+      throw new AutopilotError(
+        AUTOPILOT_ERROR_CODES.GSC_IDENTITY_INVALID,
+        'Google ID token payload is missing.',
+        400,
+      );
+    }
+
+    const sub = typeof payload.sub === 'string' ? payload.sub.trim() : '';
+    const emailRaw = typeof payload.email === 'string' ? payload.email.trim() : '';
+    const emailVerified = payload.email_verified === true;
+
+    if (!sub) {
+      throw new AutopilotError(
+        AUTOPILOT_ERROR_CODES.GSC_IDENTITY_INVALID,
+        'Google ID token is missing a subject.',
+        400,
+      );
+    }
+    if (!emailRaw) {
+      throw new AutopilotError(
+        AUTOPILOT_ERROR_CODES.GSC_IDENTITY_INVALID,
+        'Google ID token is missing an email address.',
+        400,
+      );
+    }
+    if (!emailVerified) {
+      throw new AutopilotError(
+        AUTOPILOT_ERROR_CODES.GSC_EMAIL_NOT_VERIFIED,
+        'The authorised Google email is not verified.',
+        400,
+      );
+    }
+
+    return {
+      sub,
+      email: emailRaw.toLowerCase(),
+      emailVerified: true,
+    };
+  } catch (error) {
+    if (error instanceof AutopilotError) throw error;
+    throw new AutopilotError(
+      AUTOPILOT_ERROR_CODES.GSC_IDENTITY_INVALID,
+      'Google ID token validation failed.',
+      400,
+    );
+  }
+}
+
 export function createDefaultGscGoogleApi(
   config: GscEnvConfig = assertGscConfigured(),
 ): GscGoogleApi {
   const oauth2 = createGscOAuth2Client(config);
 
   return {
-    generateAuthUrl(state: string) {
+    generateAuthUrl(state: string, options?: GscGenerateAuthUrlOptions) {
       return oauth2.generateAuthUrl({
         access_type: 'offline',
         include_granted_scopes: true,
         prompt: 'consent',
-        scope: [GSC_WEBMASTERS_READONLY_SCOPE],
+        scope: [...GSC_OAUTH_SCOPES],
         state,
+        ...(options?.loginHint ? { login_hint: options.loginHint } : {}),
       });
     },
 
@@ -132,6 +217,7 @@ export function createDefaultGscGoogleApi(
         return {
           refreshToken: tokens.refresh_token ?? null,
           accessToken: tokens.access_token ?? null,
+          idToken: tokens.id_token ?? null,
           scope: tokens.scope ?? null,
           expiryDate: tokens.expiry_date ?? null,
         };
@@ -141,6 +227,10 @@ export function createDefaultGscGoogleApi(
           needsReauth: classified.needsReauth,
         });
       }
+    },
+
+    async verifyIdToken(idToken: string) {
+      return verifyGscIdToken(idToken, config, oauth2);
     },
 
     async listSites(refreshToken: string) {
@@ -224,7 +314,8 @@ export function decryptStoredRefreshToken(payload: {
 }
 
 /**
- * Prefer a newly issued refresh token; otherwise keep an existing stored one.
+ * Prefer a newly issued refresh token; otherwise keep an existing stored one
+ * only when it belongs to the same verified Google subject.
  */
 export function resolveRefreshTokenForPersistence(input: {
   exchangedRefreshToken: string | null | undefined;
@@ -234,12 +325,21 @@ export function resolveRefreshTokenForPersistence(input: {
     refreshTokenAuthTag: string;
     tokenKeyVersion?: number;
   } | null;
+  existingGoogleSubject?: string | null;
+  verifiedGoogleSubject: string;
 }): string {
   if (input.exchangedRefreshToken && input.exchangedRefreshToken.trim()) {
     return input.exchangedRefreshToken.trim();
   }
 
-  if (input.existingEncrypted?.refreshTokenCiphertext) {
+  const existingSubject = input.existingGoogleSubject?.trim() ?? '';
+  const verifiedSubject = input.verifiedGoogleSubject.trim();
+  if (
+    existingSubject &&
+    verifiedSubject &&
+    existingSubject === verifiedSubject &&
+    input.existingEncrypted?.refreshTokenCiphertext
+  ) {
     try {
       const existing = decryptStoredRefreshToken(input.existingEncrypted);
       if (existing) return existing;
@@ -250,7 +350,9 @@ export function resolveRefreshTokenForPersistence(input: {
 
   throw new AutopilotError(
     AUTOPILOT_ERROR_CODES.GSC_REAUTHORISATION_REQUIRED,
-    'Google did not return a refresh token. Disconnect and reconnect with consent, or ensure offline access is granted.',
+    'Google did not return a refresh token for this identity. Disconnect and reconnect with consent, or ensure offline access is granted.',
     400,
   );
 }
+
+export { GSC_WEBMASTERS_READONLY_SCOPE };

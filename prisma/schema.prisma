@@ -695,26 +695,32 @@ enum GscSyncTrigger {
 }
 
 model GscConnection {
-  id                     Int                 @id @default(autoincrement())
-  status                 GscConnectionStatus
-  siteUrl                String?             @unique
-  permissionLevel        String?
-  refreshTokenCiphertext String              @db.Text
-  refreshTokenIv         String
-  refreshTokenAuthTag    String
-  tokenKeyVersion        Int                 @default(1)
-  scope                  String
-  connectedById          Int?
-  connectedAt            DateTime            @default(now())
-  lastValidatedAt        DateTime?
-  lastSuccessfulSyncAt   DateTime?
-  lastErrorCode          String?
-  lastErrorMessage       String?             @db.Text
-  syncLockToken          String?
-  syncLockedAt           DateTime?
-  isActive               Boolean             @default(true)
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
+  id                       Int                 @id @default(autoincrement())
+  status                   GscConnectionStatus
+  siteUrl                  String?             @unique
+  requestedSiteUrl         String?             @db.VarChar(512)
+  expectedEmail            String?             @db.VarChar(320)
+  googleSubject            String?             @db.VarChar(255)
+  authorisedEmail          String?             @db.VarChar(320)
+  authorisedEmailVerified  Boolean?
+  identityValidatedAt      DateTime?
+  permissionLevel          String?
+  refreshTokenCiphertext   String              @db.Text
+  refreshTokenIv           String
+  refreshTokenAuthTag      String
+  tokenKeyVersion          Int                 @default(1)
+  scope                    String
+  connectedById            Int?
+  connectedAt              DateTime            @default(now())
+  lastValidatedAt          DateTime?
+  lastSuccessfulSyncAt     DateTime?
+  lastErrorCode            String?
+  lastErrorMessage         String?             @db.Text
+  syncLockToken            String?
+  syncLockedAt             DateTime?
+  isActive                 Boolean             @default(true)
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
 
   connectedBy User?               @relation("GscConnectionConnectedBy", fields: [connectedById], references: [id], onDelete: SetNull)
   syncRuns    GscSyncRun[]
@@ -723,15 +729,19 @@ model GscConnection {
   @@index([status, isActive])
   @@index([lastSuccessfulSyncAt])
   @@index([connectedById])
+  @@index([googleSubject])
+  @@index([authorisedEmail])
 }
 
 model GscOAuthState {
-  id         Int       @id @default(autoincrement())
-  nonceHash  String    @unique
-  userId     Int
-  expiresAt  DateTime
-  consumedAt DateTime?
-  createdAt  DateTime  @default(now())
+  id               Int       @id @default(autoincrement())
+  nonceHash        String    @unique
+  userId           Int
+  requestedSiteUrl String?   @db.VarChar(512)
+  expectedEmail    String?   @db.VarChar(320)
+  expiresAt        DateTime
+  consumedAt       DateTime?
+  createdAt        DateTime  @default(now())
 
   user User @relation("GscOAuthStateUser", fields: [userId], references: [id], onDelete: Cascade)
 

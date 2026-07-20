@@ -10,8 +10,19 @@ import { GSC_OAUTH_STATE_SECRET_MIN_LENGTH } from './gscOAuthState.ts';
 export const GSC_WEBMASTERS_READONLY_SCOPE =
   'https://www.googleapis.com/auth/webmasters.readonly';
 
+export const GSC_OAUTH_SCOPES = [
+  'openid',
+  'email',
+  GSC_WEBMASTERS_READONLY_SCOPE,
+] as const;
+
+export const GSC_OAUTH_SCOPE_STRING = GSC_OAUTH_SCOPES.join(' ');
+
 export const GSC_DEFAULT_LOOKBACK_DAYS = 28;
 export const GSC_DEFAULT_DATA_DELAY_DAYS = 3;
+
+/** Default display value for Primewayz UK URL-prefix onboarding. */
+export const GSC_DEFAULT_REQUESTED_SITE_URL = 'https://uk.primewayz.com/';
 
 export type GscEnvConfig = {
   clientId: string;
@@ -97,7 +108,7 @@ export function getGscPublicConfigStatus(
     redirectUriConfigured: Boolean(readTrimmed(env, 'GOOGLE_SEARCH_CONSOLE_REDIRECT_URI')),
     lookbackDays,
     dataDelayDays,
-    scope: GSC_WEBMASTERS_READONLY_SCOPE,
+    scope: GSC_OAUTH_SCOPE_STRING,
   };
 }
 

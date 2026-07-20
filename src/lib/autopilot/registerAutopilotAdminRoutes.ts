@@ -22,7 +22,7 @@ import {
   canReadAutopilot,
 } from './autopilotPermissions.ts';
 import { resolveCorrelationId } from './correlation.ts';
-import { listActivityLogs } from './activityLogService.ts';
+import { listActivityLogs, appendActivityLog } from './activityLogService.ts';
 import { getAutopilotDashboard } from './dashboardService.ts';
 import { applyTopicDecision } from './decisionService.ts';
 import { recalculateAndPersistTopicScore } from './scorePersistenceService.ts';
@@ -37,6 +37,7 @@ import {
 } from './topicService.ts';
 import { getWorkflowRunById } from './workflowRunService.ts';
 import type { AdminActor } from './topicHelpers.ts';
+import { actorDisplayName } from './topicHelpers.ts';
 import {
   commitKeywordImport,
   getKeywordImportBatch,
@@ -668,9 +669,16 @@ export function registerAutopilotAdminRoutes(options: RegisterAutopilotAdminRout
     requireAdmin,
     requireRole(canManageGscConnection),
     withAutopilotHandler(async (req, res, correlationId) => {
-      const result = await createGscAuthorizationUrl(prisma, toActor(req), {
-        correlationId,
-      });
+      assertNoPrototypePollution(req.body);
+      const result = await createGscAuthorizationUrl(
+        prisma,
+        toActor(req),
+        {
+          requestedSiteUrl: req.body?.requestedSiteUrl,
+          expectedEmail: req.body?.expectedEmail,
+        },
+        { correlationId },
+      );
       res.setHeader('x-correlation-id', correlationId);
       res.json({ ...result, correlationId });
     }),
@@ -682,10 +690,26 @@ export function registerAutopilotAdminRoutes(options: RegisterAutopilotAdminRout
     requireRole(canManageGscConnection),
     withAutopilotHandler(async (req, res, correlationId) => {
       if (typeof req.query.error === 'string' && req.query.error) {
+        const actor = toActor(req);
+        await appendActivityLog(prisma, {
+          entityType: 'gsc_connection',
+          entityId: 'pending',
+          eventType: 'gsc_connection_failed',
+          actorType: 'user',
+          actorId: actor.id,
+          actorDisplayName: actorDisplayName(actor),
+          source: 'admin',
+          metadata: { errorCode: 'GSC_AUTHORIZATION_CANCELLED' },
+          reason: 'Google authorisation was cancelled or denied.',
+          correlationId,
+        }).catch(() => undefined);
         res.setHeader('x-correlation-id', correlationId);
         res.redirect(
           303,
-          resolveGscAdminRedirect('error', 'Google authorisation was cancelled or denied.'),
+          resolveGscAdminRedirect(
+            'error',
+            'Google authorisation was cancelled or denied.',
+          ),
         );
         return;
       }

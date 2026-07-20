@@ -72,17 +72,31 @@ test('replay is rejected after consume', async () => {
     id: number;
     nonceHash: string;
     userId: number;
+    requestedSiteUrl: string | null;
+    expectedEmail: string | null;
     expiresAt: Date;
     consumedAt: Date | null;
   }> = [];
 
   const prisma = {
     gscOAuthState: {
-      create: async ({ data }: { data: { nonceHash: string; userId: number; expiresAt: Date } }) => {
+      create: async ({
+        data,
+      }: {
+        data: {
+          nonceHash: string;
+          userId: number;
+          expiresAt: Date;
+          requestedSiteUrl?: string;
+          expectedEmail?: string;
+        };
+      }) => {
         const row = {
           id: rows.length + 1,
           nonceHash: data.nonceHash,
           userId: data.userId,
+          requestedSiteUrl: data.requestedSiteUrl ?? null,
+          expectedEmail: data.expectedEmail ?? null,
           expiresAt: data.expiresAt,
           consumedAt: null as Date | null,
         };
@@ -108,14 +122,91 @@ test('replay is rejected after consume', async () => {
   };
 
   process.env.AUTOPILOT_GSC_OAUTH_STATE_SECRET = SECRET;
-  const issued = await issueGscOAuthState(prisma as never, 4, { secret: SECRET });
+  const issued = await issueGscOAuthState(
+    prisma as never,
+    4,
+    {
+      requestedSiteUrl: 'https://uk.primewayz.com/',
+      expectedEmail: 'owner@example.com',
+    },
+    { secret: SECRET },
+  );
   assert.ok(issued.state.includes('.'));
   assert.equal(typeof issued.nonceHash, 'string');
   assert.equal(issued.nonceHash.length, 64);
+  assert.equal(issued.onboarding.expectedEmail, 'owner@example.com');
 
-  await consumeGscOAuthState(prisma as never, issued.state, 4, { secret: SECRET });
+  const consumed = await consumeGscOAuthState(prisma as never, issued.state, 4, {
+    secret: SECRET,
+  });
+  assert.equal(consumed.requestedSiteUrl, 'https://uk.primewayz.com/');
+  assert.equal(consumed.expectedEmail, 'owner@example.com');
+
   await assert.rejects(
     () => consumeGscOAuthState(prisma as never, issued.state, 4, { secret: SECRET }),
     (err: unknown) => err instanceof AutopilotError && err.code === 'GSC_OAUTH_STATE_REPLAY',
+  );
+});
+
+test('consume rejects state missing onboarding context', async () => {
+  const rows: Array<{
+    id: number;
+    nonceHash: string;
+    userId: number;
+    requestedSiteUrl: string | null;
+    expectedEmail: string | null;
+    expiresAt: Date;
+    consumedAt: Date | null;
+  }> = [];
+
+  const prisma = {
+    gscOAuthState: {
+      create: async ({
+        data,
+      }: {
+        data: {
+          nonceHash: string;
+          userId: number;
+          expiresAt: Date;
+          requestedSiteUrl?: string;
+          expectedEmail?: string;
+        };
+      }) => {
+        const row = {
+          id: rows.length + 1,
+          nonceHash: data.nonceHash,
+          userId: data.userId,
+          requestedSiteUrl: null,
+          expectedEmail: null,
+          expiresAt: data.expiresAt,
+          consumedAt: null as Date | null,
+        };
+        rows.push(row);
+        return row;
+      },
+      findUnique: async ({ where }: { where: { nonceHash: string } }) =>
+        rows.find((r) => r.nonceHash === where.nonceHash) ?? null,
+      updateMany: async () => ({ count: 1 }),
+    },
+    $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma),
+  };
+
+  process.env.AUTOPILOT_GSC_OAUTH_STATE_SECRET = SECRET;
+  const issued = await issueGscOAuthState(
+    prisma as never,
+    1,
+    {
+      requestedSiteUrl: 'https://uk.primewayz.com/',
+      expectedEmail: 'owner@example.com',
+    },
+    { secret: SECRET },
+  );
+  // Simulate legacy row without onboarding fields.
+  rows[0].requestedSiteUrl = null;
+  rows[0].expectedEmail = null;
+
+  await assert.rejects(
+    () => consumeGscOAuthState(prisma as never, issued.state, 1, { secret: SECRET }),
+    (err: unknown) => err instanceof AutopilotError && err.code === 'GSC_OAUTH_STATE_INVALID',
   );
 });

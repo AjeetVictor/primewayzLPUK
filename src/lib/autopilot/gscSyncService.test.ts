@@ -229,7 +229,8 @@ test('pagination stops on short page and counts requests', async () => {
   const calls: Array<{ startRow: number; day: string }> = [];
   const googleApi: GscGoogleApi = {
     generateAuthUrl: () => '',
-    exchangeCode: async () => ({ refreshToken: null, accessToken: null, scope: null, expiryDate: null }),
+    exchangeCode: async () => ({ refreshToken: null, accessToken: null, idToken: null, scope: null, expiryDate: null }),
+    verifyIdToken: async () => ({ sub: 'sub', email: 'a@b.com', emailVerified: true }),
     listSites: async () => [],
     querySearchAnalytics: async (_token, input) => {
       calls.push({ startRow: input.startRow, day: input.startDate });
@@ -263,7 +264,8 @@ test('stops on empty first page', async () => {
   let calls = 0;
   const googleApi: GscGoogleApi = {
     generateAuthUrl: () => '',
-    exchangeCode: async () => ({ refreshToken: null, accessToken: null, scope: null, expiryDate: null }),
+    exchangeCode: async () => ({ refreshToken: null, accessToken: null, idToken: null, scope: null, expiryDate: null }),
+    verifyIdToken: async () => ({ sub: 'sub', email: 'a@b.com', emailVerified: true }),
     listSites: async () => [],
     querySearchAnalytics: async () => {
       calls += 1;
@@ -288,7 +290,8 @@ test('25000-row boundary continues pagination', async () => {
   const startRows: number[] = [];
   const googleApi: GscGoogleApi = {
     generateAuthUrl: () => '',
-    exchangeCode: async () => ({ refreshToken: null, accessToken: null, scope: null, expiryDate: null }),
+    exchangeCode: async () => ({ refreshToken: null, accessToken: null, idToken: null, scope: null, expiryDate: null }),
+    verifyIdToken: async () => ({ sub: 'sub', email: 'a@b.com', emailVerified: true }),
     listSites: async () => [],
     querySearchAnalytics: async (_t, input) => {
       startRows.push(input.startRow);
@@ -311,7 +314,8 @@ test('same rows upsert instead of duplicate', async () => {
   const { prisma, metrics } = createSyncPrisma();
   const googleApi: GscGoogleApi = {
     generateAuthUrl: () => '',
-    exchangeCode: async () => ({ refreshToken: null, accessToken: null, scope: null, expiryDate: null }),
+    exchangeCode: async () => ({ refreshToken: null, accessToken: null, idToken: null, scope: null, expiryDate: null }),
+    verifyIdToken: async () => ({ sub: 'sub', email: 'a@b.com', emailVerified: true }),
     listSites: async () => [],
     querySearchAnalytics: async () => [
       { keys: ['crm software uk', 'https://uk.primewayz.com/crm'], clicks: 3, impressions: 30, ctr: 0.1, position: 4 },
@@ -357,7 +361,8 @@ test('sync lock blocks concurrency', async () => {
   });
   const googleApi: GscGoogleApi = {
     generateAuthUrl: () => '',
-    exchangeCode: async () => ({ refreshToken: null, accessToken: null, scope: null, expiryDate: null }),
+    exchangeCode: async () => ({ refreshToken: null, accessToken: null, idToken: null, scope: null, expiryDate: null }),
+    verifyIdToken: async () => ({ sub: 'sub', email: 'a@b.com', emailVerified: true }),
     listSites: async () => [],
     querySearchAnalytics: async () => [],
   };
@@ -383,7 +388,8 @@ test('stale lock may be recovered and released after success', async () => {
   });
   const googleApi: GscGoogleApi = {
     generateAuthUrl: () => '',
-    exchangeCode: async () => ({ refreshToken: null, accessToken: null, scope: null, expiryDate: null }),
+    exchangeCode: async () => ({ refreshToken: null, accessToken: null, idToken: null, scope: null, expiryDate: null }),
+    verifyIdToken: async () => ({ sub: 'sub', email: 'a@b.com', emailVerified: true }),
     listSites: async () => [],
     querySearchAnalytics: async () => makeRows(2),
   };
@@ -403,7 +409,8 @@ test('lock released after failure and invalid_grant marks reauth', async () => {
   const { prisma, connection, syncRuns } = createSyncPrisma();
   const googleApi: GscGoogleApi = {
     generateAuthUrl: () => '',
-    exchangeCode: async () => ({ refreshToken: null, accessToken: null, scope: null, expiryDate: null }),
+    exchangeCode: async () => ({ refreshToken: null, accessToken: null, idToken: null, scope: null, expiryDate: null }),
+    verifyIdToken: async () => ({ sub: 'sub', email: 'a@b.com', emailVerified: true }),
     listSites: async () => [],
     querySearchAnalytics: async () => {
       throw Object.assign(new Error('invalid_grant'), { response: { data: { error: 'invalid_grant' } } });
@@ -433,7 +440,8 @@ test('persisted errors are sanitized', async () => {
   const { prisma, syncRuns } = createSyncPrisma();
   const googleApi: GscGoogleApi = {
     generateAuthUrl: () => '',
-    exchangeCode: async () => ({ refreshToken: null, accessToken: null, scope: null, expiryDate: null }),
+    exchangeCode: async () => ({ refreshToken: null, accessToken: null, idToken: null, scope: null, expiryDate: null }),
+    verifyIdToken: async () => ({ sub: 'sub', email: 'a@b.com', emailVerified: true }),
     listSites: async () => [],
     querySearchAnalytics: async () => {
       throw new Error('failed bearer ya29.secret-access refresh_token=abc client_secret=xyz');
