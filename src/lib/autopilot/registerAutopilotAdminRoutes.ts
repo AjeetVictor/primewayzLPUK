@@ -5,7 +5,7 @@
 
 import type { Express, NextFunction, Request, Response } from 'express';
 import type { PrismaClient } from '@prisma/client';
-import { AutopilotError, serializeAutopilotError } from './apiErrors.ts';
+import { AutopilotError, conflict, serializeAutopilotError } from './apiErrors.ts';
 import {
   assertNoPrototypePollution,
   parseDecisionAction,
@@ -18,6 +18,7 @@ import {
   canContributeTopics,
   canEditorialAutopilot,
   canManageAutopilotSettings,
+  canManageGscConnection,
   canReadAutopilot,
 } from './autopilotPermissions.ts';
 import { resolveCorrelationId } from './correlation.ts';
@@ -36,7 +37,6 @@ import {
 } from './topicService.ts';
 import { getWorkflowRunById } from './workflowRunService.ts';
 import type { AdminActor } from './topicHelpers.ts';
-import { conflict } from './apiErrors.ts';
 import {
   commitKeywordImport,
   getKeywordImportBatch,
@@ -59,6 +59,16 @@ import {
   markResearchSnapshotReady,
   updateResearchSnapshot,
 } from './researchSnapshotService.ts';
+import {
+  completeGscOAuthCallback,
+  createGscAuthorizationUrl,
+  disconnectGsc,
+  getGscConnectionStatus,
+  listAccessibleGscProperties,
+  selectGscProperty,
+} from './gscConnectionService.ts';
+import { listGscSyncRuns, runGscSync } from './gscSyncService.ts';
+import { resolveGscAdminRedirect } from './gscRedirect.ts';
 
 type AdminRequest = Request & {
   adminUser?: {
@@ -635,6 +645,141 @@ export function registerAutopilotAdminRoutes(options: RegisterAutopilotAdminRout
       );
       res.setHeader('x-correlation-id', correlationId);
       res.status(201).json({ ...result, correlationId });
+    }),
+  );
+
+  /* -------------------------------------------------------------------------- */
+  /* Phase 2A — Google Search Console                                           */
+  /* -------------------------------------------------------------------------- */
+
+  app.get(
+    '/api/admin/autopilot/gsc/status',
+    requireAdmin,
+    requireRole(canReadAutopilot),
+    withAutopilotHandler(async (_req, res, correlationId) => {
+      const status = await getGscConnectionStatus(prisma);
+      res.setHeader('x-correlation-id', correlationId);
+      res.json({ ...status, correlationId });
+    }),
+  );
+
+  app.post(
+    '/api/admin/autopilot/gsc/auth-url',
+    requireAdmin,
+    requireRole(canManageGscConnection),
+    withAutopilotHandler(async (req, res, correlationId) => {
+      const result = await createGscAuthorizationUrl(prisma, toActor(req), {
+        correlationId,
+      });
+      res.setHeader('x-correlation-id', correlationId);
+      res.json({ ...result, correlationId });
+    }),
+  );
+
+  app.get(
+    '/api/admin/autopilot/gsc/oauth/callback',
+    requireAdmin,
+    requireRole(canManageGscConnection),
+    withAutopilotHandler(async (req, res, correlationId) => {
+      if (typeof req.query.error === 'string' && req.query.error) {
+        res.setHeader('x-correlation-id', correlationId);
+        res.redirect(
+          303,
+          resolveGscAdminRedirect('error', 'Google authorisation was cancelled or denied.'),
+        );
+        return;
+      }
+      try {
+        await completeGscOAuthCallback(
+          prisma,
+          toActor(req),
+          {
+            code: typeof req.query.code === 'string' ? req.query.code : null,
+            state: typeof req.query.state === 'string' ? req.query.state : null,
+          },
+          { correlationId },
+        );
+        res.setHeader('x-correlation-id', correlationId);
+        res.redirect(303, resolveGscAdminRedirect('connected'));
+      } catch (error) {
+        const message =
+          error instanceof AutopilotError
+            ? error.message
+            : 'Google Search Console connection failed.';
+        res.setHeader('x-correlation-id', correlationId);
+        res.redirect(303, resolveGscAdminRedirect('error', message));
+      }
+    }),
+  );
+
+  app.get(
+    '/api/admin/autopilot/gsc/properties',
+    requireAdmin,
+    requireRole(canManageGscConnection),
+    withAutopilotHandler(async (req, res, correlationId) => {
+      const result = await listAccessibleGscProperties(prisma, toActor(req));
+      res.setHeader('x-correlation-id', correlationId);
+      res.json({ ...result, correlationId });
+    }),
+  );
+
+  app.post(
+    '/api/admin/autopilot/gsc/select-property',
+    requireAdmin,
+    requireRole(canManageGscConnection),
+    withAutopilotHandler(async (req, res, correlationId) => {
+      assertNoPrototypePollution(req.body);
+      const result = await selectGscProperty(
+        prisma,
+        toActor(req),
+        req.body?.siteUrl,
+        { correlationId },
+      );
+      res.setHeader('x-correlation-id', correlationId);
+      res.json({ ...result, correlationId });
+    }),
+  );
+
+  app.post(
+    '/api/admin/autopilot/gsc/sync',
+    requireAdmin,
+    requireRole(canManageGscConnection),
+    withAutopilotHandler(async (req, res, correlationId) => {
+      assertNoPrototypePollution(req.body);
+      const actor = toActor(req);
+      const result = await runGscSync(prisma, {
+        actorId: actor.id,
+        trigger: 'MANUAL',
+        dateFrom: typeof req.body?.dateFrom === 'string' ? req.body.dateFrom : undefined,
+        dateTo: typeof req.body?.dateTo === 'string' ? req.body.dateTo : undefined,
+        searchType: typeof req.body?.searchType === 'string' ? req.body.searchType : undefined,
+        correlationId,
+      });
+      res.setHeader('x-correlation-id', correlationId);
+      res.json({ ...result, correlationId });
+    }),
+  );
+
+  app.get(
+    '/api/admin/autopilot/gsc/sync-runs',
+    requireAdmin,
+    requireRole(canReadAutopilot),
+    withAutopilotHandler(async (req, res, correlationId) => {
+      const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
+      const result = await listGscSyncRuns(prisma, { limit, offset });
+      res.setHeader('x-correlation-id', correlationId);
+      res.json({ ...result, correlationId });
+    }),
+  );
+
+  app.post(
+    '/api/admin/autopilot/gsc/disconnect',
+    requireAdmin,
+    requireRole(canManageGscConnection),
+    withAutopilotHandler(async (req, res, correlationId) => {
+      const result = await disconnectGsc(prisma, toActor(req), { correlationId });
+      res.setHeader('x-correlation-id', correlationId);
+      res.json({ ...result, correlationId });
     }),
   );
 }

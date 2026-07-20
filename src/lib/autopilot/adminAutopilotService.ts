@@ -657,6 +657,97 @@ export const adminAutopilotApi = {
       correlationId: string;
     }>('/api/admin/autopilot/research-queue', { query, signal });
   },
+
+  /* -------------------------------------------------------------------------- */
+  /* Phase 2A — Google Search Console                                           */
+  /* -------------------------------------------------------------------------- */
+
+  getGscStatus(signal?: AbortSignal) {
+    return autopilotRequest<{
+      configuration: {
+        configured: boolean;
+        missing: string[];
+        redirectUriConfigured: boolean;
+        lookbackDays: number;
+        dataDelayDays: number;
+        scope: string;
+      };
+      connection: {
+        id: number;
+        status: string;
+        siteUrl: string | null;
+        permissionLevel: string | null;
+        scope: string;
+        connectedAt: string;
+        lastValidatedAt: string | null;
+        lastSuccessfulSyncAt: string | null;
+        lastErrorCode: string | null;
+        lastErrorMessage: string | null;
+        isActive: boolean;
+        hasRefreshToken: boolean;
+        syncLocked: boolean;
+      } | null;
+      recentSyncRuns: Array<Record<string, unknown>>;
+      correlationId: string;
+    }>('/api/admin/autopilot/gsc/status', { signal });
+  },
+
+  createGscAuthUrl(signal?: AbortSignal) {
+    return autopilotRequest<{
+      authorizationUrl: string;
+      expiresAt: string;
+      correlationId: string;
+    }>('/api/admin/autopilot/gsc/auth-url', { method: 'POST', signal });
+  },
+
+  listGscProperties(signal?: AbortSignal) {
+    return autopilotRequest<{
+      properties: Array<{ siteUrl: string; permissionLevel: string | null }>;
+      correlationId: string;
+    }>('/api/admin/autopilot/gsc/properties', { signal });
+  },
+
+  selectGscProperty(siteUrl: string, signal?: AbortSignal) {
+    return autopilotRequest<{
+      connection: Record<string, unknown>;
+      correlationId: string;
+    }>('/api/admin/autopilot/gsc/select-property', {
+      method: 'POST',
+      body: { siteUrl },
+      signal,
+    });
+  },
+
+  runGscSync(
+    body: { dateFrom?: string; dateTo?: string; searchType?: string } = {},
+    signal?: AbortSignal,
+  ) {
+    return autopilotRequest<{
+      syncRun: Record<string, unknown>;
+      connectionId: number;
+      correlationId: string;
+    }>('/api/admin/autopilot/gsc/sync', { method: 'POST', body, signal });
+  },
+
+  listGscSyncRuns(
+    query?: { limit?: number; offset?: number },
+    signal?: AbortSignal,
+  ) {
+    return autopilotRequest<{
+      items: Array<Record<string, unknown>>;
+      total: number;
+      limit: number;
+      offset: number;
+      correlationId: string;
+    }>('/api/admin/autopilot/gsc/sync-runs', { query, signal });
+  },
+
+  disconnectGsc(signal?: AbortSignal) {
+    return autopilotRequest<{
+      connection: Record<string, unknown>;
+      correlationId: string;
+    }>('/api/admin/autopilot/gsc/disconnect', { method: 'POST', signal });
+  },
 };
 
 /** Exported for unit tests — builds query strings without side effects. */

@@ -82,6 +82,14 @@ const EVENT_TYPE_LABELS: Record<AutopilotEventType, string> = {
   research_snapshot_confirmed: 'Research snapshot confirmed',
   research_snapshot_superseded: 'Research snapshot superseded',
   research_returned_to_draft: 'Research returned to draft',
+  gsc_oauth_started: 'GSC OAuth started',
+  gsc_connected: 'GSC connected',
+  gsc_connection_failed: 'GSC connection failed',
+  gsc_property_selected: 'GSC property selected',
+  gsc_sync_started: 'GSC sync started',
+  gsc_sync_completed: 'GSC sync completed',
+  gsc_sync_failed: 'GSC sync failed',
+  gsc_disconnected: 'GSC disconnected',
 };
 
 function titleCaseFallback(value: string): string {

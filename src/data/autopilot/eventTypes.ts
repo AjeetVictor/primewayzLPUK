@@ -41,6 +41,14 @@ export const AUTOPILOT_EVENT_TYPES = [
   'keyword_candidate_deferred',
   'keyword_candidate_marked_duplicate',
   'keyword_candidate_converted_to_topic',
+  'gsc_oauth_started',
+  'gsc_connected',
+  'gsc_connection_failed',
+  'gsc_property_selected',
+  'gsc_sync_started',
+  'gsc_sync_completed',
+  'gsc_sync_failed',
+  'gsc_disconnected',
 ] as const;
 
 export type AutopilotEventType = (typeof AUTOPILOT_EVENT_TYPES)[number];
@@ -55,6 +63,8 @@ export const AUTOPILOT_ENTITY_TYPES = [
   'keyword_import_batch',
   'keyword_candidate',
   'research_snapshot',
+  'gsc_connection',
+  'gsc_sync_run',
 ] as const;
 export type AutopilotEntityType = (typeof AUTOPILOT_ENTITY_TYPES)[number];
 

@@ -13,6 +13,8 @@ test('redactSensitive recursively redacts known secret keys', () => {
     nested: { apiKey: 'abc', ok: true },
     token: 't',
     list: [{ refreshToken: 'r', name: 'x' }],
+    refreshTokenCiphertext: 'cipher',
+    clientSecret: 'cs',
   };
   const redacted = redactSensitive(input) as typeof input;
   assert.equal(redacted.password, '[REDACTED]');
@@ -21,6 +23,8 @@ test('redactSensitive recursively redacts known secret keys', () => {
   assert.equal(redacted.token, '[REDACTED]');
   assert.equal(redacted.list[0].refreshToken, '[REDACTED]');
   assert.equal(redacted.list[0].name, 'x');
+  assert.equal(redacted.refreshTokenCiphertext, '[REDACTED]');
+  assert.equal(redacted.clientSecret, '[REDACTED]');
 });
 
 test('buildActivitySummary covers foundation events', () => {

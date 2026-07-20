@@ -86,6 +86,7 @@ test('frontend capabilities: viewer denied, authors contribute, editors editoria
     canContribute: false,
     canEditorial: false,
     canManageSettings: false,
+    canManageGsc: false,
   });
 
   const author = getAutopilotUiCapabilities('blog_author');
@@ -93,6 +94,7 @@ test('frontend capabilities: viewer denied, authors contribute, editors editoria
   assert.equal(author.canContribute, true);
   assert.equal(author.canEditorial, false);
   assert.equal(author.canManageSettings, false);
+  assert.equal(author.canManageGsc, false);
 
   for (const role of ['blog_editor', 'editor', 'admin'] as const) {
     const caps = getAutopilotUiCapabilities(role);
@@ -100,12 +102,14 @@ test('frontend capabilities: viewer denied, authors contribute, editors editoria
     assert.equal(caps.canContribute, true);
     assert.equal(caps.canEditorial, true);
     assert.equal(caps.canManageSettings, false);
+    assert.equal(caps.canManageGsc, false);
   }
 
   const superCaps = getAutopilotUiCapabilities('super_admin');
   assert.equal(superCaps.canRead, true);
   assert.equal(superCaps.canEditorial, true);
   assert.equal(superCaps.canManageSettings, false, 'Phase 1D must not expose settings edit UI');
+  assert.equal(superCaps.canManageGsc, true);
   assert.equal(assertNoSettingsEditCapabilityExposed('super_admin'), true);
 });
 

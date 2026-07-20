@@ -172,6 +172,7 @@ export function AutopilotPanel({ role }: AutopilotPanelProps) {
         <AutopilotDashboard
           refreshKey={refreshKey}
           canContribute={caps.canContribute}
+          canManageGsc={caps.canManageGsc}
           onOpenTopic={(id) => openTopic(id, 'dashboard')}
           onOpenActivity={() => setView('activity')}
           onCreateTopic={() => setCreateOpen(true)}

@@ -71,6 +71,23 @@ test('phase 2B research event vocabulary is present', () => {
   }
 });
 
+test('phase 2A GSC event vocabulary is present and unique with foundation set', () => {
+  for (const event of [
+    'gsc_oauth_started',
+    'gsc_connected',
+    'gsc_connection_failed',
+    'gsc_property_selected',
+    'gsc_sync_started',
+    'gsc_sync_completed',
+    'gsc_sync_failed',
+    'gsc_disconnected',
+  ] as const) {
+    assert.ok(AUTOPILOT_EVENT_TYPES.includes(event), event);
+  }
+  assert.ok(AUTOPILOT_ENTITY_TYPES.includes('gsc_connection'));
+  assert.ok(AUTOPILOT_ENTITY_TYPES.includes('gsc_sync_run'));
+});
+
 test('foundation status defaults and vocabularies are stable', () => {
   assert.equal(AUTOPILOT_FOUNDATION_DEFAULT_STATUSES.briefStatus, 'NOT_STARTED');
   assert.equal(AUTOPILOT_FOUNDATION_DEFAULT_STATUSES.draftStatus, 'NOT_STARTED');

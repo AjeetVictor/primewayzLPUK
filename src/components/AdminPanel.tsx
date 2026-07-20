@@ -464,6 +464,14 @@ const AdminPanelContent = () => {
   const [replyText, setReplyText] = useState('');
   const [activeTab, setActiveTab] = useState('forms');
   const [chatStatusFilter, setChatStatusFilter] = useState<ChatStatusFilterKey>('all');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab === 'autopilot') {
+      setActiveTab('autopilot');
+    }
+  }, []);
   const [isInternalNoteMode, setIsInternalNoteMode] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [editingMessageText, setEditingMessageText] = useState('');

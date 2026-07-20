@@ -14,10 +14,19 @@ export const SENSITIVE_KEYS = [
   'accessToken',
   'refreshToken',
   'authorization',
+  'authorizationCode',
   'cookie',
   'secret',
   'apiKey',
   'clientSecret',
+  'refreshTokenCiphertext',
+  'refreshTokenIv',
+  'refreshTokenAuthTag',
+  'encryptionKey',
+  'oauthState',
+  'authTag',
+  'ciphertext',
+  'iv',
 ] as const;
 
 const SENSITIVE_KEY_SET = new Set(
@@ -170,6 +179,22 @@ export function buildActivitySummary(
       return 'Keyword candidate marked duplicate';
     case 'keyword_candidate_converted_to_topic':
       return 'Keyword candidate converted to topic';
+    case 'gsc_oauth_started':
+      return 'Google Search Console OAuth started';
+    case 'gsc_connected':
+      return 'Google Search Console connected';
+    case 'gsc_connection_failed':
+      return 'Google Search Console connection failed';
+    case 'gsc_property_selected':
+      return 'Google Search Console property selected';
+    case 'gsc_sync_started':
+      return 'Google Search Console sync started';
+    case 'gsc_sync_completed':
+      return 'Google Search Console sync completed';
+    case 'gsc_sync_failed':
+      return 'Google Search Console sync failed';
+    case 'gsc_disconnected':
+      return 'Google Search Console disconnected';
     default:
       return `Autopilot event: ${eventType}`;
   }

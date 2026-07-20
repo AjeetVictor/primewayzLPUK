@@ -37,3 +37,8 @@ export function canEditorialAutopilot(role?: string): boolean {
 export function canManageAutopilotSettings(role?: string): boolean {
   return role === 'super_admin';
 }
+
+/** GSC connect / select / sync / disconnect — super_admin only. */
+export function canManageGscConnection(role?: string): boolean {
+  return role === 'super_admin';
+}

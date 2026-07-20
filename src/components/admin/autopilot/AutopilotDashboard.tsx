@@ -20,10 +20,12 @@ import { DecisionStatusBadge } from './DecisionStatusBadge';
 import { ScoreBadge } from './ScoreBadge';
 import { AutopilotEmptyState } from './AutopilotEmptyState';
 import { AutopilotErrorState } from './AutopilotErrorState';
+import { GscConnectionPanel } from './GscConnectionPanel';
 
 type AutopilotDashboardProps = {
   refreshKey: number;
   canContribute: boolean;
+  canManageGsc?: boolean;
   onOpenTopic: (id: number) => void;
   onOpenActivity: () => void;
   onCreateTopic: () => void;
@@ -50,6 +52,7 @@ function countByStatus(
 export function AutopilotDashboard({
   refreshKey,
   canContribute,
+  canManageGsc = false,
   onOpenTopic,
   onOpenActivity,
   onCreateTopic,
@@ -105,17 +108,22 @@ export function AutopilotDashboard({
 
   if (hasNoTopics) {
     return (
-      <AutopilotEmptyState
-        title="No Autopilot topics yet"
-        description="Topics are reviewed before briefs or drafts are created. Create a candidate topic to begin the editorial pipeline."
-        actionLabel={canContribute ? 'Create topic' : undefined}
-        onAction={canContribute ? onCreateTopic : undefined}
-      />
+      <div className="space-y-6">
+        <GscConnectionPanel refreshKey={refreshKey} canManageGsc={canManageGsc} />
+        <AutopilotEmptyState
+          title="No Autopilot topics yet"
+          description="Topics are reviewed before briefs or drafts are created. Create a candidate topic to begin the editorial pipeline."
+          actionLabel={canContribute ? 'Create topic' : undefined}
+          onAction={canContribute ? onCreateTopic : undefined}
+        />
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      <GscConnectionPanel refreshKey={refreshKey} canManageGsc={canManageGsc} />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-xl font-bold text-zinc-900">Pipeline health</h3>

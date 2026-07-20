@@ -7,6 +7,7 @@ import {
   canContributeTopics,
   canEditorialAutopilot,
   canManageAutopilotSettings,
+  canManageGscConnection,
   canReadAutopilot,
 } from './autopilotPermissions.ts';
 
@@ -15,6 +16,7 @@ export type AutopilotUiCapabilities = {
   canContribute: boolean;
   canEditorial: boolean;
   canManageSettings: boolean;
+  canManageGsc: boolean;
 };
 
 export function getAutopilotUiCapabilities(role?: string): AutopilotUiCapabilities {
@@ -24,6 +26,7 @@ export function getAutopilotUiCapabilities(role?: string): AutopilotUiCapabiliti
     canEditorial: canEditorialAutopilot(role),
     /** Phase 1D intentionally exposes no settings-edit UI. */
     canManageSettings: false,
+    canManageGsc: canManageGscConnection(role),
   };
 }
 

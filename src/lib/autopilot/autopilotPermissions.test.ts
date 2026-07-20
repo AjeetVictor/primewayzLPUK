@@ -4,6 +4,7 @@ import {
   canContributeTopics,
   canEditorialAutopilot,
   canManageAutopilotSettings,
+  canManageGscConnection,
   canReadAutopilot,
 } from './autopilotPermissions.ts';
 
@@ -12,6 +13,7 @@ test('viewer cannot read or contribute Autopilot', () => {
   assert.equal(canContributeTopics('viewer'), false);
   assert.equal(canEditorialAutopilot('viewer'), false);
   assert.equal(canManageAutopilotSettings('viewer'), false);
+  assert.equal(canManageGscConnection('viewer'), false);
 });
 
 test('blog_author can read and create but not editorial or settings', () => {
@@ -19,6 +21,7 @@ test('blog_author can read and create but not editorial or settings', () => {
   assert.equal(canContributeTopics('blog_author'), true);
   assert.equal(canEditorialAutopilot('blog_author'), false);
   assert.equal(canManageAutopilotSettings('blog_author'), false);
+  assert.equal(canManageGscConnection('blog_author'), false);
 });
 
 test('blog_editor and editor have editorial control', () => {
@@ -28,8 +31,11 @@ test('blog_editor and editor have editorial control', () => {
   }
 });
 
-test('only super_admin can manage settings (not admin alias)', () => {
+test('only super_admin can manage settings and GSC (not admin alias)', () => {
   assert.equal(canManageAutopilotSettings('super_admin'), true);
   assert.equal(canManageAutopilotSettings('admin'), false);
   assert.equal(canManageAutopilotSettings('blog_editor'), false);
+  assert.equal(canManageGscConnection('super_admin'), true);
+  assert.equal(canManageGscConnection('admin'), false);
+  assert.equal(canManageGscConnection('blog_editor'), false);
 });
