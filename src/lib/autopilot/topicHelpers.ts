@@ -70,6 +70,10 @@ export function serializeTopicRow(row: Record<string, unknown>) {
     'unsupportedClaimRiskPenalty',
     'rawScore',
     'totalScore',
+    'qualityScore',
+    'factualScore',
+    'brandVoiceScore',
+    'originalityScore',
   ] as const;
 
   const out: Record<string, unknown> = { ...row };
@@ -83,6 +87,10 @@ export function serializeTopicRow(row: Record<string, unknown>) {
     'createdAt',
     'updatedAt',
     'decidedAt',
+    'approvedAt',
+    'rejectedAt',
+    'lockedAt',
+    'scheduledFor',
     'archivedAt',
   ] as const) {
     const v = out[key];

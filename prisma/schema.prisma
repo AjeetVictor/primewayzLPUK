@@ -7,6 +7,59 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- Article Autopilot draft-first workflow ---
+enum AutopilotQueueStatus {
+  GENERATING
+  READY_FOR_REVIEW
+  NEEDS_ATTENTION
+  SCHEDULED
+  PUBLISHED
+  REJECTED
+}
+
+enum AutopilotPipelineStage {
+  QUEUED
+  PLANNING
+  RESEARCHING
+  CHECKING_OVERLAP
+  BUILDING_BRIEF
+  WRITING
+  GENERATING_METADATA
+  AUTO_REVIEWING
+  SANITISING
+  COMPLETED
+  FAILED
+}
+
+enum AutopilotReviewVerdict {
+  NOT_REVIEWED
+  PASS
+  PASS_WITH_WARNINGS
+  FAIL
+}
+
+enum AutopilotHumanReviewStatus {
+  PENDING
+  IN_REVIEW
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+}
+
+enum AutopilotContentVersionSource {
+  GENERATED
+  EDITED
+  REGENERATED
+  IMPORTED
+}
+
+enum AutopilotContentVersionStatus {
+  DRAFT
+  APPROVED
+  PUBLISHED
+  SUPERSEDED
+}
+
 // --- Form Responses ---
 model FormResponse {
   id        Int      @id @default(autoincrement())
@@ -162,6 +215,9 @@ model User {
   autopilotResearchSnapshotsCreated   AutopilotResearchSnapshot[]   @relation("AutopilotResearchSnapshotCreatedBy")
   autopilotResearchSnapshotsUpdated   AutopilotResearchSnapshot[]   @relation("AutopilotResearchSnapshotUpdatedBy")
   autopilotResearchSnapshotsConfirmed AutopilotResearchSnapshot[]   @relation("AutopilotResearchSnapshotConfirmedBy")
+  autopilotTopicsApproved             AutopilotTopic[]              @relation("AutopilotTopicApprovedBy")
+  autopilotTopicsRejected             AutopilotTopic[]              @relation("AutopilotTopicRejectedBy")
+  autopilotContentVersionsCreated     AutopilotContentVersion[]     @relation("AutopilotContentVersionCreatedBy")
 }
 
 // --- CMS / Blog ---
@@ -256,6 +312,41 @@ model AutopilotTopic {
   publishingStatus  String @default("NOT_READY")
   performanceStatus String @default("NOT_TRACKED")
 
+  // Draft-first queue state. Legacy status fields above remain during migration.
+  queueStatus      AutopilotQueueStatus       @default(GENERATING)
+  pipelineStage    AutopilotPipelineStage     @default(QUEUED)
+  reviewVerdict    AutopilotReviewVerdict     @default(NOT_REVIEWED)
+  humanReviewStatus AutopilotHumanReviewStatus @default(PENDING)
+
+  qualityScore      Decimal? @db.Decimal(5, 1)
+  factualScore      Decimal? @db.Decimal(5, 1)
+  brandVoiceScore   Decimal? @db.Decimal(5, 1)
+  originalityScore  Decimal? @db.Decimal(5, 1)
+  reviewIssues      Json?
+  sourceEvidenceJson Json?
+  autoReviewJson     Json?
+
+  validatorNotes  String?   @db.Text
+  approvedById    Int?
+  approvedAt      DateTime?
+  rejectedById    Int?
+  rejectedAt      DateTime?
+  rejectionReason String?   @db.Text
+
+  attemptCount     Int       @default(0)
+  lastError        String?   @db.Text
+  lockedAt         DateTime?
+  lockedBy         String?
+  modelName        String?
+  promptVersion    String?
+  generationVersion String?
+  scheduledFor     DateTime?
+  publishedUrl     String?   @db.Text
+
+  currentVersionId   Int? @unique
+  approvedVersionId  Int? @unique
+  publishedVersionId Int? @unique
+
   searchIntent           Json?
   serpEvidence           Json?
   businessAlignment      Json?
@@ -297,6 +388,8 @@ model AutopilotTopic {
   createdBy  User? @relation("AutopilotTopicCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   updatedBy  User? @relation("AutopilotTopicUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
   decidedBy  User? @relation("AutopilotTopicDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  approvedBy User? @relation("AutopilotTopicApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  rejectedBy User? @relation("AutopilotTopicRejectedBy", fields: [rejectedById], references: [id], onDelete: SetNull)
 
   mergeIntoTopic   AutopilotTopic?  @relation("AutopilotTopicMerge", fields: [mergeIntoTopicId], references: [id], onDelete: SetNull)
   mergedFromTopics AutopilotTopic[] @relation("AutopilotTopicMerge")
@@ -304,6 +397,10 @@ model AutopilotTopic {
   keywordCandidatesMatched   AutopilotKeywordCandidate[] @relation("AutopilotKeywordCandidateMatchedTopic")
   keywordCandidatesConverted AutopilotKeywordCandidate[] @relation("AutopilotKeywordCandidateConvertedTopic")
   researchSnapshots          AutopilotResearchSnapshot[]
+  contentVersions            AutopilotContentVersion[] @relation("AutopilotContentVersions")
+  currentVersion             AutopilotContentVersion?  @relation("AutopilotCurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  approvedVersion            AutopilotContentVersion?  @relation("AutopilotApprovedVersion", fields: [approvedVersionId], references: [id], onDelete: SetNull)
+  publishedVersion           AutopilotContentVersion?  @relation("AutopilotPublishedVersion", fields: [publishedVersionId], references: [id], onDelete: SetNull)
 
   @@index([proposedSlug])
   @@index([topicStatus])
@@ -316,6 +413,12 @@ model AutopilotTopic {
   @@index([topicStatus, decisionStatus, updatedAt])
   @@index([decisionStatus, totalScore])
   @@index([mergeIntoTopicId])
+  @@index([queueStatus, updatedAt])
+  @@index([pipelineStage, updatedAt])
+  @@index([humanReviewStatus, queueStatus, updatedAt])
+  @@index([scheduledFor])
+  @@index([approvedById])
+  @@index([rejectedById])
 }
 
 model AutopilotActivityLog {
@@ -529,4 +632,37 @@ model AutopilotResearchSnapshot {
   @@index([createdById])
   @@index([confirmedById])
   @@index([confirmedAt])
+}
+
+
+model AutopilotContentVersion {
+  id                 Int                           @id @default(autoincrement())
+  topicId            Int
+  version            Int
+  source             AutopilotContentVersionSource @default(GENERATED)
+  status             AutopilotContentVersionStatus @default(DRAFT)
+  title              String
+  proposedSlug       String?
+  excerpt            String?                       @db.Text
+  content            String                        @db.LongText
+  seoTitle           String?
+  seoDescription     String?                       @db.Text
+  metadataJson       Json?
+  schemaJson         Json?
+  internalLinksJson  Json?
+  sourceEvidenceJson Json?
+  autoReviewJson     Json?
+  changeSummary      String?                       @db.Text
+  createdById        Int?
+  createdAt          DateTime                      @default(now())
+
+  topic       AutopilotTopic @relation("AutopilotContentVersions", fields: [topicId], references: [id], onDelete: Restrict)
+  createdBy   User?          @relation("AutopilotContentVersionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  currentForTopic   AutopilotTopic? @relation("AutopilotCurrentVersion")
+  approvedForTopic  AutopilotTopic? @relation("AutopilotApprovedVersion")
+  publishedForTopic AutopilotTopic? @relation("AutopilotPublishedVersion")
+
+  @@unique([topicId, version])
+  @@index([topicId, status, createdAt])
+  @@index([createdById])
 }

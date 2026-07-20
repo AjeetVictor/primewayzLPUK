@@ -1,6 +1,6 @@
 /**
  * Article Autopilot 2.0 — foundation workflow status constants (Phase 1B.1).
- * String-literal unions (project convention — no Prisma enums).
+ * Legacy statuses remain string-literal unions; draft-first persisted statuses mirror Prisma enums.
  */
 
 export const AUTOPILOT_TOPIC_STATUSES = [
@@ -57,4 +57,61 @@ export const AUTOPILOT_FOUNDATION_DEFAULT_STATUSES = {
   mediaStatus: AutopilotMediaStatus;
   publishingStatus: AutopilotPublishingStatus;
   performanceStatus: AutopilotPerformanceStatus;
+};
+
+/** Draft-first user-facing queue statuses. Keep these separate from internal stages. */
+export const AUTOPILOT_QUEUE_STATUSES = [
+  'GENERATING',
+  'READY_FOR_REVIEW',
+  'NEEDS_ATTENTION',
+  'SCHEDULED',
+  'PUBLISHED',
+  'REJECTED',
+] as const;
+export type AutopilotQueueStatus = (typeof AUTOPILOT_QUEUE_STATUSES)[number];
+
+/** Internal orchestration stages. These belong in logs/progress, not separate user tasks. */
+export const AUTOPILOT_PIPELINE_STAGES = [
+  'QUEUED',
+  'PLANNING',
+  'RESEARCHING',
+  'CHECKING_OVERLAP',
+  'BUILDING_BRIEF',
+  'WRITING',
+  'GENERATING_METADATA',
+  'AUTO_REVIEWING',
+  'SANITISING',
+  'COMPLETED',
+  'FAILED',
+] as const;
+export type AutopilotPipelineStage = (typeof AUTOPILOT_PIPELINE_STAGES)[number];
+
+export const AUTOPILOT_REVIEW_VERDICTS = [
+  'NOT_REVIEWED',
+  'PASS',
+  'PASS_WITH_WARNINGS',
+  'FAIL',
+] as const;
+export type AutopilotReviewVerdict = (typeof AUTOPILOT_REVIEW_VERDICTS)[number];
+
+export const AUTOPILOT_HUMAN_REVIEW_STATUSES = [
+  'PENDING',
+  'IN_REVIEW',
+  'APPROVED',
+  'CHANGES_REQUESTED',
+  'REJECTED',
+] as const;
+export type AutopilotHumanReviewStatus =
+  (typeof AUTOPILOT_HUMAN_REVIEW_STATUSES)[number];
+
+export const AUTOPILOT_DRAFT_FIRST_DEFAULT_STATUSES = {
+  queueStatus: 'GENERATING',
+  pipelineStage: 'QUEUED',
+  reviewVerdict: 'NOT_REVIEWED',
+  humanReviewStatus: 'PENDING',
+} as const satisfies {
+  queueStatus: AutopilotQueueStatus;
+  pipelineStage: AutopilotPipelineStage;
+  reviewVerdict: AutopilotReviewVerdict;
+  humanReviewStatus: AutopilotHumanReviewStatus;
 };

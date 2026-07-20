@@ -121,6 +121,8 @@ export function TopicDecisionCard({
   const { showToast } = useToast();
   const [detail, setDetail] = useState<AutopilotTopicDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshStatus, setRefreshStatus] = useState('');
   const [error, setError] = useState<AutopilotClientError | Error | null>(null);
   const [editSection, setEditSection] = useState<EditSection>(null);
   const [draft, setDraft] = useState<Record<string, unknown>>({});
@@ -141,8 +143,14 @@ export function TopicDecisionCard({
 
   const topic = detail?.topic;
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+      setRefreshStatus('Refreshing topic data.');
+    } else {
+      setLoading(true);
+    }
+
     setError(null);
     try {
       const data = await adminAutopilotApi.getTopic(topicId);
@@ -156,10 +164,31 @@ export function TopicDecisionCard({
         reasoning: rec.reasoning || '',
       });
       setMissingDimensions([]);
+
+      if (isRefresh) {
+        setRefreshStatus('Topic refreshed successfully.');
+        showToast({
+          type: 'success',
+          message: 'Topic refreshed successfully.',
+        });
+      }
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to load topic'));
+      const nextError =
+        err instanceof Error ? err : new Error('Failed to load topic');
+
+      setError(nextError);
+
+      if (isRefresh) {
+        const message = nextError.message || 'Failed to refresh topic.';
+        setRefreshStatus(`Refresh failed: ${message}`);
+        showToast({
+          type: 'error',
+          message,
+        });
+      }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -204,23 +233,23 @@ export function TopicDecisionCard({
     } else if (section === 'business') {
       const biz = asObject<AutopilotBusinessAlignment>(topic.businessAlignment);
       Object.assign(next, {
-        serviceFit: biz.serviceFit || biz.relevantService || '',
-        commercialValue: biz.commercialValue || '',
-        buyerFit: biz.buyerFit || '',
-        relevantMoneyPage: biz.relevantMoneyPage || '',
-        internalLinkingOpportunity: biz.internalLinkingOpportunity || '',
+        serviceFit: biz.serviceRelevanceNotes || biz.serviceFit || biz.relevantService || '',
+        commercialValue: biz.businessValueNotes || biz.commercialValue || '',
+        buyerFit: biz.buyerIntentNotes || biz.buyerFit || '',
+        relevantMoneyPage: biz.commercialPageSupportNotes || biz.relevantMoneyPage || '',
+        internalLinkingOpportunity: biz.internalLinkOpportunityNotes || biz.internalLinkingOpportunity || '',
         notes: biz.notes || '',
       });
     } else if (section === 'architecture') {
       const arch = asObject<AutopilotContentArchitecture>(topic.contentArchitecture);
       const risk = asObject<AutopilotRiskAssessment>(topic.riskAssessment);
       Object.assign(next, {
-        intendedPageType: arch.intendedPageType || '',
+        intendedPageType: arch.proposedPageType || arch.intendedPageType || '',
         topicCluster: arch.topicCluster || '',
         contentGap: arch.contentGap || '',
         notes: arch.notes || '',
-        cannibalisationRisk: risk.cannibalisationRisk || '',
-        unsupportedClaimRisk: risk.unsupportedClaimRisk || '',
+        cannibalisationRisk: risk.cannibalisationNotes || risk.cannibalisationRisk || '',
+        unsupportedClaimRisk: risk.unsupportedClaimRisks || risk.unsupportedClaimRisk || '',
         riskNotes: risk.notes || '',
       });
     } else if (section === 'categories') {
@@ -294,11 +323,11 @@ export function TopicDecisionCard({
         payloadDraft = {
           businessAlignment: {
             ...prev,
-            serviceFit: String(draft.serviceFit || '').trim() || undefined,
-            commercialValue: String(draft.commercialValue || '').trim() || undefined,
-            buyerFit: String(draft.buyerFit || '').trim() || undefined,
-            relevantMoneyPage: String(draft.relevantMoneyPage || '').trim() || undefined,
-            internalLinkingOpportunity:
+            serviceRelevanceNotes: String(draft.serviceFit || '').trim() || undefined,
+            businessValueNotes: String(draft.commercialValue || '').trim() || undefined,
+            buyerIntentNotes: String(draft.buyerFit || '').trim() || undefined,
+            commercialPageSupportNotes: String(draft.relevantMoneyPage || '').trim() || undefined,
+            internalLinkOpportunityNotes:
               String(draft.internalLinkingOpportunity || '').trim() || undefined,
             notes: String(draft.notes || '').trim() || undefined,
           },
@@ -309,15 +338,15 @@ export function TopicDecisionCard({
         payloadDraft = {
           contentArchitecture: {
             ...prevArch,
-            intendedPageType: String(draft.intendedPageType || '').trim() || undefined,
+            proposedPageType: String(draft.intendedPageType || '').trim() || undefined,
             topicCluster: String(draft.topicCluster || '').trim() || undefined,
             contentGap: String(draft.contentGap || '').trim() || undefined,
             notes: String(draft.notes || '').trim() || undefined,
           },
           riskAssessment: {
             ...prevRisk,
-            cannibalisationRisk: String(draft.cannibalisationRisk || '').trim() || undefined,
-            unsupportedClaimRisk: String(draft.unsupportedClaimRisk || '').trim() || undefined,
+            cannibalisationNotes: String(draft.cannibalisationRisk || '').trim() || undefined,
+            unsupportedClaimRisks: String(draft.unsupportedClaimRisk || '').trim() || undefined,
             notes: String(draft.riskNotes || '').trim() || undefined,
           },
         };
@@ -559,7 +588,7 @@ export function TopicDecisionCard({
   const scoreStale = topic.rawScore == null || topic.totalScore == null;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" aria-busy={refreshing}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <button
@@ -583,12 +612,17 @@ export function TopicDecisionCard({
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => void load()}
-            className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50"
-            aria-label="Refresh topic"
+            onClick={() => void load(true)}
+            disabled={refreshing}
+            className="inline-flex min-w-[8.5rem] cursor-pointer items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50 active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={refreshing ? 'Refreshing topic' : 'Refresh topic'}
+            aria-busy={refreshing}
           >
-            <RefreshCcw className="h-4 w-4" />
-            Refresh
+            <RefreshCcw
+              className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+              aria-hidden="true"
+            />
+            <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
           </button>
           {canEditorial && !topic.archivedAt ? (
             <button
@@ -608,6 +642,10 @@ export function TopicDecisionCard({
           ) : null}
         </div>
       </div>
+
+      <p className="sr-only" role="status" aria-live="polite">
+        {refreshStatus}
+      </p>
 
       {topic.archivedAt ? (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -754,11 +792,11 @@ export function TopicDecisionCard({
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Field label="Service relevance" value={business.serviceFit || business.relevantService} />
-            <Field label="Business value" value={business.commercialValue} />
-            <Field label="Buyer intent" value={business.buyerFit} />
-            <Field label="Commercial-page support" value={business.relevantMoneyPage} />
-            <Field label="Internal-link opportunities" value={business.internalLinkingOpportunity} />
+            <Field label="Service relevance" value={business.serviceRelevanceNotes || business.serviceFit || business.relevantService} />
+            <Field label="Business value" value={business.businessValueNotes || business.commercialValue} />
+            <Field label="Buyer intent" value={business.buyerIntentNotes || business.buyerFit} />
+            <Field label="Commercial-page support" value={business.commercialPageSupportNotes || business.relevantMoneyPage} />
+            <Field label="Internal-link opportunities" value={business.internalLinkOpportunityNotes || business.internalLinkingOpportunity} />
             <Field label="Notes" value={business.notes} />
           </div>
         )}
@@ -789,12 +827,12 @@ export function TopicDecisionCard({
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Field label="Proposed page type" value={architecture.intendedPageType} />
+            <Field label="Proposed page type" value={architecture.proposedPageType || architecture.intendedPageType} />
             <Field label="Topic cluster" value={architecture.topicCluster} />
             <Field label="Content gap" value={architecture.contentGap} />
             <Field label="Differentiation / notes" value={architecture.notes} />
-            <Field label="Cannibalisation observations" value={risk.cannibalisationRisk} />
-            <Field label="Unsupported-claim risks" value={risk.unsupportedClaimRisk} />
+            <Field label="Cannibalisation observations" value={risk.cannibalisationNotes || risk.cannibalisationRisk} />
+            <Field label="Unsupported-claim risks" value={risk.unsupportedClaimRisks || risk.unsupportedClaimRisk} />
             <Field label="Risk notes" value={risk.notes} />
           </div>
         )}
