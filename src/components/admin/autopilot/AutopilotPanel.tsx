@@ -27,6 +27,7 @@ import {
   DEFAULT_RESEARCH_QUEUE_FILTERS,
   type AutopilotResearchQueueFilters,
 } from '../../../lib/autopilot/adminResearchHelpers';
+import { DEFAULT_GSC_SYNC_ACTIVITY_FILTERS } from '../../../lib/autopilot/gscSyncHistoryHelpers';
 
 export type AutopilotSubView =
   | 'dashboard'
@@ -89,6 +90,14 @@ export function AutopilotPanel({ role }: AutopilotPanelProps) {
       entityId: String(topicId),
     });
     setSelectedTopicId(null);
+    setView('activity');
+  };
+
+  const openActivityForGscSync = () => {
+    setActivityFilters({
+      ...DEFAULT_ACTIVITY_FILTERS,
+      ...DEFAULT_GSC_SYNC_ACTIVITY_FILTERS,
+    });
     setView('activity');
   };
 
@@ -175,6 +184,7 @@ export function AutopilotPanel({ role }: AutopilotPanelProps) {
           canManageGsc={caps.canManageGsc}
           onOpenTopic={(id) => openTopic(id, 'dashboard')}
           onOpenActivity={() => setView('activity')}
+          onOpenGscSyncHistory={openActivityForGscSync}
           onCreateTopic={() => setCreateOpen(true)}
           onOpenKeywordImports={() => setView('keyword-imports')}
           onOpenResearchQueue={() => setView('research-queue')}

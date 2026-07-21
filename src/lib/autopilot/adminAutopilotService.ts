@@ -213,6 +213,9 @@ function kindFromStatus(status: number, code?: string): AutopilotClientErrorKind
 }
 
 function safeUserMessage(status: number, code: string, message: string): string {
+  if (code === 'GSC_RECONNECT_FAILED') {
+    return message || 'Search Console could not be reconnected. No existing sync data was changed.';
+  }
   if (status >= 500 || code === 'AUTOPILOT_INTERNAL_ERROR') {
     return 'Autopilot is temporarily unavailable. The database migration or server deployment may not yet be complete.';
   }

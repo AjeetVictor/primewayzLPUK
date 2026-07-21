@@ -34,6 +34,7 @@ import {
   emailsMatchCaseInsensitive,
   findExactAccessibleGscProperty,
   gscPropertyNotAccessibleError,
+  normaliseRequestedGscProperty,
   parseGscOnboardingInput,
 } from './gscPropertyValidation.ts';
 import type { AdminActor } from './topicHelpers.ts';
@@ -43,6 +44,9 @@ import { canManageGscConnection } from './autopilotPermissions.ts';
 const CLEARED_CIPHER = '';
 const CLEARED_IV = '';
 const CLEARED_TAG = '';
+
+export const GSC_RECONNECT_SAFE_MESSAGE =
+  'Search Console could not be reconnected. No existing sync data was changed.';
 
 export type GscConnectionDto = {
   id: number;
@@ -127,6 +131,78 @@ async function findPrimaryConnection(prisma: PrismaClient): Promise<GscConnectio
   });
 }
 
+/** Latest retained row for dashboard history when no active connection exists. */
+async function findRetainedGscConnection(prisma: PrismaClient): Promise<GscConnection | null> {
+  const active = await findPrimaryConnection(prisma);
+  if (active) return active;
+  return prisma.gscConnection.findFirst({
+    orderBy: { updatedAt: 'desc' },
+  });
+}
+
+/**
+ * Find an existing connection row for a normalised Primewayz UK property URL,
+ * regardless of active/disconnected status.
+ */
+export async function findExistingConnectionForProperty(
+  prisma: PrismaClient,
+  requestedSiteUrl: string,
+  validatedSiteUrl?: string | null,
+): Promise<GscConnection | null> {
+  const normalisedRequested = normaliseRequestedGscProperty(requestedSiteUrl);
+  const lookupUrls = Array.from(
+    new Set(
+      [normalisedRequested, validatedSiteUrl?.trim()].filter(
+        (value): value is string => Boolean(value),
+      ),
+    ),
+  );
+
+  for (const siteUrl of lookupUrls) {
+    const bySite = await prisma.gscConnection.findFirst({
+      where: { siteUrl },
+      orderBy: { updatedAt: 'desc' },
+    });
+    if (bySite) return bySite;
+  }
+
+  for (const requested of lookupUrls) {
+    const byRequested = await prisma.gscConnection.findFirst({
+      where: { requestedSiteUrl: requested },
+      orderBy: { updatedAt: 'desc' },
+    });
+    if (byRequested) return byRequested;
+  }
+
+  return null;
+}
+
+function isPrismaClientError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const code = (error as { code?: string }).code;
+  return typeof code === 'string' && /^P\d{4}$/.test(code);
+}
+
+function logGscPersistenceFailure(
+  error: unknown,
+  correlationId?: string | null,
+  context?: string,
+): void {
+  console.error('[autopilot:gsc:persistence]', {
+    context: context ?? 'unknown',
+    correlationId: correlationId ?? null,
+    error,
+  });
+}
+
+function throwGscReconnectPersistenceError(correlationId?: string | null): never {
+  throw new AutopilotError(
+    AUTOPILOT_ERROR_CODES.GSC_RECONNECT_FAILED,
+    GSC_RECONNECT_SAFE_MESSAGE,
+    502,
+  );
+}
+
 function safeAuditMetadata(input: Record<string, unknown>): Record<string, unknown> {
   const blocked = [
     'refreshToken',
@@ -156,7 +232,7 @@ export async function getGscConnectionStatus(
   options?: { recentSyncLimit?: number },
 ): Promise<GscConnectionStatusDto> {
   const configuration = getGscPublicConfigStatus();
-  const connection = await findPrimaryConnection(prisma);
+  const connection = await findRetainedGscConnection(prisma);
   const recentSyncRuns = connection
     ? await prisma.gscSyncRun.findMany({
         where: { connectionId: connection.id },
@@ -260,7 +336,7 @@ export async function completeGscOAuthCallback(
   if (!state) throw validationError('Missing OAuth state.', { field: 'state' });
 
   const googleApi = options?.googleApi ?? createDefaultGscGoogleApi();
-  const existing = await findPrimaryConnection(prisma);
+  const existingActive = await findPrimaryConnection(prisma);
 
   try {
     // 1–2. Consume one-time state (binds super_admin + onboarding values).
@@ -285,7 +361,7 @@ export async function completeGscOAuthCallback(
 
     await appendActivityLog(prisma, {
       entityType: 'gsc_connection',
-      entityId: existing ? String(existing.id) : 'pending',
+      entityId: existingActive ? String(existingActive.id) : 'pending',
       eventType: 'gsc_identity_verified',
       actorType: 'user',
       actorId: actor.id,
@@ -300,18 +376,25 @@ export async function completeGscOAuthCallback(
       correlationId: options?.correlationId ?? null,
     });
 
+    const existingPropertyRecord = await findExistingConnectionForProperty(
+      prisma,
+      requestedSiteUrl,
+    );
+    const tokenSource = existingActive ?? existingPropertyRecord;
+
     // 7. Resolve refresh token — never reuse across mismatched Google subjects.
     const refreshToken = resolveRefreshTokenForPersistence({
       exchangedRefreshToken: exchanged.refreshToken,
-      existingEncrypted: existing
-        ? {
-            refreshTokenCiphertext: existing.refreshTokenCiphertext,
-            refreshTokenIv: existing.refreshTokenIv,
-            refreshTokenAuthTag: existing.refreshTokenAuthTag,
-            tokenKeyVersion: existing.tokenKeyVersion,
-          }
-        : null,
-      existingGoogleSubject: existing?.googleSubject ?? null,
+      existingEncrypted:
+        tokenSource && hasUsableRefreshToken(tokenSource)
+          ? {
+              refreshTokenCiphertext: tokenSource.refreshTokenCiphertext,
+              refreshTokenIv: tokenSource.refreshTokenIv,
+              refreshTokenAuthTag: tokenSource.refreshTokenAuthTag,
+              tokenKeyVersion: tokenSource.tokenKeyVersion,
+            }
+          : null,
+      existingGoogleSubject: tokenSource?.googleSubject ?? null,
       verifiedGoogleSubject: identity.sub,
     });
 
@@ -322,7 +405,11 @@ export async function completeGscOAuthCallback(
       const propertyError = gscPropertyNotAccessibleError(requestedSiteUrl, accessibleSites);
       await appendActivityLog(prisma, {
         entityType: 'gsc_connection',
-        entityId: existing ? String(existing.id) : 'pending',
+        entityId: existingPropertyRecord
+          ? String(existingPropertyRecord.id)
+          : existingActive
+            ? String(existingActive.id)
+            : 'pending',
         eventType: 'gsc_property_validation_failed',
         actorType: 'user',
         actorId: actor.id,
@@ -343,18 +430,69 @@ export async function completeGscOAuthCallback(
       throw propertyError;
     }
 
+    const persistTarget =
+      (await findExistingConnectionForProperty(
+        prisma,
+        requestedSiteUrl,
+        matched.siteUrl,
+      )) ??
+      existingPropertyRecord ??
+      existingActive;
+
     const encrypted = encryptRefreshTokenForStorage(refreshToken);
     const scope = exchanged.scope?.trim() || GSC_OAUTH_SCOPE_STRING;
     const now = new Date();
 
-    // 11–12. Persist only after identity + property validation; mark ACTIVE.
-    const connection = await prisma.$transaction(async (tx) => {
-      if (existing) {
+    // 11–12. Persist only after identity + property validation; update existing row when present.
+    let connection: GscConnection;
+    try {
+      connection = await prisma.$transaction(async (tx) => {
+        if (persistTarget) {
+          await tx.gscConnection.updateMany({
+            where: {
+              isActive: true,
+              id: { not: persistTarget.id },
+            },
+            data: {
+              isActive: false,
+              status: 'DISCONNECTED',
+              refreshTokenCiphertext: CLEARED_CIPHER,
+              refreshTokenIv: CLEARED_IV,
+              refreshTokenAuthTag: CLEARED_TAG,
+              syncLockToken: null,
+              syncLockedAt: null,
+            },
+          });
+
+          return tx.gscConnection.update({
+            where: { id: persistTarget.id },
+            data: {
+              status: 'ACTIVE',
+              isActive: true,
+              requestedSiteUrl,
+              siteUrl: matched.siteUrl,
+              expectedEmail,
+              googleSubject: identity.sub,
+              authorisedEmail,
+              authorisedEmailVerified: true,
+              identityValidatedAt: now,
+              permissionLevel: matched.permissionLevel,
+              refreshTokenCiphertext: encrypted.ciphertext,
+              refreshTokenIv: encrypted.iv,
+              refreshTokenAuthTag: encrypted.authTag,
+              tokenKeyVersion: encrypted.keyVersion,
+              scope,
+              connectedById: actor.id,
+              connectedAt: now,
+              lastValidatedAt: now,
+              lastErrorCode: null,
+              lastErrorMessage: null,
+            },
+          });
+        }
+
         await tx.gscConnection.updateMany({
-          where: {
-            isActive: true,
-            id: { not: existing.id },
-          },
+          where: { isActive: true },
           data: {
             isActive: false,
             status: 'DISCONNECTED',
@@ -366,8 +504,7 @@ export async function completeGscOAuthCallback(
           },
         });
 
-        return tx.gscConnection.update({
-          where: { id: existing.id },
+        return tx.gscConnection.create({
           data: {
             status: 'ACTIVE',
             isActive: true,
@@ -387,48 +524,16 @@ export async function completeGscOAuthCallback(
             connectedById: actor.id,
             connectedAt: now,
             lastValidatedAt: now,
-            lastErrorCode: null,
-            lastErrorMessage: null,
           },
         });
+      });
+    } catch (error) {
+      if (isPrismaClientError(error)) {
+        logGscPersistenceFailure(error, options?.correlationId, 'oauth-callback');
+        throwGscReconnectPersistenceError(options?.correlationId);
       }
-
-      await tx.gscConnection.updateMany({
-        where: { isActive: true },
-        data: {
-          isActive: false,
-          status: 'DISCONNECTED',
-          refreshTokenCiphertext: CLEARED_CIPHER,
-          refreshTokenIv: CLEARED_IV,
-          refreshTokenAuthTag: CLEARED_TAG,
-          syncLockToken: null,
-          syncLockedAt: null,
-        },
-      });
-
-      return tx.gscConnection.create({
-        data: {
-          status: 'ACTIVE',
-          isActive: true,
-          requestedSiteUrl,
-          siteUrl: matched.siteUrl,
-          expectedEmail,
-          googleSubject: identity.sub,
-          authorisedEmail,
-          authorisedEmailVerified: true,
-          identityValidatedAt: now,
-          permissionLevel: matched.permissionLevel,
-          refreshTokenCiphertext: encrypted.ciphertext,
-          refreshTokenIv: encrypted.iv,
-          refreshTokenAuthTag: encrypted.authTag,
-          tokenKeyVersion: encrypted.keyVersion,
-          scope,
-          connectedById: actor.id,
-          connectedAt: now,
-          lastValidatedAt: now,
-        },
-      });
-    });
+      throw error;
+    }
 
     await appendActivityLog(prisma, {
       entityType: 'gsc_connection',
@@ -497,7 +602,7 @@ export async function completeGscOAuthCallback(
     if (errorCode !== AUTOPILOT_ERROR_CODES.GSC_PROPERTY_NOT_ACCESSIBLE) {
       await appendActivityLog(prisma, {
         entityType: 'gsc_connection',
-        entityId: existing ? String(existing.id) : 'pending',
+        entityId: existingActive ? String(existingActive.id) : 'pending',
         eventType: isIdentityMismatch ? 'gsc_identity_mismatch' : 'gsc_connection_failed',
         actorType: 'user',
         actorId: actor.id,
@@ -519,6 +624,10 @@ export async function completeGscOAuthCallback(
     // Failed reconnect must leave the previous valid active connection usable
     // unless it was already marked NEEDS_REAUTHENTICATION.
     if (error instanceof AutopilotError) throw error;
+    if (isPrismaClientError(error)) {
+      logGscPersistenceFailure(error, options?.correlationId, 'oauth-callback');
+      throwGscReconnectPersistenceError(options?.correlationId);
+    }
     throw new AutopilotError(errorCode, message, 400);
   }
 }

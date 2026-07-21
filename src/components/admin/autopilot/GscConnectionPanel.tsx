@@ -5,6 +5,13 @@ import {
   adminAutopilotApi,
 } from '../../../lib/autopilot/adminAutopilotService';
 import { formatAutopilotDate } from '../../../lib/autopilot/adminAutopilotActivityHelpers';
+import {
+  mergeSyncRunIntoList,
+  parseGscSyncRun,
+  parseGscSyncRuns,
+  type GscSyncRunRecord,
+} from '../../../lib/autopilot/gscSyncHistoryHelpers';
+import { GscSyncHistoryContent, RunningSyncCard, useGscSyncHistoryState } from './GscSyncHistory';
 import { useToast } from '../../ui/AppToast';
 import { AppConfirmDialog } from '../../ui/AppConfirmDialog';
 import { AutopilotErrorState } from './AutopilotErrorState';
@@ -12,6 +19,7 @@ import { AutopilotErrorState } from './AutopilotErrorState';
 type GscConnectionPanelProps = {
   refreshKey: number;
   canManageGsc: boolean;
+  onViewFullSyncHistory?: () => void;
 };
 
 type GscStatus = Awaited<ReturnType<typeof adminAutopilotApi.getGscStatus>>;
@@ -60,7 +68,11 @@ function isLikelyGscProperty(value: string): boolean {
   }
 }
 
-export function GscConnectionPanel({ refreshKey, canManageGsc }: GscConnectionPanelProps) {
+export function GscConnectionPanel({
+  refreshKey,
+  canManageGsc,
+  onViewFullSyncHistory,
+}: GscConnectionPanelProps) {
   const { showToast } = useToast();
   const [data, setData] = useState<GscStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,6 +87,7 @@ export function GscConnectionPanel({ refreshKey, canManageGsc }: GscConnectionPa
   >([]);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [optimisticRunning, setOptimisticRunning] = useState<GscSyncRunRecord | null>(null);
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
 
@@ -200,18 +213,55 @@ export function GscConnectionPanel({ refreshKey, canManageGsc }: GscConnectionPa
     }
   };
 
+  const refreshStatus = async () => {
+    try {
+      const status = await adminAutopilotApi.getGscStatus();
+      setData(status);
+    } catch {
+      // Background refresh — keep existing data visible.
+    }
+  };
+
   const handleSync = async () => {
     if (!canManageGsc || syncing) return;
     setSyncing(true);
     setStatusMessage(null);
+    setOptimisticRunning({
+      id: 'pending-manual-sync',
+      status: 'RUNNING',
+      trigger: 'MANUAL',
+      startedAt: new Date().toISOString(),
+    });
+    void refreshStatus();
     try {
       const result = await adminAutopilotApi.runGscSync();
-      const run = result.syncRun;
+      const run = parseGscSyncRun(result.syncRun);
       showToast({ type: 'success', message: 'Search Console sync completed.' });
       setStatusMessage(
         `Sync succeeded — fetched ${String(run.rowsFetched ?? 0)} rows, stored ${String(run.rowsUpserted ?? 0)}.`,
       );
-      await load();
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              recentSyncRuns: mergeSyncRunIntoList(
+                parseGscSyncRuns(current.recentSyncRuns),
+                run,
+              ) as Array<Record<string, unknown>>,
+              connection: current.connection
+                ? {
+                    ...current.connection,
+                    syncLocked: false,
+                    lastSuccessfulSyncAt:
+                      run.status === 'SUCCEEDED' && run.completedAt
+                        ? run.completedAt
+                        : current.connection.lastSuccessfulSyncAt,
+                  }
+                : current.connection,
+            }
+          : current,
+      );
+      void refreshStatus();
     } catch (err) {
       const message =
         err instanceof AutopilotClientError
@@ -221,11 +271,20 @@ export function GscConnectionPanel({ refreshKey, canManageGsc }: GscConnectionPa
             : 'Sync failed.';
       setStatusMessage(message);
       showToast({ type: 'error', message });
-      await load();
+      void refreshStatus();
     } finally {
       setSyncing(false);
+      setOptimisticRunning(null);
     }
   };
+
+  const syncHistoryState = useGscSyncHistoryState({
+    syncRuns: data?.recentSyncRuns ?? [],
+    syncLocked: connection?.syncLocked ?? false,
+    syncing,
+    optimisticRunning,
+    onRefresh: refreshStatus,
+  });
 
   const handleDisconnect = async () => {
     if (!canManageGsc || disconnecting) return;
@@ -499,40 +558,21 @@ export function GscConnectionPanel({ refreshKey, canManageGsc }: GscConnectionPa
               </button>
             </div>
           ) : null}
+
+          {syncHistoryState.showRunning && syncHistoryState.running ? (
+            <RunningSyncCard
+              run={syncHistoryState.running}
+              nowMs={syncHistoryState.nowMs}
+            />
+          ) : null}
         </div>
       ) : null}
 
-      {data?.recentSyncRuns?.length ? (
-        <div className="mt-6">
-          <h4 className="text-sm font-bold text-zinc-900">Recent sync runs</h4>
-          <ul className="mt-3 divide-y divide-zinc-100 rounded-2xl border border-zinc-100">
-            {data.recentSyncRuns.map((run) => (
-              <li key={String(run.id)} className="px-3 py-3 text-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium text-zinc-900">
-                    {String(run.dateFrom)} → {String(run.dateTo)}
-                  </p>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    {String(run.status)} · {String(run.trigger)}
-                  </p>
-                </div>
-                <p className="mt-1 text-xs text-zinc-500">
-                  Fetched {String(run.rowsFetched ?? 0)} · stored {String(run.rowsUpserted ?? 0)}
-                  {run.startedAt
-                    ? ` · started ${formatAutopilotDate(String(run.startedAt))}`
-                    : ''}
-                  {run.completedAt
-                    ? ` · completed ${formatAutopilotDate(String(run.completedAt))}`
-                    : ''}
-                </p>
-                {run.errorMessage ? (
-                  <p className="mt-1 text-xs text-rose-700">{String(run.errorMessage)}</p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      <GscSyncHistoryContent
+        state={syncHistoryState}
+        onViewFullHistory={onViewFullSyncHistory}
+        runningCardPlacement="external"
+      />
 
       <AppConfirmDialog
         open={disconnectOpen}

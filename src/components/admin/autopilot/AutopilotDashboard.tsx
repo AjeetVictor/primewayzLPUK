@@ -28,6 +28,7 @@ type AutopilotDashboardProps = {
   canManageGsc?: boolean;
   onOpenTopic: (id: number) => void;
   onOpenActivity: () => void;
+  onOpenGscSyncHistory?: () => void;
   onCreateTopic: () => void;
   onOpenKeywordImports?: () => void;
   onOpenResearchQueue?: () => void;
@@ -55,6 +56,7 @@ export function AutopilotDashboard({
   canManageGsc = false,
   onOpenTopic,
   onOpenActivity,
+  onOpenGscSyncHistory,
   onCreateTopic,
   onOpenKeywordImports,
   onOpenResearchQueue,
@@ -109,7 +111,11 @@ export function AutopilotDashboard({
   if (hasNoTopics) {
     return (
       <div className="space-y-6">
-        <GscConnectionPanel refreshKey={refreshKey} canManageGsc={canManageGsc} />
+        <GscConnectionPanel
+          refreshKey={refreshKey}
+          canManageGsc={canManageGsc}
+          onViewFullSyncHistory={onOpenGscSyncHistory}
+        />
         <AutopilotEmptyState
           title="No Autopilot topics yet"
           description="Topics are reviewed before briefs or drafts are created. Create a candidate topic to begin the editorial pipeline."
@@ -122,7 +128,11 @@ export function AutopilotDashboard({
 
   return (
     <div className="space-y-6">
-      <GscConnectionPanel refreshKey={refreshKey} canManageGsc={canManageGsc} />
+      <GscConnectionPanel
+        refreshKey={refreshKey}
+        canManageGsc={canManageGsc}
+        onViewFullSyncHistory={onOpenGscSyncHistory}
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>

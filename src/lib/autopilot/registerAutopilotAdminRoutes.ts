@@ -65,6 +65,7 @@ import {
   createGscAuthorizationUrl,
   disconnectGsc,
   getGscConnectionStatus,
+  GSC_RECONNECT_SAFE_MESSAGE,
   listAccessibleGscProperties,
   selectGscProperty,
 } from './gscConnectionService.ts';
@@ -726,10 +727,19 @@ export function registerAutopilotAdminRoutes(options: RegisterAutopilotAdminRout
         res.setHeader('x-correlation-id', correlationId);
         res.redirect(303, resolveGscAdminRedirect('connected'));
       } catch (error) {
+        if (!(error instanceof AutopilotError)) {
+          console.error('[autopilot:gsc:oauth-callback]', { correlationId, error });
+        } else if (error.code === 'GSC_RECONNECT_FAILED') {
+          console.error('[autopilot:gsc:oauth-callback:persistence]', {
+            correlationId,
+            code: error.code,
+            error,
+          });
+        }
         const message =
           error instanceof AutopilotError
             ? error.message
-            : 'Google Search Console connection failed.';
+            : GSC_RECONNECT_SAFE_MESSAGE;
         res.setHeader('x-correlation-id', correlationId);
         res.redirect(303, resolveGscAdminRedirect('error', message));
       }

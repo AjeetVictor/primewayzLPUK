@@ -7,6 +7,9 @@ import {
   completeGscOAuthCallback,
   createGscAuthorizationUrl,
   disconnectGsc,
+  findExistingConnectionForProperty,
+  getGscConnectionStatus,
+  GSC_RECONNECT_SAFE_MESSAGE,
   selectGscProperty,
   serializeGscConnection,
 } from './gscConnectionService.ts';
@@ -30,22 +33,54 @@ function setGscEnv() {
   process.env.AUTOPILOT_GSC_OAUTH_STATE_SECRET = STATE_SECRET;
 }
 
+function rowMatchesWhere(
+  row: Record<string, unknown>,
+  where?: Record<string, unknown>,
+): boolean {
+  if (!where) return true;
+  for (const [key, value] of Object.entries(where)) {
+    if (value && typeof value === 'object' && value !== null && 'in' in value) {
+      if (!(value as { in: unknown[] }).in.includes(row[key])) return false;
+      continue;
+    }
+    if (value && typeof value === 'object' && value !== null && 'not' in value) {
+      if (row[key] === (value as { not: unknown }).not) return false;
+      continue;
+    }
+    if (row[key] !== value) return false;
+  }
+  return true;
+}
+
 function makeMockPrisma(seed?: {
   connection?: Record<string, unknown> | null;
+  syncRuns?: Array<Record<string, unknown>>;
 }) {
   let connection = seed?.connection
     ? ({ ...(seed.connection as object) } as Record<string, unknown>)
     : null;
+  const syncRuns = [...(seed?.syncRuns ?? [])];
   const oauthStates: Array<Record<string, unknown>> = [];
   const activity: Array<Record<string, unknown>> = [];
   let nextConnectionId = 1;
   let nextStateId = 1;
+  let nextSyncRunId = 1;
   let activatedBeforeValidation = false;
+  let createCallCount = 0;
 
   const prisma = {
     gscConnection: {
-      findFirst: async () => connection,
+      findFirst: async ({
+        where,
+      }: {
+        where?: Record<string, unknown>;
+        orderBy?: { updatedAt?: 'desc' };
+      }) => {
+        if (!connection) return null;
+        return rowMatchesWhere(connection, where) ? connection : null;
+      },
       create: async ({ data }: { data: Record<string, unknown> }) => {
+        createCallCount += 1;
         if (data.status === 'ACTIVE' && !data.identityValidatedAt) {
           activatedBeforeValidation = true;
         }
@@ -72,7 +107,16 @@ function makeMockPrisma(seed?: {
         };
         return connection;
       },
-      update: async ({ data }: { data: Record<string, unknown> }) => {
+      update: async ({
+        where,
+        data,
+      }: {
+        where?: { id?: number };
+        data: Record<string, unknown>;
+      }) => {
+        if (where?.id != null && connection && connection.id !== where.id) {
+          throw new Error(`Connection ${where.id} not found`);
+        }
         connection = { ...(connection as object), ...data, updatedAt: new Date() } as Record<
           string,
           unknown
@@ -85,6 +129,7 @@ function makeMockPrisma(seed?: {
         }
         return { count: connection ? 1 : 0 };
       },
+      count: async () => (connection ? 1 : 0),
     },
     gscOAuthState: {
       create: async ({ data }: { data: Record<string, unknown> }) => {
@@ -108,7 +153,33 @@ function makeMockPrisma(seed?: {
       },
     },
     gscSyncRun: {
-      findMany: async () => [],
+      findMany: async ({
+        where,
+        take,
+      }: {
+        where?: { connectionId?: number };
+        orderBy?: { createdAt?: 'desc' };
+        take?: number;
+      }) => {
+        let rows = syncRuns.filter(
+          (run) => !where?.connectionId || run.connectionId === where.connectionId,
+        );
+        rows = [...rows].sort(
+          (a, b) =>
+            new Date(String(b.createdAt ?? 0)).getTime() -
+            new Date(String(a.createdAt ?? 0)).getTime(),
+        );
+        return typeof take === 'number' ? rows.slice(0, take) : rows;
+      },
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        const row = {
+          id: nextSyncRunId++,
+          createdAt: new Date(),
+          ...data,
+        };
+        syncRuns.push(row);
+        return row;
+      },
     },
     autopilotActivityLog: {
       create: async ({ data }: { data: Record<string, unknown> }) => {
@@ -122,8 +193,10 @@ function makeMockPrisma(seed?: {
   return {
     prisma,
     getConnection: () => connection,
+    getSyncRuns: () => syncRuns,
     activity,
     wasActivatedBeforeValidation: () => activatedBeforeValidation,
+    getCreateCallCount: () => createCallCount,
   };
 }
 
@@ -709,4 +782,272 @@ test('connection is not activated before identity and property validation', asyn
   assert.equal(listCalled, true);
   assert.equal(wasActivatedBeforeValidation(), false);
   assert.equal(getConnection()?.status, 'ACTIVE');
+});
+
+test('connect → sync history → disconnect preserves retained connection and sync runs', async () => {
+  setGscEnv();
+  const encrypted = encryptGscRefreshToken('refresh', ENC_KEY);
+  const { prisma, getConnection, getSyncRuns } = makeMockPrisma({
+    connection: {
+      id: 42,
+      status: 'ACTIVE',
+      siteUrl: 'https://uk.primewayz.com/',
+      requestedSiteUrl: 'https://uk.primewayz.com/',
+      expectedEmail: 'owner@example.com',
+      googleSubject: 'google-sub-1',
+      authorisedEmail: 'owner@example.com',
+      authorisedEmailVerified: true,
+      identityValidatedAt: new Date(),
+      permissionLevel: 'siteOwner',
+      refreshTokenCiphertext: encrypted.ciphertext,
+      refreshTokenIv: encrypted.iv,
+      refreshTokenAuthTag: encrypted.authTag,
+      tokenKeyVersion: 1,
+      scope: 'openid email https://www.googleapis.com/auth/webmasters.readonly',
+      connectedById: 2,
+      connectedAt: new Date(),
+      isActive: true,
+      syncLockToken: null,
+      syncLockedAt: null,
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      lastValidatedAt: new Date(),
+      lastSuccessfulSyncAt: new Date(),
+      updatedAt: new Date(),
+    },
+    syncRuns: [
+      {
+        id: 7,
+        connectionId: 42,
+        trigger: 'MANUAL',
+        status: 'SUCCEEDED',
+        dateFrom: new Date('2026-06-21'),
+        dateTo: new Date('2026-07-18'),
+        searchType: 'web',
+        dataState: 'final',
+        requestsMade: 3,
+        daysProcessed: 28,
+        rowsFetched: 179,
+        rowsUpserted: 179,
+        startedAt: new Date('2026-07-21T11:05:00.000Z'),
+        completedAt: new Date('2026-07-21T11:06:04.000Z'),
+        errorCode: null,
+        errorMessage: null,
+        createdAt: new Date('2026-07-21T11:05:00.000Z'),
+      },
+    ],
+  });
+  const actor = { id: 2, email: 'sa@example.com', role: 'super_admin' };
+
+  const beforeDisconnect = await getGscConnectionStatus(prisma as never);
+  assert.equal(beforeDisconnect.recentSyncRuns.length, 1);
+  assert.equal(beforeDisconnect.connection?.status, 'ACTIVE');
+
+  await disconnectGsc(prisma as never, actor);
+  const stored = getConnection()!;
+  assert.equal(stored.status, 'DISCONNECTED');
+  assert.equal(stored.isActive, false);
+  assert.equal(stored.siteUrl, 'https://uk.primewayz.com/');
+  assert.equal(getSyncRuns().length, 1);
+
+  const afterDisconnect = await getGscConnectionStatus(prisma as never);
+  assert.equal(afterDisconnect.connection?.status, 'DISCONNECTED');
+  assert.equal(afterDisconnect.recentSyncRuns.length, 1);
+  assert.equal(afterDisconnect.recentSyncRuns[0]?.rowsFetched, 179);
+});
+
+test('reconnect after disconnect reuses existing siteUrl row and preserves sync history', async () => {
+  setGscEnv();
+  const encrypted = encryptGscRefreshToken('old-refresh', ENC_KEY);
+  const { prisma, getConnection, getSyncRuns, getCreateCallCount, activity } = makeMockPrisma({
+    connection: {
+      id: 42,
+      status: 'DISCONNECTED',
+      siteUrl: 'https://uk.primewayz.com/',
+      requestedSiteUrl: 'https://uk.primewayz.com/',
+      expectedEmail: 'owner@example.com',
+      googleSubject: 'google-sub-1',
+      authorisedEmail: 'owner@example.com',
+      authorisedEmailVerified: true,
+      identityValidatedAt: new Date(),
+      permissionLevel: null,
+      refreshTokenCiphertext: '',
+      refreshTokenIv: '',
+      refreshTokenAuthTag: '',
+      tokenKeyVersion: 1,
+      scope: 'openid email https://www.googleapis.com/auth/webmasters.readonly',
+      connectedById: 2,
+      connectedAt: new Date('2026-07-20T08:00:00.000Z'),
+      isActive: false,
+      syncLockToken: null,
+      syncLockedAt: null,
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      lastValidatedAt: new Date('2026-07-20T08:00:00.000Z'),
+      lastSuccessfulSyncAt: new Date('2026-07-21T11:06:04.000Z'),
+      updatedAt: new Date('2026-07-21T12:00:00.000Z'),
+    },
+    syncRuns: [
+      {
+        id: 7,
+        connectionId: 42,
+        trigger: 'MANUAL',
+        status: 'SUCCEEDED',
+        dateFrom: new Date('2026-06-21'),
+        dateTo: new Date('2026-07-18'),
+        searchType: 'web',
+        dataState: 'final',
+        requestsMade: 3,
+        daysProcessed: 28,
+        rowsFetched: 179,
+        rowsUpserted: 179,
+        startedAt: new Date('2026-07-21T11:05:00.000Z'),
+        completedAt: new Date('2026-07-21T11:06:04.000Z'),
+        errorCode: null,
+        errorMessage: null,
+        createdAt: new Date('2026-07-21T11:05:00.000Z'),
+      },
+    ],
+  });
+  const actor = { id: 2, email: 'sa@example.com', role: 'super_admin' };
+  const googleApi = mockGoogleApi();
+  const { state } = await startAuth(prisma, actor, googleApi);
+
+  const result = await completeGscOAuthCallback(
+    prisma as never,
+    actor,
+    { code: 'auth-code', state },
+    { googleApi, correlationId: 'corr-reconnect-1' },
+  );
+
+  assert.equal(getCreateCallCount(), 0);
+  assert.equal(result.connection.id, 42);
+  assert.equal(result.connection.status, 'ACTIVE');
+  assert.equal(result.connection.hasRefreshToken, true);
+  assert.equal(getConnection()?.siteUrl, 'https://uk.primewayz.com/');
+
+  const status = await getGscConnectionStatus(prisma as never);
+  assert.equal(status.connection?.status, 'ACTIVE');
+  assert.equal(status.recentSyncRuns.length, 1);
+  assert.equal(status.recentSyncRuns[0]?.rowsFetched, 179);
+  assert.equal(getSyncRuns().length, 1);
+  assert.ok(activity.some((row) => row.eventType === 'gsc_connected'));
+});
+
+test('repeated reconnect updates the same connection row', async () => {
+  setGscEnv();
+  const encrypted = encryptGscRefreshToken('old-refresh', ENC_KEY);
+  const { prisma, getConnection, getCreateCallCount } = makeMockPrisma({
+    connection: {
+      id: 55,
+      status: 'DISCONNECTED',
+      siteUrl: 'https://uk.primewayz.com/',
+      requestedSiteUrl: 'https://uk.primewayz.com/',
+      expectedEmail: 'owner@example.com',
+      googleSubject: 'google-sub-1',
+      authorisedEmail: 'owner@example.com',
+      authorisedEmailVerified: true,
+      identityValidatedAt: new Date(),
+      permissionLevel: null,
+      refreshTokenCiphertext: encrypted.ciphertext,
+      refreshTokenIv: encrypted.iv,
+      refreshTokenAuthTag: encrypted.authTag,
+      tokenKeyVersion: 1,
+      scope: 'openid email https://www.googleapis.com/auth/webmasters.readonly',
+      connectedById: 2,
+      connectedAt: new Date(),
+      isActive: false,
+      syncLockToken: null,
+      syncLockedAt: null,
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      lastValidatedAt: null,
+      lastSuccessfulSyncAt: null,
+      updatedAt: new Date(),
+    },
+  });
+  const actor = { id: 2, email: 'sa@example.com', role: 'super_admin' };
+  const googleApi = mockGoogleApi();
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await prisma.gscConnection.update({
+      where: { id: 55 },
+      data: { status: 'DISCONNECTED', isActive: false },
+    });
+    const { state } = await startAuth(prisma, actor, googleApi);
+    const result = await completeGscOAuthCallback(
+      prisma as never,
+      actor,
+      { code: `auth-code-${attempt}`, state },
+      { googleApi },
+    );
+    assert.equal(result.connection.id, 55);
+  }
+
+  assert.equal(getCreateCallCount(), 0);
+  assert.equal(getConnection()?.id, 55);
+});
+
+test('findExistingConnectionForProperty matches disconnected rows by normalised site URL', async () => {
+  setGscEnv();
+  const { prisma } = makeMockPrisma({
+    connection: {
+      id: 88,
+      status: 'DISCONNECTED',
+      siteUrl: 'https://uk.primewayz.com/',
+      requestedSiteUrl: 'https://uk.primewayz.com/',
+      isActive: false,
+      refreshTokenCiphertext: '',
+      refreshTokenIv: '',
+      refreshTokenAuthTag: '',
+      tokenKeyVersion: 1,
+      scope: 'scope',
+      connectedAt: new Date(),
+      updatedAt: new Date(),
+    },
+  });
+
+  const found = await findExistingConnectionForProperty(
+    prisma as never,
+    'https://UK.primewayz.com/',
+  );
+  assert.equal(found?.id, 88);
+  assert.equal(found?.status, 'DISCONNECTED');
+});
+
+test('persistence failures return sanitised reconnect message', async () => {
+  setGscEnv();
+  const { prisma } = makeMockPrisma();
+  const actor = { id: 2, email: 'sa@example.com', role: 'super_admin' };
+  const googleApi = mockGoogleApi();
+  const { state } = await startAuth(prisma, actor, googleApi);
+
+  const failingPrisma = {
+    ...prisma,
+    $transaction: async () => {
+      const err = new Error('Invalid tx.gscConnection.create() invocation') as Error & {
+        code?: string;
+      };
+      err.code = 'P2002';
+      throw err;
+    },
+  };
+
+  await assert.rejects(
+    () =>
+      completeGscOAuthCallback(
+        failingPrisma as never,
+        actor,
+        { code: 'auth-code', state },
+        { googleApi, correlationId: 'corr-safe-error' },
+      ),
+    (err: unknown) => {
+      if (!(err instanceof AutopilotError)) return false;
+      assert.equal(err.code, 'GSC_RECONNECT_FAILED');
+      assert.equal(err.message, GSC_RECONNECT_SAFE_MESSAGE);
+      assert.equal(err.message.includes('P2002'), false);
+      assert.equal(err.message.includes('Invalid tx.gscConnection.create'), false);
+      return true;
+    },
+  );
 });
