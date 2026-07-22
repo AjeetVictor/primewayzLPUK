@@ -70,17 +70,18 @@ export const OutcomePillarsSection = () => {
         className="mx-auto max-w-3xl text-center"
       >
         <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#0D9488]">
-          Outcome pillars
+          Website visibility and conversion
         </p>
         <h2
           id="outcome-pillars-heading"
           className="mt-3 text-[1.75rem] font-bold tracking-tight text-brand-navy sm:text-[2rem] sm:leading-[1.18]"
         >
-          We focus on the digital gaps that impact your growth
+          Make your website easier to discover, trust and enquire from
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
-          Three focused improvement areas help your website become easier to discover, easier to
-          trust and easier to convert from.
+          Your website is often the first digital system prospective customers encounter. We help
+          resolve the visibility, clarity, trust and enquiry barriers that prevent it from
+          contributing effectively to growth.
         </p>
       </motion.div>
 

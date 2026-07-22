@@ -545,12 +545,11 @@ function buildDefaultStructuredData(canonical: string, description: string) {
     description,
     areaServed: { '@type': 'Country', name: 'United Kingdom' },
     serviceType: [
-      'Website visibility support',
-      'Trust signal improvements',
-      'Enquiry flow optimisation',
-      'CRM integration support',
-      'Ongoing digital delivery support',
-      'Software Development as a Subscription',
+      'Website visibility and conversion support',
+      'CRM integration and workflow automation',
+      'Software and product engineering',
+      'Managed application and website support',
+      'Remote IT team extension',
     ],
     audience: { '@type': 'BusinessAudience', audienceType: 'UK small businesses and SMEs' },
   };
@@ -1333,14 +1332,22 @@ function stripExistingSeoTags(html: string) {
     .replace(/<script\s+type=["']application\/ld\+json["'][\s\S]*?<\/script>/gi, '');
 }
 
+function normalizePagePathname(pathname: string): string {
+  if (!pathname || pathname === '/') return '/';
+
+  const withoutTrailingSlash = pathname.replace(/\/+$/, '');
+  return withoutTrailingSlash || '/';
+}
+
 async function getInitialDataAndSeo(pathname: string): Promise<{
   initialData: Record<string, unknown>;
   seoTags: string;
   statusCode?: number;
 }> {
-  const canonical = `${siteUrl}${pathname === '/' ? '/' : pathname}`;
+  const pagePathname = normalizePagePathname(pathname);
+  const canonical = `${siteUrl}${pagePathname === '/' ? '/' : pagePathname}`;
 
-  const sharedReportMatch = pathname.match(/^\/web-presence-audit\/report\/([^/]+)$/);
+  const sharedReportMatch = pagePathname.match(/^\/web-presence-audit\/report\/([^/]+)$/);
   if (sharedReportMatch && isValidPublicToken(sharedReportMatch[1])) {
     return {
       initialData: {},
@@ -1351,7 +1358,7 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
     };
   }
 
-  if (pathname === '/blog') {
+  if (pagePathname === '/blog') {
     const blogPosts = await getPublicBlogPosts();
     return {
       initialData: { blogPosts },
@@ -1376,7 +1383,7 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
     };
   }
 
-  const blogCategoryMatch = pathname.match(/^\/blog\/category\/([^/]+)$/);
+  const blogCategoryMatch = pagePathname.match(/^\/blog\/category\/([^/]+)$/);
   if (blogCategoryMatch) {
     const slug = decodeURIComponent(blogCategoryMatch[1]);
     const blogPosts = await getPublicBlogPosts();
@@ -1409,7 +1416,7 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
     };
   }
 
-  const blogMatch = pathname.match(/^\/blog\/([^/]+)$/);
+  const blogMatch = pagePathname.match(/^\/blog\/([^/]+)$/);
   if (blogMatch) {
     const blogPost = await getPublicBlogPost(decodeURIComponent(blogMatch[1]));
     if (blogPost) {
@@ -1438,14 +1445,14 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
 
   const staticPageSeo: Record<string, { title: string; description: string }> = {
     '/': {
-      title: 'UK Website Visibility, Trust & Enquiry Support | Primewayz UK',
+      title: 'Digital Systems & Software Delivery for UK SMEs | Primewayz',
       description:
-        'Primewayz UK helps founders, consultants and growing SMEs improve website visibility, trust signals, enquiry flow, CRM support and ongoing digital delivery.',
+        'Primewayz helps UK SMEs improve website visibility, connect CRM workflows, build and modernise software, support applications and extend technical delivery capacity.',
     },
     '/services': {
-      title: 'Software, Website & CRM Support Services for UK SMEs | Primewayz UK',
+      title: 'Software, CRM, Application Support & Digital Services | Primewayz UK',
       description:
-        'Explore Primewayz UK services for UK SMEs, including software development, website maintenance, CRM integration, automation, SEO, and support.',
+        'Practical technical support across website visibility, CRM workflows, software engineering, managed application support and remote IT team extension for UK SMEs.',
     },
     '/software-development-subscription-uk': {
       title: SDAAS_SEO.title,
@@ -1478,14 +1485,14 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
         'Request a recommended monthly software development capacity plan from Primewayz UK.',
     },
     '/website-maintenance-subscription-uk': {
-      title: 'Website Maintenance Subscription for UK SMEs | Primewayz UK',
+      title: 'Managed Application & Website Support UK | Primewayz',
       description:
-        'Primewayz UK provides website maintenance subscriptions for UK SMEs, covering updates, bug fixes, SEO checks, forms, speed, and support.',
+        'Maintain the reliability, security and performance of existing websites and applications through monitoring, fixes, updates and controlled ongoing improvements.',
     },
     '/crm-integration-support-uk': {
-      title: 'CRM Integration Support for UK SMEs | Primewayz UK',
+      title: 'CRM Integration & Workflow Automation for UK SMEs | Primewayz',
       description:
-        'Primewayz UK provides CRM integration support for UK SMEs, covering lead capture, workflow cleanup, automation, reporting, and customer data.',
+        'Connect website enquiries, CRM records, follow-up workflows and reporting so leads move through the business consistently.',
     },
     '/professional-services-crm-support-uk': {
       title: 'Professional Services CRM Support UK | Primewayz UK',
@@ -1493,9 +1500,9 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
         'CRM integration, lead-flow cleanup, website enquiry tracking, follow-up workflows, and reporting support for UK professional services firms.',
     },
     '/success-stories': {
-      title: 'Success Stories for UK SMEs | Primewayz UK',
+      title: 'Software & Digital Delivery Success Stories | Primewayz UK',
       description:
-        'Explore Primewayz UK success stories showing how UK SMEs improve lead capture, CRM workflows, website stability, and digital delivery.',
+        'Explore how Primewayz has helped organisations improve software delivery, connect business systems, support critical applications and strengthen digital operations.',
     },
     '/success-stories/local-trades-lead-capture': {
       title: 'Local Trades Lead Capture Success Story | Primewayz UK',
@@ -1518,65 +1525,70 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
         'Check if your UK SME website is clear, discoverable, trustworthy, and enquiry-ready with a free website visibility score from Primewayz UK.',
     },
     '/about-us': {
-      title: 'About Primewayz UK | Monthly Digital Delivery for UK SMEs',
+      title: 'About Primewayz UK | Digital Systems & Delivery Partner',
       description:
-        'Learn how Primewayz UK supports UK SMEs with subscription-based software, website, CRM, SEO foundation, analytics, and maintenance delivery.',
+        'Primewayz is a digital systems and delivery partner for UK SMEs, helping businesses improve websites, CRM workflows, software applications and technical delivery.',
     },
     '/contact-us': {
-      title: 'Contact Primewayz UK | Request a Digital Visibility Review',
+      title: 'Contact Primewayz UK | Discuss Your Digital Priorities',
       description:
-        'Contact Primewayz UK to request a free digital visibility review or discuss monthly website, CRM, analytics, and maintenance support.',
+        'Contact Primewayz UK to discuss website visibility, CRM workflows, software delivery, managed support or remote technical capacity.',
     },
     '/website-visibility-support': {
-      title: 'Website & Visibility Support for UK SMEs | Primewayz UK',
+      title: 'Website Visibility & Conversion Support for UK SMEs | Primewayz',
       description:
-        'Primewayz UK provides website visibility support for UK SMEs, covering SEO foundations, trust signals, enquiry flow, speed, and ongoing improvements.',
+        'Primewayz helps UK SMEs identify and resolve the technical, content and conversion barriers that prevent websites from generating qualified enquiries.',
     },
     '/maintenance': {
-      title: 'Website Maintenance Subscription for UK SMEs | Primewayz UK',
+      title: 'Managed Application & Website Support UK | Primewayz',
       description:
-        'Primewayz UK provides website maintenance subscriptions for UK SMEs, covering updates, bug fixes, SEO checks, forms, speed, and support.',
+        'Maintain the reliability, security and performance of existing websites and applications through monitoring, fixes, updates and controlled ongoing improvements.',
     },
     '/crm-automation-support': {
-      title: 'CRM Integration Support for UK SMEs | Primewayz UK',
+      title: 'CRM Integration & Workflow Automation for UK SMEs | Primewayz',
       description:
-        'Primewayz UK provides CRM integration support for UK SMEs, covering lead capture, workflow cleanup, automation, reporting, and customer data.',
+        'Connect website enquiries, CRM records, follow-up workflows and reporting so leads move through the business consistently.',
     },
     '/software-product-delivery': {
       title: SDAAS_SEO.title,
       description: SDAAS_SEO.description,
     },
     '/remote-it-resources': {
-      title: 'Remote IT Resources for UK SMEs | Primewayz UK',
+      title: 'Remote IT Team Extension for UK Businesses | Primewayz',
       description:
-        'Extend your UK team with remote developers, QA, website support, digital support, and project coordination from Primewayz UK.',
+        'Add dependable developers, QA professionals, analysts and technical specialists when your internal team needs additional delivery capacity.',
+    },
+    '/pricing': {
+      title: 'Primewayz UK Pricing & Engagement Options',
+      description:
+        'Review Primewayz UK engagement options including Foundation Sprint, fixed-scope project, structured monthly delivery, Maintenance Mode and dedicated technical capacity.',
     },
   };
 
-  const pageSeo = staticPageSeo[pathname] || staticPageSeo['/'];
+  const pageSeo = staticPageSeo[pagePathname] || staticPageSeo['/'];
 
   let structuredData: unknown = buildDefaultStructuredData(canonical, pageSeo.description);
   let ogType: 'website' | 'article' | undefined;
   let image: string | undefined;
 
-  if (pathname === '/uk-sme-digital-visibility-checker') {
+  if (pagePathname === '/uk-sme-digital-visibility-checker') {
     structuredData = buildWebPresenceAuditStructuredData(canonical, pageSeo.description);
-  } else if (pathname === '/software-development-subscription-uk') {
+  } else if (pagePathname === '/software-development-subscription-uk') {
     structuredData = buildSdaasStructuredData(canonical, pageSeo.description);
-  } else if (pathname === SDAAS_PILLAR_PATH) {
+  } else if (pagePathname === SDAAS_PILLAR_PATH) {
     structuredData = buildSdaasPillarStructuredData(canonical);
     ogType = 'article';
     image = SDAAS_PILLAR_OG_IMAGE;
-  } else if (pathname === SDAAS_COMPARISON_PATH) {
+  } else if (pagePathname === SDAAS_COMPARISON_PATH) {
     structuredData = buildSdaasComparisonStructuredData(canonical);
     ogType = 'article';
     image = SDAAS_COMPARISON_OG_IMAGE;
-  } else if (pathname === SDAAS_USE_CASES_PATH) {
+  } else if (pagePathname === SDAAS_USE_CASES_PATH) {
     structuredData = buildSdaasUseCasesStructuredData(canonical);
     ogType = 'article';
     image = SDAAS_USE_CASES_OG_IMAGE;
-  } else if (getSdaasSupportingArticleByPath(pathname)) {
-    const article = getSdaasSupportingArticleByPath(pathname)!;
+  } else if (getSdaasSupportingArticleByPath(pagePathname)) {
+    const article = getSdaasSupportingArticleByPath(pagePathname)!;
     structuredData = buildSdaasSupportingArticleStructuredData(article, canonical);
     ogType = 'article';
     image = article.ogImage;
@@ -1590,7 +1602,7 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
       canonical,
       ogType,
       image,
-      noindex: pathname === '/software-development-subscription-uk/request-capacity',
+      noindex: pagePathname === '/software-development-subscription-uk/request-capacity',
       structuredData,
     }),
   };
@@ -2838,17 +2850,109 @@ async function seedAdmin() {
   }
 }
 
+function isDatabaseCapacityError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  const normalised = message.toLowerCase();
+  return (
+    normalised.includes('too many connections')
+    || normalised.includes('er_con_count_error')
+    || normalised.includes('connection limit')
+    || normalised.includes('remaining connection slots are reserved')
+  );
+}
+
+function logBackgroundJobError(taskName: string, error: unknown) {
+  const timestamp = new Date().toISOString();
+  const message = error instanceof Error ? error.message : String(error ?? 'Unknown error');
+  const capacity = isDatabaseCapacityError(error);
+  console.warn(
+    `[${timestamp}] [background-job:${taskName}] ${capacity ? 'database_capacity_error' : 'error'}: ${message}`,
+  );
+}
+
+function createNonOverlappingInterval(
+  taskName: string,
+  intervalMs: number,
+  task: () => Promise<void>,
+) {
+  let running = false;
+  let lastCapacityLogAt = 0;
+
+  const run = async () => {
+    if (running) return;
+    running = true;
+    try {
+      await task();
+    } catch (error) {
+      const now = Date.now();
+      const capacity = isDatabaseCapacityError(error);
+      // Avoid rapid retries and duplicate capacity logs on every tick.
+      if (!capacity || now - lastCapacityLogAt > Math.max(intervalMs, 5 * 60 * 1000)) {
+        logBackgroundJobError(taskName, error);
+        if (capacity) lastCapacityLogAt = now;
+      }
+    } finally {
+      running = false;
+    }
+  };
+
+  return setInterval(() => {
+    void run();
+  }, intervalMs);
+}
+
 async function findUnansweredChatMessages() {
+  return prisma.chatMessage.findMany({ where: { answered: false } });
+}
+
+/*
+  Daily lead-summary note:
+  Historically this interval checked every 60s whether a UK-timezone date/time gate
+  had passed before sending one summary email per day. The send implementation is
+  currently stubbed in this codebase; the 60s cadence is preserved intentionally
+  so restoring the date/time guard later does not change schedule behaviour.
+*/
+async function runDailyLeadSummaryCheck() {
+  // No-op stub preserved for schedule compatibility.
+}
+
+createNonOverlappingInterval(
+  'findUnansweredChatMessages',
+  5 * 60 * 1000,
+  async () => {
+    await findUnansweredChatMessages();
+  },
+);
+
+createNonOverlappingInterval(
+  'dailyLeadSummary',
+  60 * 1000,
+  async () => {
+    await runDailyLeadSummaryCheck();
+  },
+);
+
+let prismaShutdownStarted = false;
+async function disconnectPrismaOnShutdown(signal: string) {
+  if (prismaShutdownStarted) return;
+  prismaShutdownStarted = true;
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [shutdown:${signal}] disconnecting Prisma client`);
   try {
-    return await prisma.chatMessage.findMany({ where: { answered: false } });
-  } catch (e: any) {
-    console.warn('[local-safe] Skipping unanswered chat messages:', e.message);
-    return [];
+    await prisma.$disconnect();
+  } catch (error) {
+    logBackgroundJobError('prismaShutdown', error);
+  } finally {
+    process.exit(0);
   }
 }
 
-setInterval(async () => { await findUnansweredChatMessages(); }, 5 * 60 * 1000);
-setInterval(async () => { /* daily lead summary */ }, 60 * 1000);
+process.once('SIGINT', () => {
+  void disconnectPrismaOnShutdown('SIGINT');
+});
+process.once('SIGTERM', () => {
+  void disconnectPrismaOnShutdown('SIGTERM');
+});
 
 // -------------------------
 // SSR / Dev catch-all

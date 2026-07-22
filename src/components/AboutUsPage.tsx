@@ -20,8 +20,9 @@ export const AboutUsPage = () => (
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-300">About us</p>
         <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">About Primewayz UK</h1>
         <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-200">
-          Primewayz UK provides subscription-based software, website, CRM, automation, SEO foundation,
-          and maintenance support for small and growing UK businesses.
+          Primewayz is a digital systems and delivery partner for UK SMEs. We help businesses
+          improve website visibility, connect CRM and workflows, build and modernise software,
+          support live applications and strengthen technical delivery capacity.
         </p>
       </div>
     </section>
@@ -36,12 +37,13 @@ export const AboutUsPage = () => (
             <h2 className="text-xl font-black">Who we support</h2>
           </div>
           <p className="mt-4 text-sm leading-7 text-slate-600">
-            We work with UK SMEs that need dependable monthly digital delivery across websites,
-            enquiry flows, CRM integrations, analytics readiness, and ongoing technical maintenance.
+            We work with UK SMEs that need practical ownership across websites, CRM workflows,
+            software applications and live systems—from assessment and improvement through delivery
+            and ongoing support.
           </p>
           <p className="mt-4 text-sm leading-7 text-slate-600">
-            Supporting UK SMEs across London, Manchester, Birmingham, and wider UK regions with
-            practical delivery rather than disconnected one-off projects.
+            Supporting UK SMEs across London, Manchester, Birmingham and wider UK regions with
+            structured delivery, clear communication and continuity beyond launch.
           </p>
         </article>
 
@@ -51,12 +53,13 @@ export const AboutUsPage = () => (
             <h2 className="text-xl font-black">How we work</h2>
           </div>
           <p className="mt-4 text-sm leading-7 text-slate-600">
-            Primewayz UK helps teams improve website visibility, lead capture, CRM workflows,
-            technical reliability, and analytics foundations through flexible monthly capacity.
+            Primewayz helps teams improve website visibility, connect CRM and workflows, build and
+            modernise software, support live applications and strengthen technical delivery through
+            clear priorities and accountable support.
           </p>
           <p className="mt-4 text-sm leading-7 text-slate-600">
-            Delivery can include SEO-readiness checks, GA4/GTM support where configured, maintenance,
-            custom software, and automation improvements aligned to business priorities.
+            UK-facing communication is paired with India-based technical delivery, documentation and
+            development and QA discipline so work stays reviewable after launch.
           </p>
         </article>
 
@@ -66,9 +69,9 @@ export const AboutUsPage = () => (
             <h2 className="text-xl font-black">Service area</h2>
           </div>
           <p className="mt-4 text-sm leading-7 text-slate-600">
-            Primewayz UK is built for businesses operating in the United Kingdom. Teams can work with us
-            remotely across London, Manchester, Birmingham, and other UK locations where monthly digital
-            support is needed.
+            Primewayz UK is built for businesses operating in the United Kingdom. Teams can work with
+            us remotely across London, Manchester, Birmingham and other UK locations where reliable
+            digital-systems support is needed.
           </p>
         </article>
 

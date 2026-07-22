@@ -50,11 +50,11 @@ function buildNewsletterMessage(): string {
 }
 
 const serviceLinks = [
-  { label: 'Website & Visibility Support', href: CANONICAL_ROUTES.websiteVisibilitySupport },
-  { label: 'CRM & Automation Support', href: CANONICAL_ROUTES.crmAutomationSupport },
-  { label: 'Software Development as a Subscription', href: CANONICAL_ROUTES.softwareDevelopmentSubscription },
-  { label: 'Remote IT Resources', href: CANONICAL_ROUTES.remoteItResources },
-  { label: 'Maintenance Support', href: CANONICAL_ROUTES.maintenance },
+  { label: 'Website Visibility & Conversion', href: CANONICAL_ROUTES.websiteVisibilitySupport },
+  { label: 'CRM & Workflow Automation', href: CANONICAL_ROUTES.crmAutomationSupport },
+  { label: 'Software & Product Engineering', href: CANONICAL_ROUTES.softwareDevelopmentSubscription },
+  { label: 'Remote IT Team Extension', href: CANONICAL_ROUTES.remoteItResources },
+  { label: 'Managed Application & Website Support', href: CANONICAL_ROUTES.maintenance },
 ] as const;
 
 const companyLinks = [
@@ -192,8 +192,8 @@ export const Footer = () => {
             />
 
             <p className="mt-6 max-w-xs text-sm leading-7" style={{ color: BODY }}>
-              Practical website visibility, CRM, automation and software delivery support for UK
-              founders, consultants and growing SMEs.
+              Primewayz helps UK SMEs improve, connect and support the websites, CRM workflows and
+              software systems their businesses depend on.
             </p>
 
             <div className="mt-6 space-y-3">

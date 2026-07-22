@@ -171,18 +171,18 @@ export function CrmIntegrationSupportUkPage() {
           <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
             <div>
               <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">
-                UK SME CRM Integration Support
+                CRM Integration & Workflow Automation
               </p>
 
               <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-                CRM integration support for UK SMEs
+                CRM Integration & Workflow Automation for UK SMEs
               </h1>
 
               <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
-                Connect website forms, enquiry sources, CRM workflows, notifications, reporting,
-                and business tools into one clearer lead-flow process. Primewayz UK helps small
-                and growing UK businesses clean up CRM operations, reduce manual work, and improve
-                follow-up visibility through practical monthly support.
+                Connect website enquiries, CRM records, follow-up workflows and reporting so leads
+                move through the business consistently and teams have reliable information.
+                Primewayz helps UK SMEs reduce missed follow-ups, duplicate records and repetitive
+                administration across enquiry journeys.
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -222,10 +222,10 @@ export function CrmIntegrationSupportUkPage() {
 
               <div className="mt-5 space-y-4">
                 {[
-                  'Website enquiries are not flowing cleanly into your CRM.',
-                  'Leads are duplicated, missed, delayed, or poorly assigned.',
-                  'Your team still relies on spreadsheets, inboxes, and manual updates.',
-                  'You need better visibility across enquiries, follow-ups, and pipeline activity.',
+                  'Website enquiries are not reaching the CRM cleanly.',
+                  'Duplicate or incomplete records slow follow-up and reporting.',
+                  'Lead assignment and reminders still depend on manual work.',
+                  'Forms, source attribution and reporting are disconnected.',
                 ].map((item) => (
                   <div key={item} className="flex gap-3 rounded-2xl bg-white/10 p-4">
                     <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" />

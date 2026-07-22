@@ -5,19 +5,19 @@ export const SDAAS_CAPACITY_ANCHOR = 'monthly-delivery-capacity';
 export const SDAAS_FAQ_ANCHOR = 'faq';
 
 export const SDAAS_SEO = {
-  title: 'Software Development Subscription UK | Primewayz UK',
+  title: 'Ongoing Software Development Services for UK Businesses | Primewayz',
   description:
-    'Flexible monthly software development capacity for UK businesses. Prioritised delivery, ongoing improvements, integrations, QA and technical support.',
-  ogTitle: 'Software Development as a Subscription for UK Businesses',
+    'Add structured software engineering capacity to improve applications, deliver product features, complete integrations and reduce technical backlog for UK businesses.',
+  ogTitle: 'Ongoing Software & Product Development for UK Businesses',
   ogDescription:
-    'Structured monthly software development capacity for UK businesses that need continuous improvements—without unlimited-development promises.',
+    'Structured software engineering capacity for application features, integrations, product roadmap delivery and technical debt reduction—without unlimited-development promises.',
 } as const;
 
 export const SDAAS_DEFINITION =
-  'Software Development as a Subscription gives your business an agreed level of monthly delivery capacity. Requirements are clarified, estimated and prioritised through a shared backlog, then delivered through a structured development and quality-assurance process.';
+  'Ongoing software and product development gives your business an agreed level of monthly delivery capacity for software engineering. Requirements are clarified, estimated and prioritised through a shared backlog, then delivered through a structured development and quality-assurance process. A software development subscription is simply the flexible delivery model used to organise that capacity.';
 
 export const SDAAS_CLARIFICATION =
-  'It is not an unlimited task service. It is planned, prioritised and visible software delivery under a predictable monthly engagement.';
+  'It is not an unlimited task service, and it is not a catch-all for routine CMS edits or broad marketing support. It is planned, prioritised and visible software delivery under a predictable monthly engagement.';
 
 export const audienceCards = [
   {

@@ -161,21 +161,17 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
           <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
             <div>
               <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">
-                Flexible Monthly Development Capacity
+                Ongoing Software & Product Engineering
               </p>
 
               <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-[3.35rem] lg:leading-[1.1]">
-                Software Development as a Subscription for UK Businesses
+                Ongoing Software & Product Development for UK Businesses
               </h1>
 
               <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
-                Access structured{' '}
-                <EntityTermLink
-                  term="monthlyDeliveryCapacity"
-                  className="text-emerald-200 hover:text-emerald-100"
-                />{' '}
-                each month for ongoing improvements, integrations, fixes and new features—without
-                hiring a complete internal team or commissioning a separate project every time.
+                Add structured software engineering capacity to improve applications, deliver product
+                features, complete integrations and reduce technical backlog—without immediately
+                expanding a permanent in-house team.
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -280,7 +276,7 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
         journeyStep={SDAAS_JOURNEY_STEPS[2].step}
         journeyLabel={SDAAS_JOURNEY_STEPS[2].label}
         transition={SDAAS_SECTION_TRANSITIONS.definition}
-        title="What Is Software Development as a Subscription?"
+        title="What Is Ongoing Software Development as a Subscription?"
         background="muted"
         sectionKey="definition"
         narrow

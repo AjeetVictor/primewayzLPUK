@@ -7,6 +7,7 @@ import {
   LifeBuoy,
   Network,
   PhoneCall,
+  SearchCheck,
   ShoppingCart,
   Users,
   Wrench,
@@ -17,46 +18,59 @@ import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../lib/utm';
 
 const serviceCards = [
   {
-    title: 'Software Development as a Subscription',
-    href: '/software-development-subscription-uk',
-    icon: CodeXml,
-    anchor: 'Software development as a subscription for UK businesses',
+    title: 'Website Visibility & Conversion',
+    href: '/website-visibility-support',
+    icon: SearchCheck,
+    anchor: 'Website visibility and conversion support for UK SMEs',
     description:
-      'Structured monthly software development capacity for UK businesses that need continuous improvements, integrations, fixes and feature work—without restarting procurement for every requirement.',
+      'Improve how your website is discovered, understood and used by prospective customers. We address technical search issues, page clarity, trust signals, enquiry journeys, tracking and conversion barriers.',
     bestFor: [
-      'Ongoing product and application improvements',
-      'Integrations, backlog delivery and stabilisation',
-      'Prioritised monthly development capacity',
+      'Technical search and indexability issues',
+      'Clearer pages and enquiry journeys',
+      'Trust signals and conversion tracking',
     ],
   },
   {
-    title: 'Website Maintenance Subscription',
-    href: '/maintenance',
-    icon: LifeBuoy,
-    anchor: 'Website maintenance subscription for UK SMEs',
-    description:
-      'Reliable website maintenance for UK small businesses, covering content updates, bug fixes, forms, CTAs, technical SEO checks, analytics support, landing page improvements, speed checks, and monthly website care.',
-    bestFor: [
-      'Website updates and CMS edits',
-      'Technical SEO and indexability checks',
-      'Conversion and tracking improvements',
-    ],
-  },
-  {
-    title: 'CRM Integration & Support',
+    title: 'CRM & Workflow Automation',
     href: '/crm-automation-support',
     icon: Network,
-    anchor: 'CRM integration support for UK SMEs',
+    anchor: 'CRM integration and workflow automation for UK SMEs',
     description:
-      'CRM integration and lead-flow support for UK SMEs that need cleaner enquiry routing, website form connections, CRM field mapping, duplicate handling, notifications, reporting, and workflow automation.',
+      'Connect website enquiries, CRM records, follow-up workflows and reporting so leads are handled consistently and teams spend less time on repetitive administration.',
     bestFor: [
       'Website-to-CRM integration',
       'Lead tracking and follow-up workflows',
-      'CRM cleanup and operational visibility',
+      'Reporting and operational visibility',
     ],
   },
   {
-    title: 'Remote IT Resources',
+    title: 'Software & Product Engineering',
+    href: '/software-development-subscription-uk',
+    icon: CodeXml,
+    anchor: 'Ongoing software and product engineering for UK businesses',
+    description:
+      'Build, improve, integrate or modernise business applications, web platforms and digital products through structured, accountable software delivery.',
+    bestFor: [
+      'Application and product feature development',
+      'Integrations, backlog delivery and modernisation',
+      'Structured monthly engineering capacity',
+    ],
+  },
+  {
+    title: 'Managed Application & Website Support',
+    href: '/maintenance',
+    icon: LifeBuoy,
+    anchor: 'Managed application and website support for UK SMEs',
+    description:
+      'Maintain the reliability, security and performance of existing websites and applications through monitoring, fixes, updates and controlled ongoing improvements.',
+    bestFor: [
+      'Monitoring, fixes and security updates',
+      'Platform and dependency maintenance',
+      'Controlled minor improvements',
+    ],
+  },
+  {
+    title: 'Remote IT Team Extension',
     href: buildInternalUtmUrl(
       '/remote-it-resources',
       'services_hub',
@@ -64,30 +78,28 @@ const serviceCards = [
       'services_hub_card',
     ),
     icon: Users,
-    anchor: 'Remote IT resource augmentation for UK SMEs',
+    anchor: 'Remote IT team extension for UK businesses',
     description:
-      'Extend your UK team with remote developers, QA testers, website support, automation specialists, digital support, and project coordination through structured delivery.',
+      'Add experienced developers, QA professionals, analysts, project coordinators and technical specialists when your internal team needs dependable additional capacity.',
     bestFor: [
       'Developers and QA capacity',
-      'Website and digital support',
-      'Project coordination and reporting',
+      'Business analysis and project coordination',
+      'Delivery continuity with clear ownership',
     ],
-    isNew: true,
   },
 ];
 
 const supportAreas = [
-  'Website updates and landing pages',
-  'CMS improvements and bug fixes',
-  'CRM workflow cleanup',
-  'Website form and lead routing',
-  'Business automation',
+  'Website visibility and conversion improvements',
+  'CRM workflow and lead-handling cleanup',
+  'Software and product engineering',
+  'Managed website and application support',
   'API and third-party integrations',
-  'Remote developers, QA, and digital support',
-  'Analytics and GA4 checks',
-  'Search Console and technical SEO basics',
-  'Dashboards and reporting workflows',
-  'Maintenance mode and monthly care',
+  'Remote developers, QA and technical specialists',
+  'Analytics and conversion tracking checks',
+  'Search Console and technical search foundations',
+  'Release support and technical housekeeping',
+  'Structured monthly delivery and priorities',
 ];
 
 const industryPaths = [
@@ -119,15 +131,19 @@ const industryPaths = [
 
 const hubLinks = [
   {
-    label: 'Software development subscription',
+    label: 'Website visibility',
+    href: '/website-visibility-support',
+  },
+  {
+    label: 'Software & product engineering',
     href: '/software-development-subscription-uk',
   },
   {
-    label: 'Website maintenance',
+    label: 'Managed support',
     href: '/maintenance',
   },
   {
-    label: 'CRM integration',
+    label: 'CRM automation',
     href: '/crm-automation-support',
   },
   {
@@ -137,10 +153,10 @@ const hubLinks = [
 ];
 
 const reasons = [
-  'You need regular digital improvements but do not want to hire a full in-house developer.',
-  'Your website, CRM, automations, forms, analytics, or integrations need a clear monthly owner.',
-  'You want practical execution across small but important tasks without restarting a new project every time.',
-  'You need a transparent monthly delivery model with clear scope, add-ons, and maintenance options.',
+  'You need clearer ownership across websites, CRM workflows, software and live applications.',
+  'Your systems are live, but disconnected, outdated or poorly supported.',
+  'You want practical delivery without building a large in-house technical team.',
+  'You need assessment, fixed-scope work, structured monthly delivery or managed support—organised around business priorities.',
 ];
 
 export const ServicesPage = () => (
@@ -160,38 +176,43 @@ export const ServicesPage = () => (
         <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
           <div>
             <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">
-              UK SME Digital Support Services
+              UK SME Digital Systems & Delivery
             </p>
 
             <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              Software, Website & CRM Support Services for UK SMEs
+              Practical technical support across your digital operations
             </h1>
 
             <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
-              Primewayz UK helps small and growing UK businesses keep digital work moving every month.
-              Choose support for software delivery, website maintenance, CRM integration, automation,
-              technical SEO foundations, analytics checks, and ongoing digital improvement.
+              Primewayz supports UK SMEs at different stages of their digital journey—from improving
+              website visibility and connecting lead workflows to developing software, taking over
+              existing applications and adding experienced delivery capacity.
+            </p>
+            <p className="mt-4 max-w-3xl text-base leading-7 text-slate-300">
+              Each engagement starts with the business problem rather than a predetermined technology
+              or package. Work can be delivered through an assessment, fixed project, structured
+              monthly plan, managed support arrangement or dedicated technical team.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <TrackedLink
                 href="/contact-us#book-call"
-                ctaText="Book a UK discovery call"
+                ctaText="Discuss Your Digital Priorities"
                 ctaLocation="services_hero"
                 eventType="book_call_click"
                 className="inline-flex min-h-[48px] items-center justify-center rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-emerald-950/20 transition hover:bg-emerald-300"
               >
-                Book a UK discovery call
+                Discuss Your Digital Priorities
               </TrackedLink>
 
               <TrackedLink
                 href="/pricing"
-                ctaText="View monthly plans"
+                ctaText="View engagement options"
                 ctaLocation="services_hero"
                 eventType="pricing_plan_click"
                 className="inline-flex min-h-[48px] items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-sm font-bold text-white transition hover:border-white/40 hover:bg-white/10"
               >
-                View monthly plans
+                View engagement options
               </TrackedLink>
             </div>
 
@@ -256,8 +277,9 @@ export const ServicesPage = () => (
           </h2>
 
           <p className="mt-4 text-lg leading-8 text-slate-600">
-            Start with the area causing the most friction today — software delivery, website maintenance,
-            or CRM integration — then build a practical monthly improvement rhythm around it.
+            Start with the area causing the most friction today—website visibility, CRM workflows,
+            software delivery, managed support or additional technical capacity—then organise the
+            right engagement model around it.
           </p>
         </div>
 

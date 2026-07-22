@@ -11,8 +11,8 @@ import { SDAAS_COMMERCIAL_IMAGES } from './images.ts';
 
 test('SDaaS commercial page path and SEO are configured', () => {
   assert.equal(SDAAS_PAGE_PATH, '/software-development-subscription-uk');
-  assert.match(SDAAS_SEO.title, /Software Development Subscription UK/);
-  assert.match(SDAAS_SEO.description, /monthly software development capacity/i);
+  assert.match(SDAAS_SEO.title, /Ongoing Software Development Services for UK Businesses/);
+  assert.match(SDAAS_SEO.description, /software engineering capacity/i);
 });
 
 test('commercial page guide CTA points at the educational pillar', async () => {

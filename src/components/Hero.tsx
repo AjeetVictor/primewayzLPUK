@@ -65,18 +65,18 @@ export const Hero = () => {
           >
             <p className={`inline-flex items-center gap-2 rounded-full border border-brand-border bg-white px-4 py-2 ${brandTypography.eyebrow} text-brand-blue shadow-sm`}>
               <span className="h-2 w-2 rounded-full bg-brand-cyan" aria-hidden />
-              Free UK website visibility check
+              Reliable digital systems for UK SMEs
             </p>
             <h1 className={`mt-5 ${shellClasses.heroTitle}`}>
-              Make your UK website
+              Reliable digital systems{' '}
               <br />
-              easier to find, trust and
-              <br />
-              <span className="text-brand-cyan">enquire</span> from.
+              for growing{' '}
+              <span className="text-brand-cyan">UK businesses</span>
             </h1>
             <p className="mt-4 max-w-lg text-base leading-7 text-slate-600 sm:leading-8">
-              Primewayz UK helps founders, consultants and growing SMEs improve website clarity,
-              SEO readiness, trust signals, enquiry flow and ongoing digital delivery.
+              Primewayz helps UK SMEs improve website visibility, connect CRM and workflows, build
+              and modernise software, support live applications, and strengthen technical
+              delivery—without the cost and complexity of building a large in-house team.
             </p>
 
             <form
@@ -103,7 +103,7 @@ export const Hero = () => {
                 type="submit"
                 className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-brand-navy px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-navy/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy sm:min-w-[170px]"
               >
-                Run quick audit
+                Run a Free Website Audit
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </button>
             </form>
@@ -123,13 +123,13 @@ export const Hero = () => {
             <div className="mt-6 flex flex-col gap-3 text-sm font-semibold sm:flex-row sm:flex-wrap sm:items-center sm:gap-6">
               <TrackedLink
                 href={BOOK_CALL_URL}
-                ctaText="Book a discovery call"
-                ctaLocation="homepage_hero_secondary"
+                ctaText="Discuss Your Digital Priorities"
+                ctaLocation="homepage_hero_primary"
                 eventType="book_call_click_home"
                 className="inline-flex items-center gap-2 text-brand-navy transition hover:text-brand-blue"
               >
                 <CalendarDays className="h-5 w-5 text-brand-blue" strokeWidth={2.1} aria-hidden />
-                Book a discovery call
+                Discuss Your Digital Priorities
               </TrackedLink>
               <span className="hidden h-6 w-px bg-brand-border sm:inline-block" aria-hidden />
               <TrackedLink

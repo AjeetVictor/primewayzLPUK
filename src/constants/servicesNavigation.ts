@@ -95,8 +95,8 @@ export const serviceNavGroups: ServiceNavGroup[] = [
         iconTone: 'blue',
       },
       {
-        name: 'Remote IT Resources',
-        description: 'Developers, QA, website support, digital support and project coordination',
+        name: 'Remote IT Team Extension',
+        description: 'Developers, QA, analysts, project coordination and technical specialists',
         href: buildInternalUtmUrl(
           CANONICAL_ROUTES.remoteItResources,
           'internal_nav',
@@ -108,8 +108,8 @@ export const serviceNavGroups: ServiceNavGroup[] = [
         isNew: true,
       },
       {
-        name: 'Software Development as a Subscription',
-        description: 'Structured monthly development capacity for ongoing improvements and integrations',
+        name: 'Software & Product Engineering',
+        description: 'Structured software engineering capacity for applications, integrations and backlog delivery',
         href: CANONICAL_ROUTES.softwareDevelopmentSubscription,
         icon: Code2,
         iconTone: 'navy',

@@ -32,33 +32,33 @@ type ServiceRouteCard = {
 
 const serviceRoutes: ServiceRouteCard[] = [
   {
-    title: 'Website & Visibility Support',
+    title: 'Website Visibility & Conversion',
     description:
-      'Website improvements, SEO foundations, AEO/GEO content structure, speed, trust signals and enquiry flow.',
+      'Improve discovery, page clarity, trust signals, enquiry journeys, tracking and conversion barriers.',
     href: '/website-visibility-support',
     icon: SearchCheck,
     eventName: 'service_card_click_website_visibility',
   },
   {
-    title: 'CRM & Automation Support',
+    title: 'CRM & Workflow Automation',
     description:
-      'Lead capture, CRM cleanup, forms, workflows, notifications, reporting and follow-up processes.',
+      'Connect website enquiries, CRM records, follow-up workflows and reporting so leads are handled consistently.',
     href: '/crm-automation-support',
     icon: Workflow,
     eventName: 'service_card_click_crm_automation',
   },
   {
-    title: 'Software Development as a Subscription',
+    title: 'Software & Product Engineering',
     description:
-      'Ongoing monthly development capacity for businesses with evolving digital needs.',
+      'Build, improve, integrate or modernise applications and digital products through structured delivery.',
     href: '/software-development-subscription-uk',
     icon: Code2,
     eventName: 'service_card_click_software_delivery',
   },
   {
-    title: 'Remote IT Resources',
+    title: 'Remote IT Team Extension',
     description:
-      'Flexible technical capacity for ongoing or project-based delivery needs.',
+      'Add dependable developers, QA, analysts and coordinators when your internal team needs extra capacity.',
     href: '/remote-it-resources',
     icon: MonitorCog,
     eventName: 'service_card_click_remote_it',
@@ -147,8 +147,8 @@ export const ServiceRoutesSection = () => {
           </h2>
 
           <p className="mx-auto mt-6 max-w-3xl text-base leading-7 sm:text-lg sm:leading-8" style={{ color: BODY }}>
-            Start with visibility, CRM, software delivery or remote technical capacity — then move
-            forward with a structured monthly support rhythm.
+            Start with visibility, CRM workflows, software delivery or remote technical capacity—then
+            organise the work through the engagement model that fits.
           </p>
         </motion.div>
 

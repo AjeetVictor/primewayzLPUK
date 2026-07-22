@@ -55,12 +55,12 @@ export const SuccessStoriesPage = () => (
         </p>
 
         <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-          Success Stories for UK SMEs
+          Software, CRM and Digital Delivery Success Stories
         </h1>
 
         <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
-          See how Primewayz UK helps businesses improve lead capture, CRM workflows, website stability,
-          and ongoing digital delivery.
+          Explore how Primewayz has helped organisations improve software delivery, connect business
+          systems, support critical applications and strengthen digital operations.
         </p>
       </div>
     </section>

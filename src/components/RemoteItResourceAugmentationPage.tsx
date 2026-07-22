@@ -16,24 +16,24 @@ const resourceTypes = [
 
 const engagementModels = [
   {
-    title: 'Part-time support',
-    text: 'Useful when you need a few focused days each week for backlog items, fixes, or controlled feature work.',
+    title: 'Individual resource',
+    text: 'A focused specialist when your internal owner needs dependable additional capacity for a defined stream of work.',
   },
   {
-    title: 'Monthly capacity',
-    text: 'A predictable monthly block for development, QA, support, and coordination aligned to your roadmap.',
+    title: 'Managed delivery pod',
+    text: 'A coordinated mix of delivery roles with clear ownership across development, QA and project coordination.',
   },
   {
-    title: 'Dedicated resource',
-    text: 'A named remote resource for deeper continuity across sprints, releases, and ongoing delivery.',
+    title: 'Dedicated team',
+    text: 'A named remote team for deeper continuity across product work, releases and ongoing technical delivery.',
   },
 ];
 
 const benefits = [
-  'Start with part-time or monthly support instead of full-time hiring',
-  'Add developers, QA, digital support, or coordination as needs change',
-  'Reduce recruitment delays and delivery bottlenecks',
-  'Keep work structured with updates, checkpoints, and reporting',
+  'Add dependable capacity without immediately expanding a permanent in-house team',
+  'Choose individual resource, managed delivery pod or dedicated team arrangements',
+  'Keep delivery continuity with clear ownership and UK working-hour overlap',
+  'Include developers, QA, business analysis, project coordination and technical specialists',
 ];
 
 const processSteps = [
@@ -113,18 +113,19 @@ export const RemoteItResourceAugmentationPage = () => (
         <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
           <div>
             <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">
-              Flexible IT capacity for UK SMEs
+              Remote IT Team Extension
             </p>
 
             <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              Remote IT resource augmentation for UK businesses
+              Remote IT Team Extension for UK businesses
             </h1>
 
             <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
-              Add reliable remote IT capacity without building a full in-house team.
-              Access developers, QA testers, website support, automation specialists,
-              digital support, and project coordination through a structured remote
-              delivery model from Primewayz UK.
+              Add dependable delivery capacity for UK agencies, SaaS businesses, product teams and
+              companies with an internal technical owner. Access developers, QA professionals,
+              analysts, project coordinators and technical specialists with clear ownership and UK
+              working-hour overlap—without the delay and commitment of immediately expanding permanent
+              headcount.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">

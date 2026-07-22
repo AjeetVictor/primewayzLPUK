@@ -330,8 +330,9 @@ export const Pricing = () => {
             transition={{ delay: 0.06 }}
             className="mx-auto mt-6 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg"
           >
-            Choose the capacity that fits your roadmap. Start with a Foundation Sprint, scale
-            through active delivery plans, or move to Maintenance Mode when priorities slow down.
+            Choose the engagement model and capacity that fit your roadmap. Start with a Foundation
+            Sprint, progress through fixed-scope or structured monthly delivery, move to Maintenance
+            Mode when priorities slow down, or add dedicated technical capacity when continuity matters.
           </motion.p>
         </section>
 
