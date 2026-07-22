@@ -47,6 +47,13 @@ export const SDAAS_MAINTENANCE_VS_DEVELOPMENT_HREF =
 export const SDAAS_CHOOSE_PARTNER_HREF =
   '/insights/how-to-choose-a-software-development-partner' as const;
 
+/** Retired illustrative success-story URLs → relevant service pages (server 301 redirects). */
+export const LEGACY_SUCCESS_STORY_REDIRECTS = {
+  '/success-stories/local-trades-lead-capture': CANONICAL_ROUTES.websiteVisibilitySupport,
+  '/success-stories/professional-services-crm-cleanup': CANONICAL_ROUTES.crmAutomationSupport,
+  '/success-stories/ecommerce-store-stability-support': CANONICAL_ROUTES.maintenance,
+} as const;
+
 /** Legacy marketing URLs → canonical paths (server 301/308 redirects). */
 export const LEGACY_ROUTE_REDIRECTS = {
   '/contact': CANONICAL_ROUTES.contact,
@@ -57,4 +64,5 @@ export const LEGACY_ROUTE_REDIRECTS = {
   '/website-maintenance-subscription-uk': CANONICAL_ROUTES.maintenance,
   '/blog/why-uk-smes-need-monthly-digital-support': '/blog/monthly-digital-support-uk-smes',
   '/blog/why-start-with-foundation-sprint-before-monthly-delivery': '/blog/foundation-sprint-before-monthly-delivery',
+  ...LEGACY_SUCCESS_STORY_REDIRECTS,
 } as const;

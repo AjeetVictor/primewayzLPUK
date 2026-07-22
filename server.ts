@@ -71,6 +71,7 @@ import {
   getSdaasSupportingArticleByPath,
 } from './src/data/sdaas/supportingArticlesRegistry.ts';
 import type { SupportingArticleDefinition } from './src/data/sdaas/supportingArticleTypes.ts';
+import { getPublishedSuccessStoryBySlug, type SuccessStory } from './src/data/successStories.ts';
 
 dotenv.config({ path: '.env.local', override: false });
 dotenv.config({ override: false });
@@ -532,6 +533,79 @@ async function getPublicBlogPost(id?: string) {
     console.warn('[local-safe] Could not load CMS blog post:', err instanceof Error ? err.message : err);
     return undefined;
   }
+}
+
+function buildSuccessStoryStructuredData(story: SuccessStory, canonical: string) {
+  const providerId = `${siteUrl}/#primewayz-infotech`;
+  const webpageId = `${canonical}#webpage`;
+  const articleId = `${canonical}#article`;
+  const ogImage = `${siteUrl}${story.ogImage}`;
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': providerId,
+        name: 'Primewayz Infotech',
+        url: siteUrl,
+        logo: `${siteUrl}/primewayz-uk-dark-logo.png`,
+      },
+      {
+        '@type': 'WebPage',
+        '@id': webpageId,
+        url: canonical,
+        name: story.seoTitle,
+        description: story.seoDescription,
+        inLanguage: 'en-GB',
+        isPartOf: { '@id': `${siteUrl}/#website` },
+        breadcrumb: { '@id': `${canonical}#breadcrumb` },
+        primaryImageOfPage: ogImage,
+        about: { '@id': articleId },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${canonical}#breadcrumb`,
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: `${siteUrl}/` },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Success Stories',
+            item: `${siteUrl}/success-stories`,
+          },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: story.shortTitle,
+            item: canonical,
+          },
+        ],
+      },
+      {
+        '@type': 'Article',
+        '@id': articleId,
+        headline: story.title,
+        description: story.seoDescription,
+        image: ogImage,
+        author: {
+          '@type': 'Organization',
+          '@id': providerId,
+          name: 'Primewayz Infotech',
+        },
+        publisher: {
+          '@type': 'Organization',
+          '@id': providerId,
+          name: 'Primewayz Infotech',
+          logo: { '@type': 'ImageObject', url: `${siteUrl}/primewayz-uk-dark-logo.png` },
+        },
+        mainEntityOfPage: { '@type': 'WebPage', '@id': webpageId },
+        keywords: story.relatedServiceLabels.join(', '),
+        inLanguage: 'en-GB',
+        about: story.relatedServiceLabels.map((name) => ({ '@type': 'Thing', name })),
+      },
+    ],
+  };
 }
 
 function buildDefaultStructuredData(canonical: string, description: string) {
@@ -1443,6 +1517,48 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
     };
   }
 
+  const successStoryMatch = pagePathname.match(/^\/success-stories\/([^/]+)$/);
+  if (successStoryMatch) {
+    let storySlug: string;
+    try {
+      storySlug = decodeURIComponent(successStoryMatch[1]);
+    } catch {
+      return {
+        initialData: { successStory: null, notFound: true },
+        statusCode: 404,
+        seoTags: buildNoIndexSeoTags({
+          title: 'Success Story Not Found | Primewayz UK',
+          description: 'This success story is not available on Primewayz UK.',
+        }),
+      };
+    }
+
+    const story = getPublishedSuccessStoryBySlug(storySlug);
+
+    if (!story) {
+      return {
+        initialData: { successStory: null, notFound: true },
+        statusCode: 404,
+        seoTags: buildNoIndexSeoTags({
+          title: 'Success Story Not Found | Primewayz UK',
+          description: 'This success story is not available on Primewayz UK.',
+        }),
+      };
+    }
+
+    return {
+      initialData: { successStory: story },
+      seoTags: buildSeoTags({
+        title: story.seoTitle,
+        description: story.seoDescription,
+        canonical,
+        ogType: 'article',
+        image: story.ogImage,
+        structuredData: buildSuccessStoryStructuredData(story, canonical),
+      }),
+    };
+  }
+
   const staticPageSeo: Record<string, { title: string; description: string }> = {
     '/': {
       title: 'Digital Systems & Software Delivery for UK SMEs | Primewayz',
@@ -1503,21 +1619,6 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
       title: 'Software & Digital Delivery Success Stories | Primewayz UK',
       description:
         'Explore how Primewayz has helped organisations improve software delivery, connect business systems, support critical applications and strengthen digital operations.',
-    },
-    '/success-stories/local-trades-lead-capture': {
-      title: 'Local Trades Lead Capture Success Story | Primewayz UK',
-      description:
-        'See how Primewayz UK helps local trades improve lead capture, enquiry routing, quote request flows, tracking, and monthly website updates.',
-    },
-    '/success-stories/professional-services-crm-cleanup': {
-      title: 'Professional Services CRM Cleanup Success Story | Primewayz UK',
-      description:
-        'See how Primewayz UK helps professional services firms improve CRM workflows, website enquiry capture, lead tracking, reminders, and reporting visibility.',
-    },
-    '/success-stories/ecommerce-store-stability-support': {
-      title: 'E-commerce Store Stability Support Success Story | Primewayz UK',
-      description:
-        'See how Primewayz UK helps e-commerce stores improve website stability, checkout flows, tracking, technical fixes, and monthly support.',
     },
     '/uk-sme-digital-visibility-checker': {
       title: 'Free UK SME Website Visibility Checker | Primewayz UK',
@@ -2592,9 +2693,10 @@ app.get(`/${INDEXNOW_KEY}.txt`, (_req: Request, res: Response) => {
 
 // Legacy marketing URLs → canonical routes (before static files and SPA catch-all).
 for (const [fromPath, toPath] of Object.entries(LEGACY_ROUTE_REDIRECTS)) {
-  app.get(fromPath, (req, res) => {
-    const suffix = req.originalUrl.slice(fromPath.length);
-    res.redirect(301, `${toPath}${suffix}`);
+  app.get([fromPath, `${fromPath}/`], (req, res) => {
+    const queryIndex = req.originalUrl.indexOf('?');
+    const search = queryIndex >= 0 ? req.originalUrl.slice(queryIndex) : '';
+    res.redirect(301, `${toPath}${search}`);
   });
 }
 

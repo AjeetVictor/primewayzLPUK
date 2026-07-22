@@ -2,6 +2,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
 import { SelfAuditCta } from './SelfAuditCta';
+import { AuthorityProofSection } from './sections/AuthorityProofSection';
+import { getSuccessStoryPath } from '../data/successStories';
 
 const visibilitySupportItems = [
   'Technical search visibility, crawlability and indexability checks',
@@ -93,10 +95,10 @@ const relatedLinks = [
     text: 'For UK businesses that need cleaner lead capture, enquiry routing, CRM workflows, notifications, reporting and operational visibility.',
   },
   {
-    title: 'E-commerce Stability Success Story',
-    href: '/success-stories/ecommerce-store-stability-support',
-    anchor: 'E-commerce store stability and support example',
-    text: 'See how ongoing website and store stability support can help e-commerce businesses reduce friction and keep improvements moving.',
+    title: 'RentReadBuy platform continuity story',
+    href: getSuccessStoryPath('rentreadbuy-book-rental-platform'),
+    anchor: 'Book rental and commerce platform support example',
+    text: 'See how ongoing platform and commerce support can help digital businesses reduce friction and keep improvements moving.',
   },
 ];
 
@@ -105,6 +107,9 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => {
   const normalisedPathname =
     pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
   const isVisibilityPage = normalisedPathname === '/website-visibility-support';
+  const isMaintenancePage =
+    normalisedPathname === '/maintenance' ||
+    normalisedPathname === '/website-maintenance-subscription-uk';
 
   const eyebrow = isVisibilityPage
     ? 'Website Visibility & Conversion Support'
@@ -349,7 +354,29 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => {
         </div>
       </section>
 
-      <section id="website-maintenance-related-services" className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
+      {isVisibilityPage ? (
+        <AuthorityProofSection
+          id="website-visibility-authority-proof"
+          eyebrow="Relevant delivery experience"
+          heading="Improving discovery and customer journeys through ongoing product work"
+          introduction="RentReadBuy demonstrates how catalogue structure, content, technical SEO, campaign pages and commerce journeys need to evolve together rather than being treated as isolated website tasks."
+          storySlugs={['rentreadbuy-book-rental-platform', 'restaurant-self-ordering-platform']}
+          ctaLabel="Read the delivery story"
+        />
+      ) : null}
+
+      {isMaintenancePage ? (
+        <AuthorityProofSection
+          id="website-maintenance-authority-proof"
+          eyebrow="Managed support experience"
+          heading="Supporting systems that must keep working while they improve"
+          introduction="Long-running applications require more than reactive fixes. They need inherited-system understanding, controlled enhancement, delivery continuity and clear technical ownership."
+          storySlugs={['wholesale-order-management-platform', 'rentreadbuy-book-rental-platform']}
+          ctaLabel="Read the delivery story"
+        />
+      ) : null}
+
+      <section id="website-maintenance-related-services" className="bg-white px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1200px]">
           <div className="max-w-3xl">
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">

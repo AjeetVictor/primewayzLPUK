@@ -13,9 +13,9 @@ const SERVICE_PATH_MAP: Record<string, string> = {
   '/remote-it-resource-augmentation': 'Remote IT resource augmentation',
   '/professional-services-crm-support-uk': 'Professional services CRM support',
   '/services': 'Services overview',
-  '/success-stories/local-trades-lead-capture': 'Local trades lead capture',
-  '/success-stories/professional-services-crm-cleanup': 'Professional services CRM cleanup',
-  '/success-stories/ecommerce-store-stability-support': 'Ecommerce store stability',
+  '/success-stories/wholesale-order-management-platform': 'Wholesale order-management story',
+  '/success-stories/rentreadbuy-book-rental-platform': 'RentReadBuy platform story',
+  '/success-stories/restaurant-self-ordering-platform': 'Restaurant self-ordering story',
   '/blog': 'Blog',
   '/': 'Homepage',
 };

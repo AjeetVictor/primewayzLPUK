@@ -1,3 +1,5 @@
+import { CANONICAL_ROUTES } from './canonicalRoutes';
+
 export type AuditActionCategoryId =
   | 'technical-seo'
   | 'trust-signals'
@@ -41,7 +43,7 @@ export const AUDIT_CATEGORY_ACTION_LINKS: Record<AuditActionCategoryId, AuditCat
     title: 'Improve enquiry flow',
     description: 'Clarify calls to action and reduce friction between a visit and a useful enquiry.',
     ctaLabel: 'Improve enquiry flow',
-    href: '/success-stories/local-trades-lead-capture',
+    href: CANONICAL_ROUTES.websiteVisibilitySupport,
   },
   'local-visibility': {
     categoryId: 'local-visibility',

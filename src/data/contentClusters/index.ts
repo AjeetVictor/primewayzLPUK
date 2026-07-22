@@ -11,6 +11,7 @@ import {
   SDAAS_TECHNICAL_DEBT_HREF,
   SDAAS_USE_CASES_HREF,
 } from '../../constants/canonicalRoutes';
+import { getSuccessStoryPath } from '../successStories';
 import { SDAAS_FAQ_ANCHOR } from '../sdaas/commercialPage';
 import { SDAAS_COMMERCIAL_IMAGES } from '../sdaas/images';
 import { SDAAS_SUPPORTING_ARTICLES } from '../sdaas/supportingArticlesRegistry';
@@ -205,7 +206,7 @@ export const contentClusters = {
       servicePage: null,
       pillar: null,
       supportingArticles: [
-        '/success-stories/ecommerce-store-stability-support',
+        getSuccessStoryPath('wholesale-order-management-platform'),
         SDAAS_APPLICATION_RESCUE_HREF,
       ],
       guide: null,

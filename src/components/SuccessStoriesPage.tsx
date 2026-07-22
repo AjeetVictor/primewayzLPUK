@@ -1,40 +1,11 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, PhoneCall, Users, Zap } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
 import { SelfAuditCta } from './SelfAuditCta';
+import { getPublishedSuccessStories, getSuccessStoryPath } from '../data/successStories';
+import { successStoryIconByKey } from '../data/successStoryIcons';
 
-const stories = [
-  {
-    title: 'Local Trades Website & Lead Capture Setup',
-    category: 'UK Local Trades',
-    summary:
-      'For plumbers, electricians, roofing firms, builders, cleaners, landscapers, and local service businesses that need clearer quote requests, call tracking, WhatsApp leads, and faster follow-ups.',
-    keyOutcome: '84 new enquiries captured monthly with structured quote requests and tracked call-to-action journeys.',
-    image: '/images/localTradesWbsite.webp',
-    icon: PhoneCall,
-    href: '/success-stories/local-trades-lead-capture',
-  },
-  {
-    title: 'Professional Services: CRM & Lead Flow Cleanup',
-    category: 'UK Professional Services',
-    summary:
-      'A practical CRM and form-flow improvement sprint for consultants, accountants, recruitment firms, advisors, and service teams that need cleaner lead tracking and follow-up visibility.',
-    keyOutcome: 'Cleaner enquiry capture and follow-up visibility within the first release cycle.',
-    image: '/images/professional-services-crm-cleanup.webp',
-    icon: Zap,
-    href: '/success-stories/professional-services-crm-cleanup',
-  },
-  {
-    title: 'E-commerce Store Stability & Support',
-    category: 'UK E-commerce SMEs',
-    summary:
-      'Support for small online stores, boutiques, specialist sellers, subscription stores, and catalogue-led businesses that need reliable product pages, smoother checkout journeys, and clean campaign tracking.',
-    keyOutcome: 'More reliable product pages, smoother checkout checks, and monthly stability support for store confidence.',
-    image: '/images/ecommerce-store-stability-support.webp',
-    icon: Users,
-    href: '/success-stories/ecommerce-store-stability-support',
-  },
-] as const;
+const publishedStories = getPublishedSuccessStories();
 
 export const SuccessStoriesPage = () => (
   <main className="min-h-screen bg-white text-slate-950">
@@ -51,16 +22,16 @@ export const SuccessStoriesPage = () => (
         </Link>
 
         <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">
-          UK SME Examples
+          Delivery experience
         </p>
 
         <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-          Software, CRM and Digital Delivery Success Stories
+          Software, product and platform success stories
         </h1>
 
         <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
-          Explore how Primewayz has helped organisations improve software delivery, connect business
-          systems, support critical applications and strengthen digital operations.
+          Approved examples of Primewayz delivery work across platform continuity, product engineering and
+          customer-facing experiences. Relationship type is stated clearly for each story.
         </p>
       </div>
     </section>
@@ -70,17 +41,19 @@ export const SuccessStoriesPage = () => (
     <section className="px-4 py-20 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1200px]">
         <div className="grid gap-8 lg:grid-cols-3">
-          {stories.map((story) => {
-            const Icon = story.icon;
+          {publishedStories.map((story) => {
+            const Icon = successStoryIconByKey[story.iconKey];
+            const href = getSuccessStoryPath(story.slug);
+
             return (
               <article
-                key={story.href}
+                key={story.slug}
                 className="group flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl"
               >
                 <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
                   <img
                     src={story.image}
-                    alt={story.title}
+                    alt={story.imageAlt}
                     loading="lazy"
                     className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                   />
@@ -94,7 +67,11 @@ export const SuccessStoriesPage = () => (
                     <Icon className="h-5 w-5" />
                   </div>
 
-                  <h2 className="text-xl font-black tracking-tight text-slate-950">{story.title}</h2>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                    {story.relationshipType}
+                  </p>
+
+                  <h2 className="mt-2 text-xl font-black tracking-tight text-slate-950">{story.title}</h2>
 
                   <p className="mt-3 text-sm leading-7 text-slate-600">{story.summary}</p>
 
@@ -106,7 +83,7 @@ export const SuccessStoriesPage = () => (
                   </div>
 
                   <Link
-                    to={story.href}
+                    to={href}
                     className="mt-6 inline-flex min-h-[44px] items-center text-sm font-bold text-emerald-700 transition hover:text-emerald-900"
                   >
                     Read success story
@@ -121,7 +98,7 @@ export const SuccessStoriesPage = () => (
         <div className="mt-16 rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center sm:p-10">
           <h2 className="text-2xl font-bold text-slate-950">Planning a similar improvement?</h2>
           <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-            Talk through your website, CRM, lead capture, or maintenance priorities with the Primewayz UK team.
+            Talk through your platform, product or customer-experience priorities with the Primewayz UK team.
           </p>
           <TrackedLink
             href="/contact-us#book-call"

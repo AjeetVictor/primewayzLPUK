@@ -4,6 +4,7 @@ import { TrackedLink } from './common/TrackedLink';
 import { SelfAuditCta } from './SelfAuditCta';
 import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../lib/utm';
 import { BOOK_CALL_URL } from '../constants/contactBooking';
+import { AuthorityProofSection } from './sections/AuthorityProofSection';
 
 const resourceTypes = [
   'Frontend and backend developers for websites, dashboards, and business tools',
@@ -266,7 +267,16 @@ export const RemoteItResourceAugmentationPage = () => (
       </div>
     </section>
 
-    <section id="remote-it-related-services" className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
+    <AuthorityProofSection
+      id="remote-it-authority-proof"
+      eyebrow="Long-term delivery continuity"
+      heading="Technical capacity that becomes part of the delivery context"
+      introduction="Our experience with established business software demonstrates the value of contributors who learn existing workflows, preserve continuity and support controlled progress over time."
+      storySlugs={['wholesale-order-management-platform']}
+      ctaLabel="Read the delivery story"
+    />
+
+    <section id="remote-it-related-services" className="bg-white px-4 py-20 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1200px]">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">

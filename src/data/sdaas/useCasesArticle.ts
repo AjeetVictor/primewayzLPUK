@@ -8,6 +8,7 @@ import {
   SDAAS_PRIORITISATION_HREF,
   SDAAS_TECHNICAL_DEBT_HREF,
 } from '../../constants/canonicalRoutes';
+import { getSuccessStoryPath } from '../successStories';
 import { SDAAS_CAPACITY_REQUEST_PATH, SDAAS_PAGE_PATH } from './commercialPage';
 import { SDAAS_COMMERCIAL_IMAGES } from './images';
 
@@ -188,8 +189,8 @@ export const subscriptionUseCases: readonly SubscriptionUseCase[] = [
       'Specialist security or compliance work is required',
     ],
     relatedLink: {
-      href: '/success-stories/ecommerce-store-stability-support',
-      label: 'E-commerce store stability support',
+      href: getSuccessStoryPath('wholesale-order-management-platform'),
+      label: 'Wholesale order-management platform support',
     },
   },
   {

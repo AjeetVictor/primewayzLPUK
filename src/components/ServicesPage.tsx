@@ -14,7 +14,9 @@ import {
 } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
 import { SelfAuditCta } from './SelfAuditCta';
+import { CANONICAL_ROUTES } from '../constants/canonicalRoutes';
 import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../lib/utm';
+import { getSuccessStoryPath } from '../data/successStories';
 
 const serviceCards = [
   {
@@ -29,6 +31,8 @@ const serviceCards = [
       'Clearer pages and enquiry journeys',
       'Trust signals and conversion tracking',
     ],
+    proofLabel: 'RentReadBuy platform story',
+    proofHref: getSuccessStoryPath('rentreadbuy-book-rental-platform'),
   },
   {
     title: 'CRM & Workflow Automation',
@@ -42,6 +46,8 @@ const serviceCards = [
       'Lead tracking and follow-up workflows',
       'Reporting and operational visibility',
     ],
+    proofLabel: 'Wholesale platform continuity story',
+    proofHref: getSuccessStoryPath('wholesale-order-management-platform'),
   },
   {
     title: 'Software & Product Engineering',
@@ -55,6 +61,8 @@ const serviceCards = [
       'Integrations, backlog delivery and modernisation',
       'Structured monthly engineering capacity',
     ],
+    proofLabel: 'Restaurant self-ordering story',
+    proofHref: getSuccessStoryPath('restaurant-self-ordering-platform'),
   },
   {
     title: 'Managed Application & Website Support',
@@ -68,6 +76,8 @@ const serviceCards = [
       'Platform and dependency maintenance',
       'Controlled minor improvements',
     ],
+    proofLabel: 'Wholesale managed-support story',
+    proofHref: getSuccessStoryPath('wholesale-order-management-platform'),
   },
   {
     title: 'Remote IT Team Extension',
@@ -86,6 +96,9 @@ const serviceCards = [
       'Business analysis and project coordination',
       'Delivery continuity with clear ownership',
     ],
+    proofLabel: 'Long-term delivery continuity story',
+    proofHref: getSuccessStoryPath('wholesale-order-management-platform'),
+    isNew: true,
   },
 ];
 
@@ -105,9 +118,9 @@ const supportAreas = [
 const industryPaths = [
   {
     title: 'Local trades and service businesses',
-    href: '/success-stories/local-trades-lead-capture',
+    href: CANONICAL_ROUTES.websiteVisibilitySupport,
     icon: PhoneCall,
-    anchor: 'Local trades website and lead capture example',
+    anchor: 'Website visibility and enquiry support for local service businesses',
     text:
       'For plumbers, electricians, roofers, builders, cleaners, landscapers, and local service firms that need clearer quote requests, call tracking, WhatsApp leads, and faster follow-ups.',
   },
@@ -121,9 +134,9 @@ const industryPaths = [
   },
   {
     title: 'E-commerce and online stores',
-    href: '/success-stories/ecommerce-store-stability-support',
+    href: getSuccessStoryPath('rentreadbuy-book-rental-platform'),
     icon: ShoppingCart,
-    anchor: 'E-commerce store stability and support example',
+    anchor: 'Book rental and commerce platform support example',
     text:
       'For small online stores, boutiques, specialist sellers, subscription stores, and catalogue-led businesses that need stable product pages, checkout journeys, tracking, and offer updates.',
   },
@@ -288,41 +301,54 @@ export const ServicesPage = () => (
             const Icon = service.icon;
 
             return (
-              <Link
+              <article
                 key={service.href}
-                to={service.href}
-                aria-label={service.anchor}
-                className="group rounded-3xl border border-slate-200 bg-slate-50 p-7 shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:bg-white hover:shadow-xl"
+                className="group flex h-full flex-col rounded-3xl border border-slate-200 bg-slate-50 p-7 shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:bg-white hover:shadow-xl"
               >
-                <div className="mb-6 flex items-start justify-between gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#000A2D] text-white transition group-hover:bg-emerald-600">
-                    <Icon className="h-6 w-6" />
+                <Link to={service.href} aria-label={service.anchor} className="flex flex-1 flex-col">
+                  <div className="mb-6 flex items-start justify-between gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#000A2D] text-white transition group-hover:bg-emerald-600">
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    {'isNew' in service && service.isNew ? (
+                      <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+                        New
+                      </span>
+                    ) : null}
                   </div>
-                  {'isNew' in service && service.isNew ? (
-                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
-                      New
-                    </span>
-                  ) : null}
+
+                  <h3 className="text-xl font-black text-[#000A2D]">{service.title}</h3>
+
+                  <p className="mt-4 text-sm leading-7 text-slate-600">{service.description}</p>
+
+                  <ul className="mt-5 space-y-2">
+                    {service.bestFor.map((item) => (
+                      <li key={item} className="flex gap-2 text-sm text-slate-700">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-emerald-700">
+                    {service.anchor}
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </div>
+                </Link>
+
+                <div className="mt-5 border-t border-slate-200 pt-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                    Related delivery story
+                  </p>
+                  <Link
+                    to={service.proofHref}
+                    className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-slate-800 transition hover:text-emerald-700"
+                  >
+                    {service.proofLabel}
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
                 </div>
-
-                <h3 className="text-xl font-black text-[#000A2D]">{service.title}</h3>
-
-                <p className="mt-4 text-sm leading-7 text-slate-600">{service.description}</p>
-
-                <ul className="mt-5 space-y-2">
-                  {service.bestFor.map((item) => (
-                    <li key={item} className="flex gap-2 text-sm text-slate-700">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-emerald-700">
-                  {service.anchor}
-                  <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-                </div>
-              </Link>
+              </article>
             );
           })}
         </div>

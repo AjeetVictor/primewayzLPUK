@@ -7,6 +7,7 @@ import {
   SDAAS_TECHNICAL_DEBT_HREF,
   SDAAS_USE_CASES_HREF,
 } from '../../constants/canonicalRoutes';
+import { getSuccessStoryPath } from '../successStories';
 import { SDAAS_CAPACITY_REQUEST_PATH, SDAAS_PAGE_PATH } from './commercialPage';
 import { SDAAS_COMMERCIAL_IMAGES } from './images';
 import type { SupportingArticleDefinition } from './supportingArticleTypes';
@@ -130,9 +131,10 @@ export const rescueFaqs = [
 
 export const rescueRelatedLiveLinks = [
   {
-    title: 'E-commerce store stability support',
-    description: 'Example of stabilising an existing application under structured support.',
-    href: '/success-stories/ecommerce-store-stability-support',
+    title: 'Wholesale order-management platform support',
+    description:
+      'Example of supporting and improving an established business-critical application through controlled enhancement and delivery continuity.',
+    href: getSuccessStoryPath('wholesale-order-management-platform'),
   },
   {
     title: 'Software Development as a Subscription',
@@ -198,8 +200,8 @@ export const applicationRescueArticle: SupportingArticleDefinition = {
   introAsides: [
     {
       label: 'Success story',
-      href: '/success-stories/ecommerce-store-stability-support',
-      linkLabel: 'E-commerce store stability support',
+      href: getSuccessStoryPath('wholesale-order-management-platform'),
+      linkLabel: 'Wholesale order-management platform support',
     },
     {
       label: 'Use cases',

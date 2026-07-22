@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
 import { SelfAuditCta } from './SelfAuditCta';
+import { AuthorityProofSection } from './sections/AuthorityProofSection';
+import { getSuccessStoryPath } from '../data/successStories';
 
 const services = [
   {
@@ -146,10 +148,10 @@ const relatedLinks = [
     text: 'For UK businesses that need website updates, form fixes, landing page improvements, technical SEO checks, analytics support, and monthly care.',
   },
   {
-    title: 'Professional Services CRM Cleanup Story',
-    href: '/success-stories/professional-services-crm-cleanup',
-    anchor: 'Professional services CRM and lead-flow cleanup example',
-    text: 'See how CRM cleanup and lead-flow improvements can help professional services firms improve enquiry visibility and follow-up.',
+    title: 'Wholesale order-management platform story',
+    href: getSuccessStoryPath('wholesale-order-management-platform'),
+    anchor: 'Wholesale order-management and workflow platform example',
+    text: 'See how structured CRM and operational workflow support can improve enquiry visibility and follow-up across complex business processes.',
   },
 ];
 
@@ -426,7 +428,16 @@ export function CrmIntegrationSupportUkPage() {
         </div>
       </section>
 
-      <section id="crm-related-services" className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
+      <AuthorityProofSection
+        id="crm-authority-proof"
+        eyebrow="Relevant delivery experience"
+        heading="Working with connected customer, order and operational workflows"
+        introduction="Our experience supporting an established wholesale platform includes understanding and improving the relationships between catalogue, inventory, warehouse, customer and order processes."
+        storySlugs={['wholesale-order-management-platform']}
+        ctaLabel="Read the delivery story"
+      />
+
+      <section id="crm-related-services" className="bg-white px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1200px]">
           <div className="max-w-3xl">
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">

@@ -1,4 +1,5 @@
 import { CANONICAL_ROUTES } from '../../constants/canonicalRoutes';
+import { getSuccessStoryPath } from '../successStories';
 import { SDAAS_CAPACITY_ANCHOR, SDAAS_PROCESS_ANCHOR } from '../sdaas/commercialPage';
 
 export type EntityTermKey =
@@ -49,7 +50,7 @@ export const ENTITY_TERMS: Record<EntityTermKey, EntityTerm> = {
   },
   existingAppRescue: {
     label: 'existing application rescue',
-    href: '/success-stories/ecommerce-store-stability-support',
+    href: getSuccessStoryPath('wholesale-order-management-platform'),
     clusterId: 'appRescue',
   },
   crmAutomation: {

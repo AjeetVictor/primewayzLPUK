@@ -23,6 +23,7 @@ import { CommercialJourneyDivider } from './commercial/CommercialJourneyDivider'
 import { CommercialSectionShell } from './commercial/CommercialSectionShell';
 import { EntityTermLink } from './commercial/EntityTermLink';
 import { MonthlyDeliverySnapshot } from './commercial/MonthlyDeliverySnapshot';
+import { AuthorityProofSection } from './sections/AuthorityProofSection';
 import { SDAAS_COMMERCIAL_IMAGES } from '../data/sdaas/images';
 import { SDAAS_JOURNEY_STEPS, SDAAS_SECTION_TRANSITIONS } from '../data/sdaas/pageJourney';
 import {
@@ -672,6 +673,19 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
       >
         <SdaasFaqAccordion />
       </CommercialSectionShell>
+
+      <AuthorityProofSection
+        id="sdaas-authority-proof"
+        eyebrow="Software delivery experience"
+        heading="From owned products to established business applications"
+        introduction="Our product-engineering work spans new customer-facing journeys, evolving commerce platforms and careful enhancement of established business-critical software."
+        storySlugs={[
+          'rentreadbuy-book-rental-platform',
+          'wholesale-order-management-platform',
+          'restaurant-self-ordering-platform',
+        ]}
+        ctaLabel="Read the delivery story"
+      />
 
       {/* Related services */}
       <section className="px-4 py-16 sm:px-6 lg:px-8">

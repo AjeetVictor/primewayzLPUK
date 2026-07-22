@@ -50,10 +50,8 @@ import { WebsiteMaintenanceSubscriptionUkPage } from './components/WebsiteMainte
 import { CrmIntegrationSupportUkPage } from './components/CrmIntegrationSupportUkPage';
 import { ProfessionalServicesCrmSupportUkPage } from './components/ProfessionalServicesCrmSupportUkPage';
 import { ServicesPage } from './components/ServicesPage';
-import { LocalTradesLeadCapturePage } from './components/LocalTradesLeadCapturePage';
-import { ProfessionalServicesCrmCleanupPage } from './components/ProfessionalServicesCrmCleanupPage';
-import { EcommerceStoreStabilitySupportPage } from './components/EcommerceStoreStabilitySupportPage';
 import { SuccessStoriesPage } from './components/SuccessStoriesPage';
+import { AuthorityStoryDetailPage } from './components/AuthorityStoryDetailPage';
 import { AboutUsPage } from './components/AboutUsPage';
 import { ContactUsPage } from './components/ContactUsPage';
 import { UkSmeDigitalVisibilityCheckerPage } from './components/UkSmeDigitalVisibilityCheckerPage';
@@ -213,9 +211,7 @@ export const App = ({ initialData }: AppProps) => {
         <Route path="/crm-integration-support-uk" element={<Navigate to="/crm-automation-support" replace />} />
         <Route path="/professional-services-crm-support-uk" element={<ProfessionalServicesCrmSupportUkPage />} />
         <Route path="/success-stories" element={<SuccessStoriesPage />} />
-        <Route path="/success-stories/local-trades-lead-capture" element={<LocalTradesLeadCapturePage />} />
-        <Route path="/success-stories/professional-services-crm-cleanup" element={<ProfessionalServicesCrmCleanupPage />} />
-        <Route path="/success-stories/ecommerce-store-stability-support" element={<EcommerceStoreStabilitySupportPage />} />
+        <Route path="/success-stories/:slug" element={<AuthorityStoryDetailPage />} />
         <Route path="/privacy-policy" element={<LegalPage type="privacy" />} />
         <Route path="/terms-of-service" element={<LegalPage type="terms" />} />
         <Route path="/cookie-policy" element={<LegalPage type="cookies" />} />
