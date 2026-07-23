@@ -10,6 +10,7 @@ import {
   Phone,
 } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
+import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
 import { COMPANY_TRUST_LINKS } from '../constants/companyTrustLinks';
 import { CANONICAL_ROUTES } from '../constants/canonicalRoutes';
 import { AUDIT_CHECKER_PATH } from '../constants/navigation';
@@ -278,6 +279,27 @@ export const Footer = () => {
               No spam. Unsubscribe anytime.
             </p>
           </div>
+        </div>
+
+        <div
+          className="mt-12 rounded-2xl border px-5 py-6 sm:px-8 sm:py-7"
+          style={{ borderColor: BORDER, backgroundColor: '#F8FBFC' }}
+          data-footer-conversion-group
+        >
+          <h4 className="text-base font-bold text-brand-navy">Ready for a clearer next step?</h4>
+          <p className="mt-2 max-w-2xl text-sm leading-6" style={{ color: BODY }}>
+            Request a free digital systems review, book a discovery call, or run the free website
+            visibility check.
+          </p>
+          <DigitalSystemsReviewCtaGroup
+            sourceLocation="footer"
+            serviceArea="Not sure yet"
+            primaryPlacement="footer_primary"
+            secondaryPlacement="footer_secondary"
+            websiteCheckerPlacement="footer_website_checker"
+            variant="closing"
+            className="mt-5"
+          />
         </div>
 
         <div

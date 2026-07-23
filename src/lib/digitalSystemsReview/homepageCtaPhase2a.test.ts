@@ -327,10 +327,8 @@ test('WebsiteProblemSection still points to the visibility checker', () => {
   assert.equal(WEBSITE_CHECKER_DESTINATION, '/uk-sme-digital-visibility-checker');
 });
 
-test('Navbar, Footer, LiveChat and LazyLiveChat remain unchanged for Phase 2A wiring', () => {
+test('LiveChat and LazyLiveChat remain unchanged for Phase 2A wiring', () => {
   for (const file of [
-    'src/components/Navbar.tsx',
-    'src/components/Footer.tsx',
     'src/components/LiveChat.tsx',
     'src/components/LazyLiveChat.tsx',
   ]) {
@@ -340,6 +338,14 @@ test('Navbar, Footer, LiveChat and LazyLiveChat remain unchanged for Phase 2A wi
     assert.doesNotMatch(source, /DigitalSystemsReviewCtaGroup/);
     assert.doesNotMatch(source, /review_source=homepage/);
     assert.doesNotMatch(source, /free_review_cta_click/);
+  }
+});
+
+test('Navbar and Footer Phase 2D wiring must not use homepage source', () => {
+  for (const file of ['src/components/Navbar.tsx', 'src/components/Footer.tsx']) {
+    const source = read(file);
+    assert.doesNotMatch(source, /sourceLocation="homepage"/);
+    assert.doesNotMatch(source, /review_source=homepage/);
   }
 });
 

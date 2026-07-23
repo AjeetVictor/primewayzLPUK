@@ -65,6 +65,7 @@ test('source location allowlist includes required values and defaults to page', 
     'success_story',
     'article',
     'website_checker',
+    'about_page',
   ]) {
     assert.ok(FREE_REVIEW_SOURCE_LOCATIONS.includes(value as never), value);
   }

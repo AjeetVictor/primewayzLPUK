@@ -1,6 +1,7 @@
 /**
  * Central conversion CTA configuration for Priority 3 digital systems review.
- * Phase 2A: homepage Hero + closing. Phase 2B: services hub + core service pages.
+ * Phase 2A: homepage. Phase 2B: services. Phase 2C: authority/articles.
+ * Phase 2D: Navbar, Footer, About.
  */
 
 import { BOOK_CALL_URL } from './contactBooking.ts';
@@ -71,6 +72,7 @@ export const FREE_REVIEW_SOURCE_LOCATIONS = [
   'success_story',
   'article',
   'website_checker',
+  'about_page',
 ] as const;
 
 export type FreeReviewSourceLocation = (typeof FREE_REVIEW_SOURCE_LOCATIONS)[number];
@@ -117,6 +119,15 @@ export const FREE_REVIEW_CTA_PLACEMENTS = [
   'blog_article_secondary',
   'sdaas_supporting_article_primary',
   'sdaas_supporting_article_secondary',
+  'navigation_desktop_primary',
+  'navigation_desktop_secondary',
+  'navigation_mobile_primary',
+  'navigation_mobile_secondary',
+  'footer_primary',
+  'footer_secondary',
+  'footer_website_checker',
+  'about_primary',
+  'about_secondary',
 ] as const;
 
 export type FreeReviewCtaPlacement = (typeof FREE_REVIEW_CTA_PLACEMENTS)[number];
@@ -221,13 +232,10 @@ export function buildFreeReviewCtaUrl(
   return query ? `${FREE_REVIEW_ROUTE}?${query}` : FREE_REVIEW_ROUTE;
 }
 
-/** Remaining Phase 2 CTA surfaces — not wired in Phase 2A/2B/2C. */
+/** Remaining Phase 2 CTA surfaces — not wired in Phase 2A–2D. */
 export const PHASE2_CTA_ROLLOUT_FILES = [
-  'src/components/Navbar.tsx',
   'src/components/hero/HeroSplitSlider.tsx',
   'src/components/hero/HeroContentSlider.tsx',
-  'src/components/Footer.tsx',
   'src/components/LiveChat.tsx',
   'src/components/LazyLiveChat.tsx',
-  'About CTAs',
 ] as const;

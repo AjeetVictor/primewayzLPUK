@@ -497,16 +497,14 @@ test('service-page Phase 2B remains unchanged', () => {
   assert.match(software, /SDAAS_CAPACITY_REQUEST_PATH|request-capacity/);
 });
 
-test('Navbar remains unchanged', () => {
+test('Navbar Phase 2D wiring must not use Phase 2C placements', () => {
   const nav = read('src/components/Navbar.tsx');
-  assert.doesNotMatch(nav, /DigitalSystemsReviewCtaGroup/);
-  assert.doesNotMatch(nav, /buildFreeReviewCtaUrl/);
+  assert.doesNotMatch(nav, /success_stories_listing_|success_story_hero_|blog_article_|sdaas_supporting_article_/);
 });
 
-test('Footer remains unchanged', () => {
+test('Footer Phase 2D wiring must not use Phase 2C placements', () => {
   const footer = read('src/components/Footer.tsx');
-  assert.doesNotMatch(footer, /DigitalSystemsReviewCtaGroup/);
-  assert.doesNotMatch(footer, /buildFreeReviewCtaUrl/);
+  assert.doesNotMatch(footer, /success_stories_listing_|success_story_hero_|blog_article_|sdaas_supporting_article_/);
 });
 
 test('LiveChat remains unchanged', () => {
@@ -521,7 +519,7 @@ test('LazyLiveChat remains unchanged', () => {
   assert.doesNotMatch(chat, /buildFreeReviewCtaUrl/);
 });
 
-test('About remains unchanged', () => {
+test('About Phase 2D wiring must not use Phase 2C placements', () => {
   const aboutCandidates = [
     'src/components/AboutPage.tsx',
     'src/components/About.tsx',
@@ -530,8 +528,7 @@ test('About remains unchanged', () => {
   const aboutFile = aboutCandidates.find((p) => fs.existsSync(path.join(root, p)));
   assert.ok(aboutFile, 'expected an About page component');
   const about = read(aboutFile!);
-  assert.doesNotMatch(about, /DigitalSystemsReviewCtaGroup/);
-  assert.doesNotMatch(about, /success_story_hero_|blog_article_/);
+  assert.doesNotMatch(about, /success_story_hero_|blog_article_|sdaas_supporting_article_/);
 });
 
 test('Contact remains unchanged', () => {

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Building2, Globe2, MapPin, ShieldCheck } from 'lucide-react';
 import { COMPANY_TRUST_LINKS, COMPANY_SOCIAL_LINKS } from '../constants/companyTrustLinks';
-import { TrackedLink } from './common/TrackedLink';
+import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
 import { SelfAuditCta } from './SelfAuditCta';
 
 export const AboutUsPage = () => (
@@ -108,25 +108,14 @@ export const AboutUsPage = () => (
               </a>
             ))}
           </div>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <TrackedLink
-              href={COMPANY_TRUST_LINKS.contact}
-              ctaText="Request a free digital visibility review"
-              ctaLocation="about_us_page"
-              eventType="cta_click"
-              className="inline-flex min-h-[46px] items-center justify-center rounded-xl bg-[#000A2D] px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-950"
-            >
-              Request a free digital visibility review
-            </TrackedLink>
-            <TrackedLink
-              href={COMPANY_TRUST_LINKS.digitalVisibilityChecker}
-              ctaText="Run the free web presence audit"
-              ctaLocation="about_us_page"
-              eventType="cta_click"
-              className="inline-flex min-h-[46px] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
-            >
-              Run the free web presence audit
-            </TrackedLink>
+          <div className="mt-8" data-about-conversion-group>
+            <DigitalSystemsReviewCtaGroup
+              sourceLocation="about_page"
+              serviceArea="Not sure yet"
+              primaryPlacement="about_primary"
+              secondaryPlacement="about_secondary"
+              variant="closing"
+            />
           </div>
         </article>
       </div>

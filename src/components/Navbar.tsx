@@ -1,15 +1,16 @@
-import { TrackedLink } from './common/TrackedLink';
 import { motion, AnimatePresence } from 'motion/react';
 import { Menu, Phone, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { SITE_CONTAINER_CLASS } from '../constants/siteLayout';
-import { BOOK_CALL_URL } from '../constants/contactBooking';
 import { LOGO_LIGHT_SRC, shellClasses } from '../constants/designSystem';
 import { mainNavLinks } from '../constants/navigation';
-import { SelfAuditCta } from './SelfAuditCta';
+import { DigitalSystemsReviewCtaLink } from './conversion/DigitalSystemsReviewCtaLink';
 import { ServicesMegaMenu } from './navigation/ServicesMegaMenu';
 import { cn } from '../utils/cn';
+
+const NAV_SOURCE = 'navigation' as const;
+const NAV_SERVICE = 'Not sure yet' as const;
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,6 +29,15 @@ export const Navbar = () => {
   useEffect(() => {
     setIsOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen]);
 
   const isNavActive = (href: string, matchPath?: string) => {
     if (matchPath) {
@@ -85,22 +95,19 @@ export const Navbar = () => {
                 <Phone className="h-4 w-4 text-brand-cyan" strokeWidth={2.15} aria-hidden />
                 +44 7588 741740
               </a>
-              <TrackedLink
-                href={BOOK_CALL_URL}
-                ctaText="Book a call"
-                ctaLocation="navbar_desktop"
-                eventType="book_call_click_header"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+              <DigitalSystemsReviewCtaLink
+                kind="discovery"
+                sourceLocation={NAV_SOURCE}
+                serviceArea={NAV_SERVICE}
+                placement="navigation_desktop_secondary"
                 className={shellClasses.btnOutlineAudit}
-              >
-                Book a call
-              </TrackedLink>
-              <SelfAuditCta
-                variant="nav"
-                utmContent="header_nav"
-                ctaLocation="header_nav"
-                className={shellClasses.btnPrimary}
+              />
+              <DigitalSystemsReviewCtaLink
+                kind="review"
+                sourceLocation={NAV_SOURCE}
+                serviceArea={NAV_SERVICE}
+                placement="navigation_desktop_primary"
+                className={cn(shellClasses.btnPrimary, 'max-w-[14rem] text-center leading-snug xl:max-w-none')}
               />
             </div>
             <button
@@ -145,24 +152,25 @@ export const Navbar = () => {
                     {link.name}
                   </a>
                 ))}
-                <SelfAuditCta
-                  variant="nav"
-                  utmContent="header_nav"
-                  ctaLocation="header_nav_mobile"
+                <DigitalSystemsReviewCtaLink
+                  kind="review"
+                  sourceLocation={NAV_SOURCE}
+                  serviceArea={NAV_SERVICE}
+                  placement="navigation_mobile_primary"
                   onClick={() => setIsOpen(false)}
-                  className={cn(shellClasses.btnOutlineAudit, 'mt-3 w-full')}
+                  className={cn(
+                    shellClasses.btnPrimary,
+                    'mt-3 w-full min-h-[44px] whitespace-normal px-4 py-3 text-center leading-snug',
+                  )}
                 />
-                <TrackedLink
-                  href={BOOK_CALL_URL}
-                  ctaText="Book a call"
-                  ctaLocation="navbar_mobile"
-                  eventType="book_call_click_header"
+                <DigitalSystemsReviewCtaLink
+                  kind="discovery"
+                  sourceLocation={NAV_SOURCE}
+                  serviceArea={NAV_SERVICE}
+                  placement="navigation_mobile_secondary"
                   onClick={() => setIsOpen(false)}
-                  whileTap={{ scale: 0.99 }}
-                  className={cn(shellClasses.btnPrimary, 'mt-2 w-full')}
-                >
-                  Book a call
-                </TrackedLink>
+                  className={cn(shellClasses.btnOutlineAudit, 'mt-2 w-full min-h-[44px]')}
+                />
               </div>
             </div>
           </motion.div>

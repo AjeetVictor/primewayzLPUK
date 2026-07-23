@@ -535,10 +535,8 @@ test('software capacity-request CTAs remain unchanged', () => {
   assert.match(page, /serviceArea="Software & Product Engineering"/);
 });
 
-test('Navbar, Footer, LiveChat, LazyLiveChat and ProfessionalServicesCrmSupportUkPage remain untouched', () => {
+test('LiveChat, LazyLiveChat and ProfessionalServicesCrmSupportUkPage remain untouched', () => {
   for (const file of [
-    'src/components/Navbar.tsx',
-    'src/components/Footer.tsx',
     'src/components/LiveChat.tsx',
     'src/components/LazyLiveChat.tsx',
   ]) {
@@ -555,6 +553,14 @@ test('Navbar, Footer, LiveChat, LazyLiveChat and ProfessionalServicesCrmSupportU
   assert.doesNotMatch(source, /DigitalSystemsReviewCtaGroup/);
   assert.doesNotMatch(source, /review_service=/);
   assert.doesNotMatch(source, /buildFreeReviewCtaUrl/);
+});
+
+test('Navbar and Footer Phase 2D wiring must not use service_page source', () => {
+  for (const file of ['src/components/Navbar.tsx', 'src/components/Footer.tsx']) {
+    const source = read(file);
+    assert.doesNotMatch(source, /sourceLocation="service_page"/);
+    assert.doesNotMatch(source, /sourceLocation="services_page"/);
+  }
 });
 
 test('preservation: SelfAuditCta, authority proof, contact, chrome and Phase 2A remain', () => {
