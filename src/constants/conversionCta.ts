@@ -107,6 +107,16 @@ export const FREE_REVIEW_CTA_PLACEMENTS = [
   'remote_it_hero_secondary',
   'remote_it_final_primary',
   'remote_it_final_secondary',
+  'success_stories_listing_primary',
+  'success_stories_listing_secondary',
+  'success_story_hero_primary',
+  'success_story_hero_secondary',
+  'success_story_final_primary',
+  'success_story_final_secondary',
+  'blog_article_primary',
+  'blog_article_secondary',
+  'sdaas_supporting_article_primary',
+  'sdaas_supporting_article_secondary',
 ] as const;
 
 export type FreeReviewCtaPlacement = (typeof FREE_REVIEW_CTA_PLACEMENTS)[number];
@@ -211,7 +221,7 @@ export function buildFreeReviewCtaUrl(
   return query ? `${FREE_REVIEW_ROUTE}?${query}` : FREE_REVIEW_ROUTE;
 }
 
-/** Remaining Phase 2 CTA surfaces — not wired in Phase 2A/2B. */
+/** Remaining Phase 2 CTA surfaces — not wired in Phase 2A/2B/2C. */
 export const PHASE2_CTA_ROLLOUT_FILES = [
   'src/components/Navbar.tsx',
   'src/components/hero/HeroSplitSlider.tsx',
@@ -219,7 +229,5 @@ export const PHASE2_CTA_ROLLOUT_FILES = [
   'src/components/Footer.tsx',
   'src/components/LiveChat.tsx',
   'src/components/LazyLiveChat.tsx',
-  'success-story CTAs',
-  'blog / article CTAs',
   'About CTAs',
 ] as const;

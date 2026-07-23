@@ -16,7 +16,7 @@ import {
   SUCCESS_STORIES_BASE_PATH,
   type SuccessStoryIconKey,
 } from '../data/successStories';
-import { TrackedLink } from './common/TrackedLink';
+import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
 
 const iconByKey: Record<SuccessStoryIconKey, typeof Layers> = {
   layers: Layers,
@@ -112,20 +112,18 @@ export const AuthorityStoryDetailPage = () => {
                 initial={{ opacity: 0, y: 18 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.24 }}
-                className="mt-8 flex flex-wrap gap-4"
+                className="mt-8 flex flex-col gap-4"
               >
-                <TrackedLink
-                  href={story.ctaHref}
-                  ctaText={story.ctaLabel}
-                  ctaLocation={`success_story_${story.slug}`}
-                  eventType="book_call_click"
-                  className="inline-flex min-h-[48px] items-center justify-center rounded-xl bg-[#000A2D] px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-700"
-                >
-                  {story.ctaLabel}
-                </TrackedLink>
+                <DigitalSystemsReviewCtaGroup
+                  sourceLocation="success_story"
+                  serviceArea={story.reviewServiceArea}
+                  primaryPlacement="success_story_hero_primary"
+                  secondaryPlacement="success_story_hero_secondary"
+                  variant="hero"
+                />
                 <Link
                   to={SUCCESS_STORIES_BASE_PATH}
-                  className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-slate-200 px-6 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-300"
+                  className="inline-flex min-h-[48px] w-fit items-center justify-center rounded-xl border border-slate-200 px-6 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-300"
                 >
                   View all stories
                 </Link>
@@ -287,18 +285,19 @@ export const AuthorityStoryDetailPage = () => {
         <div className="mx-auto max-w-[1200px] rounded-[2rem] border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-8 text-center sm:p-12">
           <h2 className="text-3xl font-black tracking-tight text-[#000A2D]">Planning similar work?</h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
-            Talk through your platform, product or customer-experience priorities with the Primewayz UK team.
+            Share the platform, product or customer-experience challenge creating friction. We will review
+            the context and identify the most useful starting point.
           </p>
-          <TrackedLink
-            href={story.ctaHref}
-            ctaText={story.ctaLabel}
-            ctaLocation={`success_story_${story.slug}_footer`}
-            eventType="book_call_click"
-            className="mt-8 inline-flex min-h-[48px] items-center justify-center rounded-xl bg-[#000A2D] px-8 py-3 text-sm font-bold text-white transition hover:bg-emerald-700"
-          >
-            {story.ctaLabel}
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </TrackedLink>
+          <div className="mt-8 flex justify-center">
+            <DigitalSystemsReviewCtaGroup
+              sourceLocation="success_story"
+              serviceArea={story.reviewServiceArea}
+              primaryPlacement="success_story_final_primary"
+              secondaryPlacement="success_story_final_secondary"
+              variant="closing"
+              className="items-center"
+            />
+          </div>
         </div>
       </section>
     </main>

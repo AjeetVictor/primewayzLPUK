@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { TrackedLink } from './common/TrackedLink';
 import { SelfAuditCta } from './SelfAuditCta';
+import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
 import { getPublishedSuccessStories, getSuccessStoryPath } from '../data/successStories';
 import { successStoryIconByKey } from '../data/successStoryIcons';
 
@@ -96,19 +96,26 @@ export const SuccessStoriesPage = () => (
         </div>
 
         <div className="mt-16 rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center sm:p-10">
-          <h2 className="text-2xl font-bold text-slate-950">Planning a similar improvement?</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-            Talk through your platform, product or customer-experience priorities with the Primewayz UK team.
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-emerald-600">
+            A practical next step
           </p>
-          <TrackedLink
-            href="/contact-us#book-call"
-            ctaText="Book a UK discovery call"
-            ctaLocation="success_stories_listing"
-            eventType="book_call_click"
-            className="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-lg bg-[#000A2D] px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-700"
-          >
-            Book a UK discovery call
-          </TrackedLink>
+          <h2 className="mt-3 text-2xl font-bold text-slate-950">
+            Review where your digital systems need attention next
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+            Share the website, application, workflow or delivery challenge creating friction. We will
+            review the context and identify the most useful starting point.
+          </p>
+          <div className="mt-6 flex justify-center">
+            <DigitalSystemsReviewCtaGroup
+              sourceLocation="success_story"
+              serviceArea="Not sure yet"
+              primaryPlacement="success_stories_listing_primary"
+              secondaryPlacement="success_stories_listing_secondary"
+              variant="closing"
+              className="items-center sm:items-center"
+            />
+          </div>
         </div>
       </div>
     </section>

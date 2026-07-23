@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Calendar, CheckCircle2, Clock, User } from 'lucide-react';
 import { CANONICAL_ROUTES } from '../../constants/canonicalRoutes';
 import { CommercialSectionVisual } from '../commercial/CommercialSectionVisual';
+import { DigitalSystemsReviewCtaGroup } from '../conversion/DigitalSystemsReviewCtaGroup';
 import { SdaasFaqAccordion } from '../sdaas/SdaasFaqAccordion';
 import type {
   SupportingArticleBlock,
@@ -435,6 +436,29 @@ export function SdaasSupportingArticlePage({ article }: SdaasSupportingArticlePa
             ) : null}
           </div>
         </ArticleSection>
+
+        <section className="mt-4 scroll-mt-24 rounded-2xl border border-slate-200 bg-slate-50/80 px-5 py-8 sm:px-6 sm:py-10">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">
+            Need help applying this to your systems?
+          </p>
+          <h2 className="mt-3 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+            Start with a review of your software priorities
+          </h2>
+          <p className="mt-4 max-w-2xl text-base leading-8 text-slate-700">
+            Share the applications, backlog, integrations or delivery challenges creating friction. We
+            will review the context and identify the most useful next step without assuming a
+            subscription is the answer.
+          </p>
+          <div className="mt-6">
+            <DigitalSystemsReviewCtaGroup
+              sourceLocation="article"
+              serviceArea="Software & Product Engineering"
+              primaryPlacement="sdaas_supporting_article_primary"
+              secondaryPlacement="sdaas_supporting_article_secondary"
+              variant="closing"
+            />
+          </div>
+        </section>
 
         <section className="mt-4 scroll-mt-24 border-t border-slate-100 py-12 sm:py-14">
           <h2 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">

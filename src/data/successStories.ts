@@ -1,3 +1,5 @@
+import type { FreeReviewServiceArea } from '../constants/conversionCta';
+
 export type SuccessStoryRelationshipType = 'Anonymised client delivery' | 'Primewayz product';
 
 export type SuccessStoryConfidentiality = 'Anonymised client delivery' | 'Primewayz product';
@@ -27,7 +29,11 @@ export interface SuccessStory {
   technologies: readonly string[];
   relatedServicePaths: readonly string[];
   relatedServiceLabels: readonly string[];
+  /** Explicit review-form service preselection for story-detail CTAs. */
+  reviewServiceArea: FreeReviewServiceArea;
+  /** @deprecated Kept for compatibility; story-detail conversion UI no longer uses this. */
   ctaLabel: string;
+  /** @deprecated Kept for compatibility; story-detail conversion UI no longer uses this. */
   ctaHref: string;
   seoTitle: string;
   seoDescription: string;
@@ -133,6 +139,7 @@ const successStories: readonly SuccessStory[] = [
       'Remote IT team extension',
       'CRM and workflow automation',
     ],
+    reviewServiceArea: 'Managed Application & Website Support',
     ctaLabel: 'Discuss platform continuity support',
     ctaHref: '/contact-us#book-call',
     seoTitle: 'Wholesale Order Management Platform Support | Primewayz UK',
@@ -209,6 +216,7 @@ const successStories: readonly SuccessStory[] = [
       'Website visibility and conversion support',
       'Managed application and website support',
     ],
+    reviewServiceArea: 'Software & Product Engineering',
     ctaLabel: 'Discuss product and platform engineering',
     ctaHref: '/contact-us#book-call',
     seoTitle: 'Book Rental & Commerce Platform Case Study | Primewayz UK',
@@ -287,6 +295,7 @@ const successStories: readonly SuccessStory[] = [
       'CRM and workflow automation',
       'Website visibility and conversion support',
     ],
+    reviewServiceArea: 'Software & Product Engineering',
     ctaLabel: 'Discuss a customer-facing product build',
     ctaHref: '/contact-us#book-call',
     seoTitle: 'Restaurant Self-Ordering Platform Case Study | Primewayz UK',
