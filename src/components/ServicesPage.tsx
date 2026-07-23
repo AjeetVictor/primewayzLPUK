@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
 import { SelfAuditCta } from './SelfAuditCta';
+import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
 import { CANONICAL_ROUTES } from '../constants/canonicalRoutes';
 import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../lib/utm';
 import { getSuccessStoryPath } from '../data/successStories';
@@ -207,23 +208,20 @@ export const ServicesPage = () => (
               monthly plan, managed support arrangement or dedicated technical team.
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <TrackedLink
-                href="/contact-us#book-call"
-                ctaText="Discuss Your Digital Priorities"
-                ctaLocation="services_hero"
-                eventType="book_call_click"
-                className="inline-flex min-h-[48px] items-center justify-center rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-emerald-950/20 transition hover:bg-emerald-300"
-              >
-                Discuss Your Digital Priorities
-              </TrackedLink>
-
+            <div className="mt-8 flex flex-col gap-4">
+              <DigitalSystemsReviewCtaGroup
+                sourceLocation="services_page"
+                serviceArea="Not sure yet"
+                primaryPlacement="services_hero_primary"
+                secondaryPlacement="services_hero_secondary"
+                variant="onDark"
+              />
               <TrackedLink
                 href="/pricing"
                 ctaText="View engagement options"
                 ctaLocation="services_hero"
                 eventType="pricing_plan_click"
-                className="inline-flex min-h-[48px] items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-sm font-bold text-white transition hover:border-white/40 hover:bg-white/10"
+                className="inline-flex min-h-[44px] w-fit items-center text-sm font-medium text-white/75 underline-offset-2 transition hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50"
               >
                 View engagement options
               </TrackedLink>
@@ -476,20 +474,18 @@ export const ServicesPage = () => (
           </h2>
 
           <p className="mt-4 text-base leading-7 text-slate-200">
-            Book a discovery call and we will help identify whether your business should start with
-            software delivery, website maintenance, CRM integration, a Foundation Sprint, or maintenance mode.
+            Share the current context across your website, CRM, software or support model. We will
+            review what you submit and identify the most useful starting service—without obligation.
           </p>
         </div>
 
-        <TrackedLink
-          href="/contact-us#book-call"
-          ctaText="Discuss services"
-          ctaLocation="services_final_cta"
-          eventType="book_call_click"
-          className="inline-flex min-h-[52px] items-center justify-center rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-300"
-        >
-          Discuss your support needs
-        </TrackedLink>
+        <DigitalSystemsReviewCtaGroup
+          sourceLocation="services_page"
+          serviceArea="Not sure yet"
+          primaryPlacement="services_final_primary"
+          secondaryPlacement="services_final_secondary"
+          variant="onDark"
+        />
       </div>
     </section>
   </main>

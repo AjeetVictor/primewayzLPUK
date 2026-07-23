@@ -2,8 +2,10 @@ import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
 import { SelfAuditCta } from './SelfAuditCta';
+import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
 import { AuthorityProofSection } from './sections/AuthorityProofSection';
 import { getSuccessStoryPath } from '../data/successStories';
+import type { FreeReviewCtaPlacement, FreeReviewServiceArea } from '../constants/conversionCta';
 
 const visibilitySupportItems = [
   'Technical search visibility, crawlability and indexability checks',
@@ -122,9 +124,6 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => {
     : 'Maintain the reliability, security and performance of existing websites and applications through monitoring, fixes, updates and controlled ongoing improvements.';
   const supportItems = isVisibilityPage ? visibilitySupportItems : maintenanceSupportItems;
   const painPoints = isVisibilityPage ? visibilityPainPoints : maintenancePainPoints;
-  const primaryCtaText = isVisibilityPage
-    ? 'Discuss website visibility priorities'
-    : 'Discuss managed support needs';
   const supportHeading = isVisibilityPage
     ? 'Website visibility and conversion support that improves discovery and enquiry readiness'
     : 'Managed support that protects reliability and enables controlled improvement';
@@ -141,15 +140,26 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => {
     ? 'Start with a website visibility review'
     : 'Start with a managed support review';
   const finalLead = isVisibilityPage
-    ? 'We will review what affects discovery, trust and enquiry completion, and what should be improved first.'
-    : 'We will review what is stable, what needs fixing, what affects continuity, and what should be improved first.';
-  const finalCtaText = isVisibilityPage
-    ? 'Book a website visibility review'
-    : 'Book a managed support review';
-  const ctaLocation = isVisibilityPage ? 'website_visibility_hero' : 'website_maintenance_hero';
-  const finalCtaLocation = isVisibilityPage
-    ? 'website_visibility_final_cta'
-    : 'website_maintenance_final_cta';
+    ? 'Share where discovery, trust or enquiry completion is creating friction. We will review the submitted context and identify a practical next step—without obligation.'
+    : 'Share where reliability, fixes, updates or continuity are creating friction. We will review the submitted context and identify a practical next step—without obligation.';
+  const reviewServiceArea: FreeReviewServiceArea = isVisibilityPage
+    ? 'Website Visibility & Conversion'
+    : 'Managed Application & Website Support';
+  const heroPrimaryPlacement: FreeReviewCtaPlacement = isVisibilityPage
+    ? 'website_visibility_hero_primary'
+    : 'managed_support_hero_primary';
+  const heroSecondaryPlacement: FreeReviewCtaPlacement = isVisibilityPage
+    ? 'website_visibility_hero_secondary'
+    : 'managed_support_hero_secondary';
+  const finalPrimaryPlacement: FreeReviewCtaPlacement = isVisibilityPage
+    ? 'website_visibility_final_primary'
+    : 'managed_support_final_primary';
+  const finalSecondaryPlacement: FreeReviewCtaPlacement = isVisibilityPage
+    ? 'website_visibility_final_secondary'
+    : 'managed_support_final_secondary';
+  const pricingCtaLocation = isVisibilityPage
+    ? 'website_visibility_hero'
+    : 'website_maintenance_hero';
 
   return (
     <main className="min-h-screen bg-white text-slate-950">
@@ -177,23 +187,20 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => {
 
               <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">{intro}</p>
 
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <TrackedLink
-                  href="/contact-us#book-call"
-                  ctaText={primaryCtaText}
-                  ctaLocation={ctaLocation}
-                  eventType="book_call_click"
-                  className="inline-flex min-h-[48px] items-center justify-center rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-emerald-950/20 transition hover:bg-emerald-300"
-                >
-                  {primaryCtaText}
-                </TrackedLink>
-
+              <div className="mt-8 flex flex-col gap-4">
+                <DigitalSystemsReviewCtaGroup
+                  sourceLocation="service_page"
+                  serviceArea={reviewServiceArea}
+                  primaryPlacement={heroPrimaryPlacement}
+                  secondaryPlacement={heroSecondaryPlacement}
+                  variant="onDark"
+                />
                 <TrackedLink
                   href="/pricing"
                   ctaText="View engagement options"
-                  ctaLocation={ctaLocation}
+                  ctaLocation={pricingCtaLocation}
                   eventType="pricing_plan_click"
-                  className="inline-flex min-h-[48px] items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-sm font-bold text-white transition hover:border-white/40 hover:bg-white/10"
+                  className="inline-flex min-h-[44px] w-fit items-center text-sm font-medium text-white/75 underline-offset-2 transition hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50"
                 >
                   View engagement options
                 </TrackedLink>
@@ -420,15 +427,13 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => {
             <p className="mt-4 text-base leading-7 text-slate-200">{finalLead}</p>
           </div>
 
-          <TrackedLink
-            href="/contact-us#book-call"
-            ctaText={finalCtaText}
-            ctaLocation={finalCtaLocation}
-            eventType="book_call_click"
-            className="inline-flex min-h-[52px] items-center justify-center rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-300"
-          >
-            {finalCtaText}
-          </TrackedLink>
+          <DigitalSystemsReviewCtaGroup
+            sourceLocation="service_page"
+            serviceArea={reviewServiceArea}
+            primaryPlacement={finalPrimaryPlacement}
+            secondaryPlacement={finalSecondaryPlacement}
+            variant="onDark"
+          />
         </div>
       </section>
     </main>

@@ -1,6 +1,6 @@
 /**
  * Central conversion CTA configuration for Priority 3 digital systems review.
- * Phase 2A wires homepage Hero + closing section only — not Navbar/Footer/chat/site-wide yet.
+ * Phase 2A: homepage Hero + closing. Phase 2B: services hub + core service pages.
  */
 
 import { BOOK_CALL_URL } from './contactBooking.ts';
@@ -15,8 +15,11 @@ export const DISCOVERY_CALL_CTA_LABEL = 'Book a discovery call' as const;
 /** Website checker CTA label. */
 export const WEBSITE_CHECKER_CTA_LABEL = 'Run the free website visibility check' as const;
 
-/** Allowlisted query key for homepage → review source handoff (no PII). */
+/** Allowlisted query key for CTA → review source handoff (no PII). */
 export const FREE_REVIEW_SOURCE_QUERY_PARAM = 'review_source' as const;
+
+/** Allowlisted query key for CTA → review service-area preselection (no PII). */
+export const FREE_REVIEW_SERVICE_QUERY_PARAM = 'review_service' as const;
 
 /** Landing route for the free digital systems review form. */
 export const FREE_REVIEW_ROUTE = CANONICAL_ROUTES.digitalSystemsReview;
@@ -75,18 +78,41 @@ export type FreeReviewSourceLocation = (typeof FREE_REVIEW_SOURCE_LOCATIONS)[num
 export const DEFAULT_FREE_REVIEW_SOURCE_LOCATION: FreeReviewSourceLocation =
   'digital_systems_review_page';
 
-/** Approved homepage CTA placement values for analytics (no PII). */
+/** Approved CTA placement values for analytics (no PII). */
 export const FREE_REVIEW_CTA_PLACEMENTS = [
   'homepage_hero_primary',
   'homepage_hero_secondary',
   'homepage_closing_primary',
   'homepage_closing_secondary',
   'homepage_hero_website_checker',
+  'services_hero_primary',
+  'services_hero_secondary',
+  'services_final_primary',
+  'services_final_secondary',
+  'website_visibility_hero_primary',
+  'website_visibility_hero_secondary',
+  'website_visibility_final_primary',
+  'website_visibility_final_secondary',
+  'managed_support_hero_primary',
+  'managed_support_hero_secondary',
+  'managed_support_final_primary',
+  'managed_support_final_secondary',
+  'crm_hero_primary',
+  'crm_hero_secondary',
+  'crm_final_primary',
+  'crm_final_secondary',
+  'software_review_primary',
+  'software_review_secondary',
+  'remote_it_hero_primary',
+  'remote_it_hero_secondary',
+  'remote_it_final_primary',
+  'remote_it_final_secondary',
 ] as const;
 
 export type FreeReviewCtaPlacement = (typeof FREE_REVIEW_CTA_PLACEMENTS)[number];
 
 const SOURCE_LOCATION_SET = new Set<string>(FREE_REVIEW_SOURCE_LOCATIONS);
+const SERVICE_AREA_SET = new Set<string>(FREE_REVIEW_SERVICE_AREAS);
 
 /**
  * Resolve an untrusted review_source query value to an allowlisted sourceLocation.
@@ -127,22 +153,65 @@ export function resolveFreeReviewSourceLocation(
 }
 
 /**
- * Build a relative free-review CTA URL with a safe review_source handoff param.
- * Canonical route remains FREE_REVIEW_ROUTE (query-free) for SEO; CTAs may add the param.
+ * Resolve an untrusted review_service query value to an allowlisted service area.
+ * Invalid values return null (no preselection) without affecting source resolution.
+ */
+export function resolveFreeReviewServiceArea(
+  value: unknown,
+): FreeReviewServiceArea | null {
+  if (value == null) return null;
+  if (Array.isArray(value)) return null;
+  if (typeof value !== 'string') return null;
+
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  // Reject URLs, protocol-relative paths, and path traversal.
+  if (
+    trimmed.length > 120
+    || /^[a-z][a-z0-9+.-]*:/i.test(trimmed)
+    || trimmed.startsWith('//')
+    || trimmed.includes('://')
+    || trimmed.includes('..')
+    || /[\\?#]/.test(trimmed)
+  ) {
+    return null;
+  }
+
+  if (!SERVICE_AREA_SET.has(trimmed)) {
+    return null;
+  }
+
+  return trimmed as FreeReviewServiceArea;
+}
+
+/**
+ * Build a relative free-review CTA URL with safe review_source / review_service handoff.
+ * Canonical route remains FREE_REVIEW_ROUTE (query-free) for SEO; CTAs may add params.
  */
 export function buildFreeReviewCtaUrl(
   sourceLocation: FreeReviewSourceLocation,
+  serviceArea?: FreeReviewServiceArea | null,
 ): string {
   const resolved = resolveFreeReviewSourceLocation(sourceLocation);
-  if (resolved === DEFAULT_FREE_REVIEW_SOURCE_LOCATION) {
-    return FREE_REVIEW_ROUTE;
-  }
+  const resolvedService =
+    serviceArea === undefined || serviceArea === null
+      ? null
+      : resolveFreeReviewServiceArea(serviceArea);
+
   const params = new URLSearchParams();
-  params.set(FREE_REVIEW_SOURCE_QUERY_PARAM, resolved);
-  return `${FREE_REVIEW_ROUTE}?${params.toString()}`;
+  if (resolved !== DEFAULT_FREE_REVIEW_SOURCE_LOCATION) {
+    params.set(FREE_REVIEW_SOURCE_QUERY_PARAM, resolved);
+  }
+  if (resolvedService) {
+    params.set(FREE_REVIEW_SERVICE_QUERY_PARAM, resolvedService);
+  }
+
+  const query = params.toString();
+  return query ? `${FREE_REVIEW_ROUTE}?${query}` : FREE_REVIEW_ROUTE;
 }
 
-/** Remaining Phase 2 CTA surfaces — not wired in Phase 2A. */
+/** Remaining Phase 2 CTA surfaces — not wired in Phase 2A/2B. */
 export const PHASE2_CTA_ROLLOUT_FILES = [
   'src/components/Navbar.tsx',
   'src/components/hero/HeroSplitSlider.tsx',
@@ -150,7 +219,6 @@ export const PHASE2_CTA_ROLLOUT_FILES = [
   'src/components/Footer.tsx',
   'src/components/LiveChat.tsx',
   'src/components/LazyLiveChat.tsx',
-  'service-page primary CTAs',
   'success-story CTAs',
   'blog / article CTAs',
   'About CTAs',

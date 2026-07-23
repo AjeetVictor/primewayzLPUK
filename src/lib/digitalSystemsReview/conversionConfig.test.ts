@@ -16,6 +16,7 @@ import {
   WEBSITE_CHECKER_CTA_LABEL,
   WEBSITE_CHECKER_DESTINATION,
   buildFreeReviewCtaUrl,
+  resolveFreeReviewServiceArea,
   resolveFreeReviewSourceLocation,
 } from '../../constants/conversionCta.ts';
 import { CANONICAL_ROUTES } from '../../constants/canonicalRoutes.ts';
@@ -94,4 +95,18 @@ test('source handoff helpers build and resolve allowlisted review_source values'
   );
   assert.equal(resolveFreeReviewSourceLocation('homepage'), 'homepage');
   assert.equal(resolveFreeReviewSourceLocation('not-real'), 'digital_systems_review_page');
+});
+
+test('service handoff helpers encode allowlisted review_service values', () => {
+  assert.equal(
+    resolveFreeReviewServiceArea('CRM & Workflow Automation'),
+    'CRM & Workflow Automation',
+  );
+  assert.equal(resolveFreeReviewServiceArea('not-real'), null);
+  const url = buildFreeReviewCtaUrl('service_page', 'CRM & Workflow Automation');
+  assert.match(url, /^\/digital-systems-review\?/);
+  const params = new URLSearchParams(url.split('?')[1]);
+  assert.equal(params.get('review_source'), 'service_page');
+  assert.equal(params.get('review_service'), 'CRM & Workflow Automation');
+  assert.match(url, /%26|\+/);
 });

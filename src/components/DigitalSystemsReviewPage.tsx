@@ -5,9 +5,11 @@ import {
   DISCOVERY_CALL_CTA_LABEL,
   DISCOVERY_CALL_DESTINATION,
   FREE_REVIEW_CTA_LABEL,
+  FREE_REVIEW_SERVICE_QUERY_PARAM,
   FREE_REVIEW_SOURCE_QUERY_PARAM,
   WEBSITE_CHECKER_CTA_LABEL,
   WEBSITE_CHECKER_DESTINATION,
+  resolveFreeReviewServiceArea,
   resolveFreeReviewSourceLocation,
 } from '../constants/conversionCta';
 import { CANONICAL_ROUTES } from '../constants/canonicalRoutes';
@@ -36,14 +38,26 @@ export function DigitalSystemsReviewPage() {
     return resolveFreeReviewSourceLocation(rawValues[0]);
   }, [searchParams]);
 
+  const initialServiceArea = useMemo(() => {
+    const rawValues = searchParams.getAll(FREE_REVIEW_SERVICE_QUERY_PARAM);
+    if (rawValues.length === 0) {
+      return resolveFreeReviewServiceArea(null);
+    }
+    if (rawValues.length > 1) {
+      return resolveFreeReviewServiceArea(rawValues);
+    }
+    return resolveFreeReviewServiceArea(rawValues[0]);
+  }, [searchParams]);
+
   useEffect(() => {
     const payload = buildDigitalSystemsReviewAnalyticsPayload({
       sourceLocation,
       route: DIGITAL_SYSTEMS_REVIEW_PATH,
+      ...(initialServiceArea ? { serviceArea: initialServiceArea } : {}),
     });
     assertNoProhibitedAnalyticsProps(payload);
     trackConversionEvent('free_review_page_view', payload);
-  }, [sourceLocation]);
+  }, [sourceLocation, initialServiceArea]);
 
   const onBookCallClick = () => {
     const payload = buildDigitalSystemsReviewAnalyticsPayload({
@@ -88,7 +102,10 @@ export function DigitalSystemsReviewPage() {
       <section className="px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-[1100px] gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-start">
           <div className="rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur-sm sm:p-8">
-            <DigitalSystemsReviewForm sourceLocation={sourceLocation} />
+            <DigitalSystemsReviewForm
+              sourceLocation={sourceLocation}
+              initialServiceArea={initialServiceArea ?? undefined}
+            />
           </div>
 
           <aside className="space-y-8">

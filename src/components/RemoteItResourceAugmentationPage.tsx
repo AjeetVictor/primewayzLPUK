@@ -1,9 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
-import { TrackedLink } from './common/TrackedLink';
 import { SelfAuditCta } from './SelfAuditCta';
-import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../lib/utm';
-import { BOOK_CALL_URL } from '../constants/contactBooking';
+import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
 import { AuthorityProofSection } from './sections/AuthorityProofSection';
 
 const resourceTypes = [
@@ -90,13 +88,6 @@ const relatedLinks = [
   },
 ];
 
-const contactHref = buildInternalUtmUrl(
-  BOOK_CALL_URL,
-  'service_page',
-  REMOTE_RESOURCE_CAMPAIGN,
-  'service_page_secondary_cta',
-);
-
 export const RemoteItResourceAugmentationPage = () => (
   <main className="min-h-screen bg-white text-slate-950">
     <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-20 pt-24 text-white sm:px-6 lg:px-8">
@@ -129,30 +120,20 @@ export const RemoteItResourceAugmentationPage = () => (
               headcount.
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <TrackedLink
-                href={buildInternalUtmUrl(
-                  '/remote-it-resources',
-                  'service_page',
-                  REMOTE_RESOURCE_CAMPAIGN,
-                  'service_page_primary_cta',
-                )}
-                ctaText="Explore remote IT resources"
-                ctaLocation="remote_it_hero"
-                className="inline-flex min-h-[48px] items-center justify-center rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-emerald-950/20 transition hover:bg-emerald-300"
+            <div className="mt-8 flex flex-col gap-4">
+              <DigitalSystemsReviewCtaGroup
+                sourceLocation="service_page"
+                serviceArea="Remote IT Team Extension"
+                primaryPlacement="remote_it_hero_primary"
+                secondaryPlacement="remote_it_hero_secondary"
+                variant="onDark"
+              />
+              <a
+                href="#remote-it-resources"
+                className="inline-flex min-h-[44px] w-fit items-center text-sm font-medium text-white/75 underline-offset-2 transition hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50"
               >
                 Explore remote IT resources
-              </TrackedLink>
-
-              <TrackedLink
-                href={contactHref}
-                ctaText="Discuss resource needs"
-                ctaLocation="remote_it_hero"
-                eventType="book_call_click"
-                className="inline-flex min-h-[48px] items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-sm font-bold text-white transition hover:border-white/40 hover:bg-white/10"
-              >
-                Discuss resource needs
-              </TrackedLink>
+              </a>
             </div>
 
             <div className="mt-7 flex flex-wrap gap-2">
@@ -310,22 +291,22 @@ export const RemoteItResourceAugmentationPage = () => (
     <section className="bg-[#000A2D] px-4 py-20 text-white sm:px-6 lg:px-8">
       <div className="mx-auto grid max-w-[1200px] gap-8 rounded-3xl border border-white/10 bg-white/10 p-8 backdrop-blur lg:grid-cols-[1fr_0.7fr] lg:items-center">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Discuss your remote IT capacity needs</h2>
+          <h2 className="text-3xl font-bold tracking-tight">
+            Start with a remote IT capacity review
+          </h2>
           <p className="mt-4 text-base leading-7 text-slate-200">
-            Tell us what delivery gaps you are facing and we will suggest a practical
-            remote resource mix with clear next steps.
+            Share the delivery gaps, roles or capacity constraints creating friction. We will review
+            the submitted context and identify a practical next step—without obligation.
           </p>
         </div>
 
-        <TrackedLink
-          href={contactHref}
-          ctaText="Book a resource planning call"
-          ctaLocation="remote_it_final_cta"
-          eventType="book_call_click"
-          className="inline-flex min-h-[52px] items-center justify-center rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-300"
-        >
-          Book a resource planning call
-        </TrackedLink>
+        <DigitalSystemsReviewCtaGroup
+          sourceLocation="service_page"
+          serviceArea="Remote IT Team Extension"
+          primaryPlacement="remote_it_final_primary"
+          secondaryPlacement="remote_it_final_secondary"
+          variant="onDark"
+        />
       </div>
     </section>
   </main>

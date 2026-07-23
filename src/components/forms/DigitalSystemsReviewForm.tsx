@@ -9,7 +9,9 @@ import {
   REVIEW_FIELD_LIMITS,
   REVIEW_PREFERRED_NEXT_STEPS,
   REVIEW_SERVICE_AREAS,
+  resolveFreeReviewServiceArea,
   type DigitalSystemsReviewSourceLocation,
+  type ReviewServiceArea,
 } from '../../constants/digitalSystemsReview';
 import {
   FREE_REVIEW_CTA_LABEL,
@@ -112,14 +114,20 @@ function isPlausibleWebsite(value: string): boolean {
 
 type DigitalSystemsReviewFormProps = {
   sourceLocation?: DigitalSystemsReviewSourceLocation;
+  /** Optional allowlisted service-area preselection; remains editable. */
+  initialServiceArea?: ReviewServiceArea;
 };
 
 export function DigitalSystemsReviewForm({
   sourceLocation = DEFAULT_REVIEW_SOURCE_LOCATION,
+  initialServiceArea,
 }: DigitalSystemsReviewFormProps) {
   const navigate = useNavigate();
   const formId = useId();
-  const [form, setForm] = useState<FormState>(initialForm);
+  const [form, setForm] = useState<FormState>(() => ({
+    ...initialForm,
+    serviceArea: initialServiceArea ?? '',
+  }));
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [started, setStarted] = useState(false);
@@ -133,12 +141,15 @@ export function DigitalSystemsReviewForm({
     }
   }, [errors]);
 
+  const analyticsServiceArea = () =>
+    resolveFreeReviewServiceArea(form.serviceArea) ?? undefined;
+
   const markStart = () => {
     if (started) return;
     setStarted(true);
     const analyticsPayload = buildDigitalSystemsReviewAnalyticsPayload({
       sourceLocation,
-      serviceArea: form.serviceArea || undefined,
+      serviceArea: analyticsServiceArea(),
       preferredNextStep: form.preferredNextStep || undefined,
       route: DIGITAL_SYSTEMS_REVIEW_PATH,
     });
@@ -154,7 +165,7 @@ export function DigitalSystemsReviewForm({
   const emitError = (errorCategory: string) => {
     const analyticsPayload = buildDigitalSystemsReviewAnalyticsPayload({
       sourceLocation,
-      serviceArea: form.serviceArea || undefined,
+      serviceArea: analyticsServiceArea(),
       preferredNextStep: form.preferredNextStep || undefined,
       route: DIGITAL_SYSTEMS_REVIEW_PATH,
       errorCategory,
@@ -292,7 +303,7 @@ export function DigitalSystemsReviewForm({
 
       const analyticsPayload = buildDigitalSystemsReviewAnalyticsPayload({
         sourceLocation,
-        serviceArea: form.serviceArea,
+        serviceArea: analyticsServiceArea(),
         preferredNextStep: form.preferredNextStep,
         route: DIGITAL_SYSTEMS_REVIEW_PATH,
         resultCategory,

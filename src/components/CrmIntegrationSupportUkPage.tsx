@@ -9,8 +9,8 @@ import {
   ShieldCheck,
   Workflow,
 } from 'lucide-react';
-import { TrackedLink } from './common/TrackedLink';
 import { SelfAuditCta } from './SelfAuditCta';
+import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
 import { AuthorityProofSection } from './sections/AuthorityProofSection';
 import { getSuccessStoryPath } from '../data/successStories';
 
@@ -187,20 +187,17 @@ export function CrmIntegrationSupportUkPage() {
                 administration across enquiry journeys.
               </p>
 
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <TrackedLink
-                  href="/contact-us#book-call"
-                  ctaText="Book a CRM integration review"
-                  ctaLocation="crm_integration_hero"
-                  eventType="book_call_click"
-                  className="inline-flex min-h-[48px] items-center justify-center rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-emerald-950/20 transition hover:bg-emerald-300"
-                >
-                  Book a CRM integration review
-                </TrackedLink>
-
+              <div className="mt-8 flex flex-col gap-4">
+                <DigitalSystemsReviewCtaGroup
+                  sourceLocation="service_page"
+                  serviceArea="CRM & Workflow Automation"
+                  primaryPlacement="crm_hero_primary"
+                  secondaryPlacement="crm_hero_secondary"
+                  variant="onDark"
+                />
                 <a
                   href="#crm-services"
-                  className="inline-flex min-h-[48px] items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-sm font-bold text-white transition hover:border-white/40 hover:bg-white/10"
+                  className="inline-flex min-h-[44px] w-fit items-center text-sm font-medium text-white/75 underline-offset-2 transition hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50"
                 >
                   View CRM support areas
                 </a>
@@ -487,20 +484,19 @@ export function CrmIntegrationSupportUkPage() {
             </h2>
 
             <p className="mt-4 text-base leading-7 text-slate-200">
-              We will review your enquiry flow, CRM setup, integrations, follow-up process,
-              reporting gaps, and automation opportunities before suggesting the next practical step.
+              Share where enquiry capture, CRM records, follow-up or reporting is creating friction.
+              We will review the submitted context and identify a practical next step—without
+              obligation.
             </p>
           </div>
 
-          <TrackedLink
-            href="/contact-us#book-call"
-            ctaText="Book CRM integration consultation"
-            ctaLocation="crm_integration_final_cta"
-            eventType="book_call_click"
-            className="inline-flex min-h-[52px] items-center justify-center rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-300"
-          >
-            Book CRM integration consultation
-          </TrackedLink>
+          <DigitalSystemsReviewCtaGroup
+            sourceLocation="service_page"
+            serviceArea="CRM & Workflow Automation"
+            primaryPlacement="crm_final_primary"
+            secondaryPlacement="crm_final_secondary"
+            variant="onDark"
+          />
         </div>
       </section>
     </main>

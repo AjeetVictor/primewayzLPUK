@@ -6,6 +6,7 @@
 
 import type {
   FreeReviewCtaPlacement,
+  FreeReviewServiceArea,
   FreeReviewSourceLocation,
 } from '../../constants/conversionCta';
 
@@ -19,7 +20,7 @@ export type FreeReviewAnalyticsEvent =
   | 'free_review_cta_click';
 
 export type FreeReviewAnalyticsProps = {
-  service_area?: string;
+  service_area?: FreeReviewServiceArea;
   preferred_next_step?: string;
   source_location?: FreeReviewSourceLocation;
   cta_placement?: FreeReviewCtaPlacement;
@@ -45,7 +46,7 @@ const PROHIBITED_KEYS = [
 export function buildDigitalSystemsReviewAnalyticsPayload(
   props: {
     sourceLocation?: FreeReviewSourceLocation;
-    serviceArea?: string;
+    serviceArea?: FreeReviewServiceArea;
     preferredNextStep?: string;
     ctaPlacement?: FreeReviewCtaPlacement;
     route?: string;

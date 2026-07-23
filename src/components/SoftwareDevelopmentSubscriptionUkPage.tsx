@@ -24,6 +24,7 @@ import { CommercialSectionShell } from './commercial/CommercialSectionShell';
 import { EntityTermLink } from './commercial/EntityTermLink';
 import { MonthlyDeliverySnapshot } from './commercial/MonthlyDeliverySnapshot';
 import { AuthorityProofSection } from './sections/AuthorityProofSection';
+import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
 import { SDAAS_COMMERCIAL_IMAGES } from '../data/sdaas/images';
 import { SDAAS_JOURNEY_STEPS, SDAAS_SECTION_TRANSITIONS } from '../data/sdaas/pageJourney';
 import {
@@ -686,6 +687,31 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
         ]}
         ctaLabel="Read the delivery story"
       />
+
+      <section className="bg-slate-50 px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-[1200px] gap-8 rounded-3xl border border-slate-200 bg-white p-8 lg:grid-cols-[1fr_0.85fr] lg:items-center">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">
+              Not ready to choose a delivery model?
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
+              Start with a review of your software priorities
+            </h2>
+            <p className="mt-4 text-base leading-7 text-slate-600">
+              Share the applications, backlog, integrations or delivery challenges creating friction.
+              We will review the context and identify whether a defined project, monthly capacity,
+              stabilisation work or another starting point appears most appropriate.
+            </p>
+          </div>
+          <DigitalSystemsReviewCtaGroup
+            sourceLocation="service_page"
+            serviceArea="Software & Product Engineering"
+            primaryPlacement="software_review_primary"
+            secondaryPlacement="software_review_secondary"
+            variant="closing"
+          />
+        </div>
+      </section>
 
       {/* Related services */}
       <section className="px-4 py-16 sm:px-6 lg:px-8">

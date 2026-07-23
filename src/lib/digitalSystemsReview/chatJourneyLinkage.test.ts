@@ -7,6 +7,7 @@ import {
   assertNoProhibitedAnalyticsProps,
   buildDigitalSystemsReviewAnalyticsPayload,
 } from './analytics.ts';
+import { resolveFreeReviewServiceArea } from '../../constants/conversionCta.ts';
 import {
   normalizeOptionalChatSessionId,
   readOptionalChatSessionIdFromStorage,
@@ -85,7 +86,7 @@ test('chatSessionId is not included in analytics payloads', () => {
   });
   const payload = buildDigitalSystemsReviewAnalyticsPayload({
     sourceLocation: lead.sourceLocation,
-    serviceArea: lead.serviceArea,
+    serviceArea: resolveFreeReviewServiceArea(lead.serviceArea) ?? undefined,
     preferredNextStep: lead.preferredNextStep,
   });
   assert.equal('chatSessionId' in payload, false);
