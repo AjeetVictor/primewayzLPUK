@@ -9,7 +9,10 @@ import {
   FREE_REVIEW_ROUTE,
   FREE_REVIEW_SERVICE_AREAS,
   FREE_REVIEW_SOURCE_LOCATIONS,
+  FREE_REVIEW_SOURCE_QUERY_PARAM,
   FREE_REVIEW_THANK_YOU_ROUTE,
+  buildFreeReviewCtaUrl,
+  resolveFreeReviewSourceLocation,
   type FreeReviewPreferredNextStep,
   type FreeReviewServiceArea,
   type FreeReviewSourceLocation,
@@ -18,6 +21,7 @@ import {
 export const DIGITAL_SYSTEMS_REVIEW_PATH = FREE_REVIEW_ROUTE;
 export const DIGITAL_SYSTEMS_REVIEW_THANK_YOU_PATH = FREE_REVIEW_THANK_YOU_ROUTE;
 export const DIGITAL_SYSTEMS_REVIEW_API_PATH = '/api/digital-systems-review' as const;
+export const DIGITAL_SYSTEMS_REVIEW_SOURCE_QUERY_PARAM = FREE_REVIEW_SOURCE_QUERY_PARAM;
 
 /** localStorage key used by LiveChat for the opaque session id (read-only here). */
 export const CHAT_SESSION_STORAGE_KEY = 'chat_session_id' as const;
@@ -26,6 +30,11 @@ export const DIGITAL_SYSTEMS_REVIEW_SOURCE_LOCATIONS = FREE_REVIEW_SOURCE_LOCATI
 export type DigitalSystemsReviewSourceLocation = FreeReviewSourceLocation;
 
 export const DEFAULT_REVIEW_SOURCE_LOCATION = DEFAULT_FREE_REVIEW_SOURCE_LOCATION;
+
+export {
+  buildFreeReviewCtaUrl,
+  resolveFreeReviewSourceLocation,
+};
 
 export const REVIEW_SERVICE_AREAS = FREE_REVIEW_SERVICE_AREAS;
 export type ReviewServiceArea = FreeReviewServiceArea;

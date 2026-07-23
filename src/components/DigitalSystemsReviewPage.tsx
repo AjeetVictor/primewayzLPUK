@@ -1,18 +1,17 @@
-import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { DigitalSystemsReviewForm } from './forms/DigitalSystemsReviewForm';
 import {
   DISCOVERY_CALL_CTA_LABEL,
   DISCOVERY_CALL_DESTINATION,
   FREE_REVIEW_CTA_LABEL,
+  FREE_REVIEW_SOURCE_QUERY_PARAM,
   WEBSITE_CHECKER_CTA_LABEL,
   WEBSITE_CHECKER_DESTINATION,
+  resolveFreeReviewSourceLocation,
 } from '../constants/conversionCta';
 import { CANONICAL_ROUTES } from '../constants/canonicalRoutes';
-import {
-  DEFAULT_REVIEW_SOURCE_LOCATION,
-  DIGITAL_SYSTEMS_REVIEW_PATH,
-} from '../constants/digitalSystemsReview';
+import { DIGITAL_SYSTEMS_REVIEW_PATH } from '../constants/digitalSystemsReview';
 import { trackBookCallClick, trackConversionEvent } from '../lib/analytics';
 import {
   assertNoProhibitedAnalyticsProps,
@@ -24,18 +23,31 @@ const PAGE_DESCRIPTION =
   'Ask Primewayz to review where your website, CRM, software or support model is creating friction and identify the most useful next step.';
 
 export function DigitalSystemsReviewPage() {
+  const [searchParams] = useSearchParams();
+
+  const sourceLocation = useMemo(() => {
+    const rawValues = searchParams.getAll(FREE_REVIEW_SOURCE_QUERY_PARAM);
+    if (rawValues.length === 0) {
+      return resolveFreeReviewSourceLocation(null);
+    }
+    if (rawValues.length > 1) {
+      return resolveFreeReviewSourceLocation(rawValues);
+    }
+    return resolveFreeReviewSourceLocation(rawValues[0]);
+  }, [searchParams]);
+
   useEffect(() => {
     const payload = buildDigitalSystemsReviewAnalyticsPayload({
-      sourceLocation: DEFAULT_REVIEW_SOURCE_LOCATION,
+      sourceLocation,
       route: DIGITAL_SYSTEMS_REVIEW_PATH,
     });
     assertNoProhibitedAnalyticsProps(payload);
     trackConversionEvent('free_review_page_view', payload);
-  }, []);
+  }, [sourceLocation]);
 
   const onBookCallClick = () => {
     const payload = buildDigitalSystemsReviewAnalyticsPayload({
-      sourceLocation: DEFAULT_REVIEW_SOURCE_LOCATION,
+      sourceLocation,
       route: DIGITAL_SYSTEMS_REVIEW_PATH,
     });
     assertNoProhibitedAnalyticsProps(payload);
@@ -76,7 +88,7 @@ export function DigitalSystemsReviewPage() {
       <section className="px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-[1100px] gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-start">
           <div className="rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur-sm sm:p-8">
-            <DigitalSystemsReviewForm sourceLocation={DEFAULT_REVIEW_SOURCE_LOCATION} />
+            <DigitalSystemsReviewForm sourceLocation={sourceLocation} />
           </div>
 
           <aside className="space-y-8">

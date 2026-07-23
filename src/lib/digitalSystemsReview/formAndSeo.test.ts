@@ -103,6 +103,9 @@ test('landing and thank-you pages keep claim-safe copy and one H1 each', () => {
   assert.match(thankYou, /consumeFreeReviewSuccessMarker/);
   assert.match(landing, /free_review_book_call_click/);
   assert.match(landing, /onBookCallClick/);
+  assert.match(landing, /useSearchParams/);
+  assert.match(landing, /resolveFreeReviewSourceLocation/);
+  assert.match(landing, /sourceLocation=\{sourceLocation\}/);
 
   const combined = `${landing}\n${thankYou}`;
   assert.match(combined, /It is not an authenticated technical audit,\s*security assessment or implementation estimate/);

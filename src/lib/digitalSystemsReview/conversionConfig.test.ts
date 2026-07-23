@@ -15,6 +15,8 @@ import {
   PHASE2_CTA_ROLLOUT_FILES,
   WEBSITE_CHECKER_CTA_LABEL,
   WEBSITE_CHECKER_DESTINATION,
+  buildFreeReviewCtaUrl,
+  resolveFreeReviewSourceLocation,
 } from '../../constants/conversionCta.ts';
 import { CANONICAL_ROUTES } from '../../constants/canonicalRoutes.ts';
 import {
@@ -83,4 +85,13 @@ test('configuration does not introduce phone, budget, or company-size fields', (
   assert.doesNotMatch(combined, /\bbudget\b/i);
   assert.doesNotMatch(combined, /company[-_ ]?size/i);
   assert.ok(PHASE2_CTA_ROLLOUT_FILES.length > 0);
+});
+
+test('source handoff helpers build and resolve allowlisted review_source values', () => {
+  assert.equal(
+    buildFreeReviewCtaUrl('homepage'),
+    '/digital-systems-review?review_source=homepage',
+  );
+  assert.equal(resolveFreeReviewSourceLocation('homepage'), 'homepage');
+  assert.equal(resolveFreeReviewSourceLocation('not-real'), 'digital_systems_review_page');
 });

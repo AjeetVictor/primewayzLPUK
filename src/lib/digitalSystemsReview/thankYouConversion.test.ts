@@ -121,7 +121,8 @@ test('landing-page booking emits free_review_book_call_click', () => {
   assert.match(landing, /free_review_book_call_click/);
   assert.match(landing, /onBookCallClick/);
   assert.match(landing, /trackBookCallClick/);
-  assert.match(landing, /sourceLocation:\s*DEFAULT_REVIEW_SOURCE_LOCATION/);
+  assert.match(landing, /sourceLocation/);
+  assert.match(landing, /resolveFreeReviewSourceLocation/);
   assert.doesNotMatch(landing, /chatSessionId|submissionId|workEmail/);
 });
 

@@ -1,17 +1,10 @@
-import { type FormEvent, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, CalendarDays, CheckCircle2, Globe2, LockKeyhole } from 'lucide-react';
-import { TrackedLink } from './common/TrackedLink';
+import { CheckCircle2, LockKeyhole } from 'lucide-react';
+import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
 import { HeroPromoJourney } from './hero/HeroPromoJourney';
-import { buildSelfAuditCtaUrl } from './SelfAuditCta';
-import { BOOK_CALL_URL } from '../constants/contactBooking';
 import { brandTypography, shellClasses } from '../constants/designSystem';
 import { SITE_CONTAINER_CLASS } from '../constants/siteLayout';
 import { useRevealMotion } from '../hooks/useRevealMotion';
-import { trackEvent } from '../lib/analytics';
-import { normaliseWebsiteUrl } from '../utils/normalizeWebsiteUrl';
-
-const auditHref = buildSelfAuditCtaUrl('homepage_hero');
 
 const heroChecklist = [
   'SEO basics',
@@ -23,27 +16,6 @@ const heroChecklist = [
 
 export const Hero = () => {
   const reveal = useRevealMotion();
-  const [websiteUrl, setWebsiteUrl] = useState('');
-
-  const handleAuditSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const trimmedWebsite = websiteUrl.trim();
-    const destination = new URL(auditHref, window.location.origin);
-
-    if (trimmedWebsite) {
-      destination.searchParams.set('website', normaliseWebsiteUrl(trimmedWebsite));
-    }
-
-    trackEvent('audit_url_submit_hero', {
-      cta_location: 'homepage_hero_url_entry',
-      destination: destination.pathname,
-      has_website_url: Boolean(trimmedWebsite),
-      website_url_entered: Boolean(trimmedWebsite),
-    });
-
-    window.location.assign(`${destination.pathname}${destination.search}`);
-  };
 
   return (
     <section
@@ -79,36 +51,16 @@ export const Hero = () => {
               delivery—without the cost and complexity of building a large in-house team.
             </p>
 
-            <form
-              className="mt-7 flex flex-col gap-3 rounded-lg border border-brand-border bg-white p-2 shadow-[0_14px_36px_-24px_rgba(0,10,45,0.32)] sm:flex-row sm:items-center"
-              onSubmit={handleAuditSubmit}
-            >
-              <label htmlFor="hero-website-url" className="sr-only">
-                Enter your website URL
-              </label>
-              <div className="flex min-h-[48px] min-w-0 flex-1 items-center gap-3 px-3">
-                <Globe2 className="h-5 w-5 shrink-0 text-slate-500" strokeWidth={2.1} aria-hidden />
-                <input
-                  id="hero-website-url"
-                  type="text"
-                  inputMode="url"
-                  autoComplete="url"
-                  value={websiteUrl}
-                  onChange={(event) => setWebsiteUrl(event.target.value)}
-                  placeholder="https://yourbusiness.co.uk"
-                  className="min-w-0 flex-1 bg-transparent text-sm font-medium text-brand-navy outline-none placeholder:text-slate-500"
-                />
-              </div>
-              <button
-                type="submit"
-                className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-brand-navy px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-navy/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy sm:min-w-[170px]"
-              >
-                Run a Free Website Audit
-                <ArrowRight className="h-4 w-4" aria-hidden />
-              </button>
-            </form>
+            <DigitalSystemsReviewCtaGroup
+              className="mt-7"
+              sourceLocation="homepage"
+              primaryPlacement="homepage_hero_primary"
+              secondaryPlacement="homepage_hero_secondary"
+              websiteCheckerPlacement="homepage_hero_website_checker"
+              variant="hero"
+            />
 
-            <ul className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-medium leading-5 text-slate-600 sm:text-xs" aria-label="Promotional support areas">
+            <ul className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-medium leading-5 text-slate-600 sm:text-xs" aria-label="Promotional support areas">
               {heroChecklist.map((item, index) => (
                 <li key={item} className="flex items-center gap-1.5">
                   <CheckCircle2 className="h-3.5 w-3.5 text-brand-cyan" strokeWidth={2.25} aria-hidden />
@@ -120,33 +72,9 @@ export const Hero = () => {
               ))}
             </ul>
 
-            <div className="mt-6 flex flex-col gap-3 text-sm font-semibold sm:flex-row sm:flex-wrap sm:items-center sm:gap-6">
-              <TrackedLink
-                href={BOOK_CALL_URL}
-                ctaText="Discuss Your Digital Priorities"
-                ctaLocation="homepage_hero_primary"
-                eventType="book_call_click_home"
-                className="inline-flex items-center gap-2 text-brand-navy transition hover:text-brand-blue"
-              >
-                <CalendarDays className="h-5 w-5 text-brand-blue" strokeWidth={2.1} aria-hidden />
-                Discuss Your Digital Priorities
-              </TrackedLink>
-              <span className="hidden h-6 w-px bg-brand-border sm:inline-block" aria-hidden />
-              <TrackedLink
-                href="/uk-sme-digital-visibility-checker#sample-report"
-                ctaText="See sample audit"
-                ctaLocation="homepage_hero_secondary"
-                eventType="cta_click"
-                className="inline-flex items-center gap-2 text-brand-navy transition hover:text-brand-blue"
-              >
-                See sample audit
-                <ArrowRight className="h-4 w-4 text-brand-cyan" strokeWidth={2.1} aria-hidden />
-              </TrackedLink>
-            </div>
-
             <p className="mt-4 flex items-center gap-2 text-xs leading-5 text-slate-500">
               <LockKeyhole className="h-4 w-4 text-slate-500" strokeWidth={2.1} aria-hidden />
-              No login required. Get practical insights in under 60 seconds.
+              No obligation. Share context confidentially and get a clear recommended next step.
             </p>
           </motion.div>
 
