@@ -54,6 +54,8 @@ import { SuccessStoriesPage } from './components/SuccessStoriesPage';
 import { AuthorityStoryDetailPage } from './components/AuthorityStoryDetailPage';
 import { AboutUsPage } from './components/AboutUsPage';
 import { ContactUsPage } from './components/ContactUsPage';
+import { DigitalSystemsReviewPage } from './components/DigitalSystemsReviewPage';
+import { DigitalSystemsReviewThankYouPage } from './components/DigitalSystemsReviewThankYouPage';
 import { UkSmeDigitalVisibilityCheckerPage } from './components/UkSmeDigitalVisibilityCheckerPage';
 import { WebPresenceAuditSharedReportPage } from './components/tools/WebPresenceAuditSharedReportPage';
 import { CampaignLandingHandler } from './components/CampaignLandingHandler';
@@ -205,6 +207,11 @@ export const App = ({ initialData }: AppProps) => {
         <Route path="/about" element={<Navigate to="/about-us" replace />} />
         <Route path="/contact" element={<ContactRedirect />} />
         <Route path="/contact-us" element={<ContactUsPage />} />
+        <Route path="/digital-systems-review" element={<DigitalSystemsReviewPage />} />
+        <Route
+          path="/thank-you/digital-systems-review"
+          element={<DigitalSystemsReviewThankYouPage />}
+        />
         <Route path="/website-maintenance-subscription-uk" element={<Navigate to="/maintenance" replace />} />
         <Route path="/remote-it-resource-augmentation" element={<Navigate to="/remote-it-resources" replace />} />
         <Route path="/web-presence-audit/report/:publicToken" element={<WebPresenceAuditSharedReportPage />} />

@@ -91,6 +91,41 @@ model ToolLead {
   @@index([createdAt])
 }
 
+/// Free digital systems review enquiries. Separate lifecycle from ChatSession.
+model DigitalSystemsReviewLead {
+  id                      Int      @id @default(autoincrement())
+  submissionId            String   @unique @db.VarChar(64)
+  name                    String   @db.VarChar(80)
+  workEmail               String   @db.VarChar(191)
+  company                 String   @db.VarChar(120)
+  website                 String?  @db.VarChar(255)
+  serviceArea             String   @db.VarChar(100)
+  context                 String   @db.Text
+  preferredNextStep       String   @db.VarChar(100)
+  consentAt               DateTime
+  /// Safe first-touch UTM object (utm_* keys only). No IP/UA/cookies.
+  firstTouchAttribution   Json?
+  /// Safe latest-touch UTM object (utm_* keys only). No IP/UA/cookies.
+  latestTouchAttribution  Json?
+  landingPage             String?  @db.VarChar(500)
+  referrer                String?  @db.Text
+  sourceLocation          String?  @db.VarChar(80)
+  /// Opaque chat session id for journey linkage only. No FK to ChatSession.
+  chatSessionId           String?  @db.VarChar(64)
+  status                  String   @default("new") @db.VarChar(32)
+  notificationStatus      String   @default("pending") @db.VarChar(32)
+  /// Redacted, non-sensitive operational code only (never full SMTP text).
+  notificationErrorCode   String?  @db.VarChar(64)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([sourceLocation])
+  @@index([workEmail])
+  @@index([status])
+  @@index([notificationStatus])
+}
+
 // --- Chat System ---
 model ChatSession {
   id                String                   @id @default(uuid())

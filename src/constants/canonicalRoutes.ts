@@ -13,6 +13,8 @@ export const CANONICAL_ROUTES = {
   contact: '/contact-us',
   bookCall: '/contact-us#book-call',
   freeAudit: '/uk-sme-digital-visibility-checker',
+  digitalSystemsReview: '/digital-systems-review',
+  digitalSystemsReviewThankYou: '/thank-you/digital-systems-review',
   successStories: '/success-stories',
   services: '/services',
   about: '/about-us',

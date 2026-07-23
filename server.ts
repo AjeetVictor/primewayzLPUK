@@ -33,6 +33,22 @@ import {
   validateAuditLeadAdminStatus,
 } from './src/lib/audit/leads/adminAuditLeadsService.ts';
 import { registerAutopilotAdminRoutes } from './src/lib/autopilot/registerAutopilotAdminRoutes.ts';
+import {
+  DigitalSystemsReviewHoneypotError,
+  DigitalSystemsReviewValidationError,
+  submitDigitalSystemsReviewLead,
+  toPublicDigitalSystemsReviewResponse,
+} from './src/lib/digitalSystemsReview/submitReviewLead.ts';
+import {
+  assertJsonContentType,
+  assertReviewPayloadSize,
+  assertSerializedReviewPayloadSize,
+} from './src/lib/digitalSystemsReview/validateReviewLead.ts';
+import {
+  checkDigitalSystemsReviewRateLimit,
+  getClientIp,
+  warnIfProductionProxyAttributionShared,
+} from './src/lib/digitalSystemsReview/rateLimit.ts';
 import type { NextFunction, Request, Response } from 'express';
 import type { BlogCategory, BlogPost, BreadcrumbItem } from './src/data/blog/types.ts';
 import { LEGACY_ROUTE_REDIRECTS } from './src/constants/canonicalRoutes.ts';
@@ -1635,6 +1651,16 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
       description:
         'Contact Primewayz UK to discuss website visibility, CRM workflows, software delivery, managed support or remote technical capacity.',
     },
+    '/digital-systems-review': {
+      title: 'Free Digital Systems Review for UK SMEs | Primewayz',
+      description:
+        'Ask Primewayz to review where your website, CRM, software or support model is creating friction and identify the most useful next step.',
+    },
+    '/thank-you/digital-systems-review': {
+      title: 'Digital Systems Review Request Received | Primewayz',
+      description:
+        'Your digital systems review request has been received. Primewayz will review the submitted information and identify the most useful next step.',
+    },
     '/website-visibility-support': {
       title: 'Website Visibility & Conversion Support for UK SMEs | Primewayz',
       description:
@@ -1703,7 +1729,9 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
       canonical,
       ogType,
       image,
-      noindex: pagePathname === '/software-development-subscription-uk/request-capacity',
+      noindex:
+        pagePathname === '/software-development-subscription-uk/request-capacity'
+        || pagePathname === '/thank-you/digital-systems-review',
       structuredData,
     }),
   };
@@ -1743,6 +1771,11 @@ async function sendSsrPage(req: Request, res: Response, indexHtml: string, rende
 
 // --- Middleware ---
 app.use(cookieParser());
+// Honour TRUST_PROXY when explicitly configured (e.g. reverse proxy in production).
+if (process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
+warnIfProductionProxyAttributionShared();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -2248,6 +2281,62 @@ app.post('/api/contact', async (req, res) => {
   } catch (err) {
     console.error('Contact form error:', err);
     res.status(500).json({ error: 'Could not save contact request' });
+  }
+});
+
+app.post('/api/digital-systems-review', async (req, res) => {
+  try {
+    assertJsonContentType(
+      typeof req.headers['content-type'] === 'string' ? req.headers['content-type'] : undefined,
+    );
+    assertReviewPayloadSize(
+      typeof req.headers['content-length'] === 'string' ? req.headers['content-length'] : undefined,
+    );
+
+    const ip = getClientIp(req);
+    const rate = checkDigitalSystemsReviewRateLimit(ip, {
+      bypassLocal: process.env.NODE_ENV !== 'production',
+    });
+    if (!rate.allowed) {
+      res.setHeader('Retry-After', String(rate.retryAfterSeconds));
+      return res.status(429).json({
+        error:
+          'Too many review requests were submitted recently. Please wait a short while and try again, or use the general contact page.',
+        resultCategory: 'rate_limited',
+      });
+    }
+
+    const body =
+      req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+        ? (req.body as Record<string, unknown>)
+        : {};
+
+    assertSerializedReviewPayloadSize(body);
+
+    const result = await submitDigitalSystemsReviewLead(prisma, body);
+    const statusCode = result.resultCategory === 'duplicate' ? 200 : 201;
+    return res.status(statusCode).json(toPublicDigitalSystemsReviewResponse(result));
+  } catch (err) {
+    if (err instanceof DigitalSystemsReviewHoneypotError) {
+      return res.status(400).json({
+        error: 'Unable to process this submission.',
+        resultCategory: 'honeypot',
+      });
+    }
+    if (err instanceof DigitalSystemsReviewValidationError) {
+      return res.status(400).json({
+        error: err.message,
+        resultCategory: 'validation_error',
+      });
+    }
+    console.error('[digital-systems-review] submission failed', {
+      code: 'review_persistence_failed',
+    });
+    return res.status(503).json({
+      error:
+        'We could not save your request right now. Please try again shortly, or use the general contact page.',
+      resultCategory: 'temporary_failure',
+    });
   }
 });
 
