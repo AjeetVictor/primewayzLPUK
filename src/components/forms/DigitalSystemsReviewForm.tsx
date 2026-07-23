@@ -28,6 +28,12 @@ import {
 } from '../../lib/digitalSystemsReview/analytics';
 import { mapClientUtmParamsToAttribution } from '../../lib/digitalSystemsReview/attribution';
 import { readOptionalChatSessionIdFromStorage } from '../../lib/digitalSystemsReview/chatSessionId';
+import {
+  buildConfirmationSummary,
+  clearConfirmationSummary,
+  writeConfirmationSummary,
+} from '../../lib/digitalSystemsReview/confirmationSummary';
+import { isPlausibleWebsite } from '../../lib/digitalSystemsReview/isPlausibleWebsite';
 import { writeFreeReviewSuccessMarker } from '../../lib/digitalSystemsReview/successMarker';
 
 type FormState = {
@@ -90,25 +96,6 @@ function safeUtm() {
       firstTouchAttribution: null,
       latestTouchAttribution: null,
     };
-  }
-}
-
-function isPlausibleWebsite(value: string): boolean {
-  const trimmed = value.trim();
-  if (!trimmed) return true;
-  if (trimmed.length > REVIEW_FIELD_LIMITS.websiteMax) return false;
-  let candidate = trimmed;
-  if (!/^https?:\/\//i.test(candidate)) candidate = `https://${candidate}`;
-  try {
-    const parsed = new URL(candidate);
-    return (
-      (parsed.protocol === 'http:' || parsed.protocol === 'https:')
-      && !parsed.username
-      && !parsed.password
-      && parsed.hostname.includes('.')
-    );
-  } catch {
-    return false;
   }
 }
 
@@ -229,6 +216,10 @@ export function DigitalSystemsReviewForm({
     event.preventDefault();
     if (submittingLockRef.current || submitting) return;
 
+    // Clear any previous same-session confirmation at the start of a genuine
+    // new submit attempt — including when client validation will fail.
+    clearConfirmationSummary();
+
     const nextErrors = validateClient();
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
@@ -313,6 +304,24 @@ export function DigitalSystemsReviewForm({
 
       // Non-PII one-time marker only (created|duplicate). Never block navigation.
       writeFreeReviewSuccessMarker(resultCategory);
+
+      // Personalised thank-you receipt — only after API success; clean route only.
+      // Opaque submissionId is included only when the public response already returns one.
+      const apiSubmissionId =
+        typeof data?.submissionId === 'string' ? data.submissionId : undefined;
+      const confirmation = buildConfirmationSummary({
+        name: payload.name,
+        workEmail: payload.workEmail,
+        company: payload.company,
+        website: payload.website ?? null,
+        serviceArea: payload.serviceArea,
+        preferredNextStep: payload.preferredNextStep,
+        context: payload.context,
+        ...(apiSubmissionId ? { submissionId: apiSubmissionId } : {}),
+      });
+      if (confirmation) {
+        writeConfirmationSummary(confirmation);
+      }
 
       navigate(DIGITAL_SYSTEMS_REVIEW_THANK_YOU_PATH, { replace: true });
     } catch {

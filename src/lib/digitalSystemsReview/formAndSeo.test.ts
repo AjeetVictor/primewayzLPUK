@@ -97,7 +97,7 @@ test('landing and thank-you pages keep claim-safe copy and one H1 each', () => {
   assert.match(landing, /Free initial review/);
   assert.match(landing, /What you’ll receive|What you'll receive/);
   assert.match(landing, /not an authenticated technical audit/);
-  assert.match(thankYou, /Thank you — your review request has been received/);
+  assert.match(thankYou, /buildConfirmationHeading|GENERIC_CONFIRMATION_HEADING/);
   assert.match(thankYou, /Return to services/);
   assert.match(thankYou, /DISCOVERY_CALL_CTA_LABEL/);
   assert.match(thankYou, /consumeFreeReviewSuccessMarker/);
@@ -106,6 +106,12 @@ test('landing and thank-you pages keep claim-safe copy and one H1 each', () => {
   assert.match(landing, /useSearchParams/);
   assert.match(landing, /resolveFreeReviewSourceLocation/);
   assert.match(landing, /sourceLocation=\{sourceLocation\}/);
+
+  const confirmation = fs.readFileSync(
+    path.join(root, 'src/lib/digitalSystemsReview/confirmationSummary.ts'),
+    'utf8',
+  );
+  assert.match(confirmation, /Thank you — your review request has been received/);
 
   const combined = `${landing}\n${thankYou}`;
   assert.match(combined, /It is not an authenticated technical audit,\s*security assessment or implementation estimate/);
