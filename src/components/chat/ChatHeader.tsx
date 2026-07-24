@@ -2,6 +2,7 @@ import { Minus, X } from 'lucide-react';
 import {
   getVisitorChatHeaderSubtitle,
   getVisitorChatHeaderTitle,
+  VISITOR_HEADER_STATUS_DOT_CLASS,
   VISITOR_HEADER_STATUS_LABELS,
   type VisitorHeaderStatus,
 } from '../../lib/chat/visitorChatUi';
@@ -22,10 +23,7 @@ export function ChatHeader({
   const title = getVisitorChatHeaderTitle(latestResponder);
   const subtitle = getVisitorChatHeaderSubtitle();
   const statusLabel = VISITOR_HEADER_STATUS_LABELS[headerStatus];
-  const statusDot =
-    headerStatus === 'team_available' || headerStatus === 'human_response_received'
-      ? 'bg-emerald-500'
-      : 'bg-amber-500';
+  const statusDot = VISITOR_HEADER_STATUS_DOT_CLASS[headerStatus];
 
   return (
     <div className="flex items-start justify-between gap-3 border-b border-brand-border bg-brand-navy px-4 py-3 text-white">

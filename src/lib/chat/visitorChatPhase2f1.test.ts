@@ -152,7 +152,7 @@ test('4 Design uses existing project token/classes rather than a new theme', () 
 test('5 Existing launcher remains', () => {
   const liveChat = read('src/components/LiveChat.tsx');
   assert.match(liveChat, /MessageCircle/);
-  assert.match(liveChat, /VISITOR_CHAT_LAUNCHER_NAME|Open Primewayz chat/);
+  assert.match(liveChat, /buildVisitorLauncherAriaLabel|Open Primewayz chat|data-chat-launcher/);
   assert.match(read('src/components/LazyLiveChat.tsx'), /LiveChat/);
 });
 

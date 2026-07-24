@@ -98,3 +98,90 @@ export function reconcileVisitorPollState(
     humanJoinedNoticeShown,
   };
 }
+
+/**
+ * Stateful poll consumer used by LiveChat and executable unread-path tests.
+ * Mirrors the production merge: unread accumulates only from unreadDelta.
+ */
+export type VisitorPollConsumerState = {
+  messages: VisitorChatMessage[];
+  lastSeenAdminId: string | null;
+  hasKnownSessionHistory: boolean;
+  humanJoinedNoticeShown: boolean;
+  unreadCount: number;
+  chatIsOpen: boolean;
+};
+
+export function applyVisitorChatPollRound(
+  state: VisitorPollConsumerState,
+  remoteMessages: VisitorChatMessage[],
+  options: ReconcileVisitorPollStateOptions = {},
+): VisitorPollConsumerState {
+  const result = reconcileVisitorPollState(
+    {
+      previousMessages: state.messages,
+      remoteMessages,
+      previousAdminId: state.lastSeenAdminId,
+      hasKnownSessionHistory: state.hasKnownSessionHistory,
+      chatIsOpen: state.chatIsOpen,
+      noticeAlreadyShown: state.humanJoinedNoticeShown,
+    },
+    options,
+  );
+
+  return {
+    messages: result.messages,
+    lastSeenAdminId: result.latestAdminId,
+    hasKnownSessionHistory:
+      state.hasKnownSessionHistory || remoteMessages.length > 0,
+    humanJoinedNoticeShown: result.humanJoinedNoticeShown,
+    unreadCount: state.unreadCount + result.unreadDelta,
+    chatIsOpen: state.chatIsOpen,
+  };
+}
+
+/** Baseline history load: establish admin id without creating unread. */
+export function applyVisitorChatHistoryBaseline(
+  remoteMessages: VisitorChatMessage[],
+  options: ReconcileVisitorPollStateOptions = {},
+): VisitorPollConsumerState {
+  const result = reconcileVisitorPollState(
+    {
+      previousMessages: [],
+      remoteMessages,
+      previousAdminId: null,
+      hasKnownSessionHistory: false,
+      chatIsOpen: true,
+      noticeAlreadyShown: false,
+    },
+    options,
+  );
+
+  return {
+    messages: result.messages,
+    lastSeenAdminId: result.latestAdminId,
+    hasKnownSessionHistory: remoteMessages.length > 0,
+    humanJoinedNoticeShown: result.humanJoinedNoticeShown,
+    unreadCount: 0,
+    chatIsOpen: false,
+  };
+}
+
+/**
+ * Open-transition: clear unread and mark open without touching lastSeenAdminId.
+ * Opening must never regress the seen-admin baseline from stale rendered messages.
+ */
+export function applyVisitorChatOpenTransition(
+  state: VisitorPollConsumerState,
+): VisitorPollConsumerState {
+  return {
+    ...state,
+    chatIsOpen: true,
+    unreadCount: 0,
+  };
+}
+
+/** Browser validation force-poll hook is localhost-only. */
+export function isVisitorChatLocalValidationHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1';
+}

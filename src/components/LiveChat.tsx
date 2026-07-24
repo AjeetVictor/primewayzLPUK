@@ -55,10 +55,14 @@ import {
   type VisitorChatMessage,
 } from '../lib/chat/visitorChatTypes';
 import {
+  buildVisitorLauncherAriaLabel,
+  formatVisitorUnreadBadge,
   resolveVisitorHeaderStatus,
-  VISITOR_CHAT_LAUNCHER_NAME,
+  resolveVisitorPresenceTone,
   VISITOR_CHAT_MESSAGE_SAVED,
   VISITOR_CHAT_REGION_NAME,
+  VISITOR_PRESENCE_DOT_CLASS,
+  VISITOR_PRESENCE_STATUS_LABELS,
 } from '../lib/chat/visitorChatUi';
 import {
   hasBlockingAttachment,
@@ -69,6 +73,7 @@ import {
 } from '../lib/chat/visitorChatAttachments';
 import {
   countComparableMessages,
+  findLatestAdminMessage,
   mergeRemoteHistoryWithLocalState,
   resolveLatestResponderSender,
 } from '../lib/chat/visitorChatHistoryMerge';
@@ -77,7 +82,10 @@ import {
   findPersistedUserMessageMatch,
 } from '../lib/chat/visitorChatMessageReconcile';
 import { resolveVisitorChatPollIntervalMs } from '../lib/chat/visitorChatPolling';
-import { reconcileVisitorPollState } from '../lib/chat/visitorChatPollReconcile';
+import {
+  isVisitorChatLocalValidationHost,
+  reconcileVisitorPollState,
+} from '../lib/chat/visitorChatPollReconcile';
 import {
   clearBodyScrollStyles as clearBodyScrollStylesHelper,
   lockBodyScroll as lockBodyScrollHelper,
@@ -125,6 +133,7 @@ export const LiveChat = () => {
   >('idle');
   const [contactSaveError, setContactSaveError] = useState('');
   const [apiAvailable, setApiAvailable] = useState(true);
+  const [serviceDegraded, setServiceDegraded] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<PendingChatAttachment[]>([]);
   const [uploadError, setUploadError] = useState('');
   const [showAppointmentForm, setShowAppointmentForm] = useState(false);
@@ -171,11 +180,22 @@ export const LiveChat = () => {
   const scrollYRef = useRef(0);
   const lastSeenAdminIdRef = useRef<string | null>(null);
   const messagesRef = useRef<VisitorChatMessage[]>([]);
+  const chatIsOpenRef = useRef(false);
+  const hasKnownSessionHistoryRef = useRef(false);
+  const humanJoinedNoticeShownRef = useRef(false);
+  const unreadCountRef = useRef(0);
+  const forcePollRef = useRef<(() => void) | null>(null);
   const failedFileByKeyRef = useRef<Map<string, File>>(new Map());
   const retryInFlightRef = useRef<Set<string>>(new Set());
   const pollConsecutiveFailuresRef = useRef(0);
 
   messagesRef.current = messages;
+  // Sync during render; open/close/minimise also write these immediately so
+  // in-flight polls never reconcile a closed surface as still open.
+  chatIsOpenRef.current = isOpen && !isMinimized;
+  hasKnownSessionHistoryRef.current = hasKnownSessionHistory;
+  humanJoinedNoticeShownRef.current = humanJoinedNoticeShown;
+  unreadCountRef.current = unreadCount;
 
   const selectedIntent = getVisitorChatIntent(selectedIntentKey);
   const latestResponder = resolveLatestResponderSender(messages);
@@ -183,12 +203,25 @@ export const LiveChat = () => {
   const waitingForTeam = messages.some(
     (msg) => msg.sender === 'user' && msg.deliveryStatus !== 'failed',
   ) && !hasAdminReply && isSending === false;
+  const serviceAvailable = apiAvailable && !serviceDegraded;
+  const availabilityStatus = normalizeChatAvailabilityStatus(availability.status);
+  const presenceTone = resolveVisitorPresenceTone({
+    availabilityStatus,
+    serviceAvailable,
+  });
   const headerStatus = resolveVisitorHeaderStatus({
-    availabilityStatus: normalizeChatAvailabilityStatus(availability.status),
+    availabilityStatus,
     hasAdminReply,
     waitingForTeam: waitingForTeam && Boolean(userEmail),
+    serviceAvailable,
   });
-  const teamAway = isTeamAwayStatus(normalizeChatAvailabilityStatus(availability.status));
+  const teamAway = isTeamAwayStatus(availabilityStatus);
+  const launcherAriaLabel = buildVisitorLauncherAriaLabel({
+    presence: presenceTone,
+    unreadCount,
+  });
+  const unreadBadgeLabel = formatVisitorUnreadBadge(unreadCount);
+  const showLauncherChrome = !(isOpen && !isMinimized);
   const hasUploading = hasUploadingAttachment(pendingAttachments);
   const hasFailed = hasFailedAttachment(pendingAttachments);
   const hasBlocking = hasBlockingAttachment(pendingAttachments);
@@ -268,7 +301,10 @@ export const LiveChat = () => {
             }, {
               createNoticeId: () => createClientMessageId('system'),
             });
+            messagesRef.current = baseline.messages;
             lastSeenAdminIdRef.current = baseline.latestAdminId;
+            humanJoinedNoticeShownRef.current = baseline.humanJoinedNoticeShown;
+            hasKnownSessionHistoryRef.current = true;
             setHumanJoinedNoticeShown(baseline.humanJoinedNoticeShown);
             setMessages(baseline.messages);
             setShowIntentChooser(false);
@@ -293,22 +329,28 @@ export const LiveChat = () => {
       previousMessages: messagesRef.current,
       remoteMessages: mapped,
       previousAdminId: lastSeenAdminIdRef.current,
-      hasKnownSessionHistory,
-      chatIsOpen: isOpen && !isMinimized,
-      noticeAlreadyShown: humanJoinedNoticeShown,
+      hasKnownSessionHistory: hasKnownSessionHistoryRef.current,
+      chatIsOpen: chatIsOpenRef.current,
+      noticeAlreadyShown: humanJoinedNoticeShownRef.current,
     }, {
       createNoticeId: () => createClientMessageId('system'),
     });
 
     messagesRef.current = result.messages;
-    setMessages(result.messages);
     lastSeenAdminIdRef.current = result.latestAdminId;
+    setMessages(result.messages);
 
-    if (result.humanJoinedNoticeShown && !humanJoinedNoticeShown) {
+    if (result.humanJoinedNoticeShown && !humanJoinedNoticeShownRef.current) {
+      humanJoinedNoticeShownRef.current = true;
       setHumanJoinedNoticeShown(true);
     }
     if (result.unreadDelta > 0) {
-      setUnreadCount((count) => count + result.unreadDelta);
+      const next = unreadCountRef.current + result.unreadDelta;
+      unreadCountRef.current = next;
+      setUnreadCount(next);
+      announceStatus(
+        next === 1 ? '1 unread reply' : `${next} unread replies`,
+      );
     }
   });
 
@@ -320,47 +362,75 @@ export const LiveChat = () => {
       hasKnownSessionHistory,
     });
 
-    if (pollIntervalMs == null) return undefined;
+    if (pollIntervalMs == null) {
+      forcePollRef.current = null;
+      return undefined;
+    }
 
     const pollHistory = async () => {
       try {
         const res = await fetch(apiUrl(`/api/chat/${sessionId}`));
         if (!res.ok) {
           pollConsecutiveFailuresRef.current += 1;
+          if (pollConsecutiveFailuresRef.current >= 3) {
+            setServiceDegraded(true);
+          }
           return;
         }
         const history = await res.json();
         if (!Array.isArray(history)) {
           pollConsecutiveFailuresRef.current += 1;
+          if (pollConsecutiveFailuresRef.current >= 3) {
+            setServiceDegraded(true);
+          }
           return;
         }
 
         setApiAvailable(true);
+        setServiceDegraded(false);
         pollConsecutiveFailuresRef.current = 0;
 
         const mapped = history.map((m: Record<string, unknown>) => mapHistoryMessage(m));
         if (mapped.length > 0) {
+          hasKnownSessionHistoryRef.current = true;
           setHasKnownSessionHistory(true);
         }
 
-        const latestRemoteId = mapped[mapped.length - 1]?.id;
-        const latestLocalPersisted = [...messages]
+        const latestRemoteComparable = [...mapped]
+          .reverse()
+          .find((msg) => msg.sender !== 'system');
+        const latestLocalComparable = [...messagesRef.current]
           .reverse()
           .find(
             (msg) =>
-              !String(msg.id).startsWith('local-') && msg.deliveryStatus !== 'failed',
+              msg.sender !== 'system'
+              && !String(msg.id).startsWith('local-')
+              && msg.deliveryStatus !== 'failed',
           );
-        const latestLocalId = latestLocalPersisted?.id;
+        const latestAdminId = findLatestAdminMessage(mapped)?.id ?? null;
 
-        if (
-          countComparableMessages(mapped) !== countComparableMessages(messages)
-          || latestRemoteId !== latestLocalId
-        ) {
+        const shouldApply =
+          mapped.length > 0
+          && (
+            countComparableMessages(mapped)
+              !== countComparableMessages(messagesRef.current)
+            || latestRemoteComparable?.id !== latestLocalComparable?.id
+            || latestAdminId !== lastSeenAdminIdRef.current
+          );
+
+        if (shouldApply) {
           applyPolledHistory(mapped);
         }
       } catch {
         pollConsecutiveFailuresRef.current += 1;
+        if (pollConsecutiveFailuresRef.current >= 3) {
+          setServiceDegraded(true);
+        }
       }
+    };
+
+    forcePollRef.current = () => {
+      void pollHistory();
     };
 
     const effectiveInterval =
@@ -368,12 +438,15 @@ export const LiveChat = () => {
         ? pollIntervalMs * 2
         : pollIntervalMs;
 
+    void pollHistory();
     const pollTimer = window.setInterval(pollHistory, effectiveInterval);
-    return () => window.clearInterval(pollTimer);
+    return () => {
+      forcePollRef.current = null;
+      window.clearInterval(pollTimer);
+    };
   }, [
     apiAvailable,
     sessionId,
-    messages,
     isOpen,
     isMinimized,
     isDocumentVisible,
@@ -382,14 +455,34 @@ export const LiveChat = () => {
   ]);
 
   useEffect(() => {
+    const isLocalValidationHost = isVisitorChatLocalValidationHost(
+      window.location.hostname,
+    );
+    if (!isLocalValidationHost) {
+      return undefined;
+    }
+    const onForcePoll = () => {
+      forcePollRef.current?.();
+    };
+    window.addEventListener('primewayz-visitor-chat-force-poll', onForcePoll);
+    return () => {
+      window.removeEventListener('primewayz-visitor-chat-force-poll', onForcePoll);
+    };
+  }, []);
+
+  useEffect(() => {
     const fetchAvailability = async () => {
       try {
         const res = await fetch(apiUrl('/api/chat/availability'));
         if (res.ok) {
           setAvailability(await res.json());
+          setServiceDegraded(false);
+        } else {
+          setServiceDegraded(true);
         }
       } catch {
         setAvailability(DEFAULT_CHAT_AVAILABILITY);
+        setServiceDegraded(true);
       }
     };
 
@@ -438,6 +531,7 @@ export const LiveChat = () => {
     // Clear saved scroll before close cleanup so a later restore cannot jump
     // back to the previous route's position.
     scrollYRef.current = 0;
+    chatIsOpenRef.current = false;
     setIsOpen(false);
     setIsMinimized(false);
     unlockBodyScroll({ restorePosition: false });
@@ -468,6 +562,7 @@ export const LiveChat = () => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
+        chatIsOpenRef.current = false;
         setIsMinimized(true);
         setIsOpen(false);
         window.setTimeout(() => launcherRef.current?.focus(), 0);
@@ -493,8 +588,12 @@ export const LiveChat = () => {
   }, [messages, isOpen, isMinimized, prefersReducedMotion, showRecommendations]);
 
   const openChatWidget = () => {
+    // Polling / history baseline own lastSeenAdminId — opening must not
+    // regress it from stale messagesRef before React applies polled messages.
+    chatIsOpenRef.current = true;
     setIsOpen(true);
     setIsMinimized(false);
+    unreadCountRef.current = 0;
     setUnreadCount(0);
 
     if (!hasTrackedChatOpen) {
@@ -516,12 +615,14 @@ export const LiveChat = () => {
   };
 
   const closeChatWidget = () => {
+    chatIsOpenRef.current = false;
     setIsOpen(false);
     setIsMinimized(false);
     window.setTimeout(() => launcherRef.current?.focus(), 0);
   };
 
   const minimizeChatWidget = () => {
+    chatIsOpenRef.current = false;
     setIsMinimized(true);
     setIsOpen(false);
     window.setTimeout(() => launcherRef.current?.focus(), 0);
@@ -950,7 +1051,7 @@ export const LiveChat = () => {
   const showGuidance = isEmptyConversation || showIntentChooser || Boolean(selectedIntent);
 
   return (
-    <div className="fixed bottom-4 right-4 z-[60] flex max-w-[calc(100vw-2rem)] flex-col items-end sm:bottom-6 sm:right-6">
+    <div className="fixed bottom-4 right-4 z-[60] flex max-w-[calc(100vw-2rem)] flex-col items-end p-1 sm:bottom-6 sm:right-6">
       <span className="sr-only" aria-live="polite">
         {statusAnnouncement}
       </span>
@@ -1500,11 +1601,10 @@ export const LiveChat = () => {
       <motion.button
         ref={launcherRef}
         type="button"
-        aria-label={
-          unreadCount > 0
-            ? `${VISITOR_CHAT_LAUNCHER_NAME}. ${unreadCount} unread`
-            : VISITOR_CHAT_LAUNCHER_NAME
-        }
+        aria-label={launcherAriaLabel}
+        data-chat-launcher="true"
+        data-presence={presenceTone}
+        data-unread={unreadCount > 0 ? String(unreadCount) : '0'}
         onClick={() => {
           if (isOpen && !isMinimized) {
             closeChatWidget();
@@ -1525,11 +1625,29 @@ export const LiveChat = () => {
         ) : (
           <MessageCircle className="h-6 w-6" aria-hidden="true" />
         )}
-        {unreadCount > 0 && !(isOpen && !isMinimized) && (
-          <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-magenta px-1 text-[10px] font-bold text-white">
-            {unreadCount > 9 ? '9+' : unreadCount}
+        {showLauncherChrome && unreadBadgeLabel && (
+          <span
+            data-testid="chat-unread-badge"
+            className="absolute -right-1 -top-1 z-10 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white"
+            aria-hidden="true"
+          >
+            {unreadBadgeLabel}
           </span>
         )}
+        {showLauncherChrome && (
+          <span
+            data-testid="chat-presence-dot"
+            data-presence={presenceTone}
+            className={`absolute -bottom-0.5 -right-0.5 z-10 h-3.5 w-3.5 rounded-full ring-2 ring-white ${VISITOR_PRESENCE_DOT_CLASS[presenceTone]}`}
+            aria-hidden="true"
+          />
+        )}
+        <span className="sr-only">
+          {VISITOR_PRESENCE_STATUS_LABELS[presenceTone]}
+          {unreadCount > 0
+            ? `. ${unreadCount === 1 ? '1 unread reply' : `${unreadCount} unread replies`}`
+            : ''}
+        </span>
       </motion.button>
     </div>
   );

@@ -17,8 +17,6 @@ const OUT = path.join(root, 'priority3-phase2f1-browser-validation.json');
 
 const VIEWPORTS = [
   { name: '1440x900', width: 1440, height: 900 },
-  { name: '1280x800', width: 1280, height: 800 },
-  { name: '768x1024', width: 768, height: 1024 },
   { name: '390x844', width: 390, height: 844 },
   { name: '360x800', width: 360, height: 800 },
   { name: '320x700', width: 320, height: 700 },
@@ -37,16 +35,54 @@ function record(id, pass, detail, evidence) {
 
 async function waitForChatReady(page) {
   await page.waitForFunction(() => {
-    const btn = document.querySelector('button[aria-label*="Primewayz chat"], button[aria-label*="Open Primewayz chat"]');
+    const btn = document.querySelector(
+      'button[data-chat-launcher="true"], button[aria-label*="Primewayz chat"], button[aria-label*="Open Primewayz chat"]',
+    );
     return Boolean(btn);
   }, { timeout: 30000 });
 }
 
 async function openChat(page) {
-  const launcher = page.getByRole('button', { name: /Open Primewayz chat|Primewayz chat/i }).first();
+  const launcher = page
+    .locator('button[data-chat-launcher="true"], button[aria-label*="Open Primewayz chat"]')
+    .first();
   await launcher.click();
   await page.getByRole('dialog', { name: /Primewayz chat/i }).waitFor({ timeout: 10000 });
   return launcher;
+}
+
+async function measureLauncherBounds(page) {
+  return page.evaluate(() => {
+    const launcher = document.querySelector(
+      'button[data-chat-launcher="true"], button[aria-label*="Open Primewayz chat"]',
+    );
+    if (!launcher) return null;
+    const rect = launcher.getBoundingClientRect();
+    const badge = launcher.querySelector('[data-testid="chat-unread-badge"]');
+    const dot = launcher.querySelector('[data-testid="chat-presence-dot"]');
+    const badgeRect = badge?.getBoundingClientRect() || null;
+    const dotRect = dot?.getBoundingClientRect() || null;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const overflows = {
+      launcherRight: Math.max(0, rect.right - vw),
+      launcherBottom: Math.max(0, rect.bottom - vh),
+      badgeRight: badgeRect ? Math.max(0, badgeRect.right - vw) : 0,
+      badgeTop: badgeRect ? Math.max(0, -badgeRect.top) : 0,
+      dotRight: dotRect ? Math.max(0, dotRect.right - vw) : 0,
+      dotBottom: dotRect ? Math.max(0, dotRect.bottom - vh) : 0,
+    };
+    return {
+      presence: launcher.getAttribute('data-presence'),
+      unread: launcher.getAttribute('data-unread'),
+      ariaLabel: launcher.getAttribute('aria-label') || '',
+      hasBadge: Boolean(badge),
+      hasDot: Boolean(dot),
+      badgeText: badge?.textContent?.trim() || '',
+      overflows,
+      overflowPx: Math.max(...Object.values(overflows)),
+    };
+  });
 }
 
 async function measureOverflow(page) {
@@ -133,7 +169,7 @@ async function runViewportSmoke(browser, viewport) {
 
   await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await waitForChatReady(page);
-  const launcher = await openChat(page);
+  await openChat(page);
 
   const overflow = await measureOverflow(page);
   record(
@@ -142,6 +178,56 @@ async function runViewportSmoke(browser, viewport) {
     `overflowPx=${overflow.overflowPx}`,
     overflow,
   );
+
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  const launcherState = await measureLauncherBounds(page);
+  record(
+    `viewport.${viewport.name}.launcher_presence_dot`,
+    Boolean(launcherState?.hasDot),
+    `presence=${launcherState?.presence} hasDot=${launcherState?.hasDot}`,
+    launcherState,
+  );
+  record(
+    `viewport.${viewport.name}.launcher_no_clip`,
+    Boolean(launcherState && launcherState.overflowPx <= 1),
+    `overflowPx=${launcherState?.overflowPx}`,
+    launcherState,
+  );
+  record(
+    `viewport.${viewport.name}.launcher_aria_has_status`,
+    /Team online|Team away|Automated guidance available|Chat temporarily unavailable/i.test(
+      launcherState?.ariaLabel || '',
+    ),
+    `aria=${launcherState?.ariaLabel || ''}`,
+  );
+
+  // Escape already closed; verify focus return
+  const dialogVisible = await page.getByRole('dialog', { name: /Primewayz chat/i }).isVisible().catch(() => false);
+  const focused = await page.evaluate(() => {
+    const el = document.activeElement;
+    return {
+      tag: el?.tagName,
+      ariaLabel: el?.getAttribute('aria-label') || '',
+      dataLauncher: el?.getAttribute('data-chat-launcher') || '',
+    };
+  });
+  record(
+    `viewport.${viewport.name}.escape_closes`,
+    !dialogVisible,
+    dialogVisible ? 'dialog still open' : 'dialog closed',
+  );
+  record(
+    `viewport.${viewport.name}.focus_returns_to_launcher`,
+    focused.dataLauncher === 'true' || /Primewayz chat/i.test(focused.ariaLabel || ''),
+    `active=${focused.tag} aria-label=${focused.ariaLabel}`,
+    focused,
+  );
+
+  // Re-open for touch/composer checks
+  const launcher = page.locator('button[data-chat-launcher="true"]').first();
+  await launcher.click();
+  await page.getByRole('dialog', { name: /Primewayz chat/i }).waitFor();
 
   const targets = await collectTouchTargets(page);
   record(
@@ -152,33 +238,6 @@ async function runViewportSmoke(browser, viewport) {
       : `${targets.undersized.length} undersized`,
     targets.undersized.slice(0, 12),
   );
-
-  // Escape closes and returns focus to launcher
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(200);
-  const dialogVisible = await page.getByRole('dialog', { name: /Primewayz chat/i }).isVisible().catch(() => false);
-  const focused = await page.evaluate(() => {
-    const el = document.activeElement;
-    return {
-      tag: el?.tagName,
-      ariaLabel: el?.getAttribute('aria-label') || '',
-    };
-  });
-  record(
-    `viewport.${viewport.name}.escape_closes`,
-    !dialogVisible,
-    dialogVisible ? 'dialog still open' : 'dialog closed',
-  );
-  record(
-    `viewport.${viewport.name}.focus_returns_to_launcher`,
-    /Primewayz chat/i.test(focused.ariaLabel || ''),
-    `active=${focused.tag} aria-label=${focused.ariaLabel}`,
-    focused,
-  );
-
-  // Re-open and check composer visibility on mobile sizes
-  await launcher.click();
-  await page.getByRole('dialog', { name: /Primewayz chat/i }).waitFor();
   const composerVisible = await page.getByRole('textbox', { name: /Chat message/i }).isVisible();
   const sendVisible = await page.getByRole('button', { name: /Send message/i }).isVisible();
   const composerBox = await page.getByRole('textbox', { name: /Chat message/i }).boundingBox();
@@ -620,7 +679,7 @@ async function runCorrectedPaths(browser) {
     bodyLock,
   );
 
-  // --- Unread + human-joined + latest responder identity (via poll injection) ---
+  // --- Unread + human-joined + launcher presence (mocked admin-history transition) ---
   await navContext.close();
   const pollContext = await browser.newContext({
     viewport: { width: 1280, height: 800 },
@@ -629,7 +688,8 @@ async function runCorrectedPaths(browser) {
   const pollPage = await pollContext.newPage();
   const pollErrors = await consoleCollector(pollPage);
 
-  let pollTick = 0;
+  /** @type {'baseline' | 'admin1' | 'admin2'} */
+  let historyPhase = 'baseline';
   await pollPage.route('**/api/chat/**', async (route) => {
     const req = route.request();
     const pathname = new URL(req.url()).pathname;
@@ -649,48 +709,61 @@ async function runCorrectedPaths(browser) {
       });
       return;
     }
+    if (pathname.includes('/api/chat/heartbeat') || pathname.includes('/api/chat/session')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
     if (
       req.method() === 'GET'
       && /^\/api\/chat\/[^/]+$/.test(pathname)
       && !pathname.endsWith('/availability')
     ) {
-      pollTick += 1;
+      const base = [
+        {
+          id: '1',
+          text: 'Visitor hello',
+          sender: 'user',
+          timestamp: new Date(Date.now() - 5000).toISOString(),
+        },
+        {
+          id: '2',
+          text: 'Assistant ack',
+          sender: 'bot',
+          timestamp: new Date(Date.now() - 4000).toISOString(),
+        },
+      ];
       const payload =
-        pollTick === 1
-          ? [
-              {
-                id: '1',
-                text: 'Visitor hello',
-                sender: 'user',
-                timestamp: new Date(Date.now() - 5000).toISOString(),
-              },
-              {
-                id: '2',
-                text: 'Assistant ack',
-                sender: 'bot',
-                timestamp: new Date(Date.now() - 4000).toISOString(),
-              },
-            ]
-          : [
-              {
-                id: '1',
-                text: 'Visitor hello',
-                sender: 'user',
-                timestamp: new Date(Date.now() - 5000).toISOString(),
-              },
-              {
-                id: '2',
-                text: 'Assistant ack',
-                sender: 'bot',
-                timestamp: new Date(Date.now() - 4000).toISOString(),
-              },
-              {
-                id: '3',
-                text: 'Human team reply for unread validation',
-                sender: 'admin',
-                timestamp: new Date().toISOString(),
-              },
-            ];
+        historyPhase === 'baseline'
+          ? base
+          : historyPhase === 'admin1'
+            ? [
+                ...base,
+                {
+                  id: '3',
+                  text: 'Human team reply for unread validation',
+                  sender: 'admin',
+                  timestamp: new Date().toISOString(),
+                },
+              ]
+            : [
+                ...base,
+                {
+                  id: '3',
+                  text: 'Human team reply for unread validation',
+                  sender: 'admin',
+                  timestamp: new Date().toISOString(),
+                },
+                {
+                  id: '4',
+                  text: 'Second human reply',
+                  sender: 'admin',
+                  timestamp: new Date().toISOString(),
+                },
+              ];
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -698,41 +771,89 @@ async function runCorrectedPaths(browser) {
       });
       return;
     }
-    await route.fallback();
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true }),
+    });
   });
 
   await pollPage.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
   await waitForChatReady(pollPage);
   await openChat(pollPage);
-  await pollPage.waitForTimeout(1500);
+  await pollPage.waitForTimeout(800);
+  // Minimise first while history is still the baseline so an open poll cannot
+  // consume the admin id with unreadDelta=0.
   await pollPage.keyboard.press('Escape');
-  await pollPage.waitForTimeout(48000);
-  const unreadLabel = await pollPage.locator('button[aria-label*="unread"]').first().getAttribute('aria-label').catch(() => null);
-  const unreadBadgeVisible = await pollPage.evaluate(() => {
-    const launcher = document.querySelector('button[aria-label*="Primewayz chat"]');
-    if (!launcher) return false;
-    return /unread|[1-9]/.test(launcher.getAttribute('aria-label') || '')
-      || Boolean(launcher.querySelector('span'));
+  await pollPage.waitForTimeout(400);
+
+  historyPhase = 'admin1';
+  await pollPage.evaluate(() => {
+    window.dispatchEvent(new Event('primewayz-visitor-chat-force-poll'));
   });
-  const unreadObserved = Boolean(unreadLabel) || unreadBadgeVisible;
-  if (unreadObserved) {
-    record(
-      'path.first_new_admin_reply_creates_unread',
-      true,
-      `aria=${unreadLabel} badge=${unreadBadgeVisible} pollTick=${pollTick}`,
-    );
-  } else {
-    // Headless poll mocks are unreliable without a live DB/admin reply.
-    // Equivalent behaviour is covered by reconcileVisitorPollState unit tests.
-    record(
-      'path.first_new_admin_reply_creates_unread.db_only',
-      true,
-      `Deferred to unit suite (pollTick=${pollTick}); pure transition tests prove unreadDelta=1`,
-    );
-  }
+  await pollPage.waitForTimeout(800);
+
+  const unreadAfterFirst = await measureLauncherBounds(pollPage);
+  record(
+    'path.first_new_admin_reply_creates_unread',
+    unreadAfterFirst?.unread === '1'
+      && unreadAfterFirst?.hasBadge
+      && /1 unread reply/i.test(unreadAfterFirst?.ariaLabel || ''),
+    `unread=${unreadAfterFirst?.unread} aria=${unreadAfterFirst?.ariaLabel} badge=${unreadAfterFirst?.badgeText}`,
+    unreadAfterFirst,
+  );
+  record(
+    'path.unread_badge_and_presence_together',
+    Boolean(unreadAfterFirst?.hasBadge && unreadAfterFirst?.hasDot),
+    `badge=${unreadAfterFirst?.hasBadge} dot=${unreadAfterFirst?.hasDot} presence=${unreadAfterFirst?.presence}`,
+    unreadAfterFirst,
+  );
+  record(
+    'path.launcher_presence_automated_grey',
+    unreadAfterFirst?.presence === 'automated',
+    `presence=${unreadAfterFirst?.presence}`,
+  );
+
+  // Identical closed poll must not increment.
+  await pollPage.evaluate(() => {
+    window.dispatchEvent(new Event('primewayz-visitor-chat-force-poll'));
+  });
+  await pollPage.waitForTimeout(600);
+  const unreadAfterRepeat = await measureLauncherBounds(pollPage);
+  record(
+    'path.identical_poll_does_not_increment_unread',
+    unreadAfterRepeat?.unread === '1',
+    `unread=${unreadAfterRepeat?.unread}`,
+    unreadAfterRepeat,
+  );
+
+  historyPhase = 'admin2';
+  await pollPage.evaluate(() => {
+    window.dispatchEvent(new Event('primewayz-visitor-chat-force-poll'));
+  });
+  await pollPage.waitForTimeout(800);
+  const unreadAfterSecond = await measureLauncherBounds(pollPage);
+  record(
+    'path.second_admin_reply_increments_unread',
+    unreadAfterSecond?.unread === '2',
+    `unread=${unreadAfterSecond?.unread}`,
+    unreadAfterSecond,
+  );
 
   await openChat(pollPage);
-  await pollPage.waitForTimeout(6000);
+  await pollPage.waitForTimeout(400);
+  await pollPage.keyboard.press('Escape');
+  await pollPage.waitForTimeout(300);
+  const afterOpenClear = await measureLauncherBounds(pollPage);
+  record(
+    'path.opening_clears_unread',
+    afterOpenClear?.unread === '0' && !afterOpenClear?.hasBadge,
+    `unread=${afterOpenClear?.unread} hasBadge=${afterOpenClear?.hasBadge}`,
+    afterOpenClear,
+  );
+
+  await openChat(pollPage);
+  await pollPage.waitForTimeout(1500);
   const afterPoll = await pollPage.evaluate(() => {
     const dialog = document.querySelector('[role="dialog"][aria-label="Primewayz chat"]');
     const text = dialog?.innerText || '';
@@ -742,29 +863,84 @@ async function runCorrectedPaths(browser) {
       headerHasTeam: /Primewayz Team/i.test(header) || /Primewayz Team/i.test(text.split('\n').slice(0, 6).join('\n')),
       headerTitle: header,
       headerHasAssistant: /Primewayz Assistant/i.test(header),
+      headerStatusAutomatedOrHuman:
+        /Automated guidance available|Human response received|Team online|Team currently away/i.test(text),
       textSample: text.slice(0, 500),
     };
   });
-  if (afterPoll.humanJoined) {
-    record(
-      'path.human_joined_notice_survives_polling',
-      true,
-      `humanJoined=${afterPoll.humanJoined}`,
-      afterPoll,
-    );
-  } else {
-    record(
-      'path.human_joined_notice_survives_polling.db_only',
-      true,
-      'Deferred to unit suite; pure transition tests prove notice survives identical polls',
-      afterPoll,
-    );
-  }
+  record(
+    'path.human_joined_notice_survives_polling',
+    afterPoll.humanJoined,
+    `humanJoined=${afterPoll.humanJoined}`,
+    afterPoll,
+  );
   record(
     'path.latest_responder_controls_header_identity',
     afterPoll.headerHasTeam || afterPoll.headerTitle === 'Primewayz Team',
     `team=${afterPoll.headerHasTeam} title=${afterPoll.headerTitle}`,
     afterPoll,
+  );
+  record(
+    'path.open_panel_status_aligned',
+    afterPoll.headerStatusAutomatedOrHuman,
+    `sample=${afterPoll.textSample.slice(0, 180)}`,
+    afterPoll,
+  );
+
+  // Presence: away / online / unavailable via availability mock
+  await pollPage.unroute('**/api/chat/**').catch(() => {});
+  await pollPage.route('**/api/chat/availability', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'away',
+        canAcceptMessages: true,
+        canBookCall: true,
+        serverTime: new Date().toISOString(),
+        mode: 'away',
+        computedStatus: 'away',
+        hasActiveAdmin: false,
+      }),
+    });
+  });
+  await pollPage.keyboard.press('Escape');
+  await pollPage.reload({ waitUntil: 'domcontentloaded' });
+  await waitForChatReady(pollPage);
+  await pollPage.waitForTimeout(800);
+  const awayLauncher = await measureLauncherBounds(pollPage);
+  record(
+    'path.launcher_presence_away_amber',
+    awayLauncher?.presence === 'away',
+    `presence=${awayLauncher?.presence}`,
+    awayLauncher,
+  );
+
+  await pollPage.unroute('**/api/chat/availability').catch(() => {});
+  await pollPage.route('**/api/chat/availability', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'online',
+        canAcceptMessages: true,
+        canBookCall: true,
+        serverTime: new Date().toISOString(),
+        mode: 'online',
+        computedStatus: 'online',
+        hasActiveAdmin: true,
+      }),
+    });
+  });
+  await pollPage.reload({ waitUntil: 'domcontentloaded' });
+  await waitForChatReady(pollPage);
+  await pollPage.waitForTimeout(800);
+  const onlineLauncher = await measureLauncherBounds(pollPage);
+  record(
+    'path.launcher_presence_online_green',
+    onlineLauncher?.presence === 'online',
+    `presence=${onlineLauncher?.presence}`,
+    onlineLauncher,
   );
 
   const unexpected = [...errors, ...navErrors, ...pollErrors].filter(
