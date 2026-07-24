@@ -348,7 +348,11 @@ export function scheduleConfirmationSummaryExpiry(
   const now = options.now ?? Date.now();
   const remaining = summary.expiresAt - now;
   const setTimeoutFn = options.setTimeoutFn ?? setTimeout;
-  const clearTimeoutFn = options.clearTimeoutFn ?? clearTimeout;
+  const clearTimeoutFn =
+    options.clearTimeoutFn
+    ?? ((id: unknown) => {
+      clearTimeout(id as ReturnType<typeof setTimeout>);
+    });
 
   if (!Number.isFinite(remaining) || remaining <= 0) {
     options.onExpire();

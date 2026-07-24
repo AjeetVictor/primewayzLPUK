@@ -535,17 +535,18 @@ test('software capacity-request CTAs remain unchanged', () => {
   assert.match(page, /serviceArea="Software & Product Engineering"/);
 });
 
-test('LiveChat, LazyLiveChat and ProfessionalServicesCrmSupportUkPage remain untouched', () => {
-  for (const file of [
-    'src/components/LiveChat.tsx',
-    'src/components/LazyLiveChat.tsx',
-  ]) {
-    const source = read(file);
-    assert.doesNotMatch(source, /buildFreeReviewCtaUrl/);
-    assert.doesNotMatch(source, /DigitalSystemsReviewCtaGroup/);
-    assert.doesNotMatch(source, /review_service=/);
-    assert.doesNotMatch(source, /FREE_REVIEW_SERVICE_QUERY_PARAM/);
-  }
+test('LiveChat/LazyLiveChat Phase 2B service placements remain unwired; ProfessionalServicesCrmSupportUkPage untouched', () => {
+  // Phase 2F-1 may add chat_widget review links; Phase 2B forbids service_page placements here.
+  const liveChat = read('src/components/LiveChat.tsx');
+  assert.doesNotMatch(liveChat, /DigitalSystemsReviewCtaGroup/);
+  assert.doesNotMatch(liveChat, /sourceLocation:\s*'service_page'|sourceLocation="service_page"/);
+  assert.doesNotMatch(liveChat, /crm_hero_primary|website_visibility_hero_primary|software_review_primary/);
+
+  const lazy = read('src/components/LazyLiveChat.tsx');
+  assert.doesNotMatch(lazy, /buildFreeReviewCtaUrl/);
+  assert.doesNotMatch(lazy, /DigitalSystemsReviewCtaGroup/);
+  assert.doesNotMatch(lazy, /review_service=/);
+  assert.doesNotMatch(lazy, /FREE_REVIEW_SERVICE_QUERY_PARAM/);
 
   const professional = 'src/components/ProfessionalServicesCrmSupportUkPage.tsx';
   assert.ok(fs.existsSync(path.join(root, professional)));

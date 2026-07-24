@@ -507,13 +507,14 @@ test('Footer Phase 2D wiring must not use Phase 2C placements', () => {
   assert.doesNotMatch(footer, /success_stories_listing_|success_story_hero_|blog_article_|sdaas_supporting_article_/);
 });
 
-test('LiveChat remains unchanged', () => {
+test('LiveChat does not use Phase 2C content placements', () => {
   const chat = read('src/components/LiveChat.tsx');
   assert.doesNotMatch(chat, /DigitalSystemsReviewCtaGroup/);
-  assert.doesNotMatch(chat, /success_stories_listing_|blog_article_/);
+  assert.doesNotMatch(chat, /success_stories_listing_|blog_article_|sdaas_supporting_article_/);
+  assert.doesNotMatch(chat, /sourceLocation:\s*'success_story'|sourceLocation:\s*'article'/);
 });
 
-test('LazyLiveChat remains unchanged', () => {
+test('LazyLiveChat remains a deferred loader without review CTA wiring', () => {
   const chat = read('src/components/LazyLiveChat.tsx');
   assert.doesNotMatch(chat, /DigitalSystemsReviewCtaGroup/);
   assert.doesNotMatch(chat, /buildFreeReviewCtaUrl/);

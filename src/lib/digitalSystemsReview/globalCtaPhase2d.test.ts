@@ -285,14 +285,18 @@ test('46–48 hero slider files remain outside Phase 2D', () => {
   }
 });
 
-test('49–50 LiveChat and LazyLiveChat remain unchanged', () => {
-  for (const file of ['src/components/LiveChat.tsx', 'src/components/LazyLiveChat.tsx']) {
-    const source = read(file);
-    assert.doesNotMatch(source, /DigitalSystemsReviewCtaGroup/);
-    assert.doesNotMatch(source, /DigitalSystemsReviewCtaLink/);
-    assert.doesNotMatch(source, /buildFreeReviewCtaUrl/);
-    assert.doesNotMatch(source, /about_page|footer_primary|navigation_desktop/);
-  }
+test('49–50 LiveChat and LazyLiveChat do not use Phase 2D nav/footer/about placements', () => {
+  // Phase 2F-1 may wire chat_widget review CTAs; Phase 2D placements remain forbidden here.
+  const liveChat = read('src/components/LiveChat.tsx');
+  assert.doesNotMatch(liveChat, /DigitalSystemsReviewCtaGroup/);
+  assert.doesNotMatch(liveChat, /DigitalSystemsReviewCtaLink/);
+  assert.doesNotMatch(liveChat, /about_page|footer_primary|navigation_desktop/);
+
+  const lazy = read('src/components/LazyLiveChat.tsx');
+  assert.doesNotMatch(lazy, /DigitalSystemsReviewCtaGroup/);
+  assert.doesNotMatch(lazy, /DigitalSystemsReviewCtaLink/);
+  assert.doesNotMatch(lazy, /buildFreeReviewCtaUrl/);
+  assert.doesNotMatch(lazy, /about_page|footer_primary|navigation_desktop/);
 });
 
 test('51–53 no App route, server, Prisma or migration change for Phase 2D', () => {

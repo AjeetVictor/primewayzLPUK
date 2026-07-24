@@ -232,10 +232,9 @@ export function buildFreeReviewCtaUrl(
   return query ? `${FREE_REVIEW_ROUTE}?${query}` : FREE_REVIEW_ROUTE;
 }
 
-/** Remaining Phase 2 CTA surfaces — not wired in Phase 2A–2D. */
+/** Remaining Phase 2 CTA surfaces — not wired in Phase 2A–2E (chat wired in 2F-1). */
 export const PHASE2_CTA_ROLLOUT_FILES = [
   'src/components/hero/HeroSplitSlider.tsx',
   'src/components/hero/HeroContentSlider.tsx',
-  'src/components/LiveChat.tsx',
   'src/components/LazyLiveChat.tsx',
 ] as const;

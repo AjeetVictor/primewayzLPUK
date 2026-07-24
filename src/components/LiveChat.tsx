@@ -1,9 +1,23 @@
-import { useState, useEffect, useRef, FormEvent, KeyboardEvent, ClipboardEvent } from 'react';
+import {
+  useState,
+  useEffect,
+  useRef,
+  useEffectEvent,
+  FormEvent,
+  KeyboardEvent,
+  ClipboardEvent,
+} from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageCircle, X, Send, User, Bot, Minus, Paperclip, CalendarClock, FileText, Image as ImageIcon } from 'lucide-react';
+import {
+  MessageCircle,
+  X,
+  Send,
+  Paperclip,
+  CalendarClock,
+  FileText,
+} from 'lucide-react';
 import { apiUrl } from '../utils/apiUrl';
-
-
 import {
   trackChatAppointmentRequested,
   trackChatAttachmentUploaded,
@@ -14,147 +28,84 @@ import {
 } from '../lib/analytics';
 import { getChatSourcePayload } from '../lib/chatSource';
 import { QuotedMessagePreview } from './chat/QuotedMessagePreview';
-import type { ChatReplyPreview } from '../lib/chatTypes';
+import { ChatHeader } from './chat/ChatHeader';
+import { ChatIdentityBadge } from './chat/ChatIdentityBadge';
+import { ChatIntentChooser } from './chat/ChatIntentChooser';
+import { ChatClarificationChooser } from './chat/ChatClarificationChooser';
+import { ChatRecommendationPanel } from './chat/ChatRecommendationPanel';
+import { ChatAvailabilityNotice } from './chat/ChatAvailabilityNotice';
+import { ChatMessageStatus } from './chat/ChatMessageStatus';
+import { ChatAttachmentStatus } from './chat/ChatAttachmentStatus';
+import {
+  resolveVisitorChatIdentity,
+} from '../lib/chat/visitorChatIdentity';
+import { resolveVisitorChatRouteContext } from '../lib/chat/visitorChatContext';
+import {
+  getVisitorChatIntent,
+  type VisitorChatIntentKey,
+} from '../lib/chat/visitorChatIntents';
+import { trackVisitorChatEvent } from '../lib/chat/visitorChatAnalytics';
+import {
+  DEFAULT_CHAT_AVAILABILITY,
+  isTeamAwayStatus,
+  normalizeChatAvailabilityStatus,
+  type ChatAttachment,
+  type ChatAvailability,
+  type PendingChatAttachment,
+  type VisitorChatMessage,
+} from '../lib/chat/visitorChatTypes';
+import {
+  resolveVisitorHeaderStatus,
+  VISITOR_CHAT_LAUNCHER_NAME,
+  VISITOR_CHAT_MESSAGE_SAVED,
+  VISITOR_CHAT_REGION_NAME,
+} from '../lib/chat/visitorChatUi';
+import {
+  hasBlockingAttachment,
+  hasFailedAttachment,
+  hasUploadingAttachment,
+  VISITOR_ATTACHMENT_FAILED_GUIDANCE,
+  VISITOR_ATTACHMENT_UPLOAD_GUIDANCE,
+} from '../lib/chat/visitorChatAttachments';
+import {
+  countComparableMessages,
+  mergeRemoteHistoryWithLocalState,
+  resolveLatestResponderSender,
+} from '../lib/chat/visitorChatHistoryMerge';
+import {
+  findAutomatedReplyAfterUserMessage,
+  findPersistedUserMessageMatch,
+} from '../lib/chat/visitorChatMessageReconcile';
+import { resolveVisitorChatPollIntervalMs } from '../lib/chat/visitorChatPolling';
+import { reconcileVisitorPollState } from '../lib/chat/visitorChatPollReconcile';
+import {
+  clearBodyScrollStyles as clearBodyScrollStylesHelper,
+  lockBodyScroll as lockBodyScrollHelper,
+} from '../lib/chat/visitorChatBodyScroll';
 
-type ChatStatusKey = 'online' | 'away' | 'offline' | 'assistant';
-
-const normalizeChatStatus = (status?: string): ChatStatusKey => {
-  if (status === 'online') return 'online';
-  if (status === 'away') return 'away';
-  if (status === 'assistant') return 'assistant';
-  return 'offline';
-};
-
-const chatStatusTheme: Record<ChatStatusKey, {
-  dot: string;
-  softDot: string;
-  badge: string;
-  badgeText: string;
-  launcherRing: string;
-  launcherText: string;
-}> = {
-  online: {
-    dot: 'bg-emerald-500',
-    softDot: 'bg-emerald-400',
-    badge: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    badgeText: 'ONLINE',
-    launcherRing: 'ring-emerald-200',
-    launcherText: 'Online',
-  },
-  away: {
-    dot: 'bg-amber-500',
-    softDot: 'bg-amber-400',
-    badge: 'border-amber-200 bg-amber-50 text-amber-700',
-    badgeText: 'AWAY',
-    launcherRing: 'ring-amber-200',
-    launcherText: 'Away',
-  },
-  offline: {
-    dot: 'bg-slate-400',
-    softDot: 'bg-slate-400',
-    badge: 'border-slate-200 bg-slate-100 text-slate-600',
-    badgeText: 'OFFLINE',
-    launcherRing: 'ring-slate-200',
-    launcherText: 'Offline',
-  },
-  assistant: {
-    dot: 'bg-slate-500',
-    softDot: 'bg-sky-400',
-    badge: 'border-slate-300 bg-slate-100 text-slate-700',
-    badgeText: 'ASSISTANT',
-    launcherRing: 'ring-sky-200',
-    launcherText: 'Assistant',
-  },
-};
-
-interface ChatAttachment {
-  id: number;
-  url: string;
-  originalName: string;
-  fileName: string;
-  mimeType: string;
-  size: number;
-  kind: 'image' | 'document';
-}
-
-interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'bot' | 'admin';
-  timestamp: Date;
-  editedAt?: string | null;
-  deletedAt?: string | null;
-  replyToId?: number | null;
-  replyTo?: ChatReplyPreview | null;
-  attachments?: ChatAttachment[];
-}
-
-function mapHistoryMessage(m: Record<string, unknown>): Message {
+function mapHistoryMessage(m: Record<string, unknown>): VisitorChatMessage {
   return {
     id: String(m.id),
     text: String(m.text || ''),
-    sender: (m.sender as Message['sender']) || 'bot',
+    sender: (m.sender as VisitorChatMessage['sender']) || 'bot',
     timestamp: new Date(String(m.timestamp || Date.now())),
     editedAt: (m.editedAt as string | null | undefined) ?? null,
     deletedAt: (m.deletedAt as string | null | undefined) ?? null,
     replyToId: (m.replyToId as number | null | undefined) ?? null,
-    replyTo: (m.replyTo as ChatReplyPreview | null | undefined) ?? null,
+    replyTo: (m.replyTo as VisitorChatMessage['replyTo']) ?? null,
     attachments: (m.attachments as ChatAttachment[] | undefined) || [],
+    deliveryStatus: 'sent',
   };
 }
 
-type ChatAvailabilityStatus = 'online' | 'away' | 'offline' | 'assistant';
-
-interface ChatAvailability {
-  status: ChatAvailabilityStatus;
-  title: string;
-  subtitle: string;
-  responseExpectation: string;
-  businessHours: string;
-  canAcceptMessages: boolean;
-  canBookCall: boolean;
-  serverTime: string;
+function createClientMessageId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-const defaultAvailability: ChatAvailability = {
-  status: 'assistant',
-  title: 'Primewayz Assistant is active',
-  subtitle: 'Human team replies during business hours',
-  responseExpectation: 'Human team replies during business hours',
-  businessHours: 'Mon-Fri, 10:00-19:00 UK time',
-  canAcceptMessages: true,
-  canBookCall: true,
-  serverTime: '',
-};
-
-const availabilityStyles: Record<ChatAvailabilityStatus, { dot: string; badge: string; label: string; launcherLabel: string }> = {
-  online: {
-    dot: 'bg-green-600',
-    badge: 'border border-green-300 bg-green-100 text-green-800',
-    label: 'Online',
-    launcherLabel: 'Online',
-  },
-  away: {
-    dot: 'bg-amber-500',
-    badge: 'border border-amber-300 bg-amber-100 text-amber-800',
-    label: 'Away',
-    launcherLabel: 'Away - leave a message',
-  },
-  offline: {
-    dot: 'bg-slate-400',
-    badge: 'border border-slate-300 bg-slate-100 text-slate-700',
-    label: 'Offline',
-    launcherLabel: 'Offline - leave a message',
-  },
-  assistant: {
-    dot: 'bg-slate-500',
-    badge: 'border border-slate-300 bg-slate-100 text-slate-700',
-    label: 'Assistant',
-    launcherLabel: 'Assistant',
-  },
-};
-
 export const LiveChat = () => {
+  const location = useLocation();
+  const routeContext = resolveVisitorChatRouteContext(location.pathname || '/');
+
   const [isOpen, setIsOpen] = useState(false);
   const [hasTrackedChatOpen, setHasTrackedChatOpen] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -162,22 +113,20 @@ export const LiveChat = () => {
   });
   const [isMinimized, setIsMinimized] = useState(false);
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isTyping, setIsTyping] = useState(false);
-  const [availability, setAvailability] = useState<ChatAvailability>(defaultAvailability);
-
-  const chatStatusKey = normalizeChatStatus(availability?.status);
-  const currentStatusTheme = chatStatusTheme[chatStatusKey];
+  const [messages, setMessages] = useState<VisitorChatMessage[]>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [availability, setAvailability] = useState<ChatAvailability>(DEFAULT_CHAT_AVAILABILITY);
   const [userName, setUserName] = useState(() => localStorage.getItem('chat_user_name') || '');
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem('chat_user_email') || '');
-
-
-
-  const [showLeadForm, setShowLeadForm] = useState(!userName || !userEmail);
+  const [showLeadForm, setShowLeadForm] = useState(false);
+  const [leadSavedNotice, setLeadSavedNotice] = useState(false);
+  const [contactSaveStatus, setContactSaveStatus] = useState<
+    'idle' | 'saving' | 'saved' | 'failed'
+  >('idle');
+  const [contactSaveError, setContactSaveError] = useState('');
   const [apiAvailable, setApiAvailable] = useState(true);
-  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
+  const [pendingAttachments, setPendingAttachments] = useState<PendingChatAttachment[]>([]);
   const [uploadError, setUploadError] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
   const [showAppointmentForm, setShowAppointmentForm] = useState(false);
   const [appointmentForm, setAppointmentForm] = useState({
     name: userName,
@@ -188,12 +137,68 @@ export const LiveChat = () => {
     message: '',
   });
   const [appointmentError, setAppointmentError] = useState('');
+  const [selectedIntentKey, setSelectedIntentKey] = useState<VisitorChatIntentKey | null>(
+    null,
+  );
+  const [selectedClarificationKey, setSelectedClarificationKey] = useState<string | null>(null);
+  const [showIntentChooser, setShowIntentChooser] = useState(true);
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  const [recommendationTracked, setRecommendationTracked] = useState(false);
+  const [showAwayFollowUp, setShowAwayFollowUp] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [humanJoinedNoticeShown, setHumanJoinedNoticeShown] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [isAwaitingAutomatedReply, setIsAwaitingAutomatedReply] = useState(false);
+  const [statusAnnouncement, setStatusAnnouncement] = useState('');
+  const [isDocumentVisible, setIsDocumentVisible] = useState(
+    () => typeof document === 'undefined' || document.visibilityState === 'visible',
+  );
+  const [hasKnownSessionHistory, setHasKnownSessionHistory] = useState(false);
+
   const [sessionId] = useState(() => {
     const saved = localStorage.getItem('chat_session_id');
     if (saved) return saved;
     const newId = Math.random().toString(36).substring(7);
     localStorage.setItem('chat_session_id', newId);
     return newId;
+  });
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const scrollYRef = useRef(0);
+  const lastSeenAdminIdRef = useRef<string | null>(null);
+  const messagesRef = useRef<VisitorChatMessage[]>([]);
+  const failedFileByKeyRef = useRef<Map<string, File>>(new Map());
+  const retryInFlightRef = useRef<Set<string>>(new Set());
+  const pollConsecutiveFailuresRef = useRef(0);
+
+  messagesRef.current = messages;
+
+  const selectedIntent = getVisitorChatIntent(selectedIntentKey);
+  const latestResponder = resolveLatestResponderSender(messages);
+  const hasAdminReply = latestResponder === 'admin';
+  const waitingForTeam = messages.some(
+    (msg) => msg.sender === 'user' && msg.deliveryStatus !== 'failed',
+  ) && !hasAdminReply && isSending === false;
+  const headerStatus = resolveVisitorHeaderStatus({
+    availabilityStatus: normalizeChatAvailabilityStatus(availability.status),
+    hasAdminReply,
+    waitingForTeam: waitingForTeam && Boolean(userEmail),
+  });
+  const teamAway = isTeamAwayStatus(normalizeChatAvailabilityStatus(availability.status));
+  const hasUploading = hasUploadingAttachment(pendingAttachments);
+  const hasFailed = hasFailedAttachment(pendingAttachments);
+  const hasBlocking = hasBlockingAttachment(pendingAttachments);
+  const showComposerBooking = !showRecommendations && !showAwayFollowUp;
+  const prefersReducedMotion =
+    typeof window !== 'undefined'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const announceStatus = useEffectEvent((text: string) => {
+    setStatusAnnouncement(text);
   });
 
   useEffect(() => {
@@ -229,9 +234,14 @@ export const LiveChat = () => {
     };
   }, [isOpen, sessionId, userName, userEmail]);
 
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      setIsDocumentVisible(document.visibilityState === 'visible');
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
 
-
-  // Fetch persistent chat history
   useEffect(() => {
     const fetchHistory = async () => {
       try {
@@ -239,73 +249,137 @@ export const LiveChat = () => {
         if (res.ok) {
           const history = await res.json();
           if (!Array.isArray(history)) {
-            setApiAvailable(false);
+            pollConsecutiveFailuresRef.current += 1;
+            setHistoryLoaded(true);
             return;
           }
+          setApiAvailable(true);
+          pollConsecutiveFailuresRef.current = 0;
           if (history.length > 0) {
-            setMessages(history.map((m: Record<string, unknown>) => mapHistoryMessage(m)));
-          } else {
-            // Default welcome message if no history
-            setMessages([{
-              id: '1',
-              text: 'Hi there! 👋 Welcome to Primewayz UK. How can we help your UK business with website, SEO, CRM, automation, or monthly digital support?',
-              sender: 'bot',
-              timestamp: new Date(),
-            }]);
+            const mapped = history.map((m: Record<string, unknown>) => mapHistoryMessage(m));
+            // Baseline load: do not count historical admin messages as unread.
+            const baseline = reconcileVisitorPollState({
+              previousMessages: [],
+              remoteMessages: mapped,
+              previousAdminId: null,
+              hasKnownSessionHistory: false,
+              chatIsOpen: true,
+              noticeAlreadyShown: false,
+            }, {
+              createNoticeId: () => createClientMessageId('system'),
+            });
+            lastSeenAdminIdRef.current = baseline.latestAdminId;
+            setHumanJoinedNoticeShown(baseline.humanJoinedNoticeShown);
+            setMessages(baseline.messages);
+            setShowIntentChooser(false);
+            setHasKnownSessionHistory(true);
           }
-        } else if (res.status === 404) {
-          setApiAvailable(false);
-          setMessages([{
-            id: '1',
-            text: 'Hi there! 👋 Welcome to Primewayz UK. How can we help your UK business with website, SEO, CRM, automation, or monthly digital support?',
-            sender: 'bot',
-            timestamp: new Date(),
-          }]);
+          setHistoryLoaded(true);
+          return;
         }
-      } catch (error) {
-        setApiAvailable(false);
-        setMessages([{
-          id: '1',
-          text: 'Hi there! 👋 Welcome to Primewayz UK. How can we help your UK business with website, SEO, CRM, automation, or monthly digital support?',
-          sender: 'bot',
-          timestamp: new Date(),
-        }]);
+        if (res.status === 404) {
+          pollConsecutiveFailuresRef.current += 1;
+        }
+      } catch {
+        pollConsecutiveFailuresRef.current += 1;
       }
+      setHistoryLoaded(true);
     };
     fetchHistory();
   }, [sessionId]);
 
-  // Polling for new messages (especially admin replies)
+  const applyPolledHistory = useEffectEvent((mapped: VisitorChatMessage[]) => {
+    const result = reconcileVisitorPollState({
+      previousMessages: messagesRef.current,
+      remoteMessages: mapped,
+      previousAdminId: lastSeenAdminIdRef.current,
+      hasKnownSessionHistory,
+      chatIsOpen: isOpen && !isMinimized,
+      noticeAlreadyShown: humanJoinedNoticeShown,
+    }, {
+      createNoticeId: () => createClientMessageId('system'),
+    });
+
+    messagesRef.current = result.messages;
+    setMessages(result.messages);
+    lastSeenAdminIdRef.current = result.latestAdminId;
+
+    if (result.humanJoinedNoticeShown && !humanJoinedNoticeShown) {
+      setHumanJoinedNoticeShown(true);
+    }
+    if (result.unreadDelta > 0) {
+      setUnreadCount((count) => count + result.unreadDelta);
+    }
+  });
+
   useEffect(() => {
-    if (!isOpen || !apiAvailable) return;
-    
-    const pollInterval = setInterval(async () => {
+    const pollIntervalMs = resolveVisitorChatPollIntervalMs({
+      isOpen,
+      isMinimized,
+      isDocumentVisible,
+      hasKnownSessionHistory,
+    });
+
+    if (pollIntervalMs == null) return undefined;
+
+    const pollHistory = async () => {
       try {
         const res = await fetch(apiUrl(`/api/chat/${sessionId}`));
-        if (res.ok) {
-          const history = await res.json();
-          if (!Array.isArray(history)) {
-            setApiAvailable(false);
-            return;
-          }
-          const mapped = history.map((m: Record<string, unknown>) => mapHistoryMessage(m));
-          const latestRemoteId = mapped[mapped.length - 1]?.id;
-          const latestLocalId = messages[messages.length - 1]?.id;
-          if (mapped.length !== messages.length || latestRemoteId !== latestLocalId) {
-            setMessages(mapped);
-          }
+        if (!res.ok) {
+          pollConsecutiveFailuresRef.current += 1;
+          return;
         }
-      } catch (error) {
-        setApiAvailable(false);
+        const history = await res.json();
+        if (!Array.isArray(history)) {
+          pollConsecutiveFailuresRef.current += 1;
+          return;
+        }
+
+        setApiAvailable(true);
+        pollConsecutiveFailuresRef.current = 0;
+
+        const mapped = history.map((m: Record<string, unknown>) => mapHistoryMessage(m));
+        if (mapped.length > 0) {
+          setHasKnownSessionHistory(true);
+        }
+
+        const latestRemoteId = mapped[mapped.length - 1]?.id;
+        const latestLocalPersisted = [...messages]
+          .reverse()
+          .find(
+            (msg) =>
+              !String(msg.id).startsWith('local-') && msg.deliveryStatus !== 'failed',
+          );
+        const latestLocalId = latestLocalPersisted?.id;
+
+        if (
+          countComparableMessages(mapped) !== countComparableMessages(messages)
+          || latestRemoteId !== latestLocalId
+        ) {
+          applyPolledHistory(mapped);
+        }
+      } catch {
+        pollConsecutiveFailuresRef.current += 1;
       }
-    }, 5000); // Poll every 5 seconds
+    };
 
-    return () => clearInterval(pollInterval);
-  }, [isOpen, sessionId, messages.length, apiAvailable]);
+    const effectiveInterval =
+      pollConsecutiveFailuresRef.current >= 3
+        ? pollIntervalMs * 2
+        : pollIntervalMs;
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+    const pollTimer = window.setInterval(pollHistory, effectiveInterval);
+    return () => window.clearInterval(pollTimer);
+  }, [
+    apiAvailable,
+    sessionId,
+    messages,
+    isOpen,
+    isMinimized,
+    isDocumentVisible,
+    hasKnownSessionHistory,
+    applyPolledHistory,
+  ]);
 
   useEffect(() => {
     const fetchAvailability = async () => {
@@ -315,39 +389,94 @@ export const LiveChat = () => {
           setAvailability(await res.json());
         }
       } catch {
-        setAvailability(defaultAvailability);
+        setAvailability(DEFAULT_CHAT_AVAILABILITY);
       }
     };
 
     fetchAvailability();
-    const interval = setInterval(fetchAvailability, 60000);
-    return () => clearInterval(interval);
+    const interval = window.setInterval(fetchAvailability, 60000);
+    return () => window.clearInterval(interval);
   }, []);
 
-  const availabilityStyle = availabilityStyles[availability.status] || availabilityStyles.assistant;
+  useEffect(() => {
+    if (!showRecommendations || recommendationTracked || !selectedIntent) return;
+    trackVisitorChatEvent('chat_recommendation_shown', {
+      route: location.pathname,
+      intentKey: selectedIntent.key,
+      serviceArea: selectedIntent.serviceArea,
+      recommendationType: 'panel',
+      availabilityState: availability.status,
+    });
+    setRecommendationTracked(true);
+  }, [
+    showRecommendations,
+    recommendationTracked,
+    selectedIntent,
+    location.pathname,
+    availability.status,
+  ]);
 
+  const clearBodyScrollStyles = useEffectEvent(() => {
+    clearBodyScrollStylesHelper(document.body.style);
+  });
 
-  const openChatWidget = () => {
-    setIsOpen(true);
-    setIsMinimized(false);
-
-    if (!hasTrackedChatOpen) {
-      trackChatOpen({
-        chatStatus: availability.status,
-        chatTitle: availability.title,
-        ctaLocation: 'chat_launcher',
-      });
-
-      setHasTrackedChatOpen(true);
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem('primewayz_chat_open_tracked', 'true');
-      }
+  const unlockBodyScroll = useEffectEvent((options: { restorePosition: boolean }) => {
+    clearBodyScrollStyles();
+    if (options.restorePosition) {
+      window.scrollTo(0, scrollYRef.current);
     }
-  };
+  });
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const lockBodyScroll = useEffectEvent(() => {
+    scrollYRef.current = lockBodyScrollHelper({
+      currentScrollY: window.scrollY,
+      bodyStyle: document.body.style,
+    });
+  });
+
+  const navigateFromChat = useEffectEvent(() => {
+    // Clear saved scroll before close cleanup so a later restore cannot jump
+    // back to the previous route's position.
+    scrollYRef.current = 0;
+    setIsOpen(false);
+    setIsMinimized(false);
+    unlockBodyScroll({ restorePosition: false });
+    window.scrollTo(0, 0);
+  });
+
+  useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 639px)').matches;
+    if (isMobile) {
+      // Route-change cleanup must not restore the previous page's scroll.
+      unlockBodyScroll({ restorePosition: false });
+    }
+  }, [location.pathname, unlockBodyScroll]);
+
+  useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 639px)').matches;
+    if (isOpen && !isMinimized && isMobile) {
+      lockBodyScroll();
+      // Ordinary same-route close / minimise restores the previous scroll.
+      return () => unlockBodyScroll({ restorePosition: true });
+    }
+    return undefined;
+  }, [isOpen, isMinimized, lockBodyScroll, unlockBodyScroll]);
+
+  useEffect(() => {
+    if (!isOpen || isMinimized) return undefined;
+
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setIsMinimized(true);
+        setIsOpen(false);
+        window.setTimeout(() => launcherRef.current?.focus(), 0);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, isMinimized]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -357,16 +486,55 @@ export const LiveChat = () => {
   }, [message]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, isTyping]);
+    if (!isOpen || isMinimized) return;
+    messagesEndRef.current?.scrollIntoView({
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    });
+  }, [messages, isOpen, isMinimized, prefersReducedMotion, showRecommendations]);
+
+  const openChatWidget = () => {
+    setIsOpen(true);
+    setIsMinimized(false);
+    setUnreadCount(0);
+
+    if (!hasTrackedChatOpen) {
+      trackChatOpen({
+        chatStatus: availability.status,
+        chatTitle: 'Primewayz Assistant',
+        ctaLocation: 'chat_launcher',
+      });
+      trackVisitorChatEvent('chat_open', {
+        route: location.pathname,
+        availabilityState: availability.status,
+      });
+
+      setHasTrackedChatOpen(true);
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem('primewayz_chat_open_tracked', 'true');
+      }
+    }
+  };
+
+  const closeChatWidget = () => {
+    setIsOpen(false);
+    setIsMinimized(false);
+    window.setTimeout(() => launcherRef.current?.focus(), 0);
+  };
+
+  const minimizeChatWidget = () => {
+    setIsMinimized(true);
+    setIsOpen(false);
+    window.setTimeout(() => launcherRef.current?.focus(), 0);
+  };
 
   const handleLeadSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!userName.trim() || !userEmail.trim()) return;
+    if (contactSaveStatus === 'saving') return;
 
-    localStorage.setItem('chat_user_name', userName);
-    localStorage.setItem('chat_user_email', userEmail);
-    
+    setContactSaveStatus('saving');
+    setContactSaveError('');
+
     try {
       const res = await fetch(apiUrl('/api/chat/session'), {
         method: 'POST',
@@ -379,23 +547,43 @@ export const LiveChat = () => {
         }),
       });
       if (!res.ok) {
-        setApiAvailable(false);
+        setContactSaveStatus('failed');
+        setContactSaveError('Could not save your contact details. Please try again.');
+        announceStatus('Contact save failed');
+        return;
       }
+
+      localStorage.setItem('chat_user_name', userName);
+      localStorage.setItem('chat_user_email', userEmail);
+      setApiAvailable(true);
+      pollConsecutiveFailuresRef.current = 0;
+      setContactSaveStatus('saved');
       setShowLeadForm(false);
+      setLeadSavedNotice(true);
+      setShowAwayFollowUp(true);
+      announceStatus(VISITOR_CHAT_MESSAGE_SAVED);
       trackChatLeadCaptured({
         chatStatus: availability.status,
         ctaLocation: 'chat_lead_form',
       });
-    } catch (error) {
-      setApiAvailable(false);
-      setShowLeadForm(false);
+      trackVisitorChatEvent('chat_human_handoff_requested', {
+        route: location.pathname,
+        intentKey: selectedIntent?.key,
+        serviceArea: selectedIntent?.serviceArea,
+        availabilityState: availability.status,
+      });
+    } catch {
+      setContactSaveStatus('failed');
+      setContactSaveError('Could not save your contact details. Please check your connection and try again.');
+      announceStatus('Contact save failed');
     }
   };
 
-
   const syncAppointmentContactDetails = () => {
-    const storedName = typeof window !== 'undefined' ? window.localStorage.getItem('chat_user_name') || '' : '';
-    const storedEmail = typeof window !== 'undefined' ? window.localStorage.getItem('chat_user_email') || '' : '';
+    const storedName =
+      typeof window !== 'undefined' ? window.localStorage.getItem('chat_user_name') || '' : '';
+    const storedEmail =
+      typeof window !== 'undefined' ? window.localStorage.getItem('chat_user_email') || '' : '';
 
     setAppointmentForm((prev) => ({
       ...prev,
@@ -409,17 +597,36 @@ export const LiveChat = () => {
     setShowAppointmentForm((value) => !value);
   };
 
-
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend(e as unknown as FormEvent);
+      void sendMessage();
     }
   };
 
-  const uploadChatFile = async (file: File) => {
+  const uploadChatFile = async (file: File, existingLocalKey?: string) => {
     setUploadError('');
-    setIsUploading(true);
+    const localKey = existingLocalKey || createClientMessageId('upload');
+    failedFileByKeyRef.current.set(localKey, file);
+
+    const optimistic: PendingChatAttachment = {
+      id: -1,
+      url: '',
+      originalName: file.name,
+      fileName: file.name,
+      mimeType: file.type,
+      size: file.size,
+      kind: file.type.startsWith('image/') ? 'image' : 'document',
+      uploadStatus: 'uploading',
+      localKey,
+      displayName: file.name,
+    };
+
+    setPendingAttachments((prev) => {
+      const without = prev.filter((item) => item.localKey !== localKey);
+      return [...without, optimistic];
+    });
+
     const body = new FormData();
     body.append('sessionId', sessionId);
     body.append('file', file);
@@ -429,29 +636,56 @@ export const LiveChat = () => {
         method: 'POST',
         body,
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
-        setUploadError(data.error || 'Upload failed.');
+        setUploadError(data?.error || 'Upload failed.');
+        setPendingAttachments((prev) =>
+          prev.map((item) =>
+            item.localKey === localKey ? { ...item, uploadStatus: 'failed' } : item,
+          ),
+        );
+        announceStatus('Upload failed');
         return;
       }
-      setPendingAttachments((prev) => [...prev, data]);
+
+      failedFileByKeyRef.current.delete(localKey);
+      setPendingAttachments((prev) =>
+        prev.map((item) =>
+          item.localKey === localKey
+            ? {
+                ...data,
+                uploadStatus: 'uploaded' as const,
+                localKey,
+                displayName: data.originalName || file.name,
+              }
+            : item,
+        ),
+      );
       trackChatAttachmentUploaded({
         chatStatus: availability.status,
         attachmentKind: data?.kind,
         sizeBytes: file.size,
         ctaLocation: 'live_chat_attachment',
       });
+      announceStatus('Uploaded');
     } catch {
       setUploadError('Upload failed. Please try again.');
+      setPendingAttachments((prev) =>
+        prev.map((item) =>
+          item.localKey === localKey ? { ...item, uploadStatus: 'failed' } : item,
+        ),
+      );
+      announceStatus('Upload failed');
     } finally {
-      setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
-    const file = Array.from(event.clipboardData.files).find((item) => item.type.startsWith('image/'));
-    if (file) uploadChatFile(file);
+    const file = Array.from(event.clipboardData.files).find((item) =>
+      item.type.startsWith('image/'),
+    );
+    if (file) void uploadChatFile(file);
   };
 
   const submitAppointmentRequest = async (event: FormEvent) => {
@@ -484,10 +718,11 @@ export const LiveChat = () => {
       setMessages((prev) => [
         ...prev,
         {
-          id: `appointment-${Date.now()}`,
-          text: 'Thanks, your appointment request has been received. Our team will confirm shortly.',
+          id: createClientMessageId('appointment'),
+          text: 'Thanks, your appointment request has been received. Our team will confirm during UK business hours.',
           sender: 'bot',
           timestamp: new Date(),
+          deliveryStatus: 'sent',
         },
       ]);
     } catch {
@@ -495,28 +730,53 @@ export const LiveChat = () => {
     }
   };
 
-  const handleSend = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!message.trim() && pendingAttachments.length === 0) return;
+  const sendMessage = async (retryMessage?: VisitorChatMessage) => {
+    const outgoingMessageText = retryMessage?.retryPayload?.text ?? message.trim();
+    const outgoingAttachments = retryMessage
+      ? []
+      : pendingAttachments.filter((item) => item.uploadStatus === 'uploaded' && item.id > 0);
+    const attachmentIds =
+      retryMessage?.retryPayload?.attachmentIds
+      ?? outgoingAttachments.map((attachment) => attachment.id);
 
-    const outgoingMessageText = message.trim();
-    const outgoingAttachmentCount = pendingAttachments.length;
+    if (!outgoingMessageText && attachmentIds.length === 0) return;
+    if (isSending) return;
+    if (!retryMessage && hasBlocking) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
+    setIsSending(true);
+    announceStatus('Sending…');
+    if (teamAway) {
+      setShowAwayFollowUp(true);
+    }
+
+    const localId = retryMessage?.id || createClientMessageId('local');
+    const userMessage: VisitorChatMessage = {
+      id: localId,
       text: outgoingMessageText || 'Shared an attachment',
       sender: 'user',
       timestamp: new Date(),
-      attachments: pendingAttachments,
+      attachments: retryMessage?.attachments || outgoingAttachments,
+      deliveryStatus: 'sending',
+      retryPayload: {
+        text: outgoingMessageText || 'Shared an attachment',
+        attachmentIds,
+      },
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    const attachmentIds = pendingAttachments.map((attachment) => attachment.id);
-    setMessage('');
-    setPendingAttachments([]);
-    setIsTyping(true);
+    setMessages((prev) => {
+      if (retryMessage) {
+        return prev.map((msg) => (msg.id === retryMessage.id ? userMessage : msg));
+      }
+      return [...prev, userMessage];
+    });
 
-    // Generate bot response via backend (also persists user+bot messages in DB)
+    if (!retryMessage) {
+      setMessage('');
+      setPendingAttachments((prev) =>
+        prev.filter((item) => !outgoingAttachments.some((sent) => sent.localKey === item.localKey)),
+      );
+    }
+
     try {
       const res = await fetch(apiUrl('/api/chat/respond'), {
         method: 'POST',
@@ -530,198 +790,499 @@ export const LiveChat = () => {
       });
       if (!res.ok) throw new Error('Backend chat request failed');
       const payload = await res.json();
-      setIsTyping(false);
+
+      setApiAvailable(true);
+      pollConsecutiveFailuresRef.current = 0;
+      setHasKnownSessionHistory(true);
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === localId
+            ? {
+                ...msg,
+                id: String(payload?.userMessage?.id || localId),
+                deliveryStatus: 'sent',
+                retryPayload: undefined,
+              }
+            : msg,
+        ),
+      );
+
       trackChatMessageSent({
         chatStatus: payload?.availability?.status || availability.status,
         messageLength: outgoingMessageText.length,
-        attachmentCount: outgoingAttachmentCount,
+        attachmentCount: attachmentIds.length,
         botReplySent: Boolean(payload?.botMessage),
         ctaLocation: 'live_chat',
       });
+
       if (payload?.botMessage?.text) {
-        const botMessage: Message = {
-          id: (Date.now() + 1).toString(),
+        setIsAwaitingAutomatedReply(true);
+        const botMessage: VisitorChatMessage = {
+          id: String(payload.botMessage.id || createClientMessageId('bot')),
           text: payload.botMessage.text,
           sender: 'bot',
           timestamp: new Date(payload.botMessage.timestamp || Date.now()),
+          deliveryStatus: 'sent',
         };
         setMessages((prev) => [...prev, botMessage]);
+        setIsAwaitingAutomatedReply(false);
+      }
+
+      if (payload?.availability) {
+        setAvailability(payload.availability);
+      }
+
+      announceStatus('Sent');
+      if (userEmail) {
+        setLeadSavedNotice(true);
+      } else if (teamAway) {
+        setShowLeadForm(true);
       }
     } catch (error) {
-      console.error('AI Chat error:', error);
-      setApiAvailable(false);
-      setIsTyping(false);
-      
-      const errorBotMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: "I'm having a little trouble connecting right now. Please try again in a moment or use our contact form!",
-        sender: 'bot',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorBotMessage]);
+      console.warn('Chat send failed; visitor can retry.', error instanceof Error ? error.message : error);
+      pollConsecutiveFailuresRef.current += 1;
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === localId ? { ...msg, deliveryStatus: 'failed' } : msg,
+        ),
+      );
+      announceStatus('Could not send');
+      trackVisitorChatEvent('chat_message_send_failed', {
+        route: location.pathname,
+        intentKey: selectedIntent?.key,
+        serviceArea: selectedIntent?.serviceArea,
+        availabilityState: availability.status,
+      });
+    } finally {
+      setIsSending(false);
     }
   };
 
+  const reconcileBeforeRetry = async (msg: VisitorChatMessage): Promise<boolean> => {
+    // Residual limitation (Phase 2F-1): without a server-side idempotency key,
+    // reconciliation uses text, attachment IDs, sender and a timestamp window.
+    try {
+      const res = await fetch(apiUrl(`/api/chat/${sessionId}`));
+      if (res.ok) {
+        const history = await res.json();
+        if (Array.isArray(history)) {
+          setApiAvailable(true);
+          pollConsecutiveFailuresRef.current = 0;
+          const mapped = history.map((m: Record<string, unknown>) => mapHistoryMessage(m));
+          setHasKnownSessionHistory(mapped.length > 0);
+
+          const persistedMatch = findPersistedUserMessageMatch(msg, mapped);
+          if (persistedMatch) {
+            const automatedReply = findAutomatedReplyAfterUserMessage(mapped, persistedMatch.id);
+            setMessages((prev) => {
+              const withoutFailed = prev.filter((item) => item.id !== msg.id);
+              const merged = mergeRemoteHistoryWithLocalState(withoutFailed, mapped);
+              if (
+                automatedReply
+                && !merged.some((item) => item.id === automatedReply.id)
+              ) {
+                return [...merged, automatedReply];
+              }
+              return merged;
+            });
+            announceStatus('Sent');
+            return true;
+          }
+        }
+      }
+    } catch {
+      pollConsecutiveFailuresRef.current += 1;
+    }
+    return false;
+  };
+
+  const retryMessage = async (msg: VisitorChatMessage) => {
+    // Residual limitation (Phase 2F-1): without a server-side idempotency key,
+    // reconciliation uses text, attachment IDs, sender and a timestamp window.
+    trackVisitorChatEvent('chat_message_retry', {
+      route: location.pathname,
+      intentKey: selectedIntent?.key,
+      serviceArea: selectedIntent?.serviceArea,
+      availabilityState: availability.status,
+    });
+
+    // Keep the in-flight lock across history fetch, reconciliation, optional
+    // resend, response handling, and failure handling.
+    if (retryInFlightRef.current.has(msg.id)) return;
+    retryInFlightRef.current.add(msg.id);
+
+    try {
+      const reconciled = await reconcileBeforeRetry(msg);
+
+      if (reconciled) {
+        return;
+      }
+
+      await sendMessage(msg);
+    } finally {
+      retryInFlightRef.current.delete(msg.id);
+    }
+  };
+
+  const handleIntentSelect = (key: VisitorChatIntentKey) => {
+    const intent = getVisitorChatIntent(key);
+    if (!intent) return;
+    setSelectedIntentKey(key);
+    setSelectedClarificationKey(null);
+    setShowRecommendations(false);
+    setRecommendationTracked(false);
+    setShowIntentChooser(false);
+    trackVisitorChatEvent('chat_intent_selected', {
+      route: location.pathname,
+      intentKey: key,
+      serviceArea: intent.serviceArea,
+      availabilityState: availability.status,
+    });
+  };
+
+  const handleClarificationSelect = (clarificationKey: string) => {
+    setSelectedClarificationKey(clarificationKey);
+    setShowRecommendations(true);
+  };
+
+  const isEmptyConversation = historyLoaded && messages.length === 0;
+  const showGuidance = isEmptyConversation || showIntentChooser || Boolean(selectedIntent);
+
   return (
-    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[60] flex flex-col items-end max-w-[calc(100vw-32px)]">
+    <div className="fixed bottom-4 right-4 z-[60] flex max-w-[calc(100vw-2rem)] flex-col items-end sm:bottom-6 sm:right-6">
+      <span className="sr-only" aria-live="polite">
+        {statusAnnouncement}
+      </span>
+
       <AnimatePresence>
         {isOpen && !isMinimized && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95, transformOrigin: 'bottom right' }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="mb-3 w-[calc(100vw-48px)] max-w-[400px] h-[min(82vh,560px)] bg-white rounded-2xl shadow-2xl shadow-emerald-900/20 border border-zinc-200 flex flex-col overflow-hidden sm:mb-4 sm:w-[400px] sm:h-[560px] sm:rounded-3xl max-[360px]:w-[calc(100vw-32px)]"
+            ref={panelRef}
+            role="dialog"
+            aria-modal="false"
+            aria-label={VISITOR_CHAT_REGION_NAME}
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={prefersReducedMotion ? undefined : { opacity: 0, y: 16 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
+            className="mb-3 flex h-[min(100dvh-5.5rem,640px)] w-[calc(100vw-2rem)] max-w-[420px] flex-col overflow-hidden rounded-2xl border border-brand-border bg-white shadow-[0_24px_48px_-24px_rgba(0,10,45,0.18)] max-[390px]:h-[calc(100dvh-4.5rem)] max-[390px]:w-[calc(100vw-1rem)] max-[390px]:rounded-xl sm:mb-4 sm:h-[min(82vh,560px)] sm:w-[400px]"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
           >
-            {/* Header */}
-            <div className="p-4 bg-zinc-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center">
-                    <Bot className="w-6 h-6 text-white" />
-                  </div>
-                  <div className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-zinc-900 rounded-full ${availabilityStyle.dot}`} />
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-bold text-sm">{availability.title}</h3>
-                    <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full ${availabilityStyle.badge}`}>
-                      <div className={`w-1 h-1 rounded-full ${availabilityStyle.dot}`} />
-                      <span className="text-[8px] font-bold uppercase tracking-tighter">{availabilityStyle.label}</span>
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-zinc-400">{availability.subtitle}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <button 
-                  onClick={() => setIsMinimized(true)}
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                >
-                  <Minus className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => setIsOpen(false)}
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+            <ChatHeader
+              headerStatus={headerStatus}
+              latestResponder={latestResponder}
+              onMinimize={minimizeChatWidget}
+              onClose={closeChatWidget}
+            />
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-50/50">
-              {showLeadForm ? (
-                <div className="h-full flex flex-col items-center justify-center p-6 text-center space-y-6">
-                  <div className="w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center">
-                    <User className="w-8 h-8 text-emerald-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-zinc-900">Welcome to Primewayz!</h4>
-                    <p className="text-xs text-zinc-500 mt-1">Please introduce yourself to start chatting with our team.</p>
-                  </div>
-                  <form onSubmit={handleLeadSubmit} className="w-full space-y-3">
-                    <input 
-                      type="text"
-                      placeholder="Your Name"
-                      value={userName}
-                      onChange={(e) => setUserName(e.target.value)}
-                      className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20"
-                      required
-                    />
-                    <input 
-                      type="email"
-                      placeholder="Your Email"
-                      value={userEmail}
-                      onChange={(e) => setUserEmail(e.target.value)}
-                      className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20"
-                      required
-                    />
-                    <button 
-                      type="submit"
-                      className="w-full py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-900/10 hover:bg-emerald-700 transition-all"
-                    >
-                      Start Chatting
-                    </button>
-                  </form>
+            <div className="flex-1 space-y-3 overflow-y-auto overscroll-contain bg-brand-surface/50 p-3 sm:p-4">
+              {isEmptyConversation && (
+                <div className="rounded-xl border border-brand-border bg-white p-3 shadow-sm">
+                  <ChatIdentityBadge identity={resolveVisitorChatIdentity('bot')} />
+                  {routeContext.eyebrow ? (
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand-blue">
+                      {routeContext.eyebrow}
+                    </p>
+                  ) : null}
+                  <p className="mt-1 text-sm font-semibold text-brand-navy">
+                    {routeContext.greeting}
+                  </p>
+                  <p className="mt-1 text-[12px] leading-5 text-slate-600">
+                    {routeContext.supportingText}
+                  </p>
                 </div>
-              ) : (
-                <>
-                  {messages.map((msg) => (
-                    <motion.div
-                      key={msg.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${
-                        msg.sender === 'user' 
-                          ? 'bg-emerald-600 text-white rounded-br-none shadow-lg shadow-emerald-900/10' 
-                          : msg.sender === 'admin'
-                            ? 'bg-zinc-900 text-white rounded-bl-none shadow-lg'
-                            : 'bg-white text-zinc-800 border border-zinc-200 rounded-bl-none shadow-sm'
-                      }`}>
-                        {msg.sender === 'admin' && (
-                          <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 mb-1">Support Agent</div>
-                        )}
-                        <QuotedMessagePreview replyTo={msg.replyTo} variant="visitor" />
-                        {msg.text}
-                        {msg.editedAt && !msg.deletedAt && (
-                          <span className="ml-1 text-[10px] opacity-60">(edited)</span>
-                        )}
-                        {msg.attachments && msg.attachments.length > 0 && (
-                          <div className="mt-2 space-y-2">
-                            {msg.attachments.map((attachment) => (
-                              attachment.kind === 'image' ? (
-                                <a key={attachment.id} href={attachment.url} target="_blank" rel="noopener noreferrer">
-                                  <img src={attachment.url} alt={attachment.originalName} className="max-h-36 rounded-xl border border-white/20 object-cover" />
-                                </a>
-                              ) : (
-                                <a
-                                  key={attachment.id}
-                                  href={attachment.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex flex-wrap items-center gap-2 rounded-xl bg-white/10 p-2 text-xs font-bold underline-offset-2 hover:underline"
-                                >
-                                  <FileText className="h-4 w-4" />
-                                  {attachment.originalName}
-                                </a>
-                              )
-                            ))}
-                          </div>
-                        )}
-                        <div className={`text-[10px] mt-1 opacity-50 ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>
-                          {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                  {isTyping && (
-                    <div className="flex justify-start">
-                      <div className="bg-white border border-zinc-200 p-3 rounded-2xl rounded-bl-none flex gap-1">
-                        <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} className="w-1.5 h-1.5 bg-zinc-400 rounded-full" />
-                        <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-1.5 h-1.5 bg-zinc-400 rounded-full" />
-                        <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-1.5 h-1.5 bg-zinc-400 rounded-full" />
-                      </div>
-                    </div>
-                  )}
-                  <div ref={messagesEndRef} />
-                </>
               )}
-            </div>
 
-            {/* Input */}
-            {!showLeadForm && (
-              <div className="border-t border-zinc-100 bg-white p-4">
-                <div className="mb-3 flex flex-wrap gap-2">
+              {showAwayFollowUp && teamAway && !showRecommendations && (
+                <ChatAvailabilityNotice
+                  serviceArea={selectedIntent?.serviceArea}
+                  onLeaveMessage={() => {
+                    setShowAwayFollowUp(true);
+                    setShowLeadForm(true);
+                    textareaRef.current?.focus();
+                  }}
+                  onReviewClick={() => {
+                    trackVisitorChatEvent('chat_review_started', {
+                      route: location.pathname,
+                      intentKey: selectedIntent?.key,
+                      serviceArea: selectedIntent?.serviceArea,
+                      recommendationType: 'review',
+                      availabilityState: availability.status,
+                    });
+                  }}
+                  onBookingClick={() => {
+                    trackVisitorChatEvent('chat_booking_click', {
+                      route: location.pathname,
+                      intentKey: selectedIntent?.key,
+                      serviceArea: selectedIntent?.serviceArea,
+                      recommendationType: 'booking',
+                      availabilityState: availability.status,
+                    });
+                  }}
+                  onNavigateFromChat={navigateFromChat}
+                />
+              )}
+
+              {showGuidance && showIntentChooser && (
+                <ChatIntentChooser
+                  selectedIntentKey={selectedIntentKey}
+                  onSelect={handleIntentSelect}
+                />
+              )}
+
+              {selectedIntent && !showRecommendations && (
+                <ChatClarificationChooser
+                  intent={selectedIntent}
+                  selectedKey={selectedClarificationKey}
+                  onSelect={handleClarificationSelect}
+                />
+              )}
+
+              {selectedIntent && showRecommendations && (
+                <ChatRecommendationPanel
+                  intent={selectedIntent}
+                  onReviewClick={() => {
+                    trackVisitorChatEvent('chat_review_started', {
+                      route: location.pathname,
+                      intentKey: selectedIntent.key,
+                      serviceArea: selectedIntent.serviceArea,
+                      recommendationType: 'review',
+                      availabilityState: availability.status,
+                    });
+                  }}
+                  onServiceClick={() => {
+                    trackVisitorChatEvent('chat_service_click', {
+                      route: location.pathname,
+                      intentKey: selectedIntent.key,
+                      serviceArea: selectedIntent.serviceArea,
+                      recommendationType: 'service',
+                      availabilityState: availability.status,
+                    });
+                  }}
+                  onBookingClick={() => {
+                    trackVisitorChatEvent('chat_booking_click', {
+                      route: location.pathname,
+                      intentKey: selectedIntent.key,
+                      serviceArea: selectedIntent.serviceArea,
+                      recommendationType: 'booking',
+                      availabilityState: availability.status,
+                    });
+                  }}
+                  onNavigateFromChat={navigateFromChat}
+                />
+              )}
+
+              {selectedIntent && !showIntentChooser && (
+                <div className="flex justify-end">
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-bold text-zinc-600 hover:bg-zinc-200"
+                    onClick={() => {
+                      setShowIntentChooser(true);
+                      setShowRecommendations(false);
+                      setSelectedClarificationKey(null);
+                    }}
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 text-[11px] font-semibold text-brand-blue underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
                   >
-                    <Paperclip className="h-3.5 w-3.5" />
-                    Attach
+                    Change topic
                   </button>
+                </div>
+              )}
+
+              {messages.map((msg) => {
+                if (msg.sender === 'system') {
+                  return (
+                    <div
+                      key={msg.id}
+                      role="status"
+                      className="rounded-lg border border-brand-border bg-white px-3 py-2 text-center text-[11px] text-slate-600"
+                    >
+                      {msg.text}
+                    </div>
+                  );
+                }
+
+                const identity = resolveVisitorChatIdentity(msg.sender);
+                const isUser = msg.sender === 'user';
+
+                return (
+                  <div
+                    key={msg.id}
+                    className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-3 py-2.5 text-sm ${
+                        isUser
+                          ? 'rounded-br-md bg-brand-navy text-white'
+                          : msg.sender === 'admin'
+                            ? 'rounded-bl-md border border-brand-border bg-white text-brand-ink shadow-sm'
+                            : 'rounded-bl-md border border-brand-border bg-white text-brand-ink shadow-sm'
+                      }`}
+                    >
+                      {!isUser && <ChatIdentityBadge identity={identity} />}
+                      <QuotedMessagePreview replyTo={msg.replyTo} variant="visitor" />
+                      <p className="whitespace-pre-wrap break-words leading-5">{msg.text}</p>
+                      {msg.editedAt && !msg.deletedAt && (
+                        <span className="ml-1 text-[10px] opacity-60">(edited)</span>
+                      )}
+                      {msg.attachments && msg.attachments.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                          {msg.attachments.map((attachment) =>
+                            attachment.kind === 'image' ? (
+                              <a
+                                key={attachment.id}
+                                href={attachment.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <img
+                                  src={attachment.url}
+                                  alt={attachment.originalName}
+                                  className="max-h-36 rounded-xl border border-white/20 object-cover"
+                                />
+                              </a>
+                            ) : (
+                              <a
+                                key={attachment.id}
+                                href={attachment.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex flex-wrap items-center gap-2 rounded-xl bg-black/5 p-2 text-xs font-semibold underline-offset-2 hover:underline"
+                              >
+                                <FileText className="h-4 w-4" />
+                                {attachment.originalName}
+                              </a>
+                            ),
+                          )}
+                        </div>
+                      )}
+                      <div
+                        className={`mt-1 text-[10px] opacity-60 ${isUser ? 'text-right' : 'text-left'}`}
+                      >
+                        {msg.timestamp.toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </div>
+                      {isUser && (
+                        <ChatMessageStatus
+                          status={msg.deliveryStatus}
+                          onRetry={
+                            msg.deliveryStatus === 'failed'
+                              ? () => {
+                                  void retryMessage(msg);
+                                }
+                              : undefined
+                          }
+                        />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {isAwaitingAutomatedReply && (
+                <div className="flex justify-start">
+                  <div className="rounded-2xl rounded-bl-md border border-brand-border bg-white px-3 py-2">
+                    <ChatIdentityBadge identity={resolveVisitorChatIdentity('bot')} />
+                    <p className="text-[12px] text-slate-500">Preparing a response…</p>
+                  </div>
+                </div>
+              )}
+
+              {leadSavedNotice && contactSaveStatus === 'saved' && userEmail && (
+                <div
+                  role="status"
+                  className="rounded-lg border border-brand-border bg-white px-3 py-2 text-[12px] text-slate-600"
+                >
+                  {VISITOR_CHAT_MESSAGE_SAVED}
+                  {userEmail ? ` We will use ${userEmail} for follow-up.` : ''}
+                </div>
+              )}
+
+              {showLeadForm && (
+                <form
+                  onSubmit={handleLeadSubmit}
+                  className="space-y-2 rounded-xl border border-brand-border bg-white p-3 shadow-sm"
+                >
+                  <p className="text-sm font-semibold text-brand-navy">
+                    Leave your contact for follow-up
+                  </p>
+                  <p className="text-[12px] text-slate-600">
+                    Optional until you want a human response. Guidance above remains available.
+                  </p>
+                  <label htmlFor="chat-lead-name" className="sr-only">
+                    Your name
+                  </label>
+                  <input
+                    id="chat-lead-name"
+                    type="text"
+                    name="name"
+                    autoComplete="name"
+                    placeholder="Your name"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    className="w-full rounded-lg border border-brand-border px-3 py-2.5 text-sm outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
+                    required
+                    disabled={contactSaveStatus === 'saving'}
+                  />
+                  <label htmlFor="chat-lead-email" className="sr-only">
+                    Work email
+                  </label>
+                  <input
+                    id="chat-lead-email"
+                    type="email"
+                    name="email"
+                    autoComplete="email"
+                    placeholder="Work email"
+                    value={userEmail}
+                    onChange={(e) => setUserEmail(e.target.value)}
+                    className="w-full rounded-lg border border-brand-border px-3 py-2.5 text-sm outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
+                    required
+                    disabled={contactSaveStatus === 'saving'}
+                  />
+                  {contactSaveStatus === 'failed' && contactSaveError ? (
+                    <p role="alert" className="text-xs font-semibold text-red-600">
+                      {contactSaveError}
+                    </p>
+                  ) : null}
+                  <button
+                    type="submit"
+                    disabled={contactSaveStatus === 'saving'}
+                    className="inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-brand-navy px-3 py-2 text-sm font-semibold text-white transition hover:bg-brand-navy/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {contactSaveStatus === 'saving' ? 'Saving…' : 'Save contact details'}
+                  </button>
+                  {contactSaveStatus === 'failed' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleLeadSubmit({
+                          preventDefault: () => undefined,
+                        } as FormEvent);
+                      }}
+                      className="inline-flex min-h-[44px] w-full items-center justify-center rounded-lg border border-brand-border bg-white px-3 py-2 text-sm font-semibold text-brand-navy transition hover:border-brand-blue/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
+                    >
+                      Retry saving contact details
+                    </button>
+                  ) : null}
+                </form>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="border-t border-brand-border bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <div className="mb-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex h-[44px] min-h-[44px] items-center gap-1.5 rounded-lg border border-brand-border bg-brand-surface px-3 text-xs font-semibold text-brand-ink transition hover:border-brand-blue/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
+                >
+                  <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
+                  Attach
+                </button>
+                {showComposerBooking ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -731,120 +1292,243 @@ export const LiveChat = () => {
                       });
                       toggleAppointmentForm();
                     }}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
-                      availability.status === 'online'
-                        ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                        : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100'
-                    }`}
+                    className="inline-flex h-[44px] min-h-[44px] items-center gap-1.5 rounded-lg border border-brand-border bg-white px-3 text-xs font-semibold text-brand-navy transition hover:border-brand-blue/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
                   >
-                    <CalendarClock className="h-3.5 w-3.5" />
+                    <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
                     Book a call
                   </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    className="hidden"
-                    accept="image/jpeg,image/png,image/webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) uploadChatFile(file);
-                    }}
-                  />
-                </div>
-                {showAppointmentForm && (
-                  <form onSubmit={submitAppointmentRequest} className="mb-3 space-y-2 rounded-2xl border border-emerald-100 bg-emerald-50 p-3">
-                    <div className="grid grid-cols-2 gap-2">
-                      <input value={appointmentForm.name} onChange={(e) => setAppointmentForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Name" className="rounded-lg border border-emerald-100 px-3 py-2 text-xs outline-none" />
-                      <input value={appointmentForm.email} onChange={(e) => setAppointmentForm((prev) => ({ ...prev, email: e.target.value }))} placeholder="Email" className="rounded-lg border border-emerald-100 px-3 py-2 text-xs outline-none" />
-                      <input value={appointmentForm.phone} onChange={(e) => setAppointmentForm((prev) => ({ ...prev, phone: e.target.value }))} placeholder="Phone" className="rounded-lg border border-emerald-100 px-3 py-2 text-xs outline-none" />
-                      <input type="date" value={appointmentForm.preferredDate} onChange={(e) => setAppointmentForm((prev) => ({ ...prev, preferredDate: e.target.value }))} className="rounded-lg border border-emerald-100 px-3 py-2 text-xs outline-none" />
-                      <input type="time" value={appointmentForm.preferredTime} onChange={(e) => setAppointmentForm((prev) => ({ ...prev, preferredTime: e.target.value }))} className="rounded-lg border border-emerald-100 px-3 py-2 text-xs outline-none" />
-                    </div>
-                    <textarea value={appointmentForm.message} onChange={(e) => setAppointmentForm((prev) => ({ ...prev, message: e.target.value }))} placeholder="What would you like to discuss?" rows={2} className="w-full rounded-lg border border-emerald-100 px-3 py-2 text-xs outline-none resize-none" />
-                    {appointmentError && <p className="text-xs font-bold text-red-600">{appointmentError}</p>}
-                    <button type="submit" className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700">Send request</button>
-                  </form>
-                )}
-                {uploadError && <p className="mb-2 text-xs font-bold text-red-600">{uploadError}</p>}
-                {isUploading && <p className="mb-2 text-xs font-bold text-zinc-500">Uploading file...</p>}
-                {pendingAttachments.length > 0 && (
-                  <div className="mb-2 flex flex-wrap gap-2">
-                    {pendingAttachments.map((attachment) => (
-                      <span key={attachment.id} className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-1 text-[10px] font-bold text-zinc-600">
-                        {attachment.kind === 'image' ? <ImageIcon className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
-                        {attachment.originalName}
-                      </span>
-                    ))}
+                ) : null}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="image/jpeg,image/png,image/webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void uploadChatFile(file);
+                  }}
+                />
+              </div>
+
+              {showAppointmentForm && (
+                <form
+                  onSubmit={submitAppointmentRequest}
+                  className="mb-3 space-y-2 rounded-xl border border-brand-border bg-brand-surface p-3"
+                >
+                  <div className="grid grid-cols-2 gap-2">
+                    <label htmlFor="chat-appointment-name" className="sr-only">
+                      Name
+                    </label>
+                    <input
+                      id="chat-appointment-name"
+                      name="name"
+                      autoComplete="name"
+                      value={appointmentForm.name}
+                      onChange={(e) =>
+                        setAppointmentForm((prev) => ({ ...prev, name: e.target.value }))
+                      }
+                      placeholder="Name"
+                      className="rounded-lg border border-brand-border px-3 py-2 text-xs outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
+                    />
+                    <label htmlFor="chat-appointment-email" className="sr-only">
+                      Email
+                    </label>
+                    <input
+                      id="chat-appointment-email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      value={appointmentForm.email}
+                      onChange={(e) =>
+                        setAppointmentForm((prev) => ({ ...prev, email: e.target.value }))
+                      }
+                      placeholder="Email"
+                      className="rounded-lg border border-brand-border px-3 py-2 text-xs outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
+                    />
+                    <label htmlFor="chat-appointment-phone" className="sr-only">
+                      Phone
+                    </label>
+                    <input
+                      id="chat-appointment-phone"
+                      name="tel"
+                      type="tel"
+                      autoComplete="tel"
+                      value={appointmentForm.phone}
+                      onChange={(e) =>
+                        setAppointmentForm((prev) => ({ ...prev, phone: e.target.value }))
+                      }
+                      placeholder="Phone"
+                      className="rounded-lg border border-brand-border px-3 py-2 text-xs outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
+                    />
+                    <label htmlFor="chat-appointment-date" className="sr-only">
+                      Preferred date
+                    </label>
+                    <input
+                      id="chat-appointment-date"
+                      type="date"
+                      value={appointmentForm.preferredDate}
+                      onChange={(e) =>
+                        setAppointmentForm((prev) => ({
+                          ...prev,
+                          preferredDate: e.target.value,
+                        }))
+                      }
+                      className="rounded-lg border border-brand-border px-3 py-2 text-xs outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
+                    />
+                    <label htmlFor="chat-appointment-time" className="sr-only">
+                      Preferred time
+                    </label>
+                    <input
+                      id="chat-appointment-time"
+                      type="time"
+                      value={appointmentForm.preferredTime}
+                      onChange={(e) =>
+                        setAppointmentForm((prev) => ({
+                          ...prev,
+                          preferredTime: e.target.value,
+                        }))
+                      }
+                      className="rounded-lg border border-brand-border px-3 py-2 text-xs outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
+                    />
                   </div>
-                )}
-                <form onSubmit={handleSend} className="flex items-end gap-2">
+                  <label htmlFor="chat-appointment-message" className="sr-only">
+                    Appointment message
+                  </label>
                   <textarea
-                    ref={textareaRef}
-                    rows={1}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    onPaste={handlePaste}
-                    placeholder={availability.status === 'online' ? 'Message Primewayz team...' : 'Leave your message and contact details...'}
-                    className="flex-1 bg-zinc-100 border-none rounded-2xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500/20 outline-none resize-none max-h-[120px] transition-[height] duration-100"
+                    id="chat-appointment-message"
+                    value={appointmentForm.message}
+                    onChange={(e) =>
+                      setAppointmentForm((prev) => ({ ...prev, message: e.target.value }))
+                    }
+                    placeholder="What would you like to discuss?"
+                    rows={2}
+                    className="w-full resize-none rounded-lg border border-brand-border px-3 py-2 text-xs outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
                   />
+                  {appointmentError && (
+                    <p role="alert" className="text-xs font-semibold text-red-600">{appointmentError}</p>
+                  )}
                   <button
                     type="submit"
-                    disabled={!message.trim() && pendingAttachments.length === 0}
-                    className="w-10 h-10 bg-emerald-600 text-white rounded-full flex items-center justify-center hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-900/20 flex-shrink-0"
+                    className="inline-flex min-h-[44px] items-center rounded-lg bg-brand-navy px-3 py-2 text-xs font-semibold text-white hover:bg-brand-navy/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy"
                   >
-                    <Send className="w-4 h-4" />
+                    Send request
                   </button>
                 </form>
-              </div>
-            )}
+              )}
+
+              {hasUploading && (
+                <p role="status" className="mb-2 text-xs font-medium text-slate-600">
+                  {VISITOR_ATTACHMENT_UPLOAD_GUIDANCE}
+                </p>
+              )}
+
+              {hasFailed && (
+                <p role="alert" className="mb-2 text-xs font-semibold text-red-600">
+                  {VISITOR_ATTACHMENT_FAILED_GUIDANCE}
+                </p>
+              )}
+
+              {uploadError && (
+                <p className="mb-2 text-xs font-semibold text-red-600">{uploadError}</p>
+              )}
+
+              {pendingAttachments.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-2">
+                  {pendingAttachments.map((attachment) => (
+                    <ChatAttachmentStatus
+                      key={attachment.localKey}
+                      displayName={attachment.displayName}
+                      kind={attachment.kind}
+                      status={attachment.uploadStatus}
+                      onRemove={() => {
+                        failedFileByKeyRef.current.delete(attachment.localKey);
+                        setPendingAttachments((prev) =>
+                          prev.filter((item) => item.localKey !== attachment.localKey),
+                        );
+                      }}
+                      onRetry={
+                        attachment.uploadStatus === 'failed'
+                          ? () => {
+                              const file = failedFileByKeyRef.current.get(attachment.localKey);
+                              if (file) void uploadChatFile(file, attachment.localKey);
+                            }
+                          : undefined
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void sendMessage();
+                }}
+                className="flex items-end gap-2"
+              >
+                <textarea
+                  ref={textareaRef}
+                  rows={1}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                  placeholder="Type your message…"
+                  aria-label="Chat message"
+                  className="max-h-[120px] min-h-[44px] flex-1 resize-none rounded-xl border border-brand-border bg-brand-surface px-3 py-2.5 text-sm outline-none transition-[height] duration-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
+                />
+                <button
+                  type="submit"
+                  disabled={
+                    isSending
+                    || hasBlocking
+                    || (!message.trim()
+                      && pendingAttachments.filter((item) => item.uploadStatus === 'uploaded')
+                        .length === 0)
+                  }
+                  aria-label="Send message"
+                  className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl bg-brand-navy text-white transition hover:bg-brand-navy/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Send className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </form>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Toggle Button */}
-      <div className="hidden sm:flex flex-wrap items-center gap-2">
-        {!isOpen && (
-          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${availabilityStyle.badge}`}>
-            <span className={`h-2 w-2 rounded-full ${availabilityStyle.dot}`} />
-            {availabilityStyle.launcherLabel}
-          </span>
-        )}
-        <motion.button
-          aria-label={`Open chat. ${availability.title}. ${availability.subtitle}`}
-          onClick={openChatWidget}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className={`relative w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all ${
-            isOpen && !isMinimized ? 'bg-zinc-900 text-white rotate-90' : 'bg-emerald-600 text-white'
-          }`}
-        >
-          {isOpen && !isMinimized ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
-          {!isOpen && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className={`absolute -top-1 -right-1 w-4 h-4 border-2 border-white rounded-full ${availabilityStyle.dot}`}
-            />
-          )}
-        </motion.button>
-      </div>
       <motion.button
-        aria-label={`Open chat. ${availability.title}. ${availability.subtitle}`}
-        onClick={openChatWidget}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className={`sm:hidden relative w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all ${
-          isOpen && !isMinimized ? 'bg-zinc-900 text-white rotate-90' : 'bg-emerald-600 text-white'
+        ref={launcherRef}
+        type="button"
+        aria-label={
+          unreadCount > 0
+            ? `${VISITOR_CHAT_LAUNCHER_NAME}. ${unreadCount} unread`
+            : VISITOR_CHAT_LAUNCHER_NAME
+        }
+        onClick={() => {
+          if (isOpen && !isMinimized) {
+            closeChatWidget();
+            return;
+          }
+          openChatWidget();
+        }}
+        whileHover={prefersReducedMotion ? undefined : { scale: 1.03 }}
+        whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
+        className={`relative inline-flex h-14 w-14 items-center justify-center rounded-full shadow-[0_12px_28px_-16px_rgba(0,10,45,0.35)] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy ${
+          isOpen && !isMinimized
+            ? 'bg-brand-navy text-white'
+            : 'bg-brand-blue text-white'
         }`}
       >
-        {isOpen && !isMinimized ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
-        {!isOpen && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className={`absolute -top-1 -right-1 w-4 h-4 border-2 border-white rounded-full ${availabilityStyle.dot}`}
-          />
+        {isOpen && !isMinimized ? (
+          <X className="h-6 w-6" aria-hidden="true" />
+        ) : (
+          <MessageCircle className="h-6 w-6" aria-hidden="true" />
+        )}
+        {unreadCount > 0 && !(isOpen && !isMinimized) && (
+          <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-magenta px-1 text-[10px] font-bold text-white">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
         )}
       </motion.button>
     </div>

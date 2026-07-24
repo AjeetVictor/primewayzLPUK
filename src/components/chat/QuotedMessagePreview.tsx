@@ -1,11 +1,13 @@
 import { getReplyPreviewText, type ChatReplyPreview } from '../../lib/chatTypes';
+import { getVisitorFacingSenderLabel } from '../../lib/chat/visitorChatIdentity';
 
 interface QuotedMessagePreviewProps {
   replyTo?: ChatReplyPreview | null;
   variant?: 'admin' | 'visitor' | 'internal';
 }
 
-const senderLabels: Record<string, string> = {
+/** Admin/internal labels stay operational; visitor presentation uses brand identities. */
+const adminSenderLabels: Record<string, string> = {
   user: 'Visitor',
   bot: 'Bot',
   admin: 'Admin',
@@ -17,11 +19,15 @@ export function QuotedMessagePreview({ replyTo, variant = 'visitor' }: QuotedMes
   const previewText = getReplyPreviewText(replyTo);
   if (!previewText) return null;
 
-  const senderLabel = senderLabels[replyTo.sender?.toLowerCase()] || 'Message';
+  const senderKey = replyTo.sender?.toLowerCase() || '';
+  const senderLabel =
+    variant === 'visitor'
+      ? getVisitorFacingSenderLabel(senderKey)
+      : adminSenderLabels[senderKey] || 'Message';
 
   const variantClasses = {
     admin: 'border-emerald-200 bg-emerald-500/20 text-emerald-50',
-    visitor: 'border-zinc-200 bg-black/5 text-zinc-500',
+    visitor: 'border-brand-border bg-brand-surface text-slate-500',
     internal: 'border-amber-200 bg-amber-50 text-amber-800',
   };
 

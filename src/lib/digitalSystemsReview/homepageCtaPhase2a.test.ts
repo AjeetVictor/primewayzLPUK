@@ -327,18 +327,21 @@ test('WebsiteProblemSection still points to the visibility checker', () => {
   assert.equal(WEBSITE_CHECKER_DESTINATION, '/uk-sme-digital-visibility-checker');
 });
 
-test('LiveChat and LazyLiveChat remain unchanged for Phase 2A wiring', () => {
-  for (const file of [
-    'src/components/LiveChat.tsx',
-    'src/components/LazyLiveChat.tsx',
-  ]) {
-    assertUnchangedSinceBase(file);
-    const source = read(file);
-    assert.doesNotMatch(source, /buildFreeReviewCtaUrl/);
-    assert.doesNotMatch(source, /DigitalSystemsReviewCtaGroup/);
-    assert.doesNotMatch(source, /review_source=homepage/);
-    assert.doesNotMatch(source, /free_review_cta_click/);
-  }
+test('LiveChat and LazyLiveChat were not wired with homepage review CTAs in Phase 2A', () => {
+  // Phase 2F-1 may redesign LiveChat; Phase 2A only forbids homepage attribution wiring.
+  const liveChat = read('src/components/LiveChat.tsx');
+  assert.doesNotMatch(liveChat, /DigitalSystemsReviewCtaGroup/);
+  assert.doesNotMatch(liveChat, /review_source=homepage/);
+  assert.doesNotMatch(liveChat, /sourceLocation:\s*'homepage'|sourceLocation="homepage"/);
+  assert.doesNotMatch(liveChat, /free_review_cta_click/);
+  assert.doesNotMatch(liveChat, /homepage_hero_primary|homepage_closing_primary/);
+
+  assertUnchangedSinceBase('src/components/LazyLiveChat.tsx');
+  const lazy = read('src/components/LazyLiveChat.tsx');
+  assert.doesNotMatch(lazy, /buildFreeReviewCtaUrl/);
+  assert.doesNotMatch(lazy, /DigitalSystemsReviewCtaGroup/);
+  assert.doesNotMatch(lazy, /review_source=homepage/);
+  assert.doesNotMatch(lazy, /free_review_cta_click/);
 });
 
 test('Navbar and Footer Phase 2D wiring must not use homepage source', () => {
