@@ -2748,9 +2748,6 @@ app.post('/api/blog/:id/comments', async (req, res) => {
   res.status(201).json(comment);
 });
 
-app.use('/api', (_req, res) => {
-  res.status(404).json({ success: false, error: 'API route not found' });
-});
 
 // Bing Webmaster Tools XML verification â€” must run before static files and SSR catch-all.
 const BING_SITE_AUTH_XML = `<?xml version="1.0"?>
@@ -2864,6 +2861,10 @@ app.get('/api/health', (_req, res) => {
       publicApi: true,
       timestamp: new Date().toISOString(),
     });
+});
+
+app.use('/api', (_req, res) => {
+  res.status(404).json({ success: false, error: 'API route not found' });
 });
 
 app.get('/.well-known/api-catalog', (_req, res) => {
