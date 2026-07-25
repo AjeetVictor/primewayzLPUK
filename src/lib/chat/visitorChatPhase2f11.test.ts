@@ -274,19 +274,19 @@ describe('Phase 2F-1.1 launcher presence and badge helpers', () => {
   test('aria-label contains status and correct singular/plural unread text', () => {
     assert.equal(
       buildVisitorLauncherAriaLabel({ presence: 'online', unreadCount: 0 }),
-      'Open Primewayz chat. Team online.',
+      'Open Primewayz Assistant. Team online.',
     );
     assert.equal(
       buildVisitorLauncherAriaLabel({ presence: 'away', unreadCount: 1 }),
-      'Open Primewayz chat. Team away. 1 unread reply.',
+      'Open Primewayz Assistant. Team away. 1 unread reply.',
     );
     assert.equal(
       buildVisitorLauncherAriaLabel({ presence: 'automated', unreadCount: 3 }),
-      'Open Primewayz chat. Automated guidance available. 3 unread replies.',
+      'Open Primewayz Assistant. Automated guidance available. 3 unread replies.',
     );
     assert.equal(
       buildVisitorLauncherAriaLabel({ presence: 'unavailable', unreadCount: 0 }),
-      'Open Primewayz chat. Chat temporarily unavailable.',
+      'Open Primewayz Assistant. Chat temporarily unavailable.',
     );
   });
 

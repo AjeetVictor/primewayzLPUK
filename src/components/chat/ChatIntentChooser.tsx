@@ -52,7 +52,7 @@ export function ChatIntentChooser({
         })}
       </div>
       <p className="mt-2 text-[11px] text-slate-500 max-[479px]:mt-1.5">
-        Optional — you can also type your question below.
+        Choose an option above, or type your question below.
       </p>
     </div>
   );

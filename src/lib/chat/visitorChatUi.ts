@@ -42,8 +42,8 @@ export const VISITOR_CHAT_OFFLINE_BODY =
 export const VISITOR_CHAT_MESSAGE_SAVED =
   'Your message has been saved. You may close this window.';
 
-export const VISITOR_CHAT_LAUNCHER_NAME = 'Open Primewayz chat';
-export const VISITOR_CHAT_REGION_NAME = 'Primewayz chat';
+export const VISITOR_CHAT_LAUNCHER_NAME = 'Open Primewayz Assistant';
+export const VISITOR_CHAT_REGION_NAME = 'Primewayz Assistant';
 
 export type VisitorHeaderStatus =
   | 'team_online'

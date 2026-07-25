@@ -9,7 +9,7 @@ export const VISITOR_CHAT_ASSISTANT_ROLE = 'Automated guidance' as const;
 export const VISITOR_CHAT_TEAM_NAME = 'Primewayz Team' as const;
 export const VISITOR_CHAT_TEAM_ROLE = 'Human response' as const;
 
-export const VISITOR_CHAT_NEUTRAL_NAME = 'Primewayz Chat' as const;
+export const VISITOR_CHAT_NEUTRAL_NAME = 'Primewayz Assistant' as const;
 
 export const VISITOR_CHAT_HEADER_SUBTITLE =
   'Automated guidance and team follow-up' as const;

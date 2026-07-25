@@ -1,6 +1,5 @@
 import { Minus, X } from 'lucide-react';
 import {
-  getVisitorChatHeaderSubtitle,
   getVisitorChatHeaderTitle,
   VISITOR_HEADER_STATUS_DOT_CLASS,
   VISITOR_HEADER_STATUS_LABELS,
@@ -21,7 +20,6 @@ export function ChatHeader({
   onClose,
 }: ChatHeaderProps) {
   const title = getVisitorChatHeaderTitle(latestResponder);
-  const subtitle = getVisitorChatHeaderSubtitle();
   const statusLabel = VISITOR_HEADER_STATUS_LABELS[headerStatus];
   const statusDot = VISITOR_HEADER_STATUS_DOT_CLASS[headerStatus];
 
@@ -34,10 +32,7 @@ export function ChatHeader({
         <h2 className="truncate text-[17px] font-semibold leading-tight tracking-tight max-[479px]:text-[17px] sm:text-sm">
           {title}
         </h2>
-        <p className="mt-0.5 truncate text-[12px] leading-snug text-white/70 max-[479px]:text-[12px] sm:text-[11px]">
-          {subtitle}
-        </p>
-        <p className="mt-1.5 inline-flex max-w-full items-center gap-1.5 text-[12px] font-medium text-white/85 max-[479px]:mt-1 max-[479px]:text-[12px] sm:mt-2 sm:text-[11px]">
+        <p className="mt-1 inline-flex max-w-full items-center gap-1.5 text-[12px] font-medium text-white/85 max-[479px]:mt-1 max-[479px]:text-[12px] sm:mt-2 sm:text-[11px]">
           <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusDot}`} aria-hidden="true" />
           <span className="min-w-0 truncate">{statusLabel}</span>
         </p>

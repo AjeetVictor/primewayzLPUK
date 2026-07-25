@@ -38,7 +38,6 @@ import { ChatAttachmentStatus } from './chat/ChatAttachmentStatus';
 import {
   resolveVisitorChatIdentity,
 } from '../lib/chat/visitorChatIdentity';
-import { resolveVisitorChatRouteContext } from '../lib/chat/visitorChatContext';
 import {
   getVisitorChatIntent,
   type VisitorChatIntentKey,
@@ -116,7 +115,6 @@ function createClientMessageId(prefix: string): string {
 
 export const LiveChat = () => {
   const location = useLocation();
-  const routeContext = resolveVisitorChatRouteContext(location.pathname || '/');
 
   const [isOpen, setIsOpen] = useState(false);
   const [hasTrackedChatOpen, setHasTrackedChatOpen] = useState(() => {
@@ -1205,24 +1203,7 @@ export const LiveChat = () => {
               data-testid="chat-message-area"
               className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-brand-surface/50 p-3 max-[479px]:space-y-2 max-[479px]:p-3 sm:p-4"
             >
-              {isEmptyConversation && (
-                <div className="rounded-xl border border-brand-border bg-white p-3 shadow-sm max-[479px]:p-2.5 max-[479px]:shadow-none">
-                  <ChatIdentityBadge identity={resolveVisitorChatIdentity('bot')} />
-                  {routeContext.eyebrow ? (
-                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand-blue">
-                      {routeContext.eyebrow}
-                    </p>
-                  ) : null}
-                  <p className="mt-1 text-sm font-semibold text-brand-navy max-[479px]:text-[15px]">
-                    {routeContext.greeting}
-                  </p>
-                  <p className="mt-1 text-[12px] leading-5 text-slate-600">
-                    {routeContext.supportingText}
-                  </p>
-                </div>
-              )}
-
-              {showAwayFollowUp && teamAway && !showRecommendations && (
+{showAwayFollowUp && teamAway && !showRecommendations && (
                 <ChatAvailabilityNotice
                   serviceArea={selectedIntent?.serviceArea}
                   onLeaveMessage={() => {

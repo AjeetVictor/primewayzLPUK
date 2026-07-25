@@ -152,7 +152,7 @@ test('4 Design uses existing project token/classes rather than a new theme', () 
 test('5 Existing launcher remains', () => {
   const liveChat = read('src/components/LiveChat.tsx');
   assert.match(liveChat, /MessageCircle/);
-  assert.match(liveChat, /buildVisitorLauncherAriaLabel|Open Primewayz chat|data-chat-launcher/);
+  assert.match(liveChat, /buildVisitorLauncherAriaLabel|Open Primewayz Assistant|data-chat-launcher/);
   assert.match(read('src/components/LazyLiveChat.tsx'), /LiveChat/);
 });
 
@@ -264,7 +264,7 @@ test('21 Free typing remains available', () => {
   const liveChat = read('src/components/LiveChat.tsx');
   assert.match(liveChat, /Type your message/);
   assert.match(liveChat, /sendMessage/);
-  assert.match(read('src/components/chat/ChatIntentChooser.tsx'), /you can also type/i);
+  assert.match(read('src/components/chat/ChatIntentChooser.tsx'), /type your question below/i);
   assert.equal(VISITOR_CHAT_ENTRY_HEADING, 'What are you trying to improve?');
 });
 
@@ -640,12 +640,12 @@ test('45h Mobile action targets meet the agreed minimum', () => {
 // --- Accessibility ---
 
 test('46 Launcher has an accessible name', () => {
-  assert.equal(VISITOR_CHAT_LAUNCHER_NAME, 'Open Primewayz chat');
+  assert.equal(VISITOR_CHAT_LAUNCHER_NAME, 'Open Primewayz Assistant');
   assert.match(read('src/components/LiveChat.tsx'), /aria-label=\{/);
 });
 
 test('47 Chat region has an accessible name', () => {
-  assert.equal(VISITOR_CHAT_REGION_NAME, 'Primewayz chat');
+  assert.equal(VISITOR_CHAT_REGION_NAME, 'Primewayz Assistant');
   assert.match(read('src/components/LiveChat.tsx'), /aria-label=\{VISITOR_CHAT_REGION_NAME\}/);
 });
 
