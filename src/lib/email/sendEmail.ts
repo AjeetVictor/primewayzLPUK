@@ -63,5 +63,10 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
     html: options.html,
     text: options.text,
     replyTo: options.replyTo,
+
+    // This application sends generated text/HTML only.
+    // Do not permit Nodemailer to load message content from files or URLs.
+    disableFileAccess: true,
+    disableUrlAccess: true,
   });
 }
