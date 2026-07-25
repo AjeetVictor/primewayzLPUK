@@ -11,6 +11,8 @@ import { cn } from '../utils/cn';
 
 const NAV_SOURCE = 'navigation' as const;
 const NAV_SERVICE = 'Not sure yet' as const;
+const NAV_DISCOVERY_LABEL = 'Book Discovery Call';
+const NAV_REVIEW_LABEL = 'Free System Review';
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -100,6 +102,7 @@ export const Navbar = () => {
                 sourceLocation={NAV_SOURCE}
                 serviceArea={NAV_SERVICE}
                 placement="navigation_desktop_secondary"
+                label={NAV_DISCOVERY_LABEL}
                 className={shellClasses.btnOutlineAudit}
               />
               <DigitalSystemsReviewCtaLink
@@ -107,7 +110,8 @@ export const Navbar = () => {
                 sourceLocation={NAV_SOURCE}
                 serviceArea={NAV_SERVICE}
                 placement="navigation_desktop_primary"
-                className={cn(shellClasses.btnPrimary, 'max-w-[14rem] text-center leading-snug xl:max-w-none')}
+                label={NAV_REVIEW_LABEL}
+                className={cn(shellClasses.btnPrimary, 'whitespace-nowrap')}
               />
             </div>
             <button
@@ -157,10 +161,11 @@ export const Navbar = () => {
                   sourceLocation={NAV_SOURCE}
                   serviceArea={NAV_SERVICE}
                   placement="navigation_mobile_primary"
+                  label={NAV_REVIEW_LABEL}
                   onClick={() => setIsOpen(false)}
                   className={cn(
                     shellClasses.btnPrimary,
-                    'mt-3 w-full min-h-[44px] whitespace-normal px-4 py-3 text-center leading-snug',
+                    'mt-3 w-full min-h-[44px] whitespace-nowrap px-4 py-3 text-center',
                   )}
                 />
                 <DigitalSystemsReviewCtaLink
@@ -168,6 +173,7 @@ export const Navbar = () => {
                   sourceLocation={NAV_SOURCE}
                   serviceArea={NAV_SERVICE}
                   placement="navigation_mobile_secondary"
+                  label={NAV_DISCOVERY_LABEL}
                   onClick={() => setIsOpen(false)}
                   className={cn(shellClasses.btnOutlineAudit, 'mt-2 w-full min-h-[44px]')}
                 />

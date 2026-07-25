@@ -19,6 +19,8 @@ type DigitalSystemsReviewCtaLinkProps = {
   sourceLocation: FreeReviewSourceLocation;
   placement: FreeReviewCtaPlacement;
   serviceArea?: FreeReviewServiceArea;
+  /** Optional display label override (e.g. compact Navbar chrome). */
+  label?: string;
   className?: string;
   onClick?: () => void;
 };
@@ -65,6 +67,7 @@ export function DigitalSystemsReviewCtaLink({
   sourceLocation,
   placement,
   serviceArea,
+  label,
   className = '',
   onClick,
 }: DigitalSystemsReviewCtaLinkProps) {
@@ -82,7 +85,7 @@ export function DigitalSystemsReviewCtaLink({
         }}
         className={className}
       >
-        {FREE_REVIEW_CTA_LABEL}
+        {label ?? FREE_REVIEW_CTA_LABEL}
       </Link>
     );
   }
@@ -96,7 +99,7 @@ export function DigitalSystemsReviewCtaLink({
       }}
       className={className}
     >
-      {DISCOVERY_CALL_CTA_LABEL}
+      {label ?? DISCOVERY_CALL_CTA_LABEL}
     </Link>
   );
 }
