@@ -71,18 +71,22 @@ export const VISITOR_PRESENCE_STATUS_LABELS: Record<VisitorPresenceTone, string>
   unavailable: 'Chat temporarily unavailable',
 };
 
+/**
+ * Presence colours must not use `emerald-*`: this project's theme remaps
+ * emerald to brand blue, which made "Team online" appear blue on device.
+ */
 export const VISITOR_PRESENCE_DOT_CLASS: Record<VisitorPresenceTone, string> = {
-  online: 'bg-emerald-500',
+  online: 'bg-green-500',
   away: 'bg-amber-500',
   automated: 'bg-slate-400',
   unavailable: 'bg-red-500',
 };
 
 export const VISITOR_HEADER_STATUS_DOT_CLASS: Record<VisitorHeaderStatus, string> = {
-  team_online: 'bg-emerald-500',
+  team_online: 'bg-green-500',
   team_away: 'bg-amber-500',
   automated_guidance: 'bg-slate-400',
-  human_response_received: 'bg-emerald-500',
+  human_response_received: 'bg-green-500',
   waiting_for_team: 'bg-amber-500',
   unavailable: 'bg-red-500',
 };

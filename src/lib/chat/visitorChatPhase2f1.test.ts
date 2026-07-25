@@ -683,7 +683,8 @@ test('53 Reduced-motion support remains or is added', () => {
 test('54 No obvious focus trap is introduced', () => {
   const liveChat = read('src/components/LiveChat.tsx');
   assert.doesNotMatch(liveChat, /focus-trap|FocusTrap|inert=/);
-  assert.match(liveChat, /aria-modal="false"/);
+  // Desktop keeps aria-modal false; mobile full-screen sheet uses true.
+  assert.match(liveChat, /aria-modal=\{isMobileSheet \? true : false\}/);
 });
 
 // --- Analytics ---

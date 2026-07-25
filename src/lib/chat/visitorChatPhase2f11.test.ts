@@ -339,7 +339,7 @@ describe('Phase 2F-1.1 LiveChat wiring', () => {
     assert.match(liveChat, /chatIsOpen: chatIsOpenRef\.current/);
     assert.match(liveChat, /findLatestAdminMessage/);
     assert.match(liveChat, /messagesRef\.current/);
-    assert.match(liveChat, /bg-emerald-500/);
+    assert.match(liveChat, /bg-green-500/);
     assert.match(liveChat, /data-testid="chat-unread-badge"/);
     assert.match(liveChat, /data-testid="chat-presence-dot"/);
     assert.match(liveChat, /buildVisitorLauncherAriaLabel/);

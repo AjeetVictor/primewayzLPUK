@@ -18,9 +18,9 @@ export function ChatIntentChooser({
   heading = VISITOR_CHAT_ENTRY_HEADING,
 }: ChatIntentChooserProps) {
   return (
-    <div className="rounded-xl border border-brand-border bg-white p-3 shadow-sm">
-      <div className="mb-2 flex items-start justify-between gap-2">
-        <p className="text-sm font-semibold text-brand-navy">{heading}</p>
+    <div className="rounded-xl border border-brand-border bg-white p-3 shadow-sm max-[479px]:p-2.5 max-[479px]:shadow-none">
+      <div className="mb-2 flex items-start justify-between gap-2 max-[479px]:mb-1.5">
+        <p className="text-sm font-semibold text-brand-navy max-[479px]:text-[15px]">{heading}</p>
         {selectedIntentKey && onShowAll ? (
           <button
             type="button"
@@ -31,7 +31,7 @@ export function ChatIntentChooser({
           </button>
         ) : null}
       </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 max-[479px]:gap-1.5 sm:grid-cols-2">
         {VISITOR_CHAT_INTENTS.map((intent) => {
           const selected = selectedIntentKey === intent.key;
           return (
@@ -40,7 +40,7 @@ export function ChatIntentChooser({
               type="button"
               aria-pressed={selected}
               onClick={() => onSelect(intent.key)}
-              className={`min-h-[44px] box-border rounded-lg border px-3 py-2.5 text-left text-[13px] font-medium leading-snug transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40 ${
+              className={`box-border rounded-lg border px-3.5 py-3 text-left text-[15px] font-medium leading-snug transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40 min-h-[48px] max-[479px]:min-h-[48px] sm:min-h-[44px] sm:px-3 sm:py-2.5 sm:text-[13px] ${
                 selected
                   ? 'border-brand-blue bg-brand-surface text-brand-navy'
                   : 'border-brand-border bg-white text-brand-ink hover:border-brand-blue/35 hover:bg-brand-surface'
@@ -51,7 +51,7 @@ export function ChatIntentChooser({
           );
         })}
       </div>
-      <p className="mt-2 text-[11px] text-slate-500">
+      <p className="mt-2 text-[11px] text-slate-500 max-[479px]:mt-1.5">
         Optional — you can also type your question below.
       </p>
     </div>

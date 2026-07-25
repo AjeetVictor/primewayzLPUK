@@ -11,7 +11,6 @@ import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   MessageCircle,
-  X,
   Send,
   Paperclip,
   CalendarClock,
@@ -90,6 +89,11 @@ import {
   clearBodyScrollStyles as clearBodyScrollStylesHelper,
   lockBodyScroll as lockBodyScrollHelper,
 } from '../lib/chat/visitorChatBodyScroll';
+import {
+  buildMobileSheetViewportStyle,
+  VISITOR_CHAT_MOBILE_MQ,
+  type MobileSheetViewportStyle,
+} from '../lib/chat/visitorChatMobileLayout';
 
 function mapHistoryMessage(m: Record<string, unknown>): VisitorChatMessage {
   return {
@@ -163,6 +167,10 @@ export const LiveChat = () => {
     () => typeof document === 'undefined' || document.visibilityState === 'visible',
   );
   const [hasKnownSessionHistory, setHasKnownSessionHistory] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [mobileSheetStyle, setMobileSheetStyle] = useState<MobileSheetViewportStyle | null>(
+    null,
+  );
 
   const [sessionId] = useState(() => {
     const saved = localStorage.getItem('chat_session_id');
@@ -221,7 +229,10 @@ export const LiveChat = () => {
     unreadCount,
   });
   const unreadBadgeLabel = formatVisitorUnreadBadge(unreadCount);
-  const showLauncherChrome = !(isOpen && !isMinimized);
+  const chatSurfaceOpen = isOpen && !isMinimized;
+  const showLauncher = !chatSurfaceOpen;
+  const showLauncherChrome = showLauncher;
+  const isMobileSheet = chatSurfaceOpen && isMobileViewport;
   const hasUploading = hasUploadingAttachment(pendingAttachments);
   const hasFailed = hasFailedAttachment(pendingAttachments);
   const hasBlocking = hasBlockingAttachment(pendingAttachments);
@@ -516,13 +527,25 @@ export const LiveChat = () => {
   const unlockBodyScroll = useEffectEvent((options: { restorePosition: boolean }) => {
     clearBodyScrollStyles();
     if (options.restorePosition) {
-      window.scrollTo(0, scrollYRef.current);
+      const y = scrollYRef.current;
+      const pin = () => window.scrollTo(0, y);
+      pin();
+      // Mobile→desktop layout/focus can nudge scroll after styles clear; re-pin.
+      requestAnimationFrame(() => {
+        pin();
+        requestAnimationFrame(pin);
+      });
+      window.setTimeout(pin, 0);
+      window.setTimeout(pin, 50);
     }
   });
 
   const lockBodyScroll = useEffectEvent(() => {
+    // Prefer live scrollY; fall back to the last captured page position when a
+    // viewport resize has already collapsed window.scrollY to 0.
+    const y = window.scrollY > 0 ? window.scrollY : scrollYRef.current;
     scrollYRef.current = lockBodyScrollHelper({
-      currentScrollY: window.scrollY,
+      currentScrollY: y,
       bodyStyle: document.body.style,
     });
   });
@@ -539,22 +562,94 @@ export const LiveChat = () => {
   });
 
   useEffect(() => {
-    const isMobile = window.matchMedia('(max-width: 639px)').matches;
+    const mq = window.matchMedia(VISITOR_CHAT_MOBILE_MQ);
+    const syncMobile = () => setIsMobileViewport(mq.matches);
+    syncMobile();
+    mq.addEventListener('change', syncMobile);
+    return () => mq.removeEventListener('change', syncMobile);
+  }, []);
+
+  useEffect(() => {
+    // Route-change cleanup must not restore the previous page's scroll.
+    // Uses a live media query so it only runs on pathname changes, not
+    // breakpoint transitions (those are handled by the body-lock effect).
+    const isMobile = window.matchMedia(VISITOR_CHAT_MOBILE_MQ).matches;
     if (isMobile) {
-      // Route-change cleanup must not restore the previous page's scroll.
       unlockBodyScroll({ restorePosition: false });
     }
   }, [location.pathname, unlockBodyScroll]);
 
   useEffect(() => {
-    const isMobile = window.matchMedia('(max-width: 639px)').matches;
-    if (isOpen && !isMinimized && isMobile) {
-      lockBodyScroll();
-      // Ordinary same-route close / minimise restores the previous scroll.
-      return () => unlockBodyScroll({ restorePosition: true });
+    // Keep the last page scroll while the desktop surface is open so a later
+    // desktop→mobile lock can restore it even if resize collapses window.scrollY.
+    if (!chatSurfaceOpen || isMobileViewport) {
+      return undefined;
     }
-    return undefined;
-  }, [isOpen, isMinimized, lockBodyScroll, unlockBodyScroll]);
+    const captureScroll = () => {
+      scrollYRef.current = window.scrollY;
+    };
+    captureScroll();
+    window.addEventListener('scroll', captureScroll, { passive: true });
+    return () => window.removeEventListener('scroll', captureScroll);
+  }, [chatSurfaceOpen, isMobileViewport]);
+
+  useEffect(() => {
+    if (!chatSurfaceOpen || !isMobileViewport) {
+      return undefined;
+    }
+
+    lockBodyScroll();
+
+    return () => {
+      // Ordinary same-route close / minimise / desktop resize restores scroll.
+      unlockBodyScroll({ restorePosition: true });
+    };
+  }, [
+    chatSurfaceOpen,
+    isMobileViewport,
+    lockBodyScroll,
+    unlockBodyScroll,
+  ]);
+
+  useEffect(() => {
+    if (!chatSurfaceOpen) {
+      setMobileSheetStyle(null);
+      return undefined;
+    }
+
+    if (!isMobileViewport) {
+      setMobileSheetStyle(null);
+      return undefined;
+    }
+
+    const syncVisualViewport = () => {
+      const vv = window.visualViewport;
+      setMobileSheetStyle(
+        buildMobileSheetViewportStyle(
+          vv
+            ? {
+                height: vv.height,
+                offsetTop: vv.offsetTop,
+                offsetLeft: vv.offsetLeft,
+                width: vv.width,
+              }
+            : null,
+        ),
+      );
+    };
+
+    syncVisualViewport();
+    const vv = window.visualViewport;
+    vv?.addEventListener('resize', syncVisualViewport);
+    vv?.addEventListener('scroll', syncVisualViewport);
+    window.addEventListener('resize', syncVisualViewport);
+    return () => {
+      vv?.removeEventListener('resize', syncVisualViewport);
+      vv?.removeEventListener('scroll', syncVisualViewport);
+      window.removeEventListener('resize', syncVisualViewport);
+      setMobileSheetStyle(null);
+    };
+  }, [chatSurfaceOpen, isMobileViewport]);
 
   useEffect(() => {
     if (!isOpen || isMinimized) return undefined;
@@ -576,7 +671,7 @@ export const LiveChat = () => {
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 96)}px`;
     }
   }, [message]);
 
@@ -1050,25 +1145,54 @@ export const LiveChat = () => {
   const isEmptyConversation = historyLoaded && messages.length === 0;
   const showGuidance = isEmptyConversation || showIntentChooser || Boolean(selectedIntent);
 
+  const hostClassName = isMobileSheet
+    ? 'fixed inset-0 z-[60] flex flex-col'
+    : 'fixed bottom-4 right-4 z-[60] flex max-w-[calc(100vw-2rem)] flex-col items-end p-1 sm:bottom-6 sm:right-6';
+
+  const panelClassName = isMobileSheet
+    ? 'flex h-[100vh] h-[100dvh] w-[100dvw] max-h-none max-w-none flex-col overflow-hidden rounded-none border-0 bg-white pt-[env(safe-area-inset-top)] shadow-none'
+    : 'mb-3 flex h-[min(100dvh-5.5rem,640px)] w-[calc(100vw-2rem)] max-w-[420px] flex-col overflow-hidden rounded-2xl border border-brand-border bg-white shadow-[0_24px_48px_-24px_rgba(0,10,45,0.18)] max-[390px]:h-[calc(100dvh-4.5rem)] max-[390px]:w-[calc(100vw-1rem)] max-[390px]:rounded-xl sm:mb-4 sm:h-[min(82vh,560px)] sm:w-[400px]';
+
+  const panelStyle = isMobileSheet
+    ? (mobileSheetStyle ?? {
+        position: 'fixed' as const,
+        top: '0px',
+        left: '0px',
+        width: '100dvw',
+        height: '100dvh',
+        maxWidth: 'none',
+        maxHeight: 'none',
+        margin: '0',
+        borderRadius: '0',
+        paddingTop: 'env(safe-area-inset-top)',
+      })
+    : undefined;
+
   return (
-    <div className="fixed bottom-4 right-4 z-[60] flex max-w-[calc(100vw-2rem)] flex-col items-end p-1 sm:bottom-6 sm:right-6">
+    <div className={hostClassName}>
       <span className="sr-only" aria-live="polite">
         {statusAnnouncement}
       </span>
 
       <AnimatePresence>
-        {isOpen && !isMinimized && (
+        {chatSurfaceOpen && (
           <motion.div
             ref={panelRef}
             role="dialog"
-            aria-modal="false"
+            aria-modal={isMobileSheet ? true : false}
             aria-label={VISITOR_CHAT_REGION_NAME}
-            initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={prefersReducedMotion ? undefined : { opacity: 0, y: 16 }}
+            data-testid="chat-sheet"
+            data-mobile-sheet={isMobileSheet ? 'true' : 'false'}
+            initial={prefersReducedMotion ? false : (isMobileSheet ? { opacity: 0 } : { opacity: 0, y: 16 })}
+            animate={isMobileSheet ? { opacity: 1 } : { opacity: 1, y: 0 }}
+            exit={
+              prefersReducedMotion
+                ? undefined
+                : (isMobileSheet ? { opacity: 0 } : { opacity: 0, y: 16 })
+            }
             transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
-            className="mb-3 flex h-[min(100dvh-5.5rem,640px)] w-[calc(100vw-2rem)] max-w-[420px] flex-col overflow-hidden rounded-2xl border border-brand-border bg-white shadow-[0_24px_48px_-24px_rgba(0,10,45,0.18)] max-[390px]:h-[calc(100dvh-4.5rem)] max-[390px]:w-[calc(100vw-1rem)] max-[390px]:rounded-xl sm:mb-4 sm:h-[min(82vh,560px)] sm:w-[400px]"
-            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            className={panelClassName}
+            style={panelStyle}
           >
             <ChatHeader
               headerStatus={headerStatus}
@@ -1077,16 +1201,19 @@ export const LiveChat = () => {
               onClose={closeChatWidget}
             />
 
-            <div className="flex-1 space-y-3 overflow-y-auto overscroll-contain bg-brand-surface/50 p-3 sm:p-4">
+            <div
+              data-testid="chat-message-area"
+              className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-brand-surface/50 p-3 max-[479px]:space-y-2 max-[479px]:p-3 sm:p-4"
+            >
               {isEmptyConversation && (
-                <div className="rounded-xl border border-brand-border bg-white p-3 shadow-sm">
+                <div className="rounded-xl border border-brand-border bg-white p-3 shadow-sm max-[479px]:p-2.5 max-[479px]:shadow-none">
                   <ChatIdentityBadge identity={resolveVisitorChatIdentity('bot')} />
                   {routeContext.eyebrow ? (
                     <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand-blue">
                       {routeContext.eyebrow}
                     </p>
                   ) : null}
-                  <p className="mt-1 text-sm font-semibold text-brand-navy">
+                  <p className="mt-1 text-sm font-semibold text-brand-navy max-[479px]:text-[15px]">
                     {routeContext.greeting}
                   </p>
                   <p className="mt-1 text-[12px] leading-5 text-slate-600">
@@ -1212,7 +1339,7 @@ export const LiveChat = () => {
                     className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[85%] rounded-2xl px-3 py-2.5 text-sm ${
+                      className={`max-w-[min(85%,20rem)] rounded-2xl px-3 py-2.5 text-sm max-[479px]:max-w-[min(92%,18.5rem)] max-[479px]:px-2.5 max-[479px]:py-2 ${
                         isUser
                           ? 'rounded-br-md bg-brand-navy text-white'
                           : msg.sender === 'admin'
@@ -1222,7 +1349,9 @@ export const LiveChat = () => {
                     >
                       {!isUser && <ChatIdentityBadge identity={identity} />}
                       <QuotedMessagePreview replyTo={msg.replyTo} variant="visitor" />
-                      <p className="whitespace-pre-wrap break-words leading-5">{msg.text}</p>
+                      <p className="whitespace-pre-wrap break-words leading-5 [overflow-wrap:anywhere]">
+                        {msg.text}
+                      </p>
                       {msg.editedAt && !msg.deletedAt && (
                         <span className="ml-1 text-[10px] opacity-60">(edited)</span>
                       )}
@@ -1373,8 +1502,11 @@ export const LiveChat = () => {
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="border-t border-brand-border bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-              <div className="mb-2 flex flex-wrap gap-2">
+            <div
+              data-testid="chat-composer"
+              className="shrink-0 border-t border-brand-border bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-[479px]:p-2.5 max-[479px]:pb-[max(0.625rem,env(safe-area-inset-bottom))]"
+            >
+              <div className="mb-2 flex flex-wrap gap-2 max-[479px]:mb-1.5">
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -1576,7 +1708,7 @@ export const LiveChat = () => {
                   onPaste={handlePaste}
                   placeholder="Type your message…"
                   aria-label="Chat message"
-                  className="max-h-[120px] min-h-[44px] flex-1 resize-none rounded-xl border border-brand-border bg-brand-surface px-3 py-2.5 text-sm outline-none transition-[height] duration-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
+                  className="max-h-[96px] min-h-[44px] flex-1 resize-none rounded-xl border border-brand-border bg-brand-surface px-3 py-2.5 text-sm outline-none transition-[height] duration-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40 max-[479px]:max-h-[88px] max-[479px]:min-h-[44px] max-[479px]:px-2.5 max-[479px]:py-2"
                 />
                 <button
                   type="submit"
@@ -1598,6 +1730,7 @@ export const LiveChat = () => {
         )}
       </AnimatePresence>
 
+      {showLauncher ? (
       <motion.button
         ref={launcherRef}
         type="button"
@@ -1606,29 +1739,17 @@ export const LiveChat = () => {
         data-presence={presenceTone}
         data-unread={unreadCount > 0 ? String(unreadCount) : '0'}
         onClick={() => {
-          if (isOpen && !isMinimized) {
-            closeChatWidget();
-            return;
-          }
           openChatWidget();
         }}
         whileHover={prefersReducedMotion ? undefined : { scale: 1.03 }}
         whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
-        className={`relative inline-flex h-14 w-14 items-center justify-center rounded-full shadow-[0_12px_28px_-16px_rgba(0,10,45,0.35)] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy ${
-          isOpen && !isMinimized
-            ? 'bg-brand-navy text-white'
-            : 'bg-brand-blue text-white'
-        }`}
+        className="relative inline-flex h-14 w-14 items-center justify-center rounded-full bg-brand-blue text-white shadow-[0_12px_28px_-16px_rgba(0,10,45,0.35)] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy"
       >
-        {isOpen && !isMinimized ? (
-          <X className="h-6 w-6" aria-hidden="true" />
-        ) : (
-          <MessageCircle className="h-6 w-6" aria-hidden="true" />
-        )}
+        <MessageCircle className="h-6 w-6" aria-hidden="true" />
         {showLauncherChrome && unreadBadgeLabel && (
           <span
             data-testid="chat-unread-badge"
-            className="absolute -right-1 -top-1 z-10 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white"
+            className="absolute -right-1 -top-1 z-10 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-green-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white"
             aria-hidden="true"
           >
             {unreadBadgeLabel}
@@ -1649,6 +1770,7 @@ export const LiveChat = () => {
             : ''}
         </span>
       </motion.button>
+      ) : null}
     </div>
   );
 };
