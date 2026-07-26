@@ -3038,6 +3038,29 @@ app.use(
   }),
 );
 
+const MISSING_STATIC_ASSET_PATTERN =
+  /\.(?:svg|webp|png|jpe?g|gif|ico|css|js|mjs|map|woff2?|ttf|eot)$/i;
+
+/**
+ * Do not render SSR HTML for missing files.
+ * Existing files have already been handled by Express static middleware.
+ */
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return next();
+  }
+
+  if (!MISSING_STATIC_ASSET_PATTERN.test(req.path)) {
+    return next();
+  }
+
+  return res
+    .status(404)
+    .type('text/plain')
+    .set('Cache-Control', 'no-store')
+    .send('Asset not found');
+});
+
 // -------------------------
 // Local-safe Prisma wrappers
 // -------------------------
