@@ -318,10 +318,7 @@ export const Pricing = () => {
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl font-black leading-[1.05] tracking-[-0.04em] text-brand-navy sm:text-5xl lg:text-6xl"
           >
-            Simple, transparent pricing
-            <br className="hidden sm:block" />
-            <span className="sm:sr-only"> </span>
-            for every stage of growth
+            Pricing & Engagement Options
           </motion.h1>
 
           <motion.p

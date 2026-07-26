@@ -9,8 +9,6 @@ import {
   getArticlePrimaryCategory,
 } from '../../data/blog/categories';
 import { getBlogThumbnailImage } from '../../data/blog/imageFallbacks';
-import { buildInternalUtmUrl } from '../../lib/utm';
-import { FIXED_PRICE_ARTICLE_CAMPAIGN } from '../../data/blog/blogArticleLinks';
 
 const TEAL = '#087E8B';
 const BORDER = '#D7E7EC';
@@ -40,15 +38,8 @@ const categoryIcons: Record<string, LucideIcon> = {
   'Digital Visibility': Target,
 };
 
-function getInsightHref(post: BlogPost, index: number) {
-  return buildInternalUtmUrl(
-    `/blog/${post.id}`,
-    'homepage_insights',
-    post.slug === 'fixed-price-vs-time-material-vs-subscription-support-uk-smes-saas-founders'
-      ? FIXED_PRICE_ARTICLE_CAMPAIGN
-      : 'latest_blog_posts',
-    `insight_card_${index + 1}`,
-  );
+function getInsightHref(post: BlogPost, _index: number) {
+  return `/blog/${post.id}`;
 }
 
 function InsightCardItem({
@@ -161,7 +152,7 @@ export const InsightsSection = () => {
             transition={{ duration: 0.45, delay: 0.08 }}
           >
             <Link
-              to={buildInternalUtmUrl('/blog', 'homepage_insights', 'latest_blog_posts', 'view_all_insights')}
+              to="/blog"
               className="inline-flex items-center gap-2 text-base font-bold text-brand-navy transition hover:gap-3"
             >
               View all insights

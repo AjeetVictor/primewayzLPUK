@@ -14,14 +14,8 @@ const LABELS: Record<SelfAuditCtaVariant, string> = {
   footer: 'Free website audit',
 };
 
-export function buildSelfAuditCtaUrl(utmContent: string): string {
-  const params = new URLSearchParams({
-    utm_source: 'website',
-    utm_medium: 'internal_cta',
-    utm_campaign: 'self_audit_cta',
-    utm_content: utmContent,
-  });
-  return `${AUDIT_CHECKER_PATH}?${params.toString()}`;
+export function buildSelfAuditCtaUrl(_utmContent?: string): string {
+  return AUDIT_CHECKER_PATH;
 }
 
 type SelfAuditCtaProps = {

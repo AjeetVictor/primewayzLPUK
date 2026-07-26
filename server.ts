@@ -53,6 +53,12 @@ import type { NextFunction, Request, Response } from 'express';
 import type { BlogCategory, BlogPost, BreadcrumbItem } from './src/data/blog/types.ts';
 import { LEGACY_ROUTE_REDIRECTS } from './src/constants/canonicalRoutes.ts';
 import {
+  buildDefaultStructuredData,
+  buildFaqPageStructuredData,
+  buildHomepageStructuredData,
+  PRIMEWAYZ_UK_SITE_DESCRIPTION,
+} from './src/lib/seo/defaultStructuredData.ts';
+import {
   buildRedirectLocation,
   isLiveInsightsSlug,
   normalizeInsightsPathname,
@@ -621,27 +627,6 @@ function buildSuccessStoryStructuredData(story: SuccessStory, canonical: string)
         about: story.relatedServiceLabels.map((name) => ({ '@type': 'Thing', name })),
       },
     ],
-  };
-}
-
-function buildDefaultStructuredData(canonical: string, description: string) {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'ProfessionalService',
-    '@id': `${siteUrl}/#primewayz-uk`,
-    name: 'Primewayz UK',
-    url: siteUrl,
-    logo: `${siteUrl}/primewayz-uk-dark-logo.png`,
-    description,
-    areaServed: { '@type': 'Country', name: 'United Kingdom' },
-    serviceType: [
-      'Website visibility and conversion support',
-      'CRM integration and workflow automation',
-      'Software and product engineering',
-      'Managed application and website support',
-      'Remote IT team extension',
-    ],
-    audience: { '@type': 'BusinessAudience', audienceType: 'UK small businesses and SMEs' },
   };
 }
 
@@ -1577,9 +1562,8 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
 
   const staticPageSeo: Record<string, { title: string; description: string }> = {
     '/': {
-      title: 'Digital Systems & Software Delivery for UK SMEs | Primewayz',
-      description:
-        'Primewayz helps UK SMEs improve website visibility, connect CRM workflows, build and modernise software, support applications and extend technical delivery capacity.',
+      title: 'Digital Systems Support for UK SMEs | Primewayz UK',
+      description: PRIMEWAYZ_UK_SITE_DESCRIPTION,
     },
     '/services': {
       title: 'Software, CRM, Application Support & Digital Services | Primewayz UK',
@@ -1615,16 +1599,6 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
       title: 'Request Capacity Recommendation | Primewayz UK',
       description:
         'Request a recommended monthly software development capacity plan from Primewayz UK.',
-    },
-    '/website-maintenance-subscription-uk': {
-      title: 'Managed Application & Website Support UK | Primewayz',
-      description:
-        'Maintain the reliability, security and performance of existing websites and applications through monitoring, fixes, updates and controlled ongoing improvements.',
-    },
-    '/crm-integration-support-uk': {
-      title: 'CRM Integration & Workflow Automation for UK SMEs | Primewayz',
-      description:
-        'Connect website enquiries, CRM records, follow-up workflows and reporting so leads move through the business consistently.',
     },
     '/professional-services-crm-support-uk': {
       title: 'Professional Services CRM Support UK | Primewayz UK',
@@ -1676,10 +1650,6 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
       description:
         'Connect website enquiries, CRM records, follow-up workflows and reporting so leads move through the business consistently.',
     },
-    '/software-product-delivery': {
-      title: SDAAS_SEO.title,
-      description: SDAAS_SEO.description,
-    },
     '/remote-it-resources': {
       title: 'Remote IT Team Extension for UK Businesses | Primewayz',
       description:
@@ -1688,18 +1658,62 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
     '/pricing': {
       title: 'Primewayz UK Pricing & Engagement Options',
       description:
-        'Review Primewayz UK engagement options including Foundation Sprint, fixed-scope project, structured monthly delivery, Maintenance Mode and dedicated technical capacity.',
+        'Review Primewayz UK engagement options including Foundation Sprint, structured monthly delivery, Maintenance Mode and enterprise or complex delivery.',
+    },
+    '/privacy-policy': {
+      title: 'Privacy Policy | Primewayz UK',
+      description:
+        'How Primewayz UK collects, uses and protects personal information for UK website visitors and business enquiries.',
+    },
+    '/terms-of-service': {
+      title: 'Terms of Service | Primewayz UK',
+      description:
+        'Terms governing use of the Primewayz UK website and related digital systems support services for UK businesses.',
+    },
+    '/cookie-policy': {
+      title: 'Cookie Policy | Primewayz UK',
+      description:
+        'How Primewayz UK uses cookies and similar technologies on the UK website.',
+    },
+    '/faq': {
+      title: 'Primewayz UK Services: Frequently Asked Questions',
+      description:
+        'Answers about Digital Systems Review, website audit, monthly delivery, software ownership, maintenance, capacity changes and confidentiality.',
+    },
+    '/how-it-works': {
+      title: 'How Primewayz UK Digital Delivery Works',
+      description:
+        'Understand how Primewayz UK reviews priorities, selects a delivery model, delivers work and moves into ongoing support where appropriate.',
     },
   };
 
   const pageSeo = staticPageSeo[pagePathname] || staticPageSeo['/'];
 
-  let structuredData: unknown = buildDefaultStructuredData(canonical, pageSeo.description);
+  let structuredData: unknown = buildDefaultStructuredData(
+    siteUrl,
+    canonical,
+    pageSeo.title,
+    pageSeo.description,
+  );
   let ogType: 'website' | 'article' | undefined;
   let image: string | undefined;
 
-  if (pagePathname === '/uk-sme-digital-visibility-checker') {
+  if (pagePathname === '/') {
+    structuredData = buildHomepageStructuredData(
+      siteUrl,
+      canonical,
+      pageSeo.title,
+      pageSeo.description,
+    );
+  } else if (pagePathname === '/uk-sme-digital-visibility-checker') {
     structuredData = buildWebPresenceAuditStructuredData(canonical, pageSeo.description);
+  } else if (pagePathname === '/faq') {
+    structuredData = buildFaqPageStructuredData(
+      siteUrl,
+      canonical,
+      pageSeo.title,
+      pageSeo.description,
+    );
   } else if (pagePathname === '/software-development-subscription-uk') {
     structuredData = buildSdaasStructuredData(canonical, pageSeo.description);
   } else if (pagePathname === SDAAS_PILLAR_PATH) {

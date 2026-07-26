@@ -1,24 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'motion/react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { WebsiteProblemSection } from './components/sections/WebsiteProblemSection';
-import { OutcomePillarsSection } from './components/sections/OutcomePillarsSection';
-import { TrustPillarSection } from './components/sections/TrustPillarSection';
-import { EnquiriesPillarSection } from './components/sections/EnquiriesPillarSection';
 import { ServiceRoutesSection } from './components/sections/ServiceRoutesSection';
-import { MonthlySupportRhythmSection } from './components/sections/MonthlySupportRhythmSection';
 import { AuditLedProcessSection } from './components/sections/AuditLedProcessSection';
-import { WhatWeReviewFirstSection } from './components/sections/WhatWeReviewFirstSection';
 import { CommercialClaritySection } from './components/sections/CommercialClaritySection';
-import { InsightsSection } from './components/sections/InsightsSection';
 import { HomepageContactSection } from './components/sections/HomepageContactSection';
-import { RemoteItCapacitySection } from './components/sections/RemoteItCapacitySection';
-import { Philosophy } from './components/Philosophy';
-import { HowItWorks } from './components/HowItWorks';
-import { TechStack } from './components/TechStack';
-import { FAQ } from './components/FAQ';
 import { SuccessStories } from './components/SuccessStories';
 import { Footer } from './components/Footer';
 import { ScrollToTop, ScrollToTopButton } from './components/ScrollToTop';
@@ -62,10 +50,8 @@ import { CampaignLandingHandler } from './components/CampaignLandingHandler';
 import { RemoteItResourceAugmentationPage } from './components/RemoteItResourceAugmentationPage';
 import { ContactRedirect } from './components/ContactRedirect';
 import { Pricing } from './components/Pricing';
-import { useRevealMotion } from './hooks/useRevealMotion';
-
-// SSR-safe: use static path for logo
-const logo = '/assets/primewayz-infotech-logo.svg';
+import { FaqPage } from './components/FaqPage';
+import { HowItWorksPage } from './components/HowItWorksPage';
 
 const ClientOnly = ({ children }: { children: ReactNode }) => {
   const [mounted, setMounted] = useState(false);
@@ -74,34 +60,18 @@ const ClientOnly = ({ children }: { children: ReactNode }) => {
   return <>{children}</>;
 };
 
-const MainContent = () => {
-  const reveal = useRevealMotion();
-
-  return (
+/** Homepage owns digital-systems positioning; each section renders once. */
+const MainContent = () => (
   <main>
     <Hero />
     <WebsiteProblemSection />
-    <OutcomePillarsSection />
-    <TrustPillarSection />
-    <EnquiriesPillarSection />
     <ServiceRoutesSection />
-    <MonthlySupportRhythmSection />
     <AuditLedProcessSection />
-    <WhatWeReviewFirstSection />
-    <CommercialClaritySection />
-    <InsightsSection />
-    <Philosophy />
-    <motion.div initial={reveal.initial({ opacity: 0 })} whileInView={reveal.whileInView({ opacity: 1 })} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 1 }}>
-      <HowItWorks />
-    </motion.div>
-    <TechStack />
-    <RemoteItCapacitySection />
-    <FAQ />
     <SuccessStories />
+    <CommercialClaritySection />
     <HomepageContactSection />
   </main>
-  );
-};
+);
 
 export type InitialAppData = {
   blogPosts?: BlogPostData[];
@@ -202,7 +172,8 @@ export const App = ({ initialData }: AppProps) => {
         />
         <Route path="/remote-it-resources" element={<RemoteItResourceAugmentationPage />} />
         <Route path="/pricing" element={<Pricing />} />
-        <Route path="/how-it-works" element={<Navigate to="/#how-it-works" replace />} />
+        <Route path="/how-it-works" element={<HowItWorksPage />} />
+        <Route path="/faq" element={<FaqPage />} />
         <Route path="/about-us" element={<AboutUsPage />} />
         <Route path="/about" element={<Navigate to="/about-us" replace />} />
         <Route path="/contact" element={<ContactRedirect />} />

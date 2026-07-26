@@ -104,7 +104,7 @@ export const TechStack = () => {
           viewport={{ once: true, margin: '-100px' }}
           className="mx-auto mt-4 max-w-2xl text-base md:text-lg text-zinc-600"
         >
-          Our 4,000+ team has expertise across almost every programming language.
+          Our delivery experience covers modern web, backend, mobile, database, integration and cloud technologies.
         </motion.p>
       </div>
 

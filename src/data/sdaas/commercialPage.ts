@@ -5,10 +5,10 @@ export const SDAAS_CAPACITY_ANCHOR = 'monthly-delivery-capacity';
 export const SDAAS_FAQ_ANCHOR = 'faq';
 
 export const SDAAS_SEO = {
-  title: 'Ongoing Software Development Services for UK Businesses | Primewayz',
+  title: 'Software Development Subscription UK | Primewayz',
   description:
     'Add structured software engineering capacity to improve applications, deliver product features, complete integrations and reduce technical backlog for UK businesses.',
-  ogTitle: 'Ongoing Software & Product Development for UK Businesses',
+  ogTitle: 'Software Development as a Subscription for UK Businesses',
   ogDescription:
     'Structured software engineering capacity for application features, integrations, product roadmap delivery and technical debt reduction—without unlimited-development promises.',
 } as const;

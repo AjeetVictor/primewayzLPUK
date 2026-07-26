@@ -3,10 +3,10 @@ import { CheckCircle2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { TrackedLink } from '../common/TrackedLink';
 import { RemoteItCapacityVisual } from '../visuals/RemoteItVisuals';
-import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../../lib/utm';
 import { BOOK_CALL_URL } from '../../constants/contactBooking';
 import { useRevealMotion } from '../../hooks/useRevealMotion';
-import { getDataLayerUtmPayload, pushDataLayer } from '../../lib/dataLayer';
+import { pushDataLayer } from '../../lib/dataLayer';
+import { REMOTE_RESOURCE_CAMPAIGN } from '../../lib/utm';
 
 const benefits = [
   'Start with part-time or monthly support',
@@ -15,19 +15,9 @@ const benefits = [
   'Keep work structured with updates and checkpoints',
 ];
 
-const primaryHref = buildInternalUtmUrl(
-  '/remote-it-resources',
-  'homepage_section',
-  REMOTE_RESOURCE_CAMPAIGN,
-  'remote_capacity_section_primary_cta',
-);
+const primaryHref = '/remote-it-resources';
 
-const secondaryHref = buildInternalUtmUrl(
-  BOOK_CALL_URL,
-  'homepage_section',
-  REMOTE_RESOURCE_CAMPAIGN,
-  'remote_capacity_section_secondary_cta',
-);
+const secondaryHref = BOOK_CALL_URL;
 
 function trackSectionView(): void {
   pushDataLayer({
@@ -35,7 +25,6 @@ function trackSectionView(): void {
     section_name: 'Remote IT Capacity',
     service: REMOTE_RESOURCE_CAMPAIGN,
     page_path: '/',
-    ...getDataLayerUtmPayload(),
   });
 }
 
@@ -47,7 +36,6 @@ function trackSectionCta(ctaText: string, destinationUrl: string): void {
     cta_text: ctaText,
     destination_url: destinationUrl,
     page_path: '/',
-    ...getDataLayerUtmPayload(),
   });
 }
 

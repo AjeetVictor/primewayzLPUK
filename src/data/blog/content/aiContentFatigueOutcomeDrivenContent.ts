@@ -107,7 +107,7 @@ export const aiContentFatigueOutcomeDrivenContent = `
       <div class="blog-callout blog-callout-tip">
         <strong>Not sure whether your content is creating visibility, trust, or enquiries?</strong>
         <p>Primewayz UK helps UK SMEs review website visibility, content structure, SEO signals, enquiry flow, and digital support gaps.</p>
-        <p><a href="/uk-sme-digital-visibility-checker?utm_source=blog&amp;utm_medium=mid_article_cta&amp;utm_campaign=ai_content_fatigue">Run a free website audit</a></p>
+        <p><a href="/uk-sme-digital-visibility-checker">Run a free website audit</a></p>
       </div>
 
       <h2>Why does more AI content not create more outcomes?</h2>
@@ -205,6 +205,6 @@ export const aiContentFatigueOutcomeDrivenContent = `
       <div class="blog-callout blog-callout-info">
         <strong>Need a clearer content and visibility system?</strong>
         <p>Primewayz UK supports UK SMEs with website visibility, SEO/AEO/GEO readiness, CRM automation, landing pages, analytics, and monthly digital improvement support.</p>
-        <p><a href="/website-visibility-support?utm_source=blog&amp;utm_medium=end_cta&amp;utm_campaign=ai_content_fatigue">Explore website visibility support</a></p>
+        <p><a href="/website-visibility-support">Explore website visibility support</a></p>
       </div>
     `;

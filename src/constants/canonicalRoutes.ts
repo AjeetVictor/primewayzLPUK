@@ -18,7 +18,8 @@ export const CANONICAL_ROUTES = {
   successStories: '/success-stories',
   services: '/services',
   about: '/about-us',
-  howItWorks: '/#how-it-works',
+  howItWorks: '/how-it-works',
+  faq: '/faq',
   sdaasCapacityRequest: '/software-development-subscription-uk/request-capacity',
 } as const;
 

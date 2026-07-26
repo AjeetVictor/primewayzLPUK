@@ -11,7 +11,6 @@ import {
   Workflow,
 } from 'lucide-react';
 import type { ServiceIconTone } from './designSystem';
-import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../lib/utm';
 import { AUDIT_CHECKER_PATH } from './navigation';
 import { CANONICAL_ROUTES } from './canonicalRoutes';
 
@@ -97,12 +96,7 @@ export const serviceNavGroups: ServiceNavGroup[] = [
       {
         name: 'Remote IT Team Extension',
         description: 'Developers, QA, analysts, project coordination and technical specialists',
-        href: buildInternalUtmUrl(
-          CANONICAL_ROUTES.remoteItResources,
-          'internal_nav',
-          REMOTE_RESOURCE_CAMPAIGN,
-          'services_dropdown',
-        ),
+        href: CANONICAL_ROUTES.remoteItResources,
         icon: Users,
         iconTone: 'magenta',
         isNew: true,
@@ -118,9 +112,5 @@ export const serviceNavGroups: ServiceNavGroup[] = [
   },
 ];
 
-export const remoteItFooterHref = buildInternalUtmUrl(
-  CANONICAL_ROUTES.remoteItResources,
-  'footer_nav',
-  REMOTE_RESOURCE_CAMPAIGN,
-  'footer_service_link',
-);
+/** Clean canonical footer link for remote IT (no internal UTMs). */
+export const remoteItFooterHref = CANONICAL_ROUTES.remoteItResources;

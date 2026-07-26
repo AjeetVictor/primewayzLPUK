@@ -68,7 +68,7 @@ const companyLinks = [
 
 const resourceLinks = [
   { label: 'Free Website Audit', href: AUDIT_CHECKER_PATH, isAudit: true as const },
-  { label: 'FAQ', href: '/#faq' },
+  { label: 'FAQ', href: CANONICAL_ROUTES.faq },
   { label: 'Privacy Policy', href: COMPANY_TRUST_LINKS.privacyPolicy },
   { label: 'Terms of Service', href: COMPANY_TRUST_LINKS.termsOfService },
   { label: 'Cookies Policy', href: COMPANY_TRUST_LINKS.cookiePolicy },

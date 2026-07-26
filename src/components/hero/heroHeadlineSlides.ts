@@ -1,5 +1,5 @@
-import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../../lib/utm';
 import { BOOK_CALL_URL, CONTACT_ENQUIRY_URL } from '../../constants/contactBooking';
+import { CANONICAL_ROUTES } from '../../constants/canonicalRoutes';
 
 export type HeroHeadlineSlide = {
   id: string;
@@ -51,25 +51,15 @@ export const heroHeadlineSlides: HeroHeadlineSlide[] = [
       'Useful for SMEs, agencies, startups and growing teams',
     ],
     primaryCtaLabel: 'Explore Remote IT Resources',
-    primaryCtaHref: buildInternalUtmUrl(
-      '/remote-it-resources',
-      'home_hero_slider',
-      REMOTE_RESOURCE_CAMPAIGN,
-      'hero_slider_primary_cta',
-    ),
+    primaryCtaHref: CANONICAL_ROUTES.remoteItResources,
     secondaryCtaLabel: 'Discuss resource needs',
-    secondaryCtaHref: buildInternalUtmUrl(
-      CONTACT_ENQUIRY_URL,
-      'home_hero_slider',
-      REMOTE_RESOURCE_CAMPAIGN,
-      'hero_slider_secondary_cta',
-    ),
+    secondaryCtaHref: CONTACT_ENQUIRY_URL,
     image: '/images/hero/team-collaboration.webp',
     imageAlt: 'Remote IT resource augmentation dashboard for UK businesses',
     visualKey: 'remote-it-hero',
     tracking: {
       slideName: 'Remote IT Resource Augmentation',
-      service: REMOTE_RESOURCE_CAMPAIGN,
+      service: 'remote_it_resources',
       ctaLocation: 'home_hero_slider',
     },
   },
@@ -97,7 +87,7 @@ export const heroHeadlineSlides: HeroHeadlineSlide[] = [
     primaryCtaLabel: 'Book a UK discovery call',
     primaryCtaHref: BOOK_CALL_URL,
     secondaryCtaLabel: 'How delivery works',
-    secondaryCtaHref: '#how-it-works',
+    secondaryCtaHref: CANONICAL_ROUTES.howItWorks,
     image: '/images/hero/business-planning.webp',
     imageAlt: 'Software planning discussion between professionals',
   },

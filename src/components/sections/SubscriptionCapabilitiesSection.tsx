@@ -62,7 +62,7 @@ export const SubscriptionCapabilitiesSection = () => {
             className="lg:justify-self-end"
           >
             <a
-              href="/#how-it-works"
+              href="/how-it-works"
               className="group inline-flex items-center gap-2 border-b border-slate-300 pb-1.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-900 hover:text-slate-900"
             >
               Explore delivery model

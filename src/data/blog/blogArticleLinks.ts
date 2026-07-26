@@ -1,12 +1,12 @@
-import { buildInternalUtmUrl } from '../../lib/utm.ts';
+/** Blog article internal CTAs use clean canonical paths (analytics events carry attribution). */
 
 export const FIXED_PRICE_ARTICLE_CAMPAIGN = 'fixed_price_vs_subscription_support';
 export const AI_CONTENT_FATIGUE_CAMPAIGN = 'ai_content_fatigue';
 
-export function fixedPriceArticleHref(path: string, content: string): string {
-  return buildInternalUtmUrl(path, 'blog_article', FIXED_PRICE_ARTICLE_CAMPAIGN, content);
+export function fixedPriceArticleHref(path: string, _content?: string): string {
+  return path;
 }
 
-export function aiContentFatigueArticleHref(path: string, content: string): string {
-  return buildInternalUtmUrl(path, 'blog_article', AI_CONTENT_FATIGUE_CAMPAIGN, content);
+export function aiContentFatigueArticleHref(path: string, _content?: string): string {
+  return path;
 }

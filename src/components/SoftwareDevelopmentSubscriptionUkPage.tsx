@@ -167,7 +167,7 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
               </p>
 
               <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-[3.35rem] lg:leading-[1.1]">
-                Ongoing Software & Product Development for UK Businesses
+                Software Development as a Subscription for UK Businesses
               </h1>
 
               <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">

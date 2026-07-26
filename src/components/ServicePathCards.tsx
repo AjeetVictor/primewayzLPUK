@@ -1,14 +1,8 @@
 import { ArrowRight, Code2, LifeBuoy, Network, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../lib/utm';
-import { getDataLayerUtmPayload, pushDataLayer } from '../lib/dataLayer';
+import { pushDataLayer } from '../lib/dataLayer';
 
-const remoteItCardHref = buildInternalUtmUrl(
-  '/remote-it-resources',
-  'homepage_service_card',
-  REMOTE_RESOURCE_CAMPAIGN,
-  'service_card',
-);
+const remoteItCardHref = '/remote-it-resources';
 
 const servicePaths = [
   {
@@ -61,10 +55,9 @@ const supportingLinks = [
 function trackServiceCardClick(destinationUrl: string): void {
   pushDataLayer({
     event: 'service_card_click',
-    service: REMOTE_RESOURCE_CAMPAIGN,
+    service: 'remote_it_resources',
     card_location: 'homepage_service_grid',
     destination_url: destinationUrl,
-    ...getDataLayerUtmPayload(),
   });
 }
 
