@@ -390,9 +390,12 @@ test('/contact-us page behaviour remains unchanged (source boundary)', () => {
   }
 });
 
-test('WebsiteProblemSection still points to the visibility checker', () => {
+test('WebsiteProblemSection links to website visibility support', () => {
   const section = read('src/components/sections/WebsiteProblemSection.tsx');
-  assert.match(section, /buildSelfAuditCtaUrl|uk-sme-digital-visibility-checker/);
+  assert.match(section, /website-visibility-support|CANONICAL_ROUTES\.websiteVisibilitySupport/);
+  assert.match(section, /Visibility/);
+  assert.match(section, /Trust/);
+  assert.match(section, /Enquiry/);
   assert.doesNotMatch(section, /buildFreeReviewCtaUrl|digital-systems-review\?review_source/);
   assert.equal(WEBSITE_CHECKER_DESTINATION, '/uk-sme-digital-visibility-checker');
 });
