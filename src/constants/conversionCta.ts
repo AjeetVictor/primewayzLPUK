@@ -13,8 +13,8 @@ export const FREE_REVIEW_CTA_LABEL = 'Request a free digital systems review' as 
 /** Secondary discovery-call CTA label. */
 export const DISCOVERY_CALL_CTA_LABEL = 'Book a discovery call' as const;
 
-/** Website checker CTA label. */
-export const WEBSITE_CHECKER_CTA_LABEL = 'Run the free website visibility check' as const;
+/** Website checker / free website audit CTA label. */
+export const WEBSITE_CHECKER_CTA_LABEL = 'Run the free website audit' as const;
 
 /** Allowlisted query key for CTA → review source handoff (no PII). */
 export const FREE_REVIEW_SOURCE_QUERY_PARAM = 'review_source' as const;

@@ -227,6 +227,76 @@ test('website-checker tertiary click includes only safe placement, source, route
   assert.equal(WEBSITE_CHECKER_DESTINATION, '/uk-sme-digital-visibility-checker');
 });
 
+test('homepage hero promotes website audit as a strip CTA without a third equal button', () => {
+  const group = read('src/components/conversion/DigitalSystemsReviewCtaGroup.tsx');
+  const hero = read('src/components/Hero.tsx');
+
+  assert.equal(FREE_REVIEW_CTA_LABEL, 'Request a free digital systems review');
+  assert.match(hero, /primaryPlacement="homepage_hero_primary"/);
+  assert.equal((hero.match(/primaryPlacement=/g) || []).length, 1);
+  assert.match(hero, /secondaryPlacement="homepage_hero_secondary"/);
+  assert.match(hero, /websiteCheckerPlacement="homepage_hero_website_checker"/);
+  assert.equal((hero.match(/<h1\b/g) || []).length, 1);
+
+  assert.match(group, /data-homepage-website-audit-cta="strip"/);
+  assert.match(group, /WEBSITE_CHECKER_CTA_LABEL/);
+  assert.match(group, /Run the free website audit|WEBSITE_CHECKER_CTA_LABEL/);
+  assert.match(group, /Not ready to request a review\?/);
+  assert.match(
+    group,
+    /Check how easily customers can find, trust and contact your business/,
+  );
+  assert.match(group, /usually in under\s+a minute/);
+  assert.doesNotMatch(group, /instant results/i);
+  assert.match(group, /aria-label=\{WEBSITE_CHECKER_CTA_LABEL\}/);
+  assert.match(group, /to=\{WEBSITE_CHECKER_DESTINATION\}/);
+  assert.match(group, /ScanSearch/);
+  assert.match(group, /w-full/);
+  assert.match(group, /min-h-\[44px\]/);
+  assert.match(group, /max-w-full/);
+  assert.match(group, /overflow-hidden/);
+  assert.match(group, /emitWebsiteCheckerClick|trackCtaClick\(WEBSITE_CHECKER_CTA_LABEL/);
+
+  // Hero strip is conditional; closing/footer keeps a text-link tertiary presentation.
+  assert.match(group, /isHero \? \(/);
+  assert.match(group, /underline-offset-2/);
+
+  // Primary + secondary remain distinct button-style CTAs; audit is not a third peer button.
+  assert.match(group, /shellClasses\.btnHeroPrimary|btnHeroPrimary/);
+  assert.match(group, /shellClasses\.btnHeroSecondary|btnHeroSecondary/);
+  assert.doesNotMatch(
+    group,
+    /data-homepage-website-audit-cta="strip"[\s\S]*btnHeroPrimary/,
+  );
+});
+
+test('homepage audit CTA analytics stay PII-free and out-of-scope surfaces stay unwired', () => {
+  const group = read('src/components/conversion/DigitalSystemsReviewCtaGroup.tsx');
+  assert.doesNotMatch(
+    group,
+    /trackCtaClick\([\s\S]*(name|email|company|website|submissionId|chatSessionId|sessionId)\s*:/,
+  );
+
+  const navbar = read('src/components/Navbar.tsx');
+  assert.doesNotMatch(navbar, /data-homepage-website-audit-cta|homepage_hero_website_checker/);
+  assert.doesNotMatch(navbar, /SelfAuditCta/);
+
+  const footer = read('src/components/Footer.tsx');
+  assert.doesNotMatch(footer, /data-homepage-website-audit-cta/);
+  assert.match(footer, /websiteCheckerPlacement="footer_website_checker"/);
+
+  const services = read('src/components/ServicesPage.tsx');
+  assert.doesNotMatch(services, /data-homepage-website-audit-cta|homepage_hero_website_checker/);
+
+  const liveChat = read('src/components/LiveChat.tsx');
+  assert.doesNotMatch(liveChat, /data-homepage-website-audit-cta|homepage_hero_website_checker/);
+  assert.doesNotMatch(liveChat, /DigitalSystemsReviewCtaGroup/);
+
+  const checkerPage = read('src/components/UkSmeDigitalVisibilityCheckerPage.tsx');
+  assert.doesNotMatch(checkerPage, /data-homepage-website-audit-cta|homepage_hero_website_checker/);
+});
+
+
 test('CTA analytics include cta_placement but no PII or identifiers', () => {
   const payload = buildDigitalSystemsReviewAnalyticsPayload({
     sourceLocation: 'homepage',

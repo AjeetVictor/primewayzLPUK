@@ -34,7 +34,7 @@ const root = path.resolve(__dirname, '../../..');
 test('conversion config exposes approved labels and routes', () => {
   assert.equal(FREE_REVIEW_CTA_LABEL, 'Request a free digital systems review');
   assert.equal(DISCOVERY_CALL_CTA_LABEL, 'Book a discovery call');
-  assert.equal(WEBSITE_CHECKER_CTA_LABEL, 'Run the free website visibility check');
+  assert.equal(WEBSITE_CHECKER_CTA_LABEL, 'Run the free website audit');
   assert.equal(FREE_REVIEW_ROUTE, '/digital-systems-review');
   assert.equal(FREE_REVIEW_THANK_YOU_ROUTE, '/thank-you/digital-systems-review');
   assert.equal(DIGITAL_SYSTEMS_REVIEW_PATH, FREE_REVIEW_ROUTE);
