@@ -16,7 +16,6 @@ import { TrackedLink } from './common/TrackedLink';
 import { SelfAuditCta } from './SelfAuditCta';
 import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
 import { CANONICAL_ROUTES } from '../constants/canonicalRoutes';
-import { buildInternalUtmUrl, REMOTE_RESOURCE_CAMPAIGN } from '../lib/utm';
 import { getSuccessStoryPath } from '../data/successStories';
 
 const serviceCards = [
@@ -82,12 +81,7 @@ const serviceCards = [
   },
   {
     title: 'Remote IT Team Extension',
-    href: buildInternalUtmUrl(
-      '/remote-it-resources',
-      'services_hub',
-      REMOTE_RESOURCE_CAMPAIGN,
-      'services_hub_card',
-    ),
+    href: '/remote-it-resources',
     icon: Users,
     anchor: 'Remote IT team extension for UK businesses',
     description:
