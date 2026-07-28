@@ -186,10 +186,10 @@ test('utility and legal routes have unique metadata and dedicated pages', () => 
   assert.match(read('src/components/FaqPage.tsx'), /Frequently Asked Questions/);
   assert.match(read('src/components/HowItWorksPage.tsx'), /How Primewayz UK Works/);
   assert.match(read('src/components/Pricing.tsx'), /Pricing & Engagement Options/);
+  assert.match(read('src/components/pricing/PricingPageContent.tsx'), /<h1 id="pricing-hero-title"/);
   assert.equal((read('src/components/FaqPage.tsx').match(/<h1\b/g) || []).length, 1);
   assert.equal((read('src/components/HowItWorksPage.tsx').match(/<h1\b/g) || []).length, 1);
-  assert.match(read('src/components/Pricing.tsx'), /<motion\.h1\b|<h1\b/);
-  assert.equal((read('src/components/Pricing.tsx').match(/<(?:motion\.)?h1\b/g) || []).length, 1);
+  assert.equal((read('src/components/pricing/PricingPageContent.tsx').match(/<h1\b/g) || []).length, 1);
 });
 
 test('FAQ and how-it-works routes are real pages and footer links use clean paths', () => {

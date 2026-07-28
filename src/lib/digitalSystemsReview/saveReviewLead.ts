@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
+import { enrichReviewLeadForPersistence } from './leadEnrichment.ts';
 import type { NormalizedDigitalSystemsReviewLead } from './validateReviewLead.ts';
 
 export type ReviewLeadPersistenceDeps = {
@@ -10,28 +11,16 @@ export type SavedReviewLead = {
   submissionId: string;
   notificationStatus: string;
   createdAt: Date;
+  validationOutcome?: string | null;
+  duplicateConfidence?: string | null;
+  selectedPlanSlug?: string | null;
 };
 
-function toCreateData(lead: NormalizedDigitalSystemsReviewLead): Prisma.DigitalSystemsReviewLeadCreateInput {
-  return {
-    submissionId: lead.submissionId,
-    name: lead.name,
-    workEmail: lead.workEmail,
-    company: lead.company,
-    website: lead.website,
-    serviceArea: lead.serviceArea,
-    context: lead.context,
-    preferredNextStep: lead.preferredNextStep,
-    consentAt: lead.consentAt,
-    firstTouchAttribution: lead.firstTouchAttribution ?? undefined,
-    latestTouchAttribution: lead.latestTouchAttribution ?? undefined,
-    landingPage: lead.landingPage,
-    referrer: lead.referrer,
-    sourceLocation: lead.sourceLocation,
-    chatSessionId: lead.chatSessionId,
-    status: 'new',
-    notificationStatus: 'pending',
-  };
+async function toCreateData(
+  deps: ReviewLeadPersistenceDeps,
+  lead: NormalizedDigitalSystemsReviewLead,
+): Promise<Prisma.DigitalSystemsReviewLeadCreateInput> {
+  return enrichReviewLeadForPersistence(deps.prisma, lead);
 }
 
 /**
@@ -43,12 +32,15 @@ export async function saveDigitalSystemsReviewLead(
   lead: NormalizedDigitalSystemsReviewLead,
 ): Promise<SavedReviewLead> {
   const saved = await deps.prisma.digitalSystemsReviewLead.create({
-    data: toCreateData(lead),
+    data: await toCreateData(deps, lead),
     select: {
       id: true,
       submissionId: true,
       notificationStatus: true,
       createdAt: true,
+      validationOutcome: true,
+      duplicateConfidence: true,
+      selectedPlanSlug: true,
     },
   });
 
@@ -66,6 +58,9 @@ export async function findReviewLeadBySubmissionId(
       submissionId: true,
       notificationStatus: true,
       createdAt: true,
+      validationOutcome: true,
+      duplicateConfidence: true,
+      selectedPlanSlug: true,
     },
   });
 }

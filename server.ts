@@ -49,6 +49,25 @@ import {
   getClientIp,
   warnIfProductionProxyAttributionShared,
 } from './src/lib/digitalSystemsReview/rateLimit.ts';
+import {
+  getConversionDashboardSummary,
+  resolveDashboardDateRange,
+} from './src/lib/leads/dashboardService.ts';
+import {
+  assignReviewLeadOwner,
+  listReviewLeadsAdmin,
+  transitionReviewLeadStatus,
+} from './src/lib/leads/reviewLeadsAdminService.ts';
+import { normalizeLeadStatus } from './src/lib/leads/statuses.ts';
+import {
+  analyseGscOpportunities,
+  upsertGscOpportunityCandidates,
+} from './src/lib/autopilot/gscOpportunityService.ts';
+import { buildPricingContentBacklogCreateInputs } from './src/data/pricing/contentBacklogSeeds.ts';
+import {
+  classifyUnmatchedRequest,
+  shouldLogRouteClassification,
+} from './src/lib/serverRouteClassification.ts';
 import type { NextFunction, Request, Response } from 'express';
 import type { BlogCategory, BlogPost, BreadcrumbItem } from './src/data/blog/types.ts';
 import { LEGACY_ROUTE_REDIRECTS } from './src/constants/canonicalRoutes.ts';
@@ -1937,6 +1956,116 @@ app.post('/api/admin/audit-leads/:id/notes', requireAdmin, requireRole(isOperati
   }
 });
 
+app.get('/api/admin/conversion-dashboard', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
+  try {
+    const preset = typeof req.query.preset === 'string' ? req.query.preset : '30d';
+    const range = resolveDashboardDateRange(preset);
+    const summary = await getConversionDashboardSummary(prisma, range);
+    res.json(summary);
+  } catch (error) {
+    console.error('[admin-conversion-dashboard] failed');
+    res.status(500).json({ error: 'Failed to load conversion dashboard' });
+  }
+});
+
+app.get('/api/admin/review-leads', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
+  try {
+    const result = await listReviewLeadsAdmin(prisma, {
+      status: typeof req.query.status === 'string' ? req.query.status : undefined,
+      ownerId: typeof req.query.ownerId === 'string' ? Number(req.query.ownerId) : undefined,
+      limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined,
+      offset: typeof req.query.offset === 'string' ? Number(req.query.offset) : undefined,
+    });
+    res.json(result);
+  } catch (error) {
+    console.error('[admin-review-leads] list failed');
+    res.status(500).json({ error: 'Failed to load review leads' });
+  }
+});
+
+app.patch('/api/admin/review-leads/:id/status', requireAdmin, requireRole(isOperationsRole), async (req: AdminRequest, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Invalid review lead id' });
+
+    const toStatus = normalizeLeadStatus(req.body?.status);
+    if (!toStatus) return res.status(400).json({ error: 'Invalid status' });
+
+    const updated = await transitionReviewLeadStatus(prisma, id, toStatus, {
+      actorId: req.adminUser?.id ?? null,
+      note: typeof req.body?.note === 'string' ? req.body.note : null,
+      ownerId: typeof req.body?.ownerId === 'number' ? req.body.ownerId : undefined,
+      lostReason: req.body?.lostReason ?? null,
+      nurtureReason: req.body?.nurtureReason ?? null,
+      followUpAt: req.body?.followUpAt ? new Date(req.body.followUpAt) : null,
+      proposalSentAt: req.body?.proposalSentAt ? new Date(req.body.proposalSentAt) : null,
+      proposalValueMinor: typeof req.body?.proposalValueMinor === 'number' ? req.body.proposalValueMinor : null,
+      firstContactedAt: req.body?.firstContactedAt ? new Date(req.body.firstContactedAt) : null,
+    });
+    if (!updated) return res.status(404).json({ error: 'Review lead not found' });
+    res.json(updated);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Transition failed';
+    res.status(400).json({ error: message });
+  }
+});
+
+app.patch('/api/admin/review-leads/:id/owner', requireAdmin, requireRole(isOperationsRole), async (req: AdminRequest, res) => {
+  try {
+    const id = parseId(req.params.id);
+    const ownerId = parseId(String(req.body?.ownerId ?? ''));
+    if (!id || !ownerId) return res.status(400).json({ error: 'Invalid id or owner' });
+
+    const updated = await assignReviewLeadOwner(prisma, id, ownerId, req.adminUser?.id);
+    if (!updated) return res.status(404).json({ error: 'Review lead not found' });
+    res.json(updated);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Assignment failed';
+    res.status(400).json({ error: message });
+  }
+});
+
+app.post('/api/admin/gsc/opportunities/analyse', requireAdmin, requireRole(isOperationsRole), async (_req, res) => {
+  try {
+    const connection = await prisma.gscConnection.findFirst({ where: { isActive: true, status: 'ACTIVE' } });
+    if (!connection) return res.status(404).json({ error: 'No active GSC connection' });
+
+    const findings = await analyseGscOpportunities(prisma, connection.id);
+    const created = await upsertGscOpportunityCandidates(prisma, findings);
+    res.json({ findings: findings.length, candidatesCreated: created });
+  } catch (error) {
+    console.error('[admin-gsc-opportunities] analyse failed');
+    res.status(500).json({ error: 'Failed to analyse GSC opportunities' });
+  }
+});
+
+app.post('/api/admin/pricing-content/seed-backlog', requireAdmin, requireRole(isSuperAdmin), async (_req, res) => {
+  try {
+    const seeds = buildPricingContentBacklogCreateInputs();
+    let seeded = 0;
+    for (const seed of seeds) {
+      await prisma.pricingContentBacklogItem.upsert({
+        where: { slug: seed.slug },
+        create: seed,
+        update: {
+          title: seed.title,
+          targetService: seed.targetService,
+          searchIntent: seed.searchIntent,
+          suggestedCta: seed.suggestedCta,
+          internalLinksJson: seed.internalLinksJson,
+          pricingPolicyVersion: seed.pricingPolicyVersion,
+          overlapNotes: seed.overlapNotes,
+        },
+      });
+      seeded += 1;
+    }
+    res.json({ seeded });
+  } catch (error) {
+    console.error('[admin-pricing-content] seed failed');
+    res.status(500).json({ error: 'Failed to seed pricing content backlog' });
+  }
+});
+
 app.get('/api/admin/chats', requireAdmin, requireRole(isOperationsRole), async (_req, res) => {
   const messages = await prisma.chatMessage.findMany({
     orderBy: { timestamp: 'desc' },
@@ -2877,7 +3006,20 @@ app.get('/api/health', (_req, res) => {
     });
 });
 
-app.use('/api', (_req, res) => {
+app.use('/api', (req, res) => {
+  const classification = classifyUnmatchedRequest({
+    method: req.method,
+    path: req.path,
+    accept: req.header('accept') ?? undefined,
+  });
+  if (shouldLogRouteClassification(classification, req.path)) {
+    const logFn = classification.logLevel === 'error'
+      ? console.error
+      : classification.logLevel === 'warn'
+        ? console.warn
+        : console.debug;
+    logFn(`[route:${classification.category}] ${classification.message}`);
+  }
   res.status(404).json({ success: false, error: 'API route not found' });
 });
 

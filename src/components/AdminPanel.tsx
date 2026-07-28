@@ -10,6 +10,7 @@ import { AppConfirmDialog } from './ui/AppConfirmDialog';
 import { ToastProvider, useToast } from './ui/AppToast';
 import { RichBlogEditor } from './admin/RichBlogEditor';
 import { AdminAuditLeadsPanel } from './admin/AdminAuditLeadsPanel';
+import { AdminConversionDashboard } from './admin/AdminConversionDashboard';
 import { AutopilotPanel } from './admin/autopilot/AutopilotPanel';
 import { ChatConfirmDialog } from './admin/ChatConfirmDialog';
 import { sanitizeBlogHtml } from '../utils/sanitizeHtml';
@@ -470,6 +471,8 @@ const AdminPanelContent = () => {
     const tab = new URLSearchParams(window.location.search).get('tab');
     if (tab === 'autopilot') {
       setActiveTab('autopilot');
+    } else if (tab === 'conversion') {
+      setActiveTab('conversion');
     }
   }, []);
   const [isInternalNoteMode, setIsInternalNoteMode] = useState(false);
@@ -1694,6 +1697,13 @@ const AdminPanelContent = () => {
                   <Gauge className="w-4 h-4" />
                   Audit Leads
                 </Tabs.Trigger>
+                <Tabs.Trigger
+                  value="conversion"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Conversion
+                </Tabs.Trigger>
                 <Tabs.Trigger 
                   value="leads"
                   className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
@@ -1896,6 +1906,10 @@ const AdminPanelContent = () => {
 
           <Tabs.Content value="audit-leads" className="outline-none">
             <AdminAuditLeadsPanel globalSearch={searchTerm} />
+          </Tabs.Content>
+
+          <Tabs.Content value="conversion" className="outline-none">
+            <AdminConversionDashboard />
           </Tabs.Content>
 
           <Tabs.Content value="leads" className="outline-none">

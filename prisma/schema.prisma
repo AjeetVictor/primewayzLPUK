@@ -62,12 +62,14 @@ enum AutopilotContentVersionStatus {
 
 // --- Form Responses ---
 model FormResponse {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String
-  message   String
-  phone     String? // nullable
-  createdAt DateTime @default(now())
+  id                Int      @id @default(autoincrement())
+  name              String
+  email             String
+  message           String
+  phone             String? // nullable
+  commercialContext Json?
+  leadStatus        String?  @default("new") @db.VarChar(32)
+  createdAt         DateTime @default(now())
 }
 
 // --- Tool Leads (visibility checker, etc.) ---
@@ -116,14 +118,119 @@ model DigitalSystemsReviewLead {
   notificationStatus      String   @default("pending") @db.VarChar(32)
   /// Redacted, non-sensitive operational code only (never full SMTP text).
   notificationErrorCode   String?  @db.VarChar(64)
+  selectedPlanSlug        String?  @db.VarChar(64)
+  selectedPlanName        String?  @db.VarChar(120)
+  displayedPrice          String?  @db.VarChar(32)
+  billingPeriod           String?  @db.VarChar(32)
+  pricingPolicyVersion    String?  @db.VarChar(32)
+  displayedPriceAtSelection String? @db.VarChar(32)
+  serviceInterest         String?  @db.VarChar(100)
+  journeyType             String?  @db.VarChar(64)
+  sourcePagePath          String?  @db.VarChar(500)
+  pageLocation            String?  @db.VarChar(500)
+  sourceSection           String?  @db.VarChar(80)
+  recommendedNextStepCommercial String? @db.VarChar(120)
+  firstTouchSource        String?  @db.VarChar(191)
+  firstTouchMedium        String?  @db.VarChar(191)
+  firstTouchCampaign      String?  @db.VarChar(191)
+  firstTouchContent       String?  @db.VarChar(191)
+  firstTouchTerm          String?  @db.VarChar(191)
+  latestTouchSource       String?  @db.VarChar(191)
+  latestTouchMedium       String?  @db.VarChar(191)
+  latestTouchCampaign     String?  @db.VarChar(191)
+  latestTouchContent      String?  @db.VarChar(191)
+  latestTouchTerm         String?  @db.VarChar(191)
+  journeyReference        String?  @db.VarChar(64)
+  sessionReference        String?  @db.VarChar(64)
+  leadOwnerId             Int?
+  statusUpdatedAt         DateTime?
+  validatedAt             DateTime?
+  assignedAt              DateTime?
+  firstContactedAt        DateTime?
+  qualifiedAt             DateTime?
+  proposalSentAt          DateTime?
+  wonAt                   DateTime?
+  lostAt                  DateTime?
+  nurtureAt               DateTime?
+  slaDueAt                DateTime?
+  slaBreachedAt           DateTime?
+  followUpAt              DateTime?
+  lastContactedAt         DateTime?
+  outcome                 String?  @db.VarChar(32)
+  lostReason              String?  @db.VarChar(64)
+  nurtureReason           String?  @db.VarChar(64)
+  validationScore         Int?
+  validationFlags         Json?
+  validationOutcome       String?  @db.VarChar(32)
+  duplicateOfLeadId       Int?
+  duplicateConfidence     String?  @db.VarChar(16)
+  proposalValueMinor      Int?
+  proposalCurrency        String?  @db.VarChar(8)
+  normalisedWorkEmail     String?  @db.VarChar(191)
+  normalisedCompanyDomain String?  @db.VarChar(191)
+  statusHistory           Json?
+  followUpNote            String?  @db.Text
+  followUpReason          String?  @db.VarChar(64)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
+  nurtureRecords          LeadNurtureRecord[]
 
   @@index([createdAt])
   @@index([sourceLocation])
   @@index([workEmail])
   @@index([status])
   @@index([notificationStatus])
+  @@index([selectedPlanSlug])
+  @@index([journeyType])
+  @@index([serviceInterest])
+  @@index([leadOwnerId])
+  @@index([followUpAt])
+  @@index([slaDueAt])
+  @@index([normalisedWorkEmail])
+  @@index([normalisedCompanyDomain])
+  @@index([journeyReference])
+  @@index([validationOutcome])
+  @@index([duplicateOfLeadId])
+}
+
+model LeadNurtureRecord {
+  id                  Int      @id @default(autoincrement())
+  leadId              Int
+  leadType            String   @default("digital_systems_review") @db.VarChar(32)
+  segment             String   @db.VarChar(64)
+  currentLeadStatus   String?  @db.VarChar(32)
+  recommendedNextStep String?  @db.VarChar(120)
+  nextFollowUpDate    DateTime?
+  ownerId             Int?
+  lawfulBasisNote     String?  @db.VarChar(255)
+  lastContactDate     DateTime?
+  notes               String?  @db.Text
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  lead                DigitalSystemsReviewLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([segment])
+  @@index([nextFollowUpDate])
+  @@index([ownerId])
+}
+
+model PricingContentBacklogItem {
+  id                       Int      @id @default(autoincrement())
+  slug                     String   @unique @db.VarChar(120)
+  title                    String   @db.VarChar(255)
+  targetService            String?  @db.VarChar(100)
+  searchIntent             String?  @db.VarChar(64)
+  internalLinksJson        Json?
+  suggestedCta             String?  @db.VarChar(120)
+  pricingPolicyVersion     String   @db.VarChar(32)
+  requiresCommercialReview Boolean  @default(true)
+  status                   String   @default("draft") @db.VarChar(32)
+  overlapNotes             String?  @db.Text
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@index([status])
 }
 
 // --- Chat System ---

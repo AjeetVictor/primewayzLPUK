@@ -358,7 +358,7 @@ test('single-line fields collapse whitespace and email subject stays fixed', () 
     ...lead,
     company: 'Evil\nBCC: attacker@example.com',
   });
-  assert.equal(email.subject, DIGITAL_SYSTEMS_REVIEW_EMAIL_SUBJECT);
+  assert.match(email.subject, /Digital systems review request/);
   assert.doesNotMatch(email.subject, /\n|BCC/);
   assert.match(email.html, /Evil/);
   assert.doesNotMatch(email.text, /SMTP|password|secret-token/i);

@@ -12,6 +12,8 @@ import {
   type SafeTouchAttribution,
 } from './attribution.ts';
 import { normalizeOptionalChatSessionId } from './chatSessionId.ts';
+import { validateServerPlanSlug } from '../pricing/enquiryContext.ts';
+import { getPricingPolicyVersion } from '../../data/pricing/policy.ts';
 
 export class DigitalSystemsReviewValidationError extends Error {
   readonly category = 'validation' as const;
@@ -49,6 +51,16 @@ export const REVIEW_APPROVED_PAYLOAD_KEYS = [
   'referrer',
   'sourceLocation',
   'chatSessionId',
+  'selectedPlanSlug',
+  'displayedPriceAtSelection',
+  'serviceInterest',
+  'journeyType',
+  'sourcePagePath',
+  'pageLocation',
+  'sourceSection',
+  'recommendedNextStepCommercial',
+  'journeyReference',
+  'sessionReference',
 ] as const;
 
 const APPROVED_KEY_SET = new Set<string>(REVIEW_APPROVED_PAYLOAD_KEYS);
@@ -74,6 +86,20 @@ export type NormalizedDigitalSystemsReviewLead = {
   referrer: string | null;
   sourceLocation: DigitalSystemsReviewSourceLocation;
   chatSessionId: string | null;
+  selectedPlanSlug: string | null;
+  selectedPlanName: string | null;
+  displayedPrice: string | null;
+  billingPeriod: string | null;
+  pricingPolicyVersion: string;
+  displayedPriceAtSelection: string | null;
+  serviceInterest: string | null;
+  journeyType: string | null;
+  sourcePagePath: string | null;
+  pageLocation: string | null;
+  sourceSection: string | null;
+  recommendedNextStepCommercial: string | null;
+  journeyReference: string | null;
+  sessionReference: string | null;
 };
 
 function rejectIfArray(value: unknown, fieldLabel: string): void {
@@ -386,6 +412,18 @@ export function validateAndNormalizeDigitalSystemsReviewLead(
 
   const chatSessionId = normalizeOptionalChatSessionId(body.chatSessionId) ?? null;
 
+  const planValidation = validateServerPlanSlug(
+    typeof body.selectedPlanSlug === 'string' ? body.selectedPlanSlug : null,
+  );
+
+  const optionalShort = (value: unknown, max: number): string | null => {
+    if (value === undefined || value === null || value === '') return null;
+    rejectIfArray(value, 'field');
+    if (typeof value !== 'string') return null;
+    const normalized = collapseSingleLine(value).slice(0, max);
+    return normalized || null;
+  };
+
   return {
     submissionId,
     name,
@@ -402,6 +440,20 @@ export function validateAndNormalizeDigitalSystemsReviewLead(
     referrer: normalizeReferrer(body.referrer),
     sourceLocation,
     chatSessionId,
+    selectedPlanSlug: planValidation.planSlug ?? null,
+    selectedPlanName: planValidation.planName ?? null,
+    displayedPrice: planValidation.displayedPrice ?? null,
+    billingPeriod: planValidation.billingPeriod ?? null,
+    pricingPolicyVersion: getPricingPolicyVersion(),
+    displayedPriceAtSelection: optionalShort(body.displayedPriceAtSelection, 32),
+    serviceInterest: optionalShort(body.serviceInterest, 100),
+    journeyType: optionalShort(body.journeyType, 64),
+    sourcePagePath: optionalShort(body.sourcePagePath, 500),
+    pageLocation: optionalShort(body.pageLocation, 500),
+    sourceSection: optionalShort(body.sourceSection, 80),
+    recommendedNextStepCommercial: optionalShort(body.recommendedNextStepCommercial, 120),
+    journeyReference: optionalShort(body.journeyReference, 64),
+    sessionReference: optionalShort(body.sessionReference, 64),
   };
 }
 

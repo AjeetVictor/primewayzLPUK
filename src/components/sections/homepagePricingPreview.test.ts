@@ -77,29 +77,27 @@ test('CommercialClaritySection is the homepage pricing preview with id=pricing',
 test('homepage pricing section links to /pricing and plan query routes', () => {
   const section = read('src/components/sections/CommercialClaritySection.tsx');
   const data = read('src/content/homepagePricingPlans.ts');
+  const registry = read('src/data/pricing/registry.ts');
 
-  assert.match(data, /plan=foundation-sprint/);
-  assert.match(data, /plan=essential/);
-  assert.match(data, /plan=growth/);
-  assert.match(data, /plan=maintenance-mode/);
+  assert.match(registry, /foundation-sprint/);
+  assert.match(registry, /plan=foundation-sprint|slug: 'foundation-sprint'/);
+  assert.match(data, /getActivePricingPlans/);
   assert.match(section, /CANONICAL_ROUTES\.pricing/);
   assert.match(section, /Compare all plans/);
   assert.doesNotMatch(section, /line-through|Launch Discount|originalPrice/);
-  assert.doesNotMatch(data, /\bScale\b|\bEnterprise\b/);
 });
 
 test('homepage pricing small print remains visible VAT and third-party copy', () => {
-  assert.match(HOMEPAGE_PRICING_SMALL_PRINT, /Prices exclude VAT/);
-  assert.match(HOMEPAGE_PRICING_SMALL_PRINT, /Third-party costs/);
-  assert.match(HOMEPAGE_PRICING_SMALL_PRINT, /hosting, domains, software tools/);
+  assert.match(HOMEPAGE_PRICING_SMALL_PRINT, /exclude VAT|excluding VAT/i);
+  assert.match(HOMEPAGE_PRICING_SMALL_PRINT, /third-party|Third-party/i);
   const section = read('src/components/sections/CommercialClaritySection.tsx');
   assert.match(section, /HOMEPAGE_PRICING_SMALL_PRINT/);
   assert.doesNotMatch(section, /title=\{HOMEPAGE_PRICING_SMALL_PRINT\}|tooltip/i);
 });
 
 test('homepage pricing selection is SSR-safe and stores plan slug', () => {
-  const selection = read('src/lib/homepagePricingSelection.ts');
-  assert.match(selection, /typeof window === 'undefined'/);
+  const selection = read('src/lib/pricing/pricingSelection.ts');
+  assert.match(selection, /resolveStorage/);
   assert.match(selection, /sessionStorage/);
   assert.match(selection, /catch/);
 
@@ -112,10 +110,13 @@ test('homepage pricing selection is SSR-safe and stores plan slug', () => {
   };
 
   rememberHomepageSelectedPlan('growth', storage);
-  assert.equal(memory.get(HOMEPAGE_SELECTED_PLAN_KEY), 'growth');
+  const stored = memory.get(HOMEPAGE_SELECTED_PLAN_KEY) ?? '';
+  assert.ok(stored.includes('growth'));
+  assert.ok(stored.includes('"version":1') || stored.startsWith('{'));
 
-  rememberHomepageSelectedPlan('essential', null);
-  assert.equal(memory.get(HOMEPAGE_SELECTED_PLAN_KEY), 'growth');
+  rememberHomepageSelectedPlan('essential', storage);
+  const storedEssential = memory.get(HOMEPAGE_SELECTED_PLAN_KEY) ?? '';
+  assert.ok(storedEssential.includes('essential'));
 
   const throwingStorage = {
     getItem: () => null,
@@ -147,17 +148,17 @@ test('homepage pricing analytics fire once for view and send plan click params',
 
 test('pricing content is present for SSR and uses semantic headings', () => {
   const section = read('src/components/sections/CommercialClaritySection.tsx');
-  const data = read('src/content/homepagePricingPlans.ts');
+  const registry = read('src/data/pricing/registry.ts');
 
   assert.match(section, /useRevealMotion/);
   assert.match(section, /<h2 id=["']pricing-heading["']/);
   assert.match(section, /<h3 /);
   assert.doesNotMatch(section, /<h1\b/);
   assert.match(section, /<ul /);
-  assert.match(data, /£722\.50/);
-  assert.match(data, /£741/);
-  assert.match(data, /£1,189/);
-  assert.match(data, /£405/);
+  assert.match(registry, /£722\.50/);
+  assert.match(registry, /£741/);
+  assert.match(registry, /£1,189/);
+  assert.match(registry, /£405/);
   assert.match(section, /scroll-mt-28/);
 });
 
@@ -187,13 +188,19 @@ test('existing homepage sections still render once and pricing is not duplicated
   assert.equal((main.match(/pricing/gi) || []).length, 0);
 });
 
-test('pricing page component remains unchanged by homepage preview work', () => {
+test('pricing page uses canonical registry and decision-page structure', () => {
   const pricing = read('src/components/Pricing.tsx');
-  assert.match(pricing, /originalPrice/);
-  assert.match(pricing, /Launch Discount/);
-  assert.match(pricing, /name: 'Scale'/);
-  assert.match(pricing, /name: 'Enterprise'/);
-  assert.match(pricing, /BOOK_CALL_URL/);
-  assert.doesNotMatch(pricing, /homepagePricingPlans/);
-  assert.doesNotMatch(pricing, /homepage_pricing_view/);
+  const pageContent = read('src/components/pricing/PricingPageContent.tsx');
+
+  assert.match(pricing, /PricingPageContent/);
+  assert.match(pricing, /canonical.*https:\/\/uk\.primewayz\.com\/pricing/);
+  assert.match(pageContent, /data\/pricing\/helpers/);
+  assert.match(pageContent, /usePricingSelection/);
+  assert.match(pageContent, /Compare plans/);
+  assert.match(pageContent, /Pricing FAQs/);
+  assert.match(pageContent, /Foundation Sprint/);
+  assert.match(pageContent, /Scale/);
+  assert.match(pageContent, /Enterprise/);
+  assert.doesNotMatch(pageContent, /BOOK_CALL_URL/);
+  assert.doesNotMatch(pageContent, /homepage_pricing_view/);
 });

@@ -139,6 +139,8 @@ test('saveDigitalSystemsReviewLead persists chatSessionId and never touches Chat
         };
       },
       findUnique: async () => null,
+      findFirst: async () => null,
+      findMany: async () => [],
       update: async () => {
         throw new Error('unexpected update');
       },

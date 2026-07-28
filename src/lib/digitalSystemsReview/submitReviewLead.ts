@@ -40,6 +40,15 @@ export type SubmitDigitalSystemsReviewDeps = {
   getReceiver?: typeof getInternalNotificationEmail;
 };
 
+async function loadLeadForNotification(
+  prisma: PrismaClient,
+  id: number,
+): Promise<Record<string, unknown> | null> {
+  return prisma.digitalSystemsReviewLead.findUnique({
+    where: { id },
+  }) as Promise<Record<string, unknown> | null>;
+}
+
 /**
  * Attempt operational notification after a successful create.
  * Never throws to the caller — notification failures do not invalidate a stored lead.
@@ -69,10 +78,15 @@ async function attemptNotification(
 
     if (ready && receiver) {
       try {
+        const persisted = await loadLeadForNotification(deps.prisma, saved.id);
         const message = buildDigitalSystemsReviewNotificationEmail({
           ...lead,
+          ...(persisted ?? {}),
           id: saved.id,
           createdAt: saved.createdAt,
+          validationFlags: Array.isArray(persisted?.validationFlags)
+            ? (persisted.validationFlags as string[])
+            : null,
         });
         await deps.sendNotificationEmail({
           to: receiver,

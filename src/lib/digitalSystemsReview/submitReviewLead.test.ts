@@ -64,22 +64,26 @@ function createPrismaStub(options?: {
             submissionId: row.submissionId as string,
             notificationStatus: row.notificationStatus as string,
             createdAt: row.createdAt as Date,
+            validationOutcome: row.validationOutcome ?? null,
+            duplicateConfidence: row.duplicateConfidence ?? null,
+            selectedPlanSlug: row.selectedPlanSlug ?? null,
           };
         }
         return row;
       },
-      findUnique: async ({ where }: { where: { submissionId: string } }) => {
-        const row = rows.get(where.submissionId);
-        if (!row) return null;
-        return {
-          id: row.id,
-          submissionId: row.submissionId,
-          notificationStatus: row.notificationStatus,
-          createdAt: row.createdAt,
-          company: row.company,
-          context: row.context,
-        };
+      findUnique: async ({ where }: { where: { submissionId: string } | { id: number } }) => {
+        if ('submissionId' in where) {
+          const row = rows.get(where.submissionId);
+          if (!row) return null;
+          return row;
+        }
+        for (const row of rows.values()) {
+          if (row.id === where.id) return row;
+        }
+        return null;
       },
+      findFirst: async () => null,
+      findMany: async () => [],
       update: async ({
         where,
         data,

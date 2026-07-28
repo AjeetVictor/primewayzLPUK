@@ -15,6 +15,7 @@ import {
 import { CANONICAL_ROUTES } from '../constants/canonicalRoutes';
 import { DIGITAL_SYSTEMS_REVIEW_PATH } from '../constants/digitalSystemsReview';
 import { trackBookCallClick, trackConversionEvent } from '../lib/analytics';
+import { isPricingPlanSlug } from '../data/pricing/helpers';
 import {
   assertNoProhibitedAnalyticsProps,
   buildDigitalSystemsReviewAnalyticsPayload,
@@ -47,6 +48,11 @@ export function DigitalSystemsReviewPage() {
       return resolveFreeReviewServiceArea(rawValues);
     }
     return resolveFreeReviewServiceArea(rawValues[0]);
+  }, [searchParams]);
+
+  const initialSelectedPlanSlug = useMemo(() => {
+    const plan = searchParams.get('plan');
+    return plan && isPricingPlanSlug(plan) ? plan : undefined;
   }, [searchParams]);
 
   useEffect(() => {
@@ -105,6 +111,7 @@ export function DigitalSystemsReviewPage() {
             <DigitalSystemsReviewForm
               sourceLocation={sourceLocation}
               initialServiceArea={initialServiceArea ?? undefined}
+              initialSelectedPlanSlug={initialSelectedPlanSlug}
             />
           </div>
 

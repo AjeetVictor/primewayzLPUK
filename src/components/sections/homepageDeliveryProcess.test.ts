@@ -93,7 +93,8 @@ test('homepage section order remains unchanged and pricing preview untouched', (
   assert.match(pricing, /id=["']pricing["']/);
   assert.match(pricing, /homepagePricingPlans/);
   assert.doesNotMatch(pricingPage, /deliveryProcessSteps/);
-  assert.match(pricingPage, /name: 'Scale'/);
+  assert.match(pricingPage, /PricingPageContent/);
+  assert.match(read('src/components/pricing/PricingPageContent.tsx'), /Scale/);
 });
 
 test('delivery process intro copy matches approved homepage wording', () => {

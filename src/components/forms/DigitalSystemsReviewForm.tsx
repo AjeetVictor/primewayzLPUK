@@ -22,6 +22,9 @@ import { apiUrl } from '../../utils/apiUrl';
 import { trackConversionEvent } from '../../lib/analytics';
 import { getFirstLandingPage } from '../../lib/chatSource';
 import { getFirstUtmParams, getLatestUtmParams } from '../../lib/utm';
+import { readStoredPricingSelection } from '../../lib/pricing/pricingSelection';
+import { isPricingPlanSlug, getActivePricingPlans } from '../../data/pricing/helpers';
+import { trackLeadFormStart, trackLeadFormSubmit, trackLeadFormSuccess } from '../../lib/pricing/analytics';
 import {
   assertNoProhibitedAnalyticsProps,
   buildDigitalSystemsReviewAnalyticsPayload,
@@ -103,14 +106,23 @@ type DigitalSystemsReviewFormProps = {
   sourceLocation?: DigitalSystemsReviewSourceLocation;
   /** Optional allowlisted service-area preselection; remains editable. */
   initialServiceArea?: ReviewServiceArea;
+  /** Optional pricing plan slug from route or session. */
+  initialSelectedPlanSlug?: string;
 };
 
 export function DigitalSystemsReviewForm({
   sourceLocation = DEFAULT_REVIEW_SOURCE_LOCATION,
   initialServiceArea,
+  initialSelectedPlanSlug,
 }: DigitalSystemsReviewFormProps) {
   const navigate = useNavigate();
   const formId = useId();
+  const pricingSelection = readStoredPricingSelection();
+  const resolvedPlanSlug =
+    (initialSelectedPlanSlug && isPricingPlanSlug(initialSelectedPlanSlug) ? initialSelectedPlanSlug : null)
+    ?? pricingSelection?.planSlug
+    ?? '';
+  const [selectedPlanSlug, setSelectedPlanSlug] = useState(resolvedPlanSlug);
   const [form, setForm] = useState<FormState>(() => ({
     ...initialForm,
     serviceArea: initialServiceArea ?? '',
@@ -128,6 +140,12 @@ export function DigitalSystemsReviewForm({
     }
   }, [errors]);
 
+  useEffect(() => {
+    if (resolvedPlanSlug && !selectedPlanSlug) {
+      setSelectedPlanSlug(resolvedPlanSlug);
+    }
+  }, [resolvedPlanSlug, selectedPlanSlug]);
+
   const analyticsServiceArea = () =>
     resolveFreeReviewServiceArea(form.serviceArea) ?? undefined;
 
@@ -142,6 +160,13 @@ export function DigitalSystemsReviewForm({
     });
     assertNoProhibitedAnalyticsProps(analyticsPayload);
     trackConversionEvent('free_review_form_start', analyticsPayload);
+    trackLeadFormStart({
+      form_name: 'digital_systems_review',
+      page_path: DIGITAL_SYSTEMS_REVIEW_PATH,
+      journey_type: 'digital_systems_review',
+      service_interest: analyticsServiceArea(),
+      selection: pricingSelection,
+    });
   };
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
@@ -251,6 +276,22 @@ export function DigitalSystemsReviewForm({
       firstTouchAttribution,
       latestTouchAttribution,
       ...(chatSessionId ? { chatSessionId } : {}),
+      ...(selectedPlanSlug ? {
+        selectedPlanSlug,
+        displayedPriceAtSelection: pricingSelection?.displayedPriceAtSelection,
+        serviceInterest: form.serviceArea,
+        journeyType: 'digital_systems_review',
+        sourcePagePath: typeof window !== 'undefined' ? window.location.pathname : DIGITAL_SYSTEMS_REVIEW_PATH,
+        pageLocation: typeof window !== 'undefined' ? window.location.href : undefined,
+        sourceSection: pricingSelection?.sourceSection,
+        recommendedNextStepCommercial: form.preferredNextStep,
+        journeyReference: chatSessionId ?? submissionId,
+        sessionReference: chatSessionId ?? undefined,
+      } : {
+        journeyType: 'digital_systems_review',
+        sourcePagePath: typeof window !== 'undefined' ? window.location.pathname : DIGITAL_SYSTEMS_REVIEW_PATH,
+        journeyReference: chatSessionId ?? submissionId,
+      }),
     };
 
     try {
@@ -301,6 +342,19 @@ export function DigitalSystemsReviewForm({
       });
       assertNoProhibitedAnalyticsProps(analyticsPayload);
       trackConversionEvent('free_review_form_submit', analyticsPayload);
+      trackLeadFormSubmit({
+        form_name: 'digital_systems_review',
+        page_path: DIGITAL_SYSTEMS_REVIEW_PATH,
+        journey_type: 'digital_systems_review',
+        service_interest: analyticsServiceArea(),
+        selection: pricingSelection,
+      });
+      trackLeadFormSuccess({
+        form_name: 'digital_systems_review',
+        page_path: DIGITAL_SYSTEMS_REVIEW_PATH,
+        journey_type: 'digital_systems_review',
+        selection: pricingSelection,
+      });
 
       // Non-PII one-time marker only (created|duplicate). Never block navigation.
       writeFreeReviewSuccessMarker(resultCategory);
@@ -498,6 +552,32 @@ export function DigitalSystemsReviewForm({
           value={form.companyWebsite}
           onChange={(e) => update('companyWebsite', e.target.value)}
         />
+      </div>
+
+      <div>
+        <label htmlFor={`${formId}-plan`} className="mb-1.5 block text-sm font-semibold text-slate-800">
+          Selected plan <span className="font-normal text-slate-500">(optional)</span>
+        </label>
+        <select
+          id={`${formId}-plan`}
+          name="selectedPlanSlug"
+          value={selectedPlanSlug}
+          onChange={(e) => {
+            markStart();
+            setSelectedPlanSlug(e.target.value);
+          }}
+          className={fieldClass}
+        >
+          <option value="">No plan selected yet</option>
+          {getActivePricingPlans().map((plan) => (
+            <option key={plan.slug} value={plan.slug}>
+              {plan.name} — {plan.displayedPrice}{plan.billingPeriod === 'monthly' ? '/month' : ''}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-slate-500">
+          If you arrived from the pricing page, your selection is pre-filled. You can change it here.
+        </p>
       </div>
 
       <div>
