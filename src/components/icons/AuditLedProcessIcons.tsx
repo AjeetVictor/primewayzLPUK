@@ -2,80 +2,114 @@ type AuditIconProps = {
   className?: string;
 };
 
-const iconProps = {
+const strokeProps = {
   fill: 'none',
   stroke: 'currentColor',
-  strokeLinecap: 'round',
-  strokeLinejoin: 'round',
-  strokeWidth: 2,
-} as const;
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+  strokeWidth: 3.15,
+};
 
 export function ReviewAuditIcon({ className }: AuditIconProps) {
   return (
-    <svg viewBox="0 0 64 64" className={className} aria-hidden>
-      <path {...iconProps} d="M22 12h20" />
-      <path {...iconProps} d="M25 8h14l2 6H23z" />
-      <path {...iconProps} d="M18 14H12v38h28" />
-      <path {...iconProps} d="M46 14h6v18" />
-      <path {...iconProps} d="m18 25 3 3 5-6" />
-      <path {...iconProps} d="M31 26h10" />
-      <path {...iconProps} d="m18 36 3 3 5-6" />
-      <path {...iconProps} d="M31 37h6" />
-      <circle {...iconProps} cx="43" cy="42" r="10" />
-      <path {...iconProps} d="m50.5 49.5 7 7" />
+    <svg
+      viewBox="0 0 96 96"
+      className={className}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        {...strokeProps}
+        d="M31 20H22.5A4.5 4.5 0 0 0 18 24.5v50A4.5 4.5 0 0 0 22.5 79H55"
+      />
+      <path {...strokeProps} d="M54 20h8.5a4.5 4.5 0 0 1 4.5 4.5V49" />
+      <path {...strokeProps} d="M35 13.5h15a5 5 0 0 1 5 5v4H30v-4a5 5 0 0 1 5-5Z" />
+      <path {...strokeProps} d="m27 37 4.5 4.5 8-9" />
+      <path {...strokeProps} d="M46 38h11" />
+      <path {...strokeProps} d="m27 54 4.5 4.5 8-9" />
+      <path {...strokeProps} d="M46 55h7" />
+      <circle {...strokeProps} cx="65" cy="66" r="14" />
+      <path {...strokeProps} d="m75.5 76.5 10 10" />
     </svg>
   );
 }
 
 export function PrioritiseAuditIcon({ className }: AuditIconProps) {
   return (
-    <svg viewBox="0 0 64 64" className={className} aria-hidden>
-      <path {...iconProps} d="M23 12h18" />
-      <path {...iconProps} d="M26 8h12l2 6H24z" />
-      <path {...iconProps} d="M17 14H12v42h40V14h-5" />
-      <path {...iconProps} d="m20 27 3 3 6-7" />
-      <path {...iconProps} d="M34 27h9" />
-      <path {...iconProps} d="m20 39 3 3 6-7" />
-      <path {...iconProps} d="M34 39h9" />
-      <path {...iconProps} d="m20 51 3 3 6-7" />
-      <path {...iconProps} d="M34 51h9" />
+    <svg
+      viewBox="0 0 96 96"
+      className={className}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        {...strokeProps}
+        d="M30 20H21.5A4.5 4.5 0 0 0 17 24.5v56A4.5 4.5 0 0 0 21.5 85h53a4.5 4.5 0 0 0 4.5-4.5v-56a4.5 4.5 0 0 0-4.5-4.5H66"
+      />
+      <path {...strokeProps} d="M36 13.5h24a5 5 0 0 1 5 5v5H31v-5a5 5 0 0 1 5-5Z" />
+      <path {...strokeProps} d="m29 40 5 5 9-10" />
+      <path {...strokeProps} d="M50 41h18" />
+      <path {...strokeProps} d="m29 57 5 5 9-10" />
+      <path {...strokeProps} d="M50 58h18" />
+      <path {...strokeProps} d="m29 74 5 5 9-10" />
+      <path {...strokeProps} d="M50 75h18" />
     </svg>
   );
 }
 
 export function ImproveAuditIcon({ className }: AuditIconProps) {
   return (
-    <svg viewBox="0 0 64 64" className={className} aria-hidden>
-      <path {...iconProps} d="M9 14h42a4 4 0 0 1 4 4v27a4 4 0 0 1-4 4H9z" />
-      <path {...iconProps} d="M9 24h46" />
-      <path {...iconProps} d="M16 19h.1" />
-      <path {...iconProps} d="M23 19h.1" />
-      <path {...iconProps} d="M39 35.5a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" />
-      <path {...iconProps} d="M39 31v4.5" />
-      <path {...iconProps} d="M39 53.5V58" />
-      <path {...iconProps} d="M52.5 44.5H57" />
-      <path {...iconProps} d="M21 44.5h9" />
-      <path {...iconProps} d="m48.5 35 3-3" />
-      <path {...iconProps} d="m26.5 57 3-3" />
-      <path {...iconProps} d="m48.5 54 3 3" />
-      <path {...iconProps} d="m26.5 32 3 3" />
-      <circle {...iconProps} cx="39" cy="44.5" r="3.5" />
+    <svg
+      viewBox="0 0 96 96"
+      className={className}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <rect {...strokeProps} x="10" y="17" width="76" height="57" rx="6" />
+      <path {...strokeProps} d="M10 30h76" />
+      <circle cx="19" cy="24" r="1.8" fill="currentColor" />
+      <circle cx="27" cy="24" r="1.8" fill="currentColor" />
+      <circle {...strokeProps} cx="55" cy="58" r="10" />
+      <path {...strokeProps} d="M55 41v6M55 69v6M38 58h6M66 58h6M43 46l4.2 4.2M62.8 65.8 67 70M67 46l-4.2 4.2M47.2 65.8 43 70" />
+      <path
+        {...strokeProps}
+        d="m51.4 43-1.8-5.4h10.8L58.6 43M70 54.4l5.4-1.8v10.8L70 61.6M58.6 73l1.8 5.4H49.6l1.8-5.4M40 61.6l-5.4 1.8V52.6l5.4 1.8"
+      />
     </svg>
   );
 }
 
 export function TrackAuditIcon({ className }: AuditIconProps) {
   return (
-    <svg viewBox="0 0 64 64" className={className} aria-hidden>
-      <path {...iconProps} d="M10 52h44" />
-      <path {...iconProps} d="M14 39h8v13h-8z" />
-      <path {...iconProps} d="M28 31h8v21h-8z" />
-      <path {...iconProps} d="M42 23h8v29h-8z" />
-      <path {...iconProps} d="m14 27 10-8 10 7 15-16" />
-      <circle {...iconProps} cx="14" cy="27" r="2.5" />
-      <circle {...iconProps} cx="24" cy="19" r="2.5" />
-      <circle {...iconProps} cx="34" cy="26" r="2.5" />
-      <circle {...iconProps} cx="49" cy="10" r="2.5" />
+    <svg
+      viewBox="0 0 96 96"
+      className={className}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path {...strokeProps} d="M12 82h72" />
+      <path {...strokeProps} d="M20 82V63h13v19" />
+      <path {...strokeProps} d="M42 82V52h13v30" />
+      <path {...strokeProps} d="M64 82V38h13v44" />
+      <path {...strokeProps} d="m20 47 17-14 16 10 23-26" />
+      <circle {...strokeProps} cx="20" cy="47" r="4.5" />
+      <circle {...strokeProps} cx="37" cy="33" r="4.5" />
+      <circle {...strokeProps} cx="53" cy="43" r="4.5" />
+      <circle {...strokeProps} cx="76" cy="17" r="4.5" />
+    </svg>
+  );
+}
+
+export function ProcessFlowConnectorIcon({ className }: AuditIconProps) {
+  return (
+    <svg
+      viewBox="0 0 32 32"
+      className={className}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path {...strokeProps} d="M7 16h17" />
+      <path {...strokeProps} d="m18 9 7 7-7 7" />
     </svg>
   );
 }
