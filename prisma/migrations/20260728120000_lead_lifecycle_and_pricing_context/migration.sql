@@ -108,6 +108,7 @@ CREATE TABLE `PricingContentBacklogItem` (
   `overlapNotes` TEXT NULL,
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updatedAt` DATETIME(3) NOT NULL,
+  PRIMARY KEY (`id`),
   UNIQUE INDEX `PricingContentBacklogItem_slug_key`(`slug`),
   INDEX `PricingContentBacklogItem_status_idx`(`status`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
