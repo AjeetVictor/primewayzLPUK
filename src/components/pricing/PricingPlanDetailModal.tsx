@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { ArrowRight, Check, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -65,6 +66,8 @@ export function PricingPlanDetailModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const contentRef = useRef<HTMLDivElement>(null);
+
   if (!plan) return null;
 
   const config = getPricingGridConfig(plan.slug);
@@ -77,6 +80,21 @@ export function PricingPlanDetailModal({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[100] bg-slate-950/55 backdrop-blur-[2px]" />
         <Dialog.Content
+          ref={contentRef}
+          tabIndex={-1}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+
+            const content = contentRef.current;
+            if (!content) return;
+
+            content.scrollTop = 0;
+            content.focus({ preventScroll: true });
+
+            requestAnimationFrame(() => {
+              content.scrollTop = 0;
+            });
+          }}
           className={cn(
             'fixed inset-x-0 bottom-0 z-[101] max-h-[92vh] overflow-y-auto rounded-t-[1.75rem] bg-white p-5 shadow-2xl focus:outline-none',
             'sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:w-full sm:max-w-2xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.75rem] sm:p-7',
