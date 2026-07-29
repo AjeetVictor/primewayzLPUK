@@ -70,7 +70,10 @@ import {
 } from './src/lib/serverRouteClassification.ts';
 import type { NextFunction, Request, Response } from 'express';
 import type { BlogCategory, BlogPost, BreadcrumbItem } from './src/data/blog/types.ts';
-import { LEGACY_ROUTE_REDIRECTS } from './src/constants/canonicalRoutes.ts';
+import {
+  LEGACY_ROUTE_REDIRECTS,
+  RETIRED_ROUTE_PATHS,
+} from './src/constants/canonicalRoutes.ts';
 import {
   buildDefaultStructuredData,
   buildFaqPageStructuredData,
@@ -1706,7 +1709,36 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
     },
   };
 
-  const pageSeo = staticPageSeo[pagePathname] || staticPageSeo['/'];
+  const validAdminPaths = new Set([
+    '/admin',
+    '/admin/chat',
+    '/admin/mobile-chat',
+    '/admin/forgot-password',
+    '/admin/reset-password',
+  ]);
+
+  if (validAdminPaths.has(pagePathname)) {
+    return {
+      initialData: {},
+      seoTags: buildNoIndexSeoTags({
+        title: 'Primewayz UK Administration',
+        description: 'Secure administration area for Primewayz UK.',
+      }),
+    };
+  }
+
+  const pageSeo = staticPageSeo[pagePathname];
+
+  if (!pageSeo) {
+    return {
+      initialData: { notFound: true },
+      statusCode: 404,
+      seoTags: buildNoIndexSeoTags({
+        title: 'Page Not Found | Primewayz UK',
+        description: 'The requested page could not be found on Primewayz UK.',
+      }),
+    };
+  }
 
   let structuredData: unknown = buildDefaultStructuredData(
     siteUrl,
@@ -2926,6 +2958,17 @@ for (const [fromPath, toPath] of Object.entries(LEGACY_ROUTE_REDIRECTS)) {
     const queryIndex = req.originalUrl.indexOf('?');
     const search = queryIndex >= 0 ? req.originalUrl.slice(queryIndex) : '';
     res.redirect(301, `${toPath}${search}`);
+  });
+}
+
+// Permanently retired URLs with no relevant replacement.
+for (const retiredPath of RETIRED_ROUTE_PATHS) {
+  app.get([retiredPath, `${retiredPath}/`], (_req, res) => {
+    res
+      .status(410)
+      .set('X-Robots-Tag', 'noindex, nofollow')
+      .type('text/plain')
+      .send('Gone');
   });
 }
 

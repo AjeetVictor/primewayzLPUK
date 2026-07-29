@@ -52,6 +52,7 @@ import { ContactRedirect } from './components/ContactRedirect';
 import { Pricing } from './components/Pricing';
 import { FaqPage } from './components/FaqPage';
 import { HowItWorksPage } from './components/HowItWorksPage';
+import { NotFoundPage } from './components/NotFoundPage';
 
 const ClientOnly = ({ children }: { children: ReactNode }) => {
   const [mounted, setMounted] = useState(false);
@@ -193,6 +194,7 @@ export const App = ({ initialData }: AppProps) => {
         <Route path="/privacy-policy" element={<LegalPage type="privacy" />} />
         <Route path="/terms-of-service" element={<LegalPage type="terms" />} />
         <Route path="/cookie-policy" element={<LegalPage type="cookies" />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
 
       {!showSiteChrome ? null : <Footer />}

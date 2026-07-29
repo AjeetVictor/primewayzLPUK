@@ -57,8 +57,16 @@ export const LEGACY_SUCCESS_STORY_REDIRECTS = {
   '/success-stories/ecommerce-store-stability-support': CANONICAL_ROUTES.maintenance,
 } as const;
 
+/** Permanently retired URLs that have no relevant replacement. */
+export const RETIRED_ROUTE_PATHS = [
+  '/job',
+  '/blog/category/5/kreatorbox-vs-creatorbox-a-basic-comparison',
+] as const;
+
 /** Legacy marketing URLs → canonical paths (server 301/308 redirects). */
 export const LEGACY_ROUTE_REDIRECTS = {
+  '/testimonial': CANONICAL_ROUTES.successStories,
+  '/team': CANONICAL_ROUTES.about,
   '/contact': CANONICAL_ROUTES.contact,
   '/about': CANONICAL_ROUTES.about,
   '/crm-integration-support-uk': CANONICAL_ROUTES.crmAutomationSupport,
