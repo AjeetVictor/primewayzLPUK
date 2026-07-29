@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { PricingPlanSlug } from '../data/pricing/helpers';
-import { getPricingPlanBySlug } from '../data/pricing/helpers';
+import { getPricingPlanBySlug, isPricingPlanSlug } from '../data/pricing/helpers';
 import {
   migrateLegacyStorageIfNeeded,
   resolvePricingSelectionFromQuery,
@@ -14,23 +14,20 @@ import {
   trackPricingPlanHighlighted,
 } from '../lib/pricing/analytics';
 
-function prefersReducedMotion(): boolean {
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
 export function usePricingSelection() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selection, setSelection] = useState<StoredPricingSelectionV1 | null>(null);
   const [selectionSource, setSelectionSource] = useState<'query' | 'session' | 'legacy' | 'none'>('none');
   const [hydrated, setHydrated] = useState(false);
   const [invalidQueryPlan, setInvalidQueryPlan] = useState(false);
-  const hasScrolledRef = useRef(false);
+  const [detailPlanSlug, setDetailPlanSlug] = useState<PricingPlanSlug | null>(null);
   const hasTrackedViewRef = useRef(false);
+  const hasAutoOpenedRef = useRef(false);
+
+  const planParam = searchParams.get('plan');
 
   useEffect(() => {
     migrateLegacyStorageIfNeeded();
-    const planParam = searchParams.get('plan');
     const resolved = resolvePricingSelectionFromQuery(planParam);
     setSelection(resolved.selection);
     setSelectionSource(resolved.source);
@@ -44,7 +41,7 @@ export function usePricingSelection() {
         sourceSection: 'query_param',
       });
     }
-  }, [searchParams]);
+  }, [planParam]);
 
   useEffect(() => {
     if (!hydrated || hasTrackedViewRef.current) return;
@@ -58,23 +55,23 @@ export function usePricingSelection() {
   }, [hydrated, selection]);
 
   useEffect(() => {
-    if (!hydrated || !selection || selectionSource !== 'query' || hasScrolledRef.current) return;
-    const el = document.getElementById(`pricing-plan-${selection.planSlug}`);
-    if (!el) return;
-    hasScrolledRef.current = true;
-    trackPricingPlanHighlighted({
-      selected_plan: selection.planSlug,
-      page_path: '/pricing',
-      source: selectionSource,
-    });
-    if (!prefersReducedMotion()) {
-      requestAnimationFrame(() => {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      });
-    }
-  }, [hydrated, selection, selectionSource]);
+    if (!hydrated || hasAutoOpenedRef.current) return;
 
-  const selectPlan = useCallback(
+    if (planParam && isPricingPlanSlug(planParam)) {
+      const plan = getPricingPlanBySlug(planParam);
+      if (plan?.active) {
+        hasAutoOpenedRef.current = true;
+        setDetailPlanSlug(planParam);
+        trackPricingPlanHighlighted({
+          selected_plan: planParam,
+          page_path: '/pricing',
+          source: 'query',
+        });
+      }
+    }
+  }, [hydrated, planParam]);
+
+  const openPlanDetail = useCallback(
     (planSlug: PricingPlanSlug, sourceSection = 'pricing_plan_card') => {
       const next = writeStoredPricingSelection({
         planSlug,
@@ -82,9 +79,11 @@ export function usePricingSelection() {
         sourceSection,
       });
       if (!next) return;
+
       setSelection(next);
       setSelectionSource('session');
       setInvalidQueryPlan(false);
+      setDetailPlanSlug(planSlug);
       trackPricingPlanChanged({
         selected_plan: planSlug,
         page_path: '/pricing',
@@ -102,6 +101,19 @@ export function usePricingSelection() {
     [setSearchParams],
   );
 
+  const closePlanDetail = useCallback(() => {
+    setDetailPlanSlug(null);
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev);
+        params.delete('plan');
+        return params;
+      },
+      { replace: true },
+    );
+  }, [setSearchParams]);
+
+  const detailPlan = detailPlanSlug ? getPricingPlanBySlug(detailPlanSlug) ?? null : null;
   const selectedPlan = selection ? getPricingPlanBySlug(selection.planSlug) : null;
 
   return {
@@ -110,6 +122,11 @@ export function usePricingSelection() {
     selectionSource,
     invalidQueryPlan,
     hydrated,
-    selectPlan,
+    detailPlanSlug,
+    detailPlan,
+    detailOpen: detailPlanSlug !== null,
+    openPlanDetail,
+    closePlanDetail,
+    selectPlan: openPlanDetail,
   };
 }

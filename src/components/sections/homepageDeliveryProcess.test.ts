@@ -91,7 +91,7 @@ test('homepage section order remains unchanged and pricing preview untouched', (
   );
   assert.equal((app.match(/<AuditLedProcessSection \/>/g) || []).length, 1);
   assert.match(pricing, /id=["']pricing["']/);
-  assert.match(pricing, /homepagePricingPlans/);
+  assert.match(pricing, /COMMERCIAL_CLARITY_FEATURES/);
   assert.doesNotMatch(pricingPage, /deliveryProcessSteps/);
   assert.match(pricingPage, /PricingPageContent/);
   assert.match(read('src/components/pricing/PricingPageContent.tsx'), /Scale/);

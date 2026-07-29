@@ -1,20 +1,38 @@
 import { useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, ClipboardCheck, PoundSterling, Target } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { CANONICAL_ROUTES } from '../../constants/canonicalRoutes';
 import { shellClasses } from '../../constants/designSystem';
 import { SITE_CONTAINER_CLASS } from '../../constants/siteLayout';
-import {
-  HOMEPAGE_PRICING_SECTION_NAME,
-  HOMEPAGE_PRICING_SMALL_PRINT,
-  homepagePricingPlans,
-  type HomepagePricingPlan,
-} from '../../content/homepagePricingPlans';
+import { HOMEPAGE_PRICING_SECTION_NAME } from '../../content/homepagePricingPlans';
 import { useRevealMotion } from '../../hooks/useRevealMotion';
 import { trackConversionEvent } from '../../lib/analytics';
-import { rememberHomepageSelectedPlan } from '../../lib/homepagePricingSelection';
 import { cn } from '../../utils/cn';
+
+const COMMERCIAL_CLARITY_FEATURES = [
+  {
+    id: 'scope',
+    title: 'Clear support scope',
+    description:
+      'We match the support route to your current priority instead of forcing a large package.',
+    icon: ClipboardCheck,
+  },
+  {
+    id: 'third-party',
+    title: 'Third-party costs separated',
+    description:
+      'Hosting, plugins, ad spend and external subscriptions are discussed separately and transparently.',
+    icon: PoundSterling,
+  },
+  {
+    id: 'next-step',
+    title: 'Practical next step',
+    description:
+      'Start with a focused sprint, monthly support or maintenance based on what your business needs now.',
+    icon: Target,
+  },
+] as const;
 
 function getPageAnalyticsContext() {
   if (typeof window === 'undefined') {
@@ -26,18 +44,6 @@ function getPageAnalyticsContext() {
   };
 }
 
-function trackHomepagePricingPlanClick(plan: HomepagePricingPlan) {
-  const page = getPageAnalyticsContext();
-  trackConversionEvent('homepage_pricing_plan_click', {
-    selected_plan: plan.id,
-    displayed_price: plan.displayedPrice,
-    billing_period: plan.billingPeriod,
-    page_location: page.page_location,
-    page_path: page.page_path,
-    section_name: HOMEPAGE_PRICING_SECTION_NAME,
-  });
-}
-
 function trackViewFullPricingClick() {
   const page = getPageAnalyticsContext();
   trackConversionEvent('view_full_pricing_click', {
@@ -45,82 +51,6 @@ function trackViewFullPricingClick() {
     page_path: page.page_path,
     section_name: HOMEPAGE_PRICING_SECTION_NAME,
   });
-}
-
-function PricingPreviewCard({ plan }: { plan: HomepagePricingPlan }) {
-  const handleCtaClick = () => {
-    rememberHomepageSelectedPlan(plan.id);
-    trackHomepagePricingPlanClick(plan);
-  };
-
-  return (
-    <article
-      className={`${shellClasses.sectionCard} ${
-        plan.recommended
-          ? 'border-brand-blue/40 bg-white ring-1 ring-brand-blue/15'
-          : ''
-      }`}
-    >
-      <div className="flex min-h-[28px] items-start justify-between gap-3">
-        <h3 className="text-lg font-bold leading-snug text-brand-navy sm:text-xl">{plan.name}</h3>
-        {plan.recommended ? (
-          <span className="shrink-0 rounded-md border border-brand-blue/25 bg-brand-surface px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-brand-blue">
-            Recommended
-          </span>
-        ) : null}
-      </div>
-
-      <p className="mt-4 text-sm leading-6 text-slate-600">{plan.description}</p>
-
-      <div className="mt-5">
-        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
-          {plan.priceLabel}
-        </p>
-        <p className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-          <span className="text-2xl font-bold tracking-tight text-brand-navy sm:text-[1.65rem]">
-            {plan.price}
-          </span>
-          <span className="text-sm font-medium text-slate-500">{plan.billing}</span>
-        </p>
-      </div>
-
-      <div className="mt-4 text-sm font-semibold leading-6 text-brand-navy">
-        <p>{plan.capacity}</p>
-        {plan.capacityDetail ? (
-          <p className="mt-0.5 text-xs font-medium text-slate-500">{plan.capacityDetail}</p>
-        ) : null}
-      </div>
-
-      <ul className="mt-5 space-y-2.5 border-t border-brand-border pt-5">
-        {plan.inclusions.map((item) => (
-          <li key={item} className="flex gap-2.5 text-sm leading-5 text-slate-700">
-            <Check
-              className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue"
-              strokeWidth={2.2}
-              aria-hidden
-            />
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
-
-      <p className="mt-5 text-xs font-medium leading-5 text-slate-500">{plan.bestFor}</p>
-
-      <div className="mt-auto pt-6">
-        <Link
-          to={plan.href}
-          onClick={handleCtaClick}
-          className={cn(
-            shellClasses.btnHeroSecondary,
-            'w-full border-brand-navy text-brand-navy sm:w-full',
-          )}
-        >
-          {plan.ctaLabel}
-          <ArrowRight className="h-4 w-4" strokeWidth={1.9} aria-hidden />
-        </Link>
-      </div>
-    </article>
-  );
 }
 
 export const CommercialClaritySection = () => {
@@ -167,60 +97,70 @@ export const CommercialClaritySection = () => {
           whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="max-w-3xl"
+          className="mx-auto max-w-3xl text-center"
         >
-          <p className={shellClasses.sectionEyebrow}>Pricing & engagement options</p>
+          <p className={cn(shellClasses.sectionEyebrow, 'text-brand-cyan')}>Commercial clarity</p>
           <h2 id="pricing-heading" className={`mt-5 ${shellClasses.sectionHeading}`}>
-            Start with the level of support your priorities need
+            Simple support options, with costs discussed clearly
           </h2>
-          <p className={`mt-5 max-w-2xl ${shellClasses.sectionLead}`}>
-            Begin with a structured sprint, choose predictable monthly delivery, or move into
-            lower-capacity maintenance when active priorities slow down.
-          </p>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500 sm:text-base sm:leading-7">
-            Clear starting points for discovery, monthly delivery and ongoing continuity.
+          <p className={`mx-auto mt-5 max-w-2xl ${shellClasses.sectionLead}`}>
+            We keep the starting point simple and discuss additional tools or third-party costs before
+            work begins.
           </p>
         </motion.div>
 
-        <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {homepagePricingPlans.map((plan, index) => (
-            <motion.div
-              key={plan.id}
-              initial={reveal.initial({ opacity: 0, y: 20 })}
-              whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.45, delay: index * 0.05 }}
-              className="h-full"
-            >
-              <PricingPreviewCard plan={plan} />
-            </motion.div>
-          ))}
+        <div className="mt-10 grid gap-4 md:grid-cols-3">
+          {COMMERCIAL_CLARITY_FEATURES.map((feature, index) => {
+            const Icon = feature.icon;
+            return (
+              <motion.article
+                key={feature.id}
+                initial={reveal.initial({ opacity: 0, y: 20 })}
+                whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.45, delay: index * 0.05 }}
+                className={cn(shellClasses.sectionCard, 'text-left')}
+              >
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-brand-border bg-brand-surface text-brand-navy">
+                  <Icon className="h-5 w-5 text-brand-blue" aria-hidden />
+                </span>
+                <h3 className="mt-5 text-xl font-bold text-brand-navy">{feature.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
+                  {feature.description}
+                </p>
+              </motion.article>
+            );
+          })}
         </div>
 
-        <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <motion.div
+          initial={reveal.initial({ opacity: 0, y: 16 })}
+          whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.45, delay: 0.15 }}
+          className="mt-8 flex flex-col gap-4 rounded-2xl border border-brand-border bg-white px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7"
+        >
+          <div className="flex items-start gap-4">
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-teal-200 bg-teal-50 text-teal-700">
+              <span className="text-sm font-bold">i</span>
+            </span>
+            <div>
+              <p className="font-bold text-brand-navy">Need the full breakdown?</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Detailed inclusions, support models and commercial notes are available on the pricing
+                page.
+              </p>
+            </div>
+          </div>
           <Link
             to={CANONICAL_ROUTES.pricing}
             onClick={trackViewFullPricingClick}
-            className={`${shellClasses.btnHeroSecondary} border-brand-navy text-brand-navy`}
+            className="inline-flex shrink-0 items-center gap-2 border-l-0 border-brand-border pl-0 text-base font-semibold text-teal-700 underline-offset-4 transition hover:text-teal-800 hover:underline sm:border-l sm:pl-6"
           >
-            Compare all plans
+            View full pricing
             <ArrowRight className="h-4 w-4" strokeWidth={1.9} aria-hidden />
           </Link>
-          <p className="max-w-xl text-sm leading-6 text-slate-600">
-            Need broader delivery capacity, complex integrations or multi-team governance?{' '}
-            <Link
-              to={CANONICAL_ROUTES.pricing}
-              onClick={trackViewFullPricingClick}
-              className="font-semibold text-brand-blue underline-offset-2 transition hover:text-brand-navy hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
-            >
-              View Scale and Enterprise options.
-            </Link>
-          </p>
-        </div>
-
-        <p className="mt-6 max-w-3xl text-xs leading-5 text-slate-500 sm:text-sm sm:leading-6">
-          {HOMEPAGE_PRICING_SMALL_PRINT}
-        </p>
+        </motion.div>
       </div>
     </section>
   );

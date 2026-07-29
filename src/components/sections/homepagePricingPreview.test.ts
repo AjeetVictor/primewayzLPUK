@@ -51,7 +51,7 @@ test('homepage pricing plan hrefs include plan query parameters', () => {
   }
 });
 
-test('CommercialClaritySection is the homepage pricing preview with id=pricing', () => {
+test('CommercialClaritySection is the homepage commercial clarity teaser with id=pricing', () => {
   const section = read('src/components/sections/CommercialClaritySection.tsx');
   const app = read('src/App.tsx');
 
@@ -65,34 +65,26 @@ test('CommercialClaritySection is the homepage pricing preview with id=pricing',
   assert.equal((section.match(/id=["']pricing["']/g) || []).length, 1);
   assert.doesNotMatch(section, /id=["']engagement-options["']/);
 
-  assert.match(section, /Start with the level of support your priorities need/);
-  assert.match(section, /Pricing &amp; engagement options|Pricing & engagement options/);
-  assert.match(section, /homepagePricingPlans\.map/);
-  assert.match(section, /Compare all plans/);
-  assert.match(section, /View Scale and Enterprise options/);
-  assert.match(section, /HOMEPAGE_PRICING_SMALL_PRINT/);
-  assert.match(section, /Recommended/);
+  assert.match(section, /Simple support options, with costs discussed clearly/);
+  assert.match(section, /Commercial clarity/);
+  assert.match(section, /COMMERCIAL_CLARITY_FEATURES/);
+  assert.match(section, /View full pricing/);
+  assert.match(section, /Need the full breakdown\?/);
+  assert.doesNotMatch(section, /homepagePricingPlans\.map/);
+  assert.doesNotMatch(section, /Compare all plans/);
 });
 
-test('homepage pricing section links to /pricing and plan query routes', () => {
+test('homepage commercial clarity section links to /pricing', () => {
   const section = read('src/components/sections/CommercialClaritySection.tsx');
-  const data = read('src/content/homepagePricingPlans.ts');
-  const registry = read('src/data/pricing/registry.ts');
 
-  assert.match(registry, /foundation-sprint/);
-  assert.match(registry, /plan=foundation-sprint|slug: 'foundation-sprint'/);
-  assert.match(data, /getActivePricingPlans/);
   assert.match(section, /CANONICAL_ROUTES\.pricing/);
-  assert.match(section, /Compare all plans/);
+  assert.match(section, /View full pricing/);
   assert.doesNotMatch(section, /line-through|Launch Discount|originalPrice/);
 });
 
-test('homepage pricing small print remains visible VAT and third-party copy', () => {
+test('homepage pricing small print remains available in shared pricing content', () => {
   assert.match(HOMEPAGE_PRICING_SMALL_PRINT, /exclude VAT|excluding VAT/i);
   assert.match(HOMEPAGE_PRICING_SMALL_PRINT, /third-party|Third-party/i);
-  const section = read('src/components/sections/CommercialClaritySection.tsx');
-  assert.match(section, /HOMEPAGE_PRICING_SMALL_PRINT/);
-  assert.doesNotMatch(section, /title=\{HOMEPAGE_PRICING_SMALL_PRINT\}|tooltip/i);
 });
 
 test('homepage pricing selection is SSR-safe and stores plan slug', () => {
@@ -127,21 +119,16 @@ test('homepage pricing selection is SSR-safe and stores plan slug', () => {
   assert.doesNotThrow(() => rememberHomepageSelectedPlan('essential', throwingStorage));
 });
 
-test('homepage pricing analytics fire once for view and send plan click params', () => {
+test('homepage pricing analytics fire once for view and full-pricing click params', () => {
   const section = read('src/components/sections/CommercialClaritySection.tsx');
 
   assert.match(section, /homepage_pricing_view/);
-  assert.match(section, /homepage_pricing_plan_click/);
   assert.match(section, /view_full_pricing_click/);
   assert.match(section, /section_name:\s*HOMEPAGE_PRICING_SECTION_NAME/);
   assert.equal(HOMEPAGE_PRICING_SECTION_NAME, 'homepage_pricing');
   assert.match(section, /threshold:\s*0\.35/);
   assert.match(section, /viewTrackedRef/);
   assert.match(section, /observer\.disconnect\(\)/);
-  assert.match(section, /selected_plan:\s*plan\.id/);
-  assert.match(section, /displayed_price:\s*plan\.displayedPrice/);
-  assert.match(section, /billing_period:\s*plan\.billingPeriod/);
-  assert.match(section, /rememberHomepageSelectedPlan\(plan\.id\)/);
   assert.match(section, /trackConversionEvent/);
   assert.doesNotMatch(section, /window\.sessionStorage/);
 });
@@ -154,7 +141,6 @@ test('pricing content is present for SSR and uses semantic headings', () => {
   assert.match(section, /<h2 id=["']pricing-heading["']/);
   assert.match(section, /<h3 /);
   assert.doesNotMatch(section, /<h1\b/);
-  assert.match(section, /<ul /);
   assert.match(registry, /£722\.50/);
   assert.match(registry, /£741/);
   assert.match(registry, /£1,189/);
@@ -188,19 +174,32 @@ test('existing homepage sections still render once and pricing is not duplicated
   assert.equal((main.match(/pricing/gi) || []).length, 0);
 });
 
-test('pricing page uses canonical registry and decision-page structure', () => {
+test('pricing page uses canonical registry and single-page grid structure', () => {
   const pricing = read('src/components/Pricing.tsx');
   const pageContent = read('src/components/pricing/PricingPageContent.tsx');
 
   assert.match(pricing, /PricingPageContent/);
   assert.match(pricing, /canonical.*https:\/\/uk\.primewayz\.com\/pricing/);
-  assert.match(pageContent, /data\/pricing\/helpers/);
+  assert.match(pageContent, /data\/pricing\/gridConfig/);
   assert.match(pageContent, /usePricingSelection/);
-  assert.match(pageContent, /Compare plans/);
-  assert.match(pageContent, /Pricing FAQs/);
-  assert.match(pageContent, /Foundation Sprint/);
+  assert.match(pageContent, /PricingGridCard/);
+  assert.match(pageContent, /PricingPlanDetailModal/);
+  assert.match(pageContent, /Simple, transparent pricing for every stage of growth/);
+  assert.match(pageContent, /Foundation Sprint|getPrimaryPricingGridPlans/);
   assert.match(pageContent, /Scale/);
   assert.match(pageContent, /Enterprise/);
+  assert.doesNotMatch(pageContent, /activeCategory|getNonEmptyEngagementCategories/);
   assert.doesNotMatch(pageContent, /BOOK_CALL_URL/);
   assert.doesNotMatch(pageContent, /homepage_pricing_view/);
+});
+
+test('pricing review CTA includes review_source=pricing and plan slug', () => {
+  const helper = read('src/lib/pricing/buildPricingReviewUrl.ts');
+  const modal = read('src/components/pricing/PricingPlanDetailModal.tsx');
+
+  assert.match(helper, /FREE_REVIEW_SOURCE_QUERY_PARAM/);
+  assert.match(helper, /'pricing'/);
+  assert.match(helper, /plan: planSlug/);
+  assert.match(modal, /buildPricingReviewUrl/);
+  assert.match(modal, /Continue with this plan/);
 });

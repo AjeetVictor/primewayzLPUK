@@ -295,7 +295,7 @@ export function ServicesMegaMenu({ variant, onNavigate }: ServicesMegaMenuProps)
       {open ? (
         <div
           id={menuId}
-          className="absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,52rem)] -translate-x-1/2 rounded-3xl border border-brand-border bg-white p-4 shadow-[0_24px_58px_-32px_rgba(0,10,45,0.28)]"
+          className="fixed left-4 right-4 top-[calc(env(safe-area-inset-top)+4.75rem)] z-50 mx-auto max-h-[calc(100dvh-env(safe-area-inset-top)-5.75rem)] w-auto max-w-[52rem] overflow-y-auto overscroll-contain rounded-3xl border border-brand-border bg-white p-4 shadow-[0_24px_58px_-32px_rgba(0,10,45,0.28)] sm:left-6 sm:right-6 lg:left-8 lg:right-8"
           onMouseLeave={() => setOpen(false)}
         >
           <div className="grid gap-4 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">

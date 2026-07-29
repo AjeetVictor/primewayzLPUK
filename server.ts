@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import path from 'path';
 import fs from 'fs/promises';
 import { PrismaClient } from '@prisma/client';
@@ -3192,6 +3192,17 @@ app.use((req, res, next) => {
     return next();
   }
 
+  const isViteDevelopmentAsset = !isProd && (
+    req.path.startsWith('/src/') ||
+    req.path.startsWith('/@vite/') ||
+    req.path.startsWith('/@react-refresh') ||
+    req.path.startsWith('/__vite_ping') ||
+    req.path.startsWith('/node_modules/')
+  );
+
+  if (isViteDevelopmentAsset) {
+    return next();
+  }
   if (!MISSING_STATIC_ASSET_PATTERN.test(req.path)) {
     return next();
   }

@@ -73,6 +73,7 @@ export const FREE_REVIEW_SOURCE_LOCATIONS = [
   'article',
   'website_checker',
   'about_page',
+  'pricing',
 ] as const;
 
 export type FreeReviewSourceLocation = (typeof FREE_REVIEW_SOURCE_LOCATIONS)[number];
