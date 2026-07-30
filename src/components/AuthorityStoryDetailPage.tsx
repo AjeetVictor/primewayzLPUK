@@ -17,6 +17,7 @@ import {
   type SuccessStoryIconKey,
 } from '../data/successStories';
 import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
+import { WholesaleOrderManagementCaseStudyPage } from './successStories/WholesaleOrderManagementCaseStudyPage';
 
 const iconByKey: Record<SuccessStoryIconKey, typeof Layers> = {
   layers: Layers,
@@ -51,6 +52,10 @@ export const AuthorityStoryDetailPage = () => {
         </div>
       </main>
     );
+  }
+
+  if (story.slug === 'wholesale-order-management-platform') {
+    return <WholesaleOrderManagementCaseStudyPage story={story} />;
   }
 
   const StoryIcon = iconByKey[story.iconKey];

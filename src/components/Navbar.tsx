@@ -11,8 +11,8 @@ import { cn } from '../utils/cn';
 
 const NAV_SOURCE = 'navigation' as const;
 const NAV_SERVICE = 'Not sure yet' as const;
-const NAV_DISCOVERY_LABEL = 'Book Discovery Call';
-const NAV_REVIEW_LABEL = 'Free System Review';
+const NAV_DISCOVERY_LABEL = 'Book a discovery call';
+const NAV_REVIEW_LABEL = 'Free Digital Systems Review';
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);

@@ -145,9 +145,9 @@ const successStories: readonly SuccessStory[] = [
     seoTitle: 'Wholesale Order Management Platform Support | Primewayz UK',
     seoDescription:
       'How Primewayz supports ongoing development and technical continuity for a business-critical wholesale order-management platform with complex catalogue, inventory and order workflows.',
-    ogImage: '/images/delivery-cards/backend-integrations.webp',
-    image: '/images/delivery-cards/backend-integrations.webp',
-    imageAlt: 'Abstract illustration of connected backend and integration workflows',
+    ogImage: '/images/success-stories/wholesale-order-management/wholesale-platform-hero.webp',
+    image: '/images/success-stories/wholesale-order-management/wholesale-platform-hero.webp',
+    imageAlt: 'Wholesale platform dependency dashboard showing connected catalogue, inventory, customer, order, warehouse and integration workflows',
     iconKey: 'layers',
     accentColor: 'emerald',
     publicationStatus: 'published',

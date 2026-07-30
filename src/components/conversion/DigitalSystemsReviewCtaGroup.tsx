@@ -18,7 +18,7 @@ import {
   buildDigitalSystemsReviewAnalyticsPayload,
 } from '../../lib/digitalSystemsReview/analytics';
 
-export type DigitalSystemsReviewCtaGroupVariant = 'hero' | 'closing' | 'onDark';
+export type DigitalSystemsReviewCtaGroupVariant = 'hero' | 'closing' | 'onDark' | 'caseStudyDark';
 
 type DigitalSystemsReviewCtaGroupProps = {
   sourceLocation: FreeReviewSourceLocation;
@@ -94,14 +94,19 @@ export function DigitalSystemsReviewCtaGroup({
   const route = location.pathname || '/';
   const isHero = variant === 'hero';
   const isOnDark = variant === 'onDark';
+  const isCaseStudyDark = variant === 'caseStudyDark';
 
-  const primaryClass = isOnDark
+  const primaryClass = isCaseStudyDark
+    ? 'inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-[#0057C8] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-black/20 transition hover:bg-[#0049A8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 sm:w-auto'
+    : isOnDark
     ? 'inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-emerald-950/20 transition hover:bg-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300 sm:w-auto'
     : isHero
       ? shellClasses.btnHeroPrimary
       : 'inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-brand-navy px-6 py-3 text-base font-bold text-white shadow-sm transition hover:bg-brand-navy/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy sm:w-auto';
 
-  const secondaryClass = isOnDark
+  const secondaryClass = isCaseStudyDark
+    ? 'inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg border border-white/25 bg-white/[0.06] px-6 py-3 text-sm font-semibold text-white transition hover:border-white/45 hover:bg-white/[0.12] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50 sm:w-auto'
+    : isOnDark
     ? 'inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg border border-white/20 px-6 py-3 text-sm font-bold text-white transition hover:border-white/40 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50 sm:w-auto'
     : isHero
       ? shellClasses.btnHeroSecondary
