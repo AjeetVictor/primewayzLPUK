@@ -89,6 +89,31 @@ test('homepage has one H1 with approved text and preserved CTA hierarchy', () =>
   assert.match(group, /data-homepage-website-audit-cta="strip"/);
 });
 
+test('homepage hero supporting content represents the full digital systems mix', () => {
+  const hero = read('src/components/Hero.tsx');
+  const preview = read('src/components/hero/HeroPromoJourney.tsx');
+
+  assert.match(hero, /Website visibility/);
+  assert.match(hero, /CRM & workflows/);
+  assert.match(hero, /Software delivery/);
+  assert.match(hero, /Application support/);
+  assert.match(hero, /Development capacity/);
+
+  assert.match(preview, /Digital systems review/);
+  assert.match(preview, /Systems Review Snapshot/);
+  assert.match(preview, /Website & visibility/);
+  assert.match(preview, /CRM & workflows/);
+  assert.match(preview, /Software & applications/);
+  assert.match(preview, /Delivery capacity/);
+  assert.match(preview, /Priority overview/);
+  assert.match(preview, /Recommended next step/);
+
+  assert.doesNotMatch(
+    preview,
+    /Free audit preview|Website Review Snapshot|Website readiness score|Highest-impact fix/,
+  );
+});
+
 test('homepage service routes include five canonical owners without legacy aliases', () => {
   const section = read('src/components/sections/ServiceRoutesSection.tsx');
   assert.match(section, /CANONICAL_ROUTES\.websiteVisibilitySupport/);

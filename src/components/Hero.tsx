@@ -7,11 +7,11 @@ import { SITE_CONTAINER_CLASS } from '../constants/siteLayout';
 import { useRevealMotion } from '../hooks/useRevealMotion';
 
 const heroChecklist = [
-  'SEO basics',
-  'Trust signals',
-  'Mobile flow',
-  'Enquiry path',
-  'Technical readiness',
+  'Website visibility',
+  'CRM & workflows',
+  'Software delivery',
+  'Application support',
+  'Development capacity',
 ] as const;
 
 export const Hero = () => {

@@ -4,24 +4,23 @@ import {
   Gauge,
   LayoutTemplate,
   Search,
-  ShieldCheck,
   Sparkles,
   Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import { useRevealMotion } from '../../hooks/useRevealMotion';
 
-type AuditCheck = {
+type ReviewArea = {
   label: string;
   status: string;
   icon: LucideIcon;
 };
 
-const auditChecks: AuditCheck[] = [
-  { label: 'SEO basics', status: 'Needs review', icon: Search },
-  { label: 'Trust signals', status: 'Improving', icon: ShieldCheck },
-  { label: 'Enquiry path', status: 'Needs review', icon: LayoutTemplate },
-  { label: 'Technical readiness', status: 'Check basics', icon: Wrench },
+const reviewAreas: ReviewArea[] = [
+  { label: 'Website & visibility', status: 'Review current gaps', icon: Search },
+  { label: 'CRM & workflows', status: 'Check connections', icon: LayoutTemplate },
+  { label: 'Software & applications', status: 'Assess stability', icon: Wrench },
+  { label: 'Delivery capacity', status: 'Prioritise next steps', icon: Gauge },
 ];
 
 export function HeroPromoJourney() {
@@ -33,7 +32,7 @@ export function HeroPromoJourney() {
       animate={reveal.animate({ opacity: 1, y: 0 })}
       transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
       className="relative w-full lg:max-w-[560px] lg:justify-self-end xl:max-w-[620px]"
-      aria-label="Free audit preview"
+      aria-label="Digital systems review preview"
     >
       <div className="pointer-events-none absolute -right-8 bottom-[-2.2rem] hidden h-44 w-64 bg-[radial-gradient(#31A1D3_1px,transparent_1px)] [background-size:14px_14px] opacity-30 lg:block" aria-hidden />
 
@@ -43,13 +42,13 @@ export function HeroPromoJourney() {
         <div className="relative flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.22em] text-brand-cyan">
-              Free audit preview
+              Digital systems review
             </p>
             <h2 className="mt-2 text-xl font-bold leading-7 text-brand-navy">
-              Website Review Snapshot
+              Systems Review Snapshot
             </h2>
             <p className="mt-1 text-sm leading-5 text-slate-600">
-              A practical first look at visibility, trust and enquiry readiness.
+              A practical first look across website, CRM, software and delivery needs.
             </p>
           </div>
 
@@ -61,23 +60,23 @@ export function HeroPromoJourney() {
         <div className="relative mt-6 grid gap-4 lg:grid-cols-[0.82fr_1.18fr]">
           <div className="rounded-2xl border border-cyan-100 bg-cyan-50/60 p-5 text-center">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
-              Website readiness score
+              Priority overview
             </p>
             <div className="mx-auto mt-5 flex h-32 w-32 items-center justify-center rounded-full border-[10px] border-cyan-100 bg-white shadow-sm">
               <div>
-                <p className="text-4xl font-black tracking-tight text-brand-navy">0-100</p>
+                <p className="text-4xl font-black tracking-tight text-brand-navy">4</p>
                 <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-brand-cyan">
-                  Readiness
+                  Review areas
                 </p>
               </div>
             </div>
             <p className="mt-4 text-sm leading-6 text-slate-600">
-              Score, checks and priority fixes in one quick report.
+              Clear priorities and a recommended next step based on your current setup.
             </p>
           </div>
 
           <div className="space-y-3">
-            {auditChecks.map(({ label, status, icon: Icon }) => (
+            {reviewAreas.map(({ label, status, icon: Icon }) => (
               <div
                 key={label}
                 className="group flex items-center gap-3 rounded-xl border border-brand-border/80 bg-white p-3.5 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-cyan/40 hover:shadow-md"
@@ -101,9 +100,9 @@ export function HeroPromoJourney() {
               <Sparkles className="h-5 w-5" strokeWidth={2} aria-hidden />
             </span>
             <div>
-              <p className="text-sm font-bold leading-5 text-brand-navy">Highest-impact fix</p>
+              <p className="text-sm font-bold leading-5 text-brand-navy">Recommended next step</p>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Clarify the first screen and contact path before running more traffic campaigns.
+                Stabilise the highest-risk system first, then sequence improvements around business priority and delivery capacity.
               </p>
             </div>
           </div>
