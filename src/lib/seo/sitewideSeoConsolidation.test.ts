@@ -67,7 +67,7 @@ test('homepage MainContent keeps approved semantic section order once', () => {
 
   assert.match(
     main,
-    /<Hero \/>[\s\S]*<WebsiteProblemSection \/>[\s\S]*<ServiceRoutesSection \/>[\s\S]*<AuditLedProcessSection \/>[\s\S]*<SuccessStories \/>[\s\S]*<CommercialClaritySection \/>[\s\S]*<HomepageContactSection \/>/,
+    /<Hero \/>[\s\S]*<ServiceRoutesSection \/>[\s\S]*<WebsiteProblemSection \/>[\s\S]*<AuditLedProcessSection \/>[\s\S]*<SuccessStories \/>[\s\S]*<CommercialClaritySection \/>[\s\S]*<HomepageContactSection \/>/,
   );
 });
 

@@ -80,14 +80,14 @@ test('delivery process renders three desktop connectors and remains SSR-safe', (
   assert.doesNotMatch(section, /window\.|document\.|sessionStorage|IntersectionObserver/);
 });
 
-test('homepage section order remains unchanged and pricing preview untouched', () => {
+test('homepage places service routes directly after the hero and keeps pricing preview untouched', () => {
   const app = read('src/App.tsx');
   const pricing = read('src/components/sections/CommercialClaritySection.tsx');
   const pricingPage = read('src/components/Pricing.tsx');
 
   assert.match(
     app,
-    /<Hero \/>[\s\S]*<WebsiteProblemSection \/>[\s\S]*<ServiceRoutesSection \/>[\s\S]*<AuditLedProcessSection \/>[\s\S]*<SuccessStories \/>[\s\S]*<CommercialClaritySection \/>[\s\S]*<HomepageContactSection \/>/,
+    /<Hero \/>[\s\S]*<ServiceRoutesSection \/>[\s\S]*<WebsiteProblemSection \/>[\s\S]*<AuditLedProcessSection \/>[\s\S]*<SuccessStories \/>[\s\S]*<CommercialClaritySection \/>[\s\S]*<HomepageContactSection \/>/,
   );
   assert.equal((app.match(/<AuditLedProcessSection \/>/g) || []).length, 1);
   assert.match(pricing, /id=["']pricing["']/);

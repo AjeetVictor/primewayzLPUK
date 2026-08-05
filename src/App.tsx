@@ -65,8 +65,8 @@ const ClientOnly = ({ children }: { children: ReactNode }) => {
 const MainContent = () => (
   <main>
     <Hero />
-    <WebsiteProblemSection />
     <ServiceRoutesSection />
+    <WebsiteProblemSection />
     <AuditLedProcessSection />
     <SuccessStories />
     <CommercialClaritySection />
