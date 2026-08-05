@@ -331,7 +331,17 @@ export function DigitalSystemsReviewForm({
       }
 
       const resultCategory =
-        typeof data?.resultCategory === 'string' ? data.resultCategory : 'created';
+        data?.resultCategory === 'created' || data?.resultCategory === 'duplicate'
+          ? data.resultCategory
+          : null;
+
+      if (!resultCategory) {
+        setErrors({
+          form: 'Could not confirm your review request. Please try again.',
+        });
+        emitError('validation');
+        return;
+      }
 
       const analyticsPayload = buildDigitalSystemsReviewAnalyticsPayload({
         sourceLocation,
@@ -349,12 +359,23 @@ export function DigitalSystemsReviewForm({
         service_interest: analyticsServiceArea(),
         selection: pricingSelection,
       });
-      trackLeadFormSuccess({
-        form_name: 'digital_systems_review',
-        page_path: DIGITAL_SYSTEMS_REVIEW_PATH,
-        journey_type: 'digital_systems_review',
-        selection: pricingSelection,
-      });
+      if (resultCategory === 'created') {
+        trackLeadFormSuccess({
+          form_name: 'digital_systems_review',
+          page_path: DIGITAL_SYSTEMS_REVIEW_PATH,
+          journey_type: 'digital_systems_review',
+          selection: pricingSelection,
+        });
+
+        const generatedLeadPayload = {
+          ...analyticsPayload,
+          form_name: 'digital_systems_review',
+          lead_type: 'digital_systems_review',
+        };
+
+        assertNoProhibitedAnalyticsProps(generatedLeadPayload);
+        trackConversionEvent('generate_lead', generatedLeadPayload);
+      }
 
       // Non-PII one-time marker only (created|duplicate). Never block navigation.
       writeFreeReviewSuccessMarker(resultCategory);
