@@ -114,6 +114,17 @@ test('homepage hero supporting content represents the full digital systems mix',
   );
 });
 
+test('homepage diagnostic framing distinguishes review lenses from service routes', () => {
+  const preview = read('src/components/hero/HeroPromoJourney.tsx');
+  const websiteProblem = read('src/components/sections/WebsiteProblemSection.tsx');
+
+  assert.match(preview, /Review lenses/);
+  assert.doesNotMatch(preview, /Review areas/);
+
+  assert.match(websiteProblem, /A common starting point for UK SMEs/);
+  assert.doesNotMatch(websiteProblem, /What may be holding your website back/);
+});
+
 test('homepage service routes include five canonical owners without legacy aliases', () => {
   const section = read('src/components/sections/ServiceRoutesSection.tsx');
   assert.match(section, /CANONICAL_ROUTES\.websiteVisibilitySupport/);

@@ -56,7 +56,7 @@ export const WebsiteProblemSection = () => {
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="mx-auto max-w-3xl text-center"
           >
-            <p className={shellClasses.sectionEyebrow}>What may be holding your website back</p>
+            <p className={shellClasses.sectionEyebrow}>A common starting point for UK SMEs</p>
             <h2
               id="website-problem-heading"
               className={`mt-3 ${shellClasses.sectionHeading} text-[1.75rem] sm:text-[2rem] lg:text-[2.75rem]`}

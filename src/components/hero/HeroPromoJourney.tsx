@@ -66,7 +66,7 @@ export function HeroPromoJourney() {
               <div>
                 <p className="text-4xl font-black tracking-tight text-brand-navy">4</p>
                 <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-brand-cyan">
-                  Review areas
+                  Review lenses
                 </p>
               </div>
             </div>
