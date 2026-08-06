@@ -115,39 +115,58 @@ export const HomepageContactSection = () => {
             </ul>
           </motion.div>
 
+
           <motion.div
             initial={reveal.initial({ opacity: 0, y: 24 })}
             whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
             viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 0.5, delay: 0.08 }}
-            className="rounded-[22px] border bg-white p-6 shadow-[0_20px_50px_-36px_rgba(0,10,45,0.28)] sm:p-8"
+            className="rounded-[22px] border bg-white p-2 shadow-[0_20px_50px_-36px_rgba(0,10,45,0.28)]"
             style={{ borderColor: BORDER }}
           >
-            <h3 className="text-2xl font-bold text-brand-navy">Start with a free review</h3>
-            <p className="mt-2 text-sm leading-6" style={{ color: BODY }}>
-              A focused request — not a long enquiry form. Tell us the friction point and we will
-              recommend the most useful next step.
-            </p>
+            <div
+              className="aspect-square w-full overflow-hidden"
+              style={{ borderRadius: '8px', border: '0.5px solid #c7d1dd' }}
+            >
+              <img
+                src="/images/free-review-image.png"
+                alt="Illustration introducing the free Digital Systems Review"
+                width={1080}
+                height={1080}
+                loading="lazy"
+                decoding="async"
+                className="block h-full w-full object-cover"
+              />
+            </div>
 
-            <DigitalSystemsReviewCtaGroup
-              className="mt-8"
-              sourceLocation="homepage"
-              primaryPlacement="homepage_closing_primary"
-              secondaryPlacement="homepage_closing_secondary"
-              variant="closing"
-            />
+            <div className="p-4">
+              <h3 className="text-2xl font-bold text-brand-navy">Start with a free review</h3>
 
-            <p className="mt-8 text-sm leading-6" style={{ color: BODY }}>
-              Need to send a general message?{' '}
-              <Link
-                to={GENERAL_CONTACT_DESTINATION}
-                className="font-semibold underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue"
-                style={{ color: TEAL }}
-              >
-                Contact Primewayz UK
-              </Link>
-              .
-            </p>
+              <p className="mt-2 text-sm leading-6" style={{ color: BODY }}>
+                A focused request â€” not a long enquiry form. Tell us the friction point and we will
+                recommend the most useful next step.
+              </p>
+
+              <DigitalSystemsReviewCtaGroup
+                className="mt-8"
+                sourceLocation="homepage"
+                primaryPlacement="homepage_closing_primary"
+                secondaryPlacement="homepage_closing_secondary"
+                variant="closing"
+                primaryLabel="Free Digital Systems Review"
+              />
+
+              <p className="mt-8 text-sm leading-6" style={{ color: BODY }}>
+                Need to send a general message?{' '}
+                <Link
+                  to={GENERAL_CONTACT_DESTINATION}
+                  className="font-semibold underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue"
+                >
+                  Contact Primewayz UK
+                </Link>
+                .
+              </p>
+            </div>
           </motion.div>
         </div>
 

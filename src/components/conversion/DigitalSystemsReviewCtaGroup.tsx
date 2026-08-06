@@ -29,6 +29,8 @@ type DigitalSystemsReviewCtaGroupProps = {
   serviceArea?: FreeReviewServiceArea;
   /** When set, shows a lower-emphasis tertiary link to the website checker. */
   websiteCheckerPlacement?: FreeReviewCtaPlacement;
+  /** Optional local label override. Shared CTA copy remains the default. */
+  primaryLabel?: string;
   className?: string;
 };
 
@@ -87,6 +89,7 @@ export function DigitalSystemsReviewCtaGroup({
   variant = 'hero',
   serviceArea,
   websiteCheckerPlacement,
+  primaryLabel = FREE_REVIEW_CTA_LABEL,
   className = '',
 }: DigitalSystemsReviewCtaGroupProps) {
   const location = useLocation();
@@ -120,7 +123,7 @@ export function DigitalSystemsReviewCtaGroup({
           onClick={() => emitReviewCtaClick(sourceLocation, primaryPlacement, route, serviceArea)}
           className={primaryClass}
         >
-          {FREE_REVIEW_CTA_LABEL}
+          {primaryLabel}
           <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
         </Link>
 

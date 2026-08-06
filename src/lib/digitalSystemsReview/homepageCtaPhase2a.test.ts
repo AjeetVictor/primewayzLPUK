@@ -358,6 +358,28 @@ test('HomepageContactSection no longer posts to /api/contact and has no form fie
   assert.equal(GENERAL_CONTACT_DESTINATION, '/contact-us');
 });
 
+test('HomepageContactSection uses a full-width square review visual and homepage-only CTA label override', () => {
+  const closing = read('src/components/sections/HomepageContactSection.tsx');
+  const group = read('src/components/conversion/DigitalSystemsReviewCtaGroup.tsx');
+
+  assert.match(closing, /\/images\/free-review-image\.png/);
+  assert.match(closing, /className="rounded-\[22px\] border bg-white p-2/);
+  assert.match(closing, /className="aspect-square w-full overflow-hidden"/);
+  assert.match(closing, /borderRadius: '8px'/);
+  assert.match(closing, /border: '0\.5px solid #c7d1dd'/);
+  assert.match(closing, /className="block h-full w-full object-cover"/);
+  assert.match(closing, /className="p-4"/);
+  assert.doesNotMatch(closing, /max-w-\[230px\]|sm:max-w-\[250px\]/);
+  assert.doesNotMatch(closing, /rounded-2xl border bg-\[#F4F8FC\]/);
+  assert.match(closing, /primaryLabel="Free Digital Systems Review"/);
+  assert.match(closing, /homepage_closing_primary/);
+  assert.match(closing, /sourceLocation="homepage"/);
+
+  assert.match(group, /primaryLabel\?: string/);
+  assert.match(group, /primaryLabel = FREE_REVIEW_CTA_LABEL/);
+  assert.match(group, /\{primaryLabel\}/);
+  assert.match(group, /FREE_REVIEW_CTA_LABEL/);
+});
 test('HomepageContactSection privacy copy is claim-safe and links to the central Privacy Policy', () => {
   const closing = read('src/components/sections/HomepageContactSection.tsx');
   assert.match(closing, /COMPANY_TRUST_LINKS\.privacyPolicy/);

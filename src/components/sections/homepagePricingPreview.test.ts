@@ -51,8 +51,9 @@ test('homepage pricing plan hrefs include plan query parameters', () => {
   }
 });
 
-test('CommercialClaritySection is the homepage commercial clarity teaser with id=pricing', () => {
+test('CommercialClaritySection is the approved responsive commercial clarity teaser', () => {
   const section = read('src/components/sections/CommercialClaritySection.tsx');
+  const css = read('src/components/sections/CommercialClaritySection.css');
   const app = read('src/App.tsx');
 
   assert.match(app, /<CommercialClaritySection \/>/);
@@ -66,12 +67,31 @@ test('CommercialClaritySection is the homepage commercial clarity teaser with id
   assert.doesNotMatch(section, /id=["']engagement-options["']/);
 
   assert.match(section, /Simple support options, with costs discussed clearly/);
-  assert.match(section, /Commercial clarity/);
+  assert.match(section, /Commercial Clarity/);
   assert.match(section, /COMMERCIAL_CLARITY_FEATURES/);
+  assert.match(section, /commercial-clarity__cards/);
+  assert.match(section, /commercial-pricing__models/);
   assert.match(section, /View full pricing/);
   assert.match(section, /Need the full breakdown\?/);
+  assert.match(section, /Sprint/);
+  assert.match(section, /Monthly/);
+  assert.match(section, /Maintenance/);
+  assert.match(section, /Transparent costs/);
+  assert.match(section, /No hidden extras/);
+  assert.match(section, /Discuss before we begin/);
+  assert.match(section, /Commercial clarity from day one/);
+  assert.match(section, /CommercialClaritySection\.css/);
   assert.doesNotMatch(section, /homepagePricingPlans\.map/);
   assert.doesNotMatch(section, /Compare all plans/);
+  assert.doesNotMatch(section, /lucide-react/);
+
+  assert.match(css, /width:\s*min\(100%,\s*1480px\)/);
+  assert.match(css, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /grid-template-columns:\s*minmax\(360px,\s*1\.35fr\)/);
+  assert.match(css, /grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /@media \(max-width:\s*1180px\)/);
+  assert.match(css, /@media \(max-width:\s*900px\)/);
+  assert.match(css, /@media \(max-width:\s*600px\)/);
 });
 
 test('homepage commercial clarity section links to /pricing', () => {
