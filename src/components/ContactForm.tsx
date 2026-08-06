@@ -5,7 +5,8 @@ import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import confetti from 'canvas-confetti';
 import { apiUrl } from '../utils/apiUrl';
-import { trackEvent } from '../lib/analytics';
+import { trackConversionEvent, trackEvent } from '../lib/analytics';
+import { assertNoProhibitedAnalyticsProps } from '../lib/digitalSystemsReview/analytics';
 import { getFirstUtmParams, getLatestUtmParams } from '../lib/utm';
 
 interface FormData {
@@ -214,18 +215,24 @@ export function ContactForm({ variant = 'full' }: ContactFormProps) {
         body: JSON.stringify(payload),
       });
 
-      if (response.ok) {
-        trackEvent('contact_form_submit', {
+      const data = await response.json().catch(() => null);
+
+      if (response.status === 201 && data?.success === true) {
+        const conversionPayload = {
           form_name: 'primewayz_uk_contact_form',
           lead_type: 'contact_enquiry',
           cta_location: 'contact_form',
-        });
+          submission_success: true,
+        };
+
+        assertNoProhibitedAnalyticsProps(conversionPayload);
+        trackConversionEvent('contact_enquiry_complete', conversionPayload);
+        trackEvent('contact_form_submit', conversionPayload);
 
         setIsSubmitted(true);
         setFormData(emptyForm);
         setPhone('');
       } else {
-        const data = await response.json().catch(() => null);
         setSubmitError(data?.error || 'Something went wrong. Please try again later.');
       }
     } catch {
