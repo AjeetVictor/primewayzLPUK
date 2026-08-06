@@ -1,112 +1,115 @@
-import { motion } from 'motion/react';
-import {
-  ArrowRight,
-  Eye,
-  MousePointerClick,
-  ShieldCheck,
-  type LucideIcon,
-} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { CANONICAL_ROUTES } from '../../constants/canonicalRoutes';
-import { shellClasses } from '../../constants/designSystem';
-import { SITE_CONTAINER_CLASS, SITE_SECTION_PANEL_CLASS, TRUST_STRIP_SURFACE } from '../../constants/siteLayout';
-import { useRevealMotion } from '../../hooks/useRevealMotion';
 import { trackConversionEvent } from '../../lib/analytics';
-
-type ProblemCard = {
-  title: string;
-  description: string;
-  icon: LucideIcon;
-};
-
-const problemCards: ProblemCard[] = [
-  {
-    title: 'Visibility',
-    description: 'Can customers and search systems discover the business?',
-    icon: Eye,
-  },
-  {
-    title: 'Trust',
-    description: 'Do visitors see enough clarity, proof and confidence?',
-    icon: ShieldCheck,
-  },
-  {
-    title: 'Enquiry',
-    description: 'Can an interested visitor contact, book or submit easily?',
-    icon: MousePointerClick,
-  },
-];
+import './WebsiteProblemSection.css';
 
 export const WebsiteProblemSection = () => {
-  const reveal = useRevealMotion();
-
   return (
     <section
       id="visibility-trust-enquiry"
-      className="pb-10 pt-6"
-      style={{ backgroundColor: TRUST_STRIP_SURFACE }}
-      aria-labelledby="website-problem-heading"
+      className="website-visibility-section"
+      aria-labelledby="website-visibility-title"
     >
-      <div className={SITE_CONTAINER_CLASS}>
-        <div className={`${SITE_SECTION_PANEL_CLASS} px-5 py-10 sm:px-8 lg:px-12`}>
-          <motion.div
-            initial={reveal.initial({ opacity: 0, y: 20 })}
-            whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
-            viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="mx-auto max-w-3xl text-center"
+      <div className="website-visibility-container">
+        <div className="website-visibility-visual">
+          <img
+            src="/images/visibility-creative.jpg"
+            alt="A live business website surrounded by barriers, showing the importance of being found, building trust and creating a clear path to customer enquiries."
+            width={1080}
+            height={1920}
+            loading="lazy"
+            decoding="async"
+            className="website-visibility-image"
+          />
+        </div>
+
+        <div className="website-visibility-content">
+          <p className="website-visibility-eyebrow">
+            What may be holding your website back
+          </p>
+
+          <h2
+            id="website-visibility-title"
+            className="website-visibility-heading"
           >
-            <p className={shellClasses.sectionEyebrow}>A common starting point for UK SMEs</p>
-            <h2
-              id="website-problem-heading"
-              className={`mt-3 ${shellClasses.sectionHeading} text-[1.75rem] sm:text-[2rem] lg:text-[2.75rem]`}
-            >
-              Your website may be live, but is it helping people find, trust and contact you?
-            </h2>
-            <p className={`mx-auto mt-4 max-w-[640px] ${shellClasses.sectionLead} text-sm sm:text-base`}>
-              Many UK businesses do not need a full redesign first. They need clearer discovery,
-              stronger trust signals and a simpler path from interest to enquiry.
-            </p>
-          </motion.div>
+            Your website may be live, but is it helping people find, trust and contact you?
+          </h2>
 
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {problemCards.map((card, index) => {
-              const Icon = card.icon;
+          <p className="website-visibility-intro">
+            Many UK businesses do not need a full redesign first. They need clearer discovery,
+            stronger trust signals and a simpler path from interest to enquiry.
+          </p>
 
-              return (
-                <motion.article
-                  key={card.title}
-                  initial={reveal.initial({ opacity: 0, y: 24 })}
-                  whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
-                  viewport={{ once: true, margin: '-60px' }}
-                  transition={{ duration: 0.5, delay: index * 0.08, ease: [0.16, 1, 0.3, 1] }}
-                  className={shellClasses.sectionCard}
-                >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-surface text-brand-blue ring-1 ring-brand-border">
-                    <Icon className="h-5 w-5" strokeWidth={2.1} aria-hidden />
-                  </div>
-                  <h3 className="mt-5 text-lg font-bold leading-6 text-brand-navy">{card.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">{card.description}</p>
-                </motion.article>
-              );
-            })}
-          </div>
+          <ul className="website-visibility-features" role="list">
+            <li className="website-feature">
+              <div className="website-feature-icon" aria-hidden="true">
+                <svg viewBox="0 0 64 64" role="presentation" focusable="false">
+                  <path d="M6 32s9.5-14 26-14 26 14 26 14-9.5 14-26 14S6 32 6 32Z" />
+                  <circle cx="32" cy="32" r="7" />
+                  <path d="M32 7v5M32 52v5M7 32h5M52 32h5" />
+                  <path d="m13.5 13.5 3.6 3.6M46.9 46.9l3.6 3.6" />
+                  <path d="m50.5 13.5-3.6 3.6M17.1 46.9l-3.6 3.6" />
+                </svg>
+              </div>
 
-          <div className="mt-8 flex justify-center">
-            <Link
-              to={CANONICAL_ROUTES.websiteVisibilitySupport}
-              onClick={() => {
-                trackConversionEvent('visibility_support_link_click', {
-                  cta_location: 'homepage_problem_section',
-                  destination: CANONICAL_ROUTES.websiteVisibilitySupport,
-                });
-              }}
-              className="inline-flex min-h-[44px] items-center gap-2 text-sm font-bold text-brand-blue transition hover:text-brand-navy"
-            >
-              Explore website visibility support
-              <ArrowRight className="h-4 w-4" strokeWidth={2.15} aria-hidden />
-            </Link>
-          </div>
+              <h3 className="website-feature-title">Visibility</h3>
+
+              <p className="website-feature-description">
+                Can customers and search systems discover the business?
+              </p>
+            </li>
+
+            <li className="website-feature">
+              <div className="website-feature-icon" aria-hidden="true">
+                <svg viewBox="0 0 64 64" role="presentation" focusable="false">
+                  <path d="M32 5 54 14v16c0 14-8.7 23.5-22 29C18.7 53.5 10 44 10 30V14L32 5Z" />
+                  <path d="m22 31 7 7 14-15" />
+                </svg>
+              </div>
+
+              <h3 className="website-feature-title">Trust</h3>
+
+              <p className="website-feature-description">
+                Do visitors see enough clarity, proof and confidence?
+              </p>
+            </li>
+
+            <li className="website-feature">
+              <div className="website-feature-icon" aria-hidden="true">
+                <svg viewBox="0 0 64 64" role="presentation" focusable="false">
+                  <path d="M8 24 32 42 56 24" />
+                  <path d="M11 22h42a3 3 0 0 1 3 3v27H8V25a3 3 0 0 1 3-3Z" />
+                  <path d="M20 27V8h24v19" />
+                  <path d="M26 15h12M26 21h12" />
+                  <path d="m8 52 18-15M56 52 38 37" />
+                </svg>
+              </div>
+
+              <h3 className="website-feature-title">Enquiry</h3>
+
+              <p className="website-feature-description">
+                Can an interested visitor contact, book or submit easily?
+              </p>
+            </li>
+          </ul>
+
+          <Link
+            to={CANONICAL_ROUTES.websiteVisibilitySupport}
+            className="website-visibility-cta"
+            aria-label="Explore website visibility support services"
+            onClick={() => {
+              trackConversionEvent('visibility_support_link_click', {
+                cta_location: 'homepage_problem_section',
+                destination: CANONICAL_ROUTES.websiteVisibilitySupport,
+              });
+            }}
+          >
+            <span>Explore website visibility support</span>
+
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M5 12h14M14 6l6 6-6 6" />
+            </svg>
+          </Link>
         </div>
       </div>
     </section>

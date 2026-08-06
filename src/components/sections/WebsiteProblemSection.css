@@ -1,0 +1,317 @@
+.website-visibility-section {
+  --visibility-navy: #071638;
+  --visibility-text: #40506d;
+  --visibility-blue: #075edb;
+  --visibility-blue-light: #eaf3ff;
+  --visibility-border: #dfe7f2;
+  --visibility-background: #ffffff;
+
+  background: var(--visibility-background);
+  padding: clamp(4rem, 7vw, 7rem) 1.5rem;
+  overflow: hidden;
+}
+
+.website-visibility-container {
+  width: min(100%, 1440px);
+  margin-inline: auto;
+
+  display: grid;
+  grid-template-columns:
+    minmax(300px, 0.78fr)
+    minmax(0, 1.32fr);
+
+  align-items: center;
+  gap: clamp(3rem, 6vw, 7rem);
+}
+
+.website-visibility-visual {
+  width: 100%;
+  max-width: 500px;
+  margin-inline: auto;
+}
+
+.website-visibility-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 9 / 16;
+  object-fit: contain;
+  border-radius: 20px;
+  box-shadow:
+    0 24px 60px rgba(4, 22, 61, 0.14),
+    0 8px 20px rgba(4, 22, 61, 0.08);
+}
+
+.website-visibility-content {
+  min-width: 0;
+}
+
+.website-visibility-eyebrow {
+  margin: 0 0 1.25rem;
+  color: var(--visibility-blue);
+  font: inherit;
+  font-size: clamp(0.75rem, 0.9vw, 0.875rem);
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.website-visibility-heading {
+  max-width: 900px;
+  margin: 0;
+  color: var(--visibility-navy);
+  font: inherit;
+  font-size: clamp(2.15rem, 3.7vw, 4rem);
+  font-weight: 750;
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.website-visibility-intro {
+  max-width: 820px;
+  margin: clamp(1.5rem, 2.5vw, 2rem) 0 0;
+  color: var(--visibility-text);
+  font: inherit;
+  font-size: clamp(1rem, 1.35vw, 1.25rem);
+  font-weight: 400;
+  line-height: 1.65;
+}
+
+.website-visibility-features {
+  list-style: none;
+  padding: 0;
+  margin: clamp(2rem, 3.5vw, 3rem) 0 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(1rem, 1.7vw, 1.5rem);
+}
+
+.website-feature {
+  min-width: 0;
+  min-height: 270px;
+  padding: clamp(1.5rem, 2vw, 2rem) clamp(1.1rem, 1.7vw, 1.6rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: #ffffff;
+  border: 1px solid var(--visibility-border);
+  border-radius: 18px;
+  box-shadow:
+    0 16px 35px rgba(7, 28, 67, 0.055),
+    0 3px 8px rgba(7, 28, 67, 0.035);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.website-feature:hover {
+  transform: translateY(-4px);
+  border-color: rgba(7, 94, 219, 0.3);
+  box-shadow:
+    0 22px 45px rgba(7, 28, 67, 0.09),
+    0 4px 10px rgba(7, 28, 67, 0.04);
+}
+
+.website-feature-icon {
+  width: 96px;
+  height: 96px;
+  margin-bottom: 1rem;
+  display: grid;
+  place-items: center;
+  color: var(--visibility-blue);
+  background: var(--visibility-blue-light);
+  border-radius: 50%;
+}
+
+.website-feature-icon svg {
+  display: block;
+  width: 58px;
+  height: 58px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.website-feature-title {
+  margin: 0;
+  color: var(--visibility-navy);
+  font: inherit;
+  font-size: clamp(1.35rem, 1.6vw, 1.65rem);
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+.website-feature-description {
+  margin: 1rem 0 0;
+  color: var(--visibility-text);
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+.website-visibility-cta {
+  width: fit-content;
+  margin-top: clamp(2rem, 3vw, 2.75rem);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  color: var(--visibility-blue);
+  font: inherit;
+  font-size: clamp(1rem, 1.25vw, 1.15rem);
+  font-weight: 650;
+  line-height: 1.4;
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 0.35rem;
+}
+
+.website-visibility-cta svg {
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 180ms ease;
+}
+
+.website-visibility-cta:hover svg,
+.website-visibility-cta:focus-visible svg {
+  transform: translateX(5px);
+}
+
+.website-visibility-cta:focus-visible {
+  outline: 3px solid rgba(7, 94, 219, 0.25);
+  outline-offset: 6px;
+  border-radius: 2px;
+}
+
+@media (max-width: 1100px) {
+  .website-visibility-container {
+    grid-template-columns: minmax(260px, 0.75fr) minmax(0, 1.25fr);
+    gap: 3rem;
+    align-items: start;
+  }
+
+  .website-visibility-features {
+    grid-template-columns: 1fr;
+  }
+
+  .website-feature {
+    min-height: auto;
+    padding: 1.4rem;
+    display: grid;
+    grid-template-columns: 78px minmax(0, 1fr);
+    grid-template-areas:
+      "icon title"
+      "icon description";
+    column-gap: 1.2rem;
+    text-align: left;
+    align-items: center;
+  }
+
+  .website-feature-icon {
+    grid-area: icon;
+    width: 74px;
+    height: 74px;
+    margin: 0;
+  }
+
+  .website-feature-icon svg {
+    width: 45px;
+    height: 45px;
+  }
+
+  .website-feature-title {
+    grid-area: title;
+    align-self: end;
+  }
+
+  .website-feature-description {
+    grid-area: description;
+    align-self: start;
+    margin-top: 0.4rem;
+  }
+}
+
+@media (max-width: 760px) {
+  .website-visibility-section {
+    padding-inline: 1.1rem;
+  }
+
+  .website-visibility-container {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+
+  .website-visibility-visual {
+    max-width: 420px;
+  }
+
+  .website-visibility-content {
+    text-align: left;
+  }
+
+  .website-visibility-heading {
+    font-size: clamp(2rem, 9vw, 3rem);
+    line-height: 1.1;
+  }
+
+  .website-visibility-intro {
+    line-height: 1.6;
+  }
+
+  .website-visibility-features {
+    gap: 0.9rem;
+  }
+
+  .website-visibility-cta {
+    margin-top: 2rem;
+  }
+}
+
+@media (max-width: 440px) {
+  .website-feature {
+    grid-template-columns: 62px minmax(0, 1fr);
+    column-gap: 1rem;
+    padding: 1.2rem 1rem;
+  }
+
+  .website-feature-icon {
+    width: 62px;
+    height: 62px;
+  }
+
+  .website-feature-icon svg {
+    width: 38px;
+    height: 38px;
+  }
+
+  .website-feature-title {
+    font-size: 1.25rem;
+  }
+
+  .website-feature-description {
+    font-size: 0.925rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .website-feature,
+  .website-visibility-cta svg {
+    transition: none;
+  }
+
+  .website-feature:hover {
+    transform: none;
+  }
+}

@@ -36,13 +36,13 @@ test('AuditLedProcessSection renders homepage delivery process content', () => {
   assert.match(app, /<AuditLedProcessSection \/>/);
   assert.equal((app.match(/<AuditLedProcessSection \/>/g) || []).length, 1);
 
-  assert.match(section, /One delivery process/);
+  assert.match(section, /Our Delivery Process/);
   assert.match(section, /Review/);
   assert.match(section, /Prioritise/);
   assert.match(section, /Improve/);
   assert.match(section, /Track/);
   assert.match(section, /DELIVERY_PROCESS_INTRO/);
-  assert.match(section, /deliveryProcessSteps\.flatMap/);
+  assert.match(section, /deliveryProcessSteps\.map/);
   assert.match(section, /aria-labelledby=["']delivery-process-title["']/);
   assert.match(section, /id=["']delivery-process-title["']/);
   assert.doesNotMatch(section, /lucide-react/);
@@ -68,16 +68,33 @@ test('delivery process uses inline SVG icons without raster assets', () => {
   assert.match(data, /TrackAuditIcon/);
 });
 
-test('delivery process renders three desktop connectors and remains SSR-safe', () => {
+test('delivery process matches the approved grid, stepped route and responsive fallbacks', () => {
   const section = read('src/components/sections/AuditLedProcessSection.tsx');
+  const css = read('src/components/sections/AuditLedProcessSection.css');
 
-  assert.match(section, /ProcessConnector/);
-  assert.match(section, /ProcessFlowConnectorIcon/);
-  assert.match(section, /connector-\$\{step\.id\}/);
-  assert.match(section, /index < deliveryProcessSteps\.length - 1/);
-  assert.match(section, /useRevealMotion/);
-  assert.match(section, /<h3 /);
-  assert.doesNotMatch(section, /window\.|document\.|sessionStorage|IntersectionObserver/);
+  assert.match(section, /Our Delivery Process/);
+  assert.match(section, /className="delivery-dashboard"/);
+  assert.match(section, /Progress overview/);
+  assert.match(section, /delivery-dashboard__donut/);
+  assert.match(section, /deliveryProcessSteps\.map/);
+  assert.match(section, /className="delivery-route"/);
+  assert.match(section, /viewBox="0 0 1000 176"/);
+  assert.match(section, /M0 154H250V118H500V82H750V46H1000/);
+  assert.match(section, /Practical priorities/);
+  assert.match(section, /Clear progress/);
+  assert.match(section, /Aligned teams/);
+  assert.match(section, /Better outcomes/);
+  assert.doesNotMatch(section, /window\.|document\./);
+
+  assert.match(css, /width:\s*min\(100%, 1500px\)/);
+  assert.match(css, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s*410px/);
+  assert.match(css, /font-size:\s*42px/);
+  assert.match(css, /font-weight:\s*700/);
+  assert.match(css, /letter-spacing:\s*0/);
+  assert.match(css, /grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /height:\s*176px/);
+  assert.match(css, /@media \(max-width:\s*880px\)/);
+  assert.match(css, /@media \(max-width:\s*560px\)/);
 });
 
 test('homepage places service routes directly after the hero and keeps pricing preview untouched', () => {

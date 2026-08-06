@@ -114,19 +114,39 @@ test('homepage hero supporting content represents the full digital systems mix',
   );
 });
 
-test('homepage diagnostic framing distinguishes review lenses from service routes', () => {
+test('homepage review lenses and website visibility design remain distinct', () => {
   const preview = read('src/components/hero/HeroPromoJourney.tsx');
   const websiteProblem = read('src/components/sections/WebsiteProblemSection.tsx');
+  const websiteProblemCss = read('src/components/sections/WebsiteProblemSection.css');
 
   assert.match(preview, /Review lenses/);
   assert.doesNotMatch(preview, /Review areas/);
 
-  assert.match(websiteProblem, /A common starting point for UK SMEs/);
-  assert.doesNotMatch(websiteProblem, /What may be holding your website back/);
+  assert.match(websiteProblem, /What may be holding your website back/);
+  assert.match(websiteProblem, /src="\/images\/visibility-creative\.jpg"/);
+  assert.match(websiteProblem, /width=\{1080\}/);
+  assert.match(websiteProblem, /height=\{1920\}/);
+  assert.match(websiteProblem, /loading="lazy"/);
+  assert.match(websiteProblem, /decoding="async"/);
+  assert.match(websiteProblem, /website-visibility-section/);
+  assert.match(websiteProblem, /website-visibility-container/);
+  assert.match(websiteProblem, /website-visibility-features/);
+  assert.match(websiteProblem, /CANONICAL_ROUTES\.websiteVisibilitySupport/);
+  assert.match(websiteProblem, /visibility_support_link_click/);
+
+  assert.match(websiteProblemCss, /width:\s*min\(100%, 1440px\)/);
+  assert.match(websiteProblemCss, /aspect-ratio:\s*9\s*\/\s*16/);
+  assert.match(websiteProblemCss, /object-fit:\s*contain/);
+  assert.match(websiteProblemCss, /grid-template-columns:\s*repeat\(3,/);
+  assert.match(websiteProblemCss, /min-height:\s*270px/);
+  assert.match(websiteProblemCss, /@media \(max-width:\s*1100px\)/);
+  assert.match(websiteProblemCss, /@media \(max-width:\s*760px\)/);
 });
 
-test('homepage service routes include five canonical owners without legacy aliases', () => {
+test('homepage service routes match the approved five-route design and canonical owners', () => {
   const section = read('src/components/sections/ServiceRoutesSection.tsx');
+  const css = read('src/components/sections/ServiceRoutesSection.css');
+
   assert.match(section, /CANONICAL_ROUTES\.websiteVisibilitySupport/);
   assert.match(section, /CANONICAL_ROUTES\.crmAutomationSupport/);
   assert.match(section, /CANONICAL_ROUTES\.softwareDevelopmentSubscription/);
@@ -136,6 +156,31 @@ test('homepage service routes include five canonical owners without legacy alias
     section,
     /software-product-delivery|crm-integration-support-uk|remote-it-resource-augmentation|website-maintenance-subscription-uk/,
   );
+
+  assert.match(section, /className="service-routes"/);
+  assert.match(section, /className="service-routes__grid"/);
+  assert.match(section, /serviceRoutes\.map/);
+  assert.match(section, /Website Visibility & Conversion/);
+  assert.match(section, /CRM & Workflow Automation/);
+  assert.match(section, /Software & Product Engineering/);
+  assert.match(section, /Managed Application & Website Support/);
+  assert.match(section, /Remote IT Team Extension/);
+  assert.match(section, /Focus on your priority/);
+  assert.match(section, /Integrated by design/);
+  assert.match(section, /Measurable outcomes/);
+  assert.match(section, /Secure & reliable/);
+  assert.match(section, /Scalable with you/);
+  assert.match(section, /trackServiceCardClick/);
+  assert.match(section, /homepage_service_routes/);
+
+  assert.match(css, /width:\s*min\(100%,\s*1480px\)/);
+  assert.match(css, /grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /width:\s*84px/);
+  assert.match(css, /height:\s*84px/);
+  assert.match(css, /min-height:\s*116px/);
+  assert.match(css, /@media \(max-width:\s*1280px\)/);
+  assert.match(css, /@media \(max-width:\s*860px\)/);
+  assert.match(css, /@media \(max-width:\s*580px\)/);
 });
 
 test('delivery process and enquiry journeys are not duplicated on the homepage', () => {

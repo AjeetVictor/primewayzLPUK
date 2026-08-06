@@ -1,0 +1,486 @@
+.service-routes,
+.service-routes * {
+  box-sizing: border-box;
+}
+
+.service-routes {
+  --sr-font: var(--site-font, "Inter", "Segoe UI", Arial, sans-serif);
+
+  --sr-bg: #f5f9ff;
+  --sr-surface: #ffffff;
+  --sr-navy: #07143f;
+  --sr-copy: #465774;
+  --sr-muted: #6f7e96;
+  --sr-border: #dbe5f2;
+
+  --sr-blue: #0d63ed;
+  --sr-blue-soft: #edf4ff;
+
+  --sr-teal: #00a6b8;
+  --sr-teal-soft: #ecfbfc;
+
+  --sr-purple: #6f36e8;
+  --sr-purple-soft: #f5efff;
+
+  --sr-amber: #f5a000;
+  --sr-amber-soft: #fff8e9;
+
+  --sr-radius: 18px;
+  --sr-card-shadow:
+    0 22px 46px rgba(20, 54, 105, 0.08),
+    0 4px 12px rgba(20, 54, 105, 0.04);
+
+  width: 100%;
+  padding: clamp(72px, 7vw, 112px) 24px clamp(56px, 6vw, 88px);
+  background:
+    radial-gradient(circle at 10% 8%, rgba(13, 99, 237, 0.05), transparent 360px),
+    radial-gradient(circle at 92% 10%, rgba(0, 166, 184, 0.04), transparent 320px),
+    var(--sr-bg);
+  overflow: hidden;
+  color: var(--sr-navy);
+  font-family: var(--sr-font);
+}
+
+.service-routes__container {
+  width: min(100%, 1480px);
+  margin: 0 auto;
+}
+
+/* ---------- Header ---------- */
+
+.service-routes__header {
+  max-width: 900px;
+  margin: 0 auto clamp(42px, 5vw, 64px);
+  text-align: center;
+}
+
+.service-routes__eyebrow {
+  margin: 0 0 18px;
+  color: var(--sr-blue);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+.service-routes__title {
+  margin: 0;
+  color: var(--sr-navy);
+  font-size: clamp(38px, 4.2vw, 64px);
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.service-routes__intro {
+  max-width: 780px;
+  margin: 24px auto 0;
+  color: var(--sr-copy);
+  font-size: clamp(17px, 1.35vw, 21px);
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+/* ---------- Cards grid ---------- */
+
+.service-routes__grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 20px;
+  align-items: stretch;
+}
+
+.service-route-card {
+  --route-accent: var(--sr-blue);
+  --route-soft: var(--sr-blue-soft);
+
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 26px 24px;
+  background: var(--sr-surface);
+  border: 1px solid var(--sr-border);
+  border-radius: var(--sr-radius);
+  box-shadow: var(--sr-card-shadow);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.service-route-card:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--route-accent) 30%, var(--sr-border));
+  box-shadow:
+    0 28px 56px rgba(20, 54, 105, 0.11),
+    0 6px 16px rgba(20, 54, 105, 0.05);
+}
+
+.service-route-card--teal {
+  --route-accent: var(--sr-teal);
+  --route-soft: var(--sr-teal-soft);
+}
+
+.service-route-card--purple {
+  --route-accent: var(--sr-purple);
+  --route-soft: var(--sr-purple-soft);
+}
+
+.service-route-card--amber {
+  --route-accent: var(--sr-amber);
+  --route-soft: var(--sr-amber-soft);
+}
+
+.service-route-card__icon {
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  color: var(--route-accent);
+  background: var(--route-soft);
+  border: 1px solid color-mix(in srgb, var(--route-accent) 25%, transparent);
+  border-radius: 50%;
+}
+
+.service-route-card__icon svg {
+  display: block;
+  width: 52px;
+  height: 52px;
+  overflow: visible;
+  shape-rendering: geometricPrecision;
+}
+
+.service-route-card__icon path,
+.service-route-card__icon circle,
+.service-route-card__icon rect,
+.service-route-card__icon line,
+.service-route-card__icon polyline {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.service-route-card__title {
+  margin: 0;
+  color: var(--sr-navy);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.service-route-card__description {
+  min-height: 116px;
+  margin: 16px 0 0;
+  color: var(--sr-copy);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.58;
+  letter-spacing: 0;
+  text-align: center;
+}
+
+.service-route-card__divider {
+  width: 100%;
+  height: 1px;
+  margin: 18px 0 14px;
+  background: var(--sr-border);
+}
+
+.service-route-card__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 9px;
+}
+
+.service-route-card__list li {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  color: var(--sr-copy);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.service-route-card__check {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: var(--route-accent);
+}
+
+.service-route-card__check circle,
+.service-route-card__check polyline {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.service-route-card__cta {
+  margin-top: auto;
+  padding-top: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 26px;
+  align-items: end;
+  gap: 12px;
+  color: var(--route-accent);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.service-route-card__cta span {
+  min-width: 0;
+}
+
+.service-route-card__cta svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  transition: transform 180ms ease;
+}
+
+.service-route-card__cta:hover svg,
+.service-route-card__cta:focus-visible svg {
+  transform: translateX(4px);
+}
+
+.service-route-card__cta:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--route-accent) 25%, transparent);
+  outline-offset: 5px;
+  border-radius: 4px;
+}
+
+/* ---------- Benefits ---------- */
+
+.service-routes__benefits {
+  list-style: none;
+  margin: 28px 0 0;
+  padding: 24px 26px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  background: var(--sr-surface);
+  border: 1px solid var(--sr-border);
+  border-radius: var(--sr-radius);
+  box-shadow:
+    0 18px 38px rgba(20, 54, 105, 0.06),
+    0 3px 10px rgba(20, 54, 105, 0.03);
+}
+
+.service-routes__benefit {
+  --benefit-accent: var(--sr-blue);
+
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 0 22px;
+}
+
+.service-routes__benefit + .service-routes__benefit {
+  border-left: 1px solid var(--sr-border);
+}
+
+.service-routes__benefit--teal {
+  --benefit-accent: var(--sr-teal);
+}
+
+.service-routes__benefit--purple {
+  --benefit-accent: var(--sr-purple);
+}
+
+.service-routes__benefit--amber {
+  --benefit-accent: var(--sr-amber);
+}
+
+.service-routes__benefit-icon {
+  width: 54px;
+  height: 54px;
+  color: var(--benefit-accent);
+}
+
+.service-routes__benefit-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  shape-rendering: geometricPrecision;
+}
+
+.service-routes__benefit-icon path,
+.service-routes__benefit-icon circle,
+.service-routes__benefit-icon rect,
+.service-routes__benefit-icon line,
+.service-routes__benefit-icon polyline {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.service-routes__benefit-title {
+  margin: 0;
+  color: var(--sr-navy);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.service-routes__benefit-copy {
+  margin: 6px 0 0;
+  color: var(--sr-copy);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 1280px) {
+  .service-routes__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .service-route-card__description {
+    min-height: 92px;
+  }
+
+  .service-routes__benefits {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: 24px;
+  }
+
+  .service-routes__benefit {
+    min-height: 72px;
+  }
+
+  .service-routes__benefit + .service-routes__benefit {
+    border-left: 0;
+  }
+
+  .service-routes__benefit:nth-child(2),
+  .service-routes__benefit:nth-child(3),
+  .service-routes__benefit:nth-child(5) {
+    border-left: 1px solid var(--sr-border);
+  }
+}
+
+@media (max-width: 860px) {
+  .service-routes {
+    padding-inline: 20px;
+  }
+
+  .service-routes__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .service-route-card__description {
+    min-height: auto;
+  }
+
+  .service-routes__benefits {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .service-routes__benefit,
+  .service-routes__benefit:nth-child(2),
+  .service-routes__benefit:nth-child(3),
+  .service-routes__benefit:nth-child(5) {
+    border-left: 0;
+  }
+
+  .service-routes__benefit:nth-child(even) {
+    border-left: 1px solid var(--sr-border);
+  }
+
+  .service-routes__benefit:nth-child(n + 3) {
+    border-top: 1px solid var(--sr-border);
+    padding-top: 20px;
+  }
+}
+
+@media (max-width: 580px) {
+  .service-routes {
+    padding-inline: 16px;
+  }
+
+  .service-routes__eyebrow {
+    font-size: 12px;
+    letter-spacing: 3px;
+  }
+
+  .service-routes__title {
+    font-size: clamp(34px, 11vw, 48px);
+  }
+
+  .service-routes__intro {
+    font-size: 16px;
+  }
+
+  .service-routes__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .service-route-card {
+    padding: 24px 22px;
+  }
+
+  .service-route-card__title {
+    font-size: 21px;
+  }
+
+  .service-routes__benefits {
+    grid-template-columns: 1fr;
+    padding: 8px 20px;
+  }
+
+  .service-routes__benefit,
+  .service-routes__benefit:nth-child(even) {
+    min-height: 84px;
+    border-left: 0;
+    border-top: 1px solid var(--sr-border);
+    padding: 18px 0;
+  }
+
+  .service-routes__benefit:first-child {
+    border-top: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .service-route-card,
+  .service-route-card__cta svg {
+    transition: none;
+  }
+
+  .service-route-card:hover {
+    transform: none;
+  }
+}

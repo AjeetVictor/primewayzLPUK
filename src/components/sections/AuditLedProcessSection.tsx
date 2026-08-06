@@ -1,128 +1,331 @@
-import { motion } from 'motion/react';
-import type { ComponentType } from 'react';
-import { shellClasses } from '../../constants/designSystem';
-import { DELIVERY_PROCESS_INTRO, deliveryProcessSteps } from '../../content/deliveryProcessSteps';
-import { useRevealMotion } from '../../hooks/useRevealMotion';
-import { ProcessFlowConnectorIcon } from '../icons/AuditLedProcessIcons';
-import { cn } from '../../utils/cn';
+import type { ReactNode } from 'react';
+import {
+  DELIVERY_PROCESS_INTRO,
+  deliveryProcessSteps,
+  type DeliveryProcessStep,
+} from '../../content/deliveryProcessSteps';
+import './AuditLedProcessSection.css';
 
-const processCardClassName =
-  'relative flex min-h-[350px] min-w-0 flex-1 flex-col overflow-hidden rounded-[18px] border border-brand-border bg-white px-7 pb-10 pt-6 text-center shadow-[0_2px_3px_rgba(7,41,76,0.04),0_12px_30px_rgba(20,68,109,0.09)] sm:min-h-[370px] md:min-h-[390px] xl:min-h-[416px] xl:px-8 xl:pb-[42px] xl:pt-[26px]';
-
-type ProcessStepCardProps = {
-  number: number;
-  title: string;
-  description: string;
-  icon: ComponentType<{ className?: string }>;
-};
-
-function ProcessStepCard({ number, title, description, icon: Icon }: ProcessStepCardProps) {
+function TitleArrow() {
   return (
-    <>
-      <p
-        className="absolute left-[23px] top-[23px] m-0 grid h-[52px] w-[52px] place-items-center rounded-full bg-brand-surface text-[25px] font-bold leading-none text-brand-blue xl:left-[26px] xl:top-[26px] xl:h-[58px] xl:w-[58px] xl:text-[29px]"
-        aria-hidden="true"
-      >
-        {number}
-      </p>
-
-      <div
-        className="mx-auto grid h-[127px] w-[104px] place-items-end justify-center text-brand-blue xl:h-[136px]"
-        aria-hidden="true"
-      >
-        <Icon className="block h-[88px] w-[88px] overflow-visible xl:h-24 xl:w-24" />
-      </div>
-
-      <h3 className="mt-5 text-[30px] font-bold leading-[1.14] tracking-[-0.035em] text-brand-navy xl:mt-[26px] xl:text-[34px]">
-        {title}
-      </h3>
-      <p className="mx-auto mt-[18px] max-w-[285px] text-lg leading-[1.65] text-slate-600 xl:mt-[22px] xl:max-w-[255px] xl:text-xl xl:leading-[1.72]">
-        {description}
-      </p>
-    </>
+    <svg
+      className="delivery-process__title-arrow"
+      viewBox="0 0 36 18"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M1 9h31M25 2l8 7-8 7" />
+    </svg>
   );
 }
 
-function ProcessConnector() {
+function StepIcon({ id }: { id: DeliveryProcessStep['id'] }) {
+  if (id === 'review') {
+    return (
+      <svg
+        viewBox="0 0 64 64"
+        focusable="false"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <path d="M11 7h28l11 11v20" />
+        <path d="M39 7v12h12" />
+        <path d="M11 7v47h28" />
+        <line x1="19" y1="25" x2="36" y2="25" />
+        <line x1="19" y1="33" x2="32" y2="33" />
+        <line x1="19" y1="41" x2="29" y2="41" />
+        <circle cx="43" cy="43" r="11" />
+        <line x1="51" y1="51" x2="59" y2="59" />
+      </svg>
+    );
+  }
+
+  if (id === 'prioritise') {
+    return (
+      <svg
+        viewBox="0 0 64 64"
+        focusable="false"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <rect x="14" y="10" width="36" height="45" rx="4" />
+        <path d="M23 10V6h18v4" />
+        <polyline points="21,23 25,27 32,19" />
+        <polyline points="21,35 25,39 32,31" />
+        <line x1="36" y1="23" x2="44" y2="23" />
+        <line x1="36" y1="35" x2="44" y2="35" />
+        <line x1="21" y1="47" x2="36" y2="47" />
+        <circle cx="49" cy="49" r="10" />
+        <polyline points="45,49 48,52 54,45" />
+      </svg>
+    );
+  }
+
+  if (id === 'improve') {
+    return (
+      <svg
+        viewBox="0 0 64 64"
+        focusable="false"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <rect x="7" y="10" width="50" height="37" rx="4" />
+        <line x1="7" y1="19" x2="57" y2="19" />
+        <circle cx="13" cy="15" r="1" />
+        <circle cx="19" cy="15" r="1" />
+        <circle cx="32" cy="36" r="8" />
+        <line x1="32" y1="24" x2="32" y2="28" />
+        <line x1="32" y1="44" x2="32" y2="48" />
+        <line x1="20" y1="36" x2="24" y2="36" />
+        <line x1="40" y1="36" x2="44" y2="36" />
+        <line x1="23.5" y1="27.5" x2="26.5" y2="30.5" />
+        <line x1="37.5" y1="41.5" x2="40.5" y2="44.5" />
+        <line x1="40.5" y1="27.5" x2="37.5" y2="30.5" />
+        <line x1="26.5" y1="41.5" x2="23.5" y2="44.5" />
+        <line x1="25" y1="54" x2="39" y2="54" />
+      </svg>
+    );
+  }
+
   return (
-    <div
-      className={cn(
-        'pointer-events-none relative z-[2] mx-auto my-3 grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#e5eff7] bg-brand-surface text-brand-blue shadow-[0_6px_14px_rgba(30,83,124,0.09)]',
-        'md:hidden xl:grid xl:my-0 xl:mx-[-1px] xl:h-[58px] xl:w-[58px] xl:self-center',
-        'rotate-90 xl:rotate-0',
-      )}
-      aria-hidden="true"
+    <svg
+      viewBox="0 0 64 64"
+      focusable="false"
+      preserveAspectRatio="xMidYMid meet"
     >
-      <ProcessFlowConnectorIcon className="block h-[26px] w-[26px] xl:h-[30px] xl:w-[30px]" />
+      <line x1="8" y1="54" x2="57" y2="54" />
+      <rect x="13" y="39" width="9" height="15" />
+      <rect x="28" y="30" width="9" height="24" />
+      <rect x="43" y="19" width="9" height="35" />
+      <polyline points="15,31 28,20 38,25 51,11" />
+      <circle cx="15" cy="31" r="3" />
+      <circle cx="28" cy="20" r="3" />
+      <circle cx="38" cy="25" r="3" />
+      <circle cx="51" cy="11" r="3" />
+    </svg>
+  );
+}
+
+function DeliveryDashboard() {
+  return (
+    <aside
+      className="delivery-dashboard"
+      aria-label="Example progress overview"
+    >
+      <div className="delivery-dashboard__top">
+        <h3 className="delivery-dashboard__title">Progress overview</h3>
+
+        <div className="delivery-dashboard__menu" aria-hidden="true">
+          <span />
+          <span />
+        </div>
+      </div>
+
+      <div className="delivery-dashboard__charts">
+        <svg
+          className="delivery-dashboard__line-chart"
+          viewBox="0 0 270 106"
+          aria-hidden="true"
+          focusable="false"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          <defs>
+            <linearGradient
+              id="dpAreaFill"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop offset="0%" stopColor="#0d5fe8" stopOpacity=".20" />
+              <stop offset="100%" stopColor="#0d5fe8" stopOpacity=".02" />
+            </linearGradient>
+          </defs>
+
+          <path className="grid" d="M8 22H262M8 51H262M8 80H262" />
+          <path
+            className="area"
+            d="M10 92L62 71L104 75L148 44L196 61L255 19V99H10Z"
+          />
+          <path
+            className="line"
+            d="M10 92L62 71L104 75L148 44L196 61L255 19"
+          />
+
+          <circle className="point" cx="10" cy="92" r="4" />
+          <circle className="point" cx="62" cy="71" r="4" />
+          <circle className="point" cx="104" cy="75" r="4" />
+          <circle className="point" cx="148" cy="44" r="4" />
+          <circle className="point" cx="196" cy="61" r="4" />
+          <circle className="point" cx="255" cy="19" r="4" />
+        </svg>
+
+        <svg
+          className="delivery-dashboard__donut"
+          viewBox="0 0 100 100"
+          aria-hidden="true"
+          focusable="false"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          <circle className="track" cx="50" cy="50" r="38" />
+          <circle className="value" cx="50" cy="50" r="38" />
+        </svg>
+      </div>
+
+      <div className="delivery-dashboard__metrics">
+        <div className="delivery-dashboard__metric">
+          <strong>+28%</strong>
+          <span>Performance</span>
+        </div>
+
+        <div className="delivery-dashboard__metric">
+          <strong>-16%</strong>
+          <span>Risk</span>
+        </div>
+
+        <div className="delivery-dashboard__metric">
+          <strong>+42%</strong>
+          <span>Opportunities</span>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function DeliveryRoute() {
+  return (
+    <div className="delivery-route" aria-hidden="true">
+      <div className="delivery-route__platform">
+        <span className="delivery-route__platform-step" />
+        <span className="delivery-route__platform-step" />
+        <span className="delivery-route__platform-step" />
+        <span className="delivery-route__platform-step" />
+      </div>
+
+      <svg
+        className="delivery-route__svg"
+        viewBox="0 0 1000 176"
+        preserveAspectRatio="none"
+        focusable="false"
+      >
+        <path className="delivery-route__leader" d="M125 0V154" />
+        <path className="delivery-route__leader" d="M375 0V118" />
+        <path className="delivery-route__leader" d="M625 0V82" />
+        <path className="delivery-route__leader" d="M875 0V46" />
+
+        <path
+          className="delivery-route__line"
+          d="M0 154H250V118H500V82H750V46H1000"
+        />
+
+        <circle className="delivery-route__node" cx="125" cy="154" r="8" />
+        <circle className="delivery-route__node" cx="375" cy="118" r="8" />
+        <circle className="delivery-route__node" cx="625" cy="82" r="8" />
+        <circle className="delivery-route__node" cx="875" cy="46" r="8" />
+      </svg>
+    </div>
+  );
+}
+
+function BenefitIcon({ children }: { children: ReactNode }) {
+  return (
+    <div className="delivery-benefit__icon" aria-hidden="true">
+      <svg viewBox="0 0 48 48" focusable="false">
+        {children}
+      </svg>
     </div>
   );
 }
 
 export const AuditLedProcessSection = () => {
-  const reveal = useRevealMotion();
-
   return (
     <section
+      className="delivery-process"
       id="delivery-process"
-      className="scroll-mt-28 overflow-hidden bg-[radial-gradient(circle_at_50%_100%,rgba(229,240,249,0.14),transparent_43%)] bg-white px-4 py-[58px] sm:px-5 md:px-7 md:py-[68px] xl:px-6 xl:pb-[154px] xl:pt-[73px]"
       aria-labelledby="delivery-process-title"
     >
-      <div className="mx-auto w-full max-w-[1438px]">
-        <motion.header
-          initial={reveal.initial({ opacity: 0, y: 20 })}
-          whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="mx-auto mb-[38px] max-w-[1110px] text-center md:mb-[42px] xl:mb-[50px]"
-        >
-          <p className={shellClasses.sectionEyebrow}>One delivery process</p>
-          <h2
-            id="delivery-process-title"
-            className="mt-5 text-[2rem] font-bold leading-[1.12] tracking-[-0.04em] text-brand-navy sm:text-[2.625rem] xl:mt-7 xl:text-[3.625rem] xl:leading-[1.08]"
-          >
-            Review
-            <span className="mx-[0.04em] inline-block translate-y-[-0.02em] font-medium text-brand-blue xl:mx-[0.11em]">
-              →
-            </span>
-            Prioritise
-            <span className="mx-[0.04em] inline-block translate-y-[-0.02em] font-medium text-brand-blue xl:mx-[0.11em]">
-              →
-            </span>
-            Improve
-            <span className="mx-[0.04em] inline-block translate-y-[-0.02em] font-medium text-brand-blue xl:mx-[0.11em]">
-              →
-            </span>
-            Track
-          </h2>
-          <p className={`mx-auto mt-6 max-w-[820px] ${shellClasses.sectionLead}`}>{DELIVERY_PROCESS_INTRO}</p>
-        </motion.header>
+      <div className="delivery-process__container">
+        <header className="delivery-process__header">
+          <div>
+            <p className="delivery-process__eyebrow">Our Delivery Process</p>
 
-        <div
-          className="flex w-full flex-col md:grid md:grid-cols-2 md:gap-7 xl:grid xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] xl:items-center xl:gap-0"
-          role="list"
-        >
-          {deliveryProcessSteps.flatMap((step, index) => {
-            const items = [
-              <motion.article
-                key={step.id}
-                role="listitem"
-                initial={reveal.initial({ opacity: 0, y: 20 })}
-                whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
-                viewport={{ once: true, margin: '-60px' }}
-                transition={{ duration: 0.45, delay: index * 0.05 }}
-                className={cn(processCardClassName, 'h-full min-h-0')}
-              >
-                <ProcessStepCard {...step} />
-              </motion.article>,
-            ];
+            <h2
+              id="delivery-process-title"
+              className="delivery-process__title"
+            >
+              <span>Review</span>
+              <TitleArrow />
+              <span>Prioritise</span>
+              <TitleArrow />
+              <span>Improve</span>
+              <TitleArrow />
+              <span>Track</span>
+            </h2>
 
-            if (index < deliveryProcessSteps.length - 1) {
-              items.push(<ProcessConnector key={`connector-${step.id}`} />);
-            }
+            <p className="delivery-process__intro">{DELIVERY_PROCESS_INTRO}</p>
+          </div>
 
-            return items;
-          })}
-        </div>
+          <DeliveryDashboard />
+        </header>
+
+        <ol className="delivery-process__steps">
+          {deliveryProcessSteps.map((step) => (
+            <li key={step.id} className="delivery-step">
+              <span className="delivery-step__number">{step.number}</span>
+
+              <div className="delivery-step__icon" aria-hidden="true">
+                <StepIcon id={step.id} />
+              </div>
+
+              <div className="delivery-step__content">
+                <h3 className="delivery-step__title">{step.title}</h3>
+                <p className="delivery-step__description">{step.description}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <DeliveryRoute />
+
+        <ul className="delivery-benefits" role="list">
+          <li className="delivery-benefit">
+            <BenefitIcon>
+              <path d="M24 4 39 10v11c0 10-5.7 17-15 22C14.7 38 9 31 9 21V10l15-6Z" />
+              <line x1="24" y1="5" x2="24" y2="42" />
+              <line x1="10" y1="18" x2="38" y2="18" />
+              <polyline points="15,27 20,32 30,22" />
+            </BenefitIcon>
+            <span className="delivery-benefit__label">Practical priorities</span>
+          </li>
+
+          <li className="delivery-benefit">
+            <BenefitIcon>
+              <circle cx="24" cy="24" r="18" />
+              <line x1="24" y1="13" x2="24" y2="25" />
+              <line x1="24" y1="25" x2="32" y2="29" />
+            </BenefitIcon>
+            <span className="delivery-benefit__label">Clear progress</span>
+          </li>
+
+          <li className="delivery-benefit">
+            <BenefitIcon>
+              <circle cx="18" cy="17" r="6" />
+              <circle cx="33" cy="19" r="5" />
+              <path d="M6 40c0-9 4-14 12-14s12 5 12 14" />
+              <path d="M27 28c9 0 14 4 14 12" />
+              <line x1="2" y1="40" x2="46" y2="40" />
+            </BenefitIcon>
+            <span className="delivery-benefit__label">Aligned teams</span>
+          </li>
+
+          <li className="delivery-benefit">
+            <BenefitIcon>
+              <circle cx="21" cy="27" r="16" />
+              <circle cx="21" cy="27" r="10" />
+              <circle cx="21" cy="27" r="4" />
+              <line x1="24" y1="24" x2="43" y2="5" />
+              <polyline points="35,5 43,5 43,13" />
+            </BenefitIcon>
+            <span className="delivery-benefit__label">Better outcomes</span>
+          </li>
+        </ul>
       </div>
     </section>
   );
