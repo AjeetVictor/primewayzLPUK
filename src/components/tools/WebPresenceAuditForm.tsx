@@ -11,7 +11,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import type { WebPresenceAuditReport } from '../../lib/audit/types';
-import { trackEvent } from '../../lib/analytics';
+import { trackConversionEvent, trackEvent } from '../../lib/analytics';
 import { captureUtmParams, getUtmAnalyticsPayload } from '../../lib/utm';
 import { apiUrl } from '../../utils/apiUrl';
 import { normaliseWebsiteUrl } from '../../utils/normalizeWebsiteUrl';
@@ -370,13 +370,16 @@ export function WebPresenceAuditForm({
         onReportChange?.(data);
       }
 
-      trackEvent('web_presence_audit_result_view', {
+      const auditCompletionPayload = {
         ...safeAnalyticsContext,
         score: Number(data.score) || 0,
         score_label: data.label || 'unknown',
         pages_crawled: data.metadata?.pagesCrawled ?? 0,
         audit_success: true,
-      });
+      };
+
+      trackEvent('web_presence_audit_result_view', auditCompletionPayload);
+      trackConversionEvent('web_presence_audit_complete', auditCompletionPayload);
     } catch (error) {
       setErrors({
         form: error instanceof Error
