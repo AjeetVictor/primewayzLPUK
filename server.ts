@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs/promises';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type Prisma } from '@prisma/client';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
@@ -59,6 +59,7 @@ import {
   transitionReviewLeadStatus,
 } from './src/lib/leads/reviewLeadsAdminService.ts';
 import { normalizeLeadStatus } from './src/lib/leads/statuses.ts';
+import { buildContactEnquiryCommercialContext } from './src/lib/contactEnquiryContext.ts';
 import {
   analyseGscOpportunities,
   upsertGscOpportunityCandidates,
@@ -2443,16 +2444,26 @@ app.post('/api/contact', async (req, res) => {
       return res.status(400).json({ error: 'Name, email, and message are required' });
     }
 
-    const form = await prisma.formResponse.create({
+    if (typeof message !== 'string' || message.length < 10 || message.length > 2000) {
+      return res.status(400).json({ error: 'Message must be between 10 and 2000 characters' });
+    }
+
+    const commercialContext = buildContactEnquiryCommercialContext(req.body);
+
+    await prisma.formResponse.create({
       data: {
         name,
         email,
         message,
         phone: phone || null,
+        commercialContext:
+          Object.keys(commercialContext).length > 0
+            ? (commercialContext as Prisma.InputJsonObject)
+            : undefined,
       },
     });
 
-    res.status(201).json({ success: true, form });
+    res.status(201).json({ success: true });
   } catch (err) {
     console.error('Contact form error:', err);
     res.status(500).json({ error: 'Could not save contact request' });

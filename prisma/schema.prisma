@@ -65,7 +65,7 @@ model FormResponse {
   id                Int      @id @default(autoincrement())
   name              String
   email             String
-  message           String
+  message           String   @db.Text
   phone             String? // nullable
   commercialContext Json?
   leadStatus        String?  @default("new") @db.VarChar(32)

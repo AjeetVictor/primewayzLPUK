@@ -195,6 +195,8 @@ export function ContactForm({ variant = 'full' }: ContactFormProps) {
         message: messageLines.join('\n'),
         phone: parsedPhoneNumbers[0] || null,
         phoneNumbers: parsedPhoneNumbers,
+        supportArea: formData.supportArea,
+        sourcePagePath: window.location.pathname,
         firstUtmSource: firstUtm.utm_source,
         firstUtmMedium: firstUtm.utm_medium,
         firstUtmCampaign: firstUtm.utm_campaign,
@@ -221,6 +223,7 @@ export function ContactForm({ variant = 'full' }: ContactFormProps) {
         const conversionPayload = {
           form_name: 'primewayz_uk_contact_form',
           lead_type: 'contact_enquiry',
+          service_interest: formData.supportArea,
           cta_location: 'contact_form',
           submission_success: true,
         };
@@ -228,6 +231,7 @@ export function ContactForm({ variant = 'full' }: ContactFormProps) {
         assertNoProhibitedAnalyticsProps(conversionPayload);
         trackConversionEvent('contact_enquiry_complete', conversionPayload);
         trackEvent('contact_form_submit', conversionPayload);
+        trackConversionEvent('generate_lead', conversionPayload);
 
         setIsSubmitted(true);
         setFormData(emptyForm);
