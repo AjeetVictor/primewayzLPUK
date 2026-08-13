@@ -26,9 +26,9 @@ const services = [
       'Route enquiries to the right person or team, trigger email alerts, and reduce the risk of missed follow-ups or delayed responses.',
   },
   {
-    title: 'CRM workflow cleanup',
+    title: 'CRM data migration and workflow cleanup',
     description:
-      'Improve fields, stages, tags, statuses, lead ownership, duplicate handling, and follow-up workflows so the CRM becomes easier to use.',
+      'Plan CRM data migration and imports, improve field mapping, stages, tags, ownership, permissions, duplicate handling, and follow-up workflows so the CRM becomes easier to use.',
   },
   {
     title: 'Automation and task creation',
@@ -94,9 +94,9 @@ const processSteps = [
       'We map fields, workflows, routing rules, automations, notifications, and reporting needs before implementation begins.',
   },
   {
-    title: 'Integrate',
+    title: 'Implement',
     description:
-      'We connect approved systems, configure workflows, test data flow, validate notifications, and check CRM behaviour end to end.',
+      'We connect approved systems, configure workflows, test data flow, validate notifications, check CRM behaviour end to end, and support user onboarding, practical training, governance, and handover.',
   },
   {
     title: 'Improve',
@@ -173,18 +173,18 @@ export function CrmIntegrationSupportUkPage() {
           <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
             <div>
               <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">
-                CRM Integration & Workflow Automation
+                CRM Setup & Workflow Automation
               </p>
 
               <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-                CRM Integration & Workflow Automation for UK SMEs
+                CRM Setup & Automation for UK SMEs
               </h1>
 
               <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
-                Connect website enquiries, CRM records, follow-up workflows and reporting so leads
-                move through the business consistently and teams have reliable information.
-                Primewayz helps UK SMEs reduce missed follow-ups, duplicate records and repetitive
-                administration across enquiry journeys.
+                Connect website enquiries, CRM records, lead routing, follow-up workflows and
+                reporting so leads move through the business consistently and teams have reliable
+                information. Primewayz helps UK SMEs set up, clean up and automate practical CRM
+                processes while reducing missed follow-ups, duplicate records and repetitive administration.
               </p>
 
               <div className="mt-8 flex flex-col gap-4">
@@ -247,13 +247,13 @@ export function CrmIntegrationSupportUkPage() {
             </p>
 
             <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-              CRM integration services built around real enquiry and follow-up problems
+              CRM setup and automation services built around real enquiry and follow-up problems
             </h2>
 
             <p className="mt-4 text-lg leading-8 text-slate-600">
-              We help UK SMEs connect the practical parts of lead management: website forms,
-              CRM fields, enquiry routing, notifications, reporting, workflow automation,
-              third-party tools, and ongoing operational improvements.
+              We help UK SMEs set up and improve the practical parts of lead management: website
+              forms, CRM fields, enquiry routing, notifications, reporting, workflow automation,
+              third-party integrations, and ongoing operational improvements.
             </p>
           </div>
 
@@ -366,7 +366,7 @@ export function CrmIntegrationSupportUkPage() {
               </p>
 
               <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
-                A practical CRM integration process
+                A practical CRM implementation and automation process
               </h2>
 
               <p className="mt-4 text-base leading-7 text-slate-600">

@@ -1669,9 +1669,9 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
         'Maintain the reliability, security and performance of existing websites and applications through monitoring, fixes, updates and controlled ongoing improvements.',
     },
     '/crm-automation-support': {
-      title: 'CRM Integration & Workflow Automation for UK SMEs | Primewayz',
+      title: 'CRM Setup & Automation for UK SMEs | Primewayz',
       description:
-        'Connect website enquiries, CRM records, follow-up workflows and reporting so leads move through the business consistently.',
+        'CRM setup, automation and integration services for UK SMEs covering website enquiries, lead routing, data migration, follow-up workflows and reporting.',
     },
     '/remote-it-resources': {
       title: 'Remote IT Team Extension for UK Businesses | Primewayz',
