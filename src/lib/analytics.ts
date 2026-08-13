@@ -80,7 +80,7 @@ export function trackConversionEvent(
     ...payload,
   });
 
-  trackEvent(eventName, params);
+  trackEvent(eventName, payload);
 }
 
 export function trackBookCallClick(

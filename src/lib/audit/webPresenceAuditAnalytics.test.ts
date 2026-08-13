@@ -85,3 +85,104 @@ test('audit completion payload contains non-PII result metadata only', () => {
     /\bwebsiteUrl\s*:|\bbusinessName\s*:|\bemail\s*:|\bphone\s*:|\bauditedUrl\s*:|\bpublicToken\s*:/,
   );
 });
+
+test('persisted audit email-report lead emits generate_lead exactly once', () => {
+  const panel = read(
+    'src/components/tools/WebPresenceAuditEmailReportPanel.tsx',
+  );
+
+  assert.match(panel, /payload\.success !== true/);
+  assert.match(panel, /typeof payload\.leadId !== 'string'/);
+  assert.match(
+    panel,
+    /payload\.leadStorage !== 'database' && payload\.leadStorage !== 'file'/,
+  );
+
+  assert.equal(
+    (
+      panel.match(
+        /trackConversionEvent\('generate_lead', leadConversionPayload\);/g,
+      ) ?? []
+    ).length,
+    1,
+  );
+
+  const persistenceGuardIndex = panel.indexOf(
+    'payload.success !== true',
+  );
+  const conversionIndex = panel.indexOf(
+    "trackConversionEvent('generate_lead', leadConversionPayload);",
+  );
+  const skippedIndex = panel.indexOf(
+    "if (payload.emailDeliveryStatus === 'skipped')",
+  );
+  const failedIndex = panel.indexOf(
+    "if (payload.emailDeliveryStatus === 'failed')",
+  );
+
+  assert.ok(persistenceGuardIndex >= 0);
+  assert.ok(conversionIndex > persistenceGuardIndex);
+  assert.ok(skippedIndex > conversionIndex);
+  assert.ok(failedIndex > conversionIndex);
+});
+
+test('audit lead conversion payload contains no submitted PII', () => {
+  const panel = read(
+    'src/components/tools/WebPresenceAuditEmailReportPanel.tsx',
+  );
+
+  const payloadMatch = panel.match(
+    /const leadConversionPayload = \{[\s\S]*?\n      \};/,
+  );
+
+  assert.ok(payloadMatch, 'Audit lead conversion payload was not found');
+
+  const payloadBlock = payloadMatch[0];
+
+  for (const key of [
+    'name',
+    'email',
+    'phone',
+    'message',
+    'websiteUrl',
+    'businessName',
+    'leadId',
+    'publicToken',
+    'shareUrl',
+  ]) {
+    assert.doesNotMatch(
+      payloadBlock,
+      new RegExp(`\\b${key}\\s*:`, 'i'),
+    );
+  }
+
+  assert.match(
+    panel,
+    /assertNoProhibitedAnalyticsProps\(leadConversionPayload\);/,
+  );
+  assert.match(
+    panel,
+    /trackEvent\('web_presence_audit_lead_saved', leadConversionPayload\);/,
+  );
+});
+
+test('email-report-sent diagnostic is emitted only after delivery-status handling', () => {
+  const panel = read(
+    'src/components/tools/WebPresenceAuditEmailReportPanel.tsx',
+  );
+
+  const failedIndex = panel.indexOf(
+    "if (payload.emailDeliveryStatus === 'failed')",
+  );
+  const sentDiagnosticIndex = panel.indexOf(
+    "trackEvent('web_presence_audit_email_report_sent'",
+  );
+
+  assert.ok(failedIndex >= 0);
+  assert.ok(sentDiagnosticIndex > failedIndex);
+
+  assert.match(
+    panel,
+    /payload\.emailDeliveryStatus === 'sent'[\s\S]*?payload\.emailDeliveryStatus === 'partial'/,
+  );
+});

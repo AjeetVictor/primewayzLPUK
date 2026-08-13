@@ -14,7 +14,8 @@ import {
 import type { WebPresenceAuditReport } from '../../lib/audit/types';
 import type { ShareLinkState } from '../../lib/audit/share/types';
 import { getScoreBand } from '../../lib/audit/scoreBands';
-import { trackEvent } from '../../lib/analytics';
+import { trackConversionEvent, trackEvent } from '../../lib/analytics';
+import { assertNoProhibitedAnalyticsProps } from '../../lib/digitalSystemsReview/analytics';
 import { getUtmAnalyticsPayload } from '../../lib/utm';
 import { apiUrl } from '../../utils/apiUrl';
 
@@ -201,7 +202,10 @@ export function WebPresenceAuditEmailReportPanel({
       });
 
       const payload = await response.json().catch(() => ({})) as {
+        success?: boolean;
         error?: string;
+        leadId?: string;
+        leadStorage?: 'database' | 'file';
         emailDeliveryStatus?: 'sent' | 'partial' | 'skipped' | 'failed';
         emailDeliveryMessage?: string;
       };
@@ -210,11 +214,30 @@ export function WebPresenceAuditEmailReportPanel({
         throw new Error(payload.error || 'Could not email this report.');
       }
 
-      trackEvent('web_presence_audit_email_report_sent', {
+      if (
+        payload.success !== true
+        || typeof payload.leadId !== 'string'
+        || payload.leadId.trim().length === 0
+        || (payload.leadStorage !== 'database' && payload.leadStorage !== 'file')
+      ) {
+        throw new Error('The audit request could not be confirmed as saved.');
+      }
+
+      const leadConversionPayload = {
+        form_name: 'web_presence_audit_email_report',
+        lead_type: 'web_presence_audit',
+        service_interest: 'website_visibility_support',
+        cta_location: ctaLocation,
+        lead_storage: payload.leadStorage,
+        email_delivery_status: payload.emailDeliveryStatus || 'unknown',
         score_band: `${scoreBand.min}-${scoreBand.max}`,
         score_label: scoreBand.label,
-        cta_location: ctaLocation,
-      });
+        submission_success: true,
+      };
+
+      assertNoProhibitedAnalyticsProps(leadConversionPayload);
+      trackEvent('web_presence_audit_lead_saved', leadConversionPayload);
+      trackConversionEvent('generate_lead', leadConversionPayload);
 
       if (payload.emailDeliveryStatus === 'skipped') {
         setPhase('skipped');
@@ -227,6 +250,16 @@ export function WebPresenceAuditEmailReportPanel({
           form: payload.emailDeliveryMessage || 'Lead saved, but the report email could not be sent. Please try again.',
         });
         return;
+      }
+
+      if (
+        payload.emailDeliveryStatus === 'sent'
+        || payload.emailDeliveryStatus === 'partial'
+      ) {
+        trackEvent('web_presence_audit_email_report_sent', {
+          ...leadConversionPayload,
+          email_delivery_success: true,
+        });
       }
 
       setPhase('success');
