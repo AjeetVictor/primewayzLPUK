@@ -89,7 +89,7 @@ export const ContactUsPage = () => {
   return (
     <main className="min-h-screen bg-white">
       {/* 1. Visual contact hero */}
-      <section className="relative isolate overflow-hidden bg-brand-navy text-white">
+      <section className="relative isolate overflow-hidden bg-brand-navy pt-14 text-white sm:pt-16">
         <img
           src="/images/hero/software-delivery-hero.webp"
           alt=""
@@ -232,6 +232,8 @@ export const ContactUsPage = () => {
                 ))}
               </ul>
 
+              <ContactBookingStrip />
+
               <div className="mt-auto pt-8">
                 <div className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm">
                   <p className="text-sm font-medium leading-6 text-white">
@@ -248,10 +250,7 @@ export const ContactUsPage = () => {
         </div>
       </section>
 
-      {/* 6. Booking strip */}
-      <ContactBookingStrip />
-
-      {/* 7. Website visibility CTA */}
+      {/* 6. Website visibility CTA */}
       <section className="px-4 py-10 sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-[1200px] flex-col gap-4 rounded-xl border border-slate-200 bg-brand-surface/50 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:px-6 sm:py-6">
           <div className="max-w-2xl min-w-0">

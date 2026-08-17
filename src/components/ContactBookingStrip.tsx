@@ -57,16 +57,16 @@ export function ContactBookingStrip() {
   };
 
   return (
-    <section id={BOOK_CALL_HASH} className="scroll-mt-28 bg-brand-navy text-white">
-      <div className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+    <section id={BOOK_CALL_HASH} className={isCalendlyOpen ? 'mt-8 -mx-6 scroll-mt-28 rounded-xl border border-white/15 bg-white/10 text-white backdrop-blur-sm sm:mx-0' : 'mt-8 scroll-mt-28 rounded-xl border border-white/15 bg-white/10 text-white backdrop-blur-sm'}>
+      <div className="p-4 sm:p-5">
         {!isCalendlyOpen ? (
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between lg:gap-10">
+          <div className="flex flex-col gap-4">
             <div className="max-w-2xl">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-cyan">Book a call</p>
-              <h2 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
+              <h2 className="mt-2 text-xl font-bold tracking-tight sm:text-2xl">
                 Book a 30-minute UK discovery call
               </h2>
-              <p className="mt-3 text-sm leading-7 text-white/75 sm:text-base">
+              <p className="mt-2 text-sm leading-6 text-white/75">
                 Prefer to talk through your requirement? Choose a convenient time for a focused,
                 no-obligation conversation.
               </p>
@@ -75,16 +75,16 @@ export function ContactBookingStrip() {
             <button
               type="button"
               onClick={openCalendly}
-              className="inline-flex min-h-[48px] w-full shrink-0 items-center justify-center rounded-lg bg-white px-6 py-3 text-sm font-bold text-brand-navy transition hover:bg-brand-surface sm:w-auto"
+              className="inline-flex min-h-[48px] w-full items-center justify-center rounded-lg bg-white px-5 py-3 text-sm font-bold text-brand-navy transition hover:bg-brand-surface"
             >
               Open booking calendar
             </button>
           </div>
         ) : (
           <div>
-            <div className="mb-6 max-w-2xl">
+            <div className="mb-4 max-w-2xl">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-cyan">Book a call</p>
-              <h2 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
+              <h2 className="mt-2 text-xl font-bold tracking-tight sm:text-2xl">
                 Book a 30-minute UK discovery call
               </h2>
             </div>
@@ -99,7 +99,7 @@ export function ContactBookingStrip() {
               <div
                 id="primewayz-calendly-inline"
                 className="overflow-hidden rounded-xl border border-white/10 bg-white"
-                style={{ minWidth: '280px', height: '700px' }}
+                style={{ width: '100%', minWidth: 0, height: '700px' }}
               />
             </div>
           </div>
