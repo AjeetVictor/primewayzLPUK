@@ -193,15 +193,6 @@ export function trackChatMessageSent(params?: {
     lead_type: 'chat_message',
   });
 
-  trackEvent('chat_message_sent', {
-    chat_status: normalizeChatAnalyticsStatus(params?.chatStatus),
-    message_length_bucket: getMessageLengthBucket(params?.messageLength),
-    has_attachment: attachmentCount > 0,
-    attachment_count: attachmentCount,
-    bot_reply_sent: Boolean(params?.botReplySent),
-    cta_location: params?.ctaLocation || 'live_chat',
-    lead_type: 'chat_message',
-  });
 }
 
 export function trackChatAppointmentRequested(params?: {

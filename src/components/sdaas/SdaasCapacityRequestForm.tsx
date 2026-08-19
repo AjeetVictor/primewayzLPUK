@@ -5,6 +5,7 @@ import { apiUrl } from '../../utils/apiUrl';
 import { COMPANY_TRUST_LINKS } from '../../constants/companyTrustLinks';
 import { CANONICAL_ROUTES } from '../../constants/canonicalRoutes';
 import { trackSdaasEvent } from '../../lib/sdaasAnalytics';
+import { trackConversionEvent } from '../../lib/analytics';
 import {
   budgetRangeOptions,
   helpNeedOptions,
@@ -147,6 +148,15 @@ export function SdaasCapacityRequestForm() {
       trackSdaasEvent('sdaas_form_submit', {
         cta_location: 'capacity_form',
         source_page: SDAAS_CAPACITY_REQUEST_PATH,
+        help_need: form.helpNeed,
+      });
+
+      trackConversionEvent('generate_lead', {
+        form_name: 'sdaas_capacity_request',
+        lead_type: 'software_capacity_request',
+        cta_location: 'capacity_form',
+        source_page: SDAAS_CAPACITY_REQUEST_PATH,
+        service_interest: 'Software & Product Engineering',
         help_need: form.helpNeed,
       });
 
