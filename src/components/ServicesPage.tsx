@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   CodeXml,
   LifeBuoy,
+  MonitorCheck,
   Network,
   PhoneCall,
   SearchCheck,
@@ -48,6 +49,20 @@ const serviceCards = [
     ],
     proofLabel: 'Wholesale platform continuity story',
     proofHref: getSuccessStoryPath('wholesale-order-management-platform'),
+  },
+  {
+    title: 'Custom AI Agents & Workflow Automation',
+    href: CANONICAL_ROUTES.customAiAgentDevelopment,
+    icon: MonitorCheck,
+    anchor: 'Custom AI agent development services for UK businesses',
+    description:
+      'Design and integrate practical AI agents that use approved business knowledge, APIs and tools to coordinate multi-step work with human approvals and operational guardrails.',
+    bestFor: [
+      'Custom AI agents for business workflows',
+      'RAG, knowledge and system integrations',
+      'AI workflow automation with human oversight',
+    ],
+    isNew: true,
   },
   {
     title: 'Software & Product Engineering',
@@ -328,18 +343,20 @@ export const ServicesPage = () => (
                   </div>
                 </Link>
 
-                <div className="mt-5 border-t border-slate-200 pt-4">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
-                    Related delivery story
-                  </p>
-                  <Link
-                    to={service.proofHref}
-                    className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-slate-800 transition hover:text-emerald-700"
-                  >
-                    {service.proofLabel}
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
+                {service.proofHref && service.proofLabel ? (
+                  <div className="mt-5 border-t border-slate-200 pt-4">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                      Related delivery story
+                    </p>
+                    <Link
+                      to={service.proofHref}
+                      className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-slate-800 transition hover:text-emerald-700"
+                    >
+                      {service.proofLabel}
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                ) : null}
               </article>
             );
           })}
