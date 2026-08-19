@@ -87,10 +87,10 @@ export const UkSmeDigitalVisibilityCheckerPage = () => {
             FREE UK WEBSITE VISIBILITY AUDIT
           </p>
           <h1 className="mt-4 max-w-2xl text-4xl font-black leading-tight tracking-tight sm:text-5xl">
-            Check if your website is easy to find, trust and enquire from.
+            Free Website Visibility Audit & Checker for UK SMEs
           </h1>
           <p className="mt-5 max-w-xl text-base leading-8 text-slate-600">
-            Enter your website URL and get a practical visibility, trust and enquiry-flow report in under a minute.
+            Enter your website URL for a practical public-signal visibility audit with a score, priority fixes, trust checks and enquiry-flow signals in under a minute.
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
             {badges.map((badge) => (

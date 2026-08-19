@@ -7,14 +7,14 @@ export const SDAAS_FAQ_ANCHOR = 'faq';
 export const SDAAS_SEO = {
   title: 'Software Development Subscription UK | Primewayz',
   description:
-    'Add structured software engineering capacity to improve applications, deliver product features, complete integrations and reduce technical backlog for UK businesses.',
+    'Software development subscription UK: predictable monthly software engineering capacity for product features, integrations, technical debt and ongoing improvements.',
   ogTitle: 'Software Development as a Subscription for UK Businesses',
   ogDescription:
     'Structured software engineering capacity for application features, integrations, product roadmap delivery and technical debt reduction—without unlimited-development promises.',
 } as const;
 
 export const SDAAS_DEFINITION =
-  'Ongoing software and product development gives your business an agreed level of monthly delivery capacity for software engineering. Requirements are clarified, estimated and prioritised through a shared backlog, then delivered through a structured development and quality-assurance process. A software development subscription is simply the flexible delivery model used to organise that capacity.';
+  'Software Development as a Service (SDaaS) is an ongoing delivery model that gives your business an agreed level of monthly delivery capacity for software engineering. Requirements are clarified, estimated and prioritised through a shared backlog, then delivered through a structured development and quality-assurance process. At Primewayz UK, the software development subscription is the commercial model used to organise that recurring capacity.';
 
 export const SDAAS_CLARIFICATION =
   'It is not an unlimited task service, and it is not a catch-all for routine CMS edits or broad marketing support. It is planned, prioritised and visible software delivery under a predictable monthly engagement.';

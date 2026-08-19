@@ -284,10 +284,12 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
         narrow
       >
         <p className="max-w-4xl text-lg leading-8 text-slate-700">
-          <EntityTermLink term="softwareDevelopmentSubscription" /> gives your business an agreed
-          level of <EntityTermLink term="monthlyDeliveryCapacity" />. Requirements are clarified,
-          estimated and prioritised through a <EntityTermLink term="sharedBacklog" />, then delivered
-          through a structured development and <EntityTermLink term="qa" /> process.
+          Software Development as a Service (SDaaS) is an ongoing delivery model. At Primewayz UK,
+          it is provided as a <EntityTermLink term="softwareDevelopmentSubscription" /> that gives
+          your business an agreed level of <EntityTermLink term="monthlyDeliveryCapacity" /> for
+          software engineering. Requirements are clarified, estimated and prioritised through a
+          <EntityTermLink term="sharedBacklog" />, then delivered through a structured development
+          and <EntityTermLink term="qa" /> process.
         </p>
         <aside className="mt-6 max-w-4xl rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-base font-semibold leading-7 text-slate-900">
           {SDAAS_CLARIFICATION}
@@ -717,7 +719,7 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
       <section className="px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1200px]">
           <h2 className="text-2xl font-bold tracking-tight text-slate-950">Related UK support paths</h2>
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Link
               to={CANONICAL_ROUTES.services}
               className="rounded-2xl border border-slate-200 p-5 transition hover:border-emerald-300"
@@ -747,6 +749,15 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
               <h3 className="font-bold text-slate-950">CRM &amp; automation support</h3>
               <p className="mt-2 text-sm text-slate-600">
                 Lead capture, workflows and integrations that often continue after first delivery.
+              </p>
+            </Link>
+            <Link
+              to={CANONICAL_ROUTES.customAiAgentDevelopment}
+              className="rounded-2xl border border-slate-200 p-5 transition hover:border-emerald-300"
+            >
+              <h3 className="font-bold text-slate-950">Custom AI agent development</h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Agentic workflows, RAG, tool use and human-controlled automation when fixed rules are not enough.
               </p>
             </Link>
           </div>

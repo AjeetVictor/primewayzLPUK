@@ -8,8 +8,8 @@ import { getSuccessStoryPath } from '../data/successStories';
 import type { FreeReviewCtaPlacement, FreeReviewServiceArea } from '../constants/conversionCta';
 
 const visibilitySupportItems = [
-  'Technical search visibility, crawlability and indexability checks',
-  'Search Console findings, metadata cleanup and page clarity improvements',
+  'Technical SEO, crawlability and indexability improvements',
+  'Search Console fixes, metadata cleanup and page clarity improvements',
   'Trust signals, landing pages and clearer enquiry journeys',
   'Form tracking, conversion tracking and conversion-barrier fixes',
   'Website performance where it affects discovery or enquiry completion',
@@ -114,19 +114,19 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => {
     normalisedPathname === '/website-maintenance-subscription-uk';
 
   const eyebrow = isVisibilityPage
-    ? 'Website Visibility & Conversion Support'
-    : 'Managed Application & Website Support';
+    ? 'Website Optimisation & SEO Support'
+    : 'Website Maintenance & Technical Support';
   const h1 = isVisibilityPage
-    ? 'Make your website easier to find, trust and enquire from'
-    : 'Managed application and website support for UK SMEs';
+    ? 'Website Optimisation Services for UK Businesses'
+    : 'Website Maintenance Services for UK Businesses';
   const intro = isVisibilityPage
-    ? 'Primewayz helps UK SMEs identify and resolve the technical, content and conversion barriers that prevent websites from generating qualified enquiries.'
-    : 'Maintain the reliability, security and performance of existing websites and applications through monitoring, fixes, updates and controlled ongoing improvements.';
+    ? 'Improve search visibility, technical SEO foundations, website performance, page clarity and enquiry journeys through structured ongoing optimisation and support.'
+    : 'Predictable monthly website maintenance and technical support for updates, fixes, security, performance, monitoring and ongoing improvements. Application support can be included where your wider digital systems also need continuity.';
   const supportItems = isVisibilityPage ? visibilitySupportItems : maintenanceSupportItems;
   const painPoints = isVisibilityPage ? visibilityPainPoints : maintenancePainPoints;
   const supportHeading = isVisibilityPage
-    ? 'Website visibility and conversion support that improves discovery and enquiry readiness'
-    : 'Managed support that protects reliability and enables controlled improvement';
+    ? 'Website optimisation and technical SEO services that improve search visibility and enquiry readiness'
+    : 'Website maintenance services that protect reliability and support ongoing improvement';
   const supportLead = isVisibilityPage
     ? 'Visibility and conversion work focuses on discovery, clarity, trust and enquiry completion. Related website maintenance can sit alongside this service when ongoing ownership is also required.'
     : 'Maintenance keeps systems stable, secure and operational. Improvement delivers controlled enhancements and prioritised fixes. Substantial new features or integrations are handled as development work, not as unlimited monthly requests.';
@@ -160,6 +160,9 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => {
   const pricingCtaLocation = isVisibilityPage
     ? 'website_visibility_hero'
     : 'website_maintenance_hero';
+  const pricingCtaText = isVisibilityPage
+    ? 'View engagement options'
+    : 'View maintenance pricing';
 
   return (
     <main className="min-h-screen bg-white text-slate-950">
@@ -197,12 +200,12 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => {
                 />
                 <TrackedLink
                   href="/pricing"
-                  ctaText="View engagement options"
+                  ctaText={pricingCtaText}
                   ctaLocation={pricingCtaLocation}
                   eventType="pricing_plan_click"
                   className="inline-flex min-h-[44px] w-fit items-center text-sm font-medium text-white/75 underline-offset-2 transition hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50"
                 >
-                  View engagement options
+                  {pricingCtaText}
                 </TrackedLink>
               </div>
 

@@ -764,7 +764,7 @@ function buildWebPresenceAuditStructuredData(canonical: string, description: str
       {
         '@type': 'WebApplication',
         '@id': applicationId,
-        name: 'Free UK SME Web Presence Audit / Benchmark',
+        name: 'Free Website Visibility Audit & Checker for UK SMEs',
         url: canonical,
         description,
         applicationCategory: 'BusinessApplication',
@@ -794,7 +794,7 @@ function buildWebPresenceAuditStructuredData(canonical: string, description: str
       {
         '@type': 'Service',
         '@id': serviceId,
-        name: 'Free UK SME Web Presence Audit / Benchmark',
+        name: 'Free Website Visibility Audit & Checker for UK SMEs',
         url: canonical,
         description,
         provider: { '@id': providerId },
@@ -1636,9 +1636,9 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
         'Explore how Primewayz has helped organisations improve software delivery, connect business systems, support critical applications and strengthen digital operations.',
     },
     '/uk-sme-digital-visibility-checker': {
-      title: 'Free UK SME Website Visibility Checker | Primewayz UK',
+      title: 'Free Website Visibility Audit & Checker for UK SMEs | Primewayz',
       description:
-        'Check if your UK SME website is clear, discoverable, trustworthy, and enquiry-ready with a free website visibility score from Primewayz UK.',
+        'Run a free public-signal website visibility audit for your UK SME. Get a visibility score, priority fixes, SEO, trust and enquiry-readiness checks.',
     },
     '/about-us': {
       title: 'About Primewayz UK | Digital Systems & Delivery Partner',
@@ -1661,14 +1661,14 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
         'Your digital systems review request has been received. Primewayz will review the submitted information and identify the most useful next step.',
     },
     '/website-visibility-support': {
-      title: 'Website Visibility & Conversion Support for UK SMEs | Primewayz',
+      title: 'Website Optimisation & SEO Services UK | Primewayz',
       description:
-        'Primewayz helps UK SMEs identify and resolve the technical, content and conversion barriers that prevent websites from generating qualified enquiries.',
+        'Website optimisation and SEO services for UK businesses covering technical SEO, crawlability, indexability, Search Console fixes, performance and enquiry journeys.',
     },
     '/maintenance': {
-      title: 'Managed Application & Website Support UK | Primewayz',
+      title: 'Website Maintenance Services UK | Primewayz',
       description:
-        'Maintain the reliability, security and performance of existing websites and applications through monitoring, fixes, updates and controlled ongoing improvements.',
+        'Website maintenance services for UK businesses with predictable monthly support for updates, fixes, security, performance, monitoring and ongoing technical care.',
     },
     '/crm-automation-support': {
       title: 'CRM Setup & Automation for UK SMEs | Primewayz',
@@ -1681,9 +1681,9 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
         'Custom AI agent development for UK businesses, including AI workflow automation, RAG, system integrations, human approvals and controlled agent workflows.',
     },
     '/remote-it-resources': {
-      title: 'Remote IT Team Extension for UK Businesses | Primewayz',
+      title: 'IT Staff Augmentation Services UK | Primewayz',
       description:
-        'Add dependable developers, QA professionals, analysts and technical specialists when your internal team needs additional delivery capacity.',
+        'IT staff augmentation services for UK businesses needing flexible developers, QA professionals, analysts and technical specialists to extend existing delivery teams.',
     },
     '/pricing': {
       title: 'Primewayz UK Pricing & Engagement Options',

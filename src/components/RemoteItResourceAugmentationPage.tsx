@@ -105,19 +105,18 @@ export const RemoteItResourceAugmentationPage = () => (
         <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
           <div>
             <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">
-              Remote IT Team Extension
+              IT Staff Augmentation & Team Extension
             </p>
 
             <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              Remote IT Team Extension for UK businesses
+              IT Staff Augmentation Services for UK Businesses
             </h1>
 
             <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
-              Add dependable delivery capacity for UK agencies, SaaS businesses, product teams and
-              companies with an internal technical owner. Access developers, QA professionals,
-              analysts, project coordinators and technical specialists with clear ownership and UK
-              working-hour overlap—without the delay and commitment of immediately expanding permanent
-              headcount.
+              Extend your existing technology team with dependable developers, QA professionals,
+              analysts, project coordinators and technical specialists. Primewayz provides flexible
+              staff augmentation with UK working-hour overlap and structured delivery—without
+              immediately expanding permanent headcount.
             </p>
 
             <div className="mt-8 flex flex-col gap-4">
@@ -173,7 +172,7 @@ export const RemoteItResourceAugmentationPage = () => (
             What you can add
           </p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-            Remote IT capacity across development, QA, support, and coordination
+            IT staff augmentation across development, QA, support and coordination
           </h2>
           <p className="mt-4 text-lg leading-8 text-slate-600">
             Useful for SMEs, agencies, startups, and growing teams that need extra
