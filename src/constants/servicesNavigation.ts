@@ -3,6 +3,7 @@ import {
   Code2,
   Gauge,
   Globe,
+  MonitorCheck,
   Network,
   Plug,
   ScanSearch,
@@ -73,6 +74,14 @@ export const serviceNavGroups: ServiceNavGroup[] = [
         href: CANONICAL_ROUTES.crmAutomationSupport,
         icon: Workflow,
         iconTone: 'blue',
+      },
+      {
+        name: 'Custom AI Agent Development',
+        description: 'Custom agents, RAG, AI workflows, tool use and human-controlled automation',
+        href: CANONICAL_ROUTES.customAiAgentDevelopment,
+        icon: MonitorCheck,
+        iconTone: 'blue',
+        isNew: true,
       },
       {
         name: 'Custom API Integrations',

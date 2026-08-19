@@ -2,6 +2,7 @@
 export const CANONICAL_ROUTES = {
   websiteVisibilitySupport: '/website-visibility-support',
   crmAutomationSupport: '/crm-automation-support',
+  customAiAgentDevelopment: '/custom-ai-agent-development-uk',
   /** Canonical commercial SDaaS page (Intent A: buying development via subscription). */
   softwareDevelopmentSubscription: '/software-development-subscription-uk',
   /** @deprecated Prefer softwareDevelopmentSubscription — kept for typed redirects. */

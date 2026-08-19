@@ -71,6 +71,24 @@ const serviceRoutes: ServiceRoute[] = [
     ],
   },
   {
+    title: 'Custom AI Agents & Automation',
+    summary: 'Agentic workflows, RAG and system integration',
+    href: '/custom-ai-agent-development-uk',
+    icon: MonitorCheck,
+    tone: 'blue',
+    badge: 'New',
+    description:
+      'Design and integrate custom AI agents that work with approved business knowledge, APIs, tools and workflows while keeping sensitive actions under human control.',
+    checklist: [
+      'Custom AI agent development',
+      'AI workflow automation',
+      'Knowledge and RAG agents',
+      'CRM, ERP and API integration',
+      'Human approvals and guardrails',
+      'Monitoring and improvement',
+    ],
+  },
+  {
     title: 'Software & Product Engineering',
     summary: 'Ongoing application and product delivery',
     href: '/software-development-subscription-uk',

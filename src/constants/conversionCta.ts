@@ -41,6 +41,7 @@ export const GENERAL_CONTACT_DESTINATION = CANONICAL_ROUTES.contact;
 export const FREE_REVIEW_SERVICE_AREAS = [
   'Website Visibility & Conversion',
   'CRM & Workflow Automation',
+  'AI Agents & Workflow Automation',
   'Software & Product Engineering',
   'Managed Application & Website Support',
   'Remote IT Team Extension',
@@ -104,6 +105,10 @@ export const FREE_REVIEW_CTA_PLACEMENTS = [
   'crm_hero_secondary',
   'crm_final_primary',
   'crm_final_secondary',
+  'ai_agent_hero_primary',
+  'ai_agent_hero_secondary',
+  'ai_agent_final_primary',
+  'ai_agent_final_secondary',
   'software_review_primary',
   'software_review_secondary',
   'remote_it_hero_primary',

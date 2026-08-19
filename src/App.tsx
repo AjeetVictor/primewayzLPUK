@@ -36,6 +36,7 @@ import {
 } from './components/insights/SdaasSupportingArticlePages';
 import { WebsiteMaintenanceSubscriptionUkPage } from './components/WebsiteMaintenanceSubscriptionUkPage';
 import { CrmIntegrationSupportUkPage } from './components/CrmIntegrationSupportUkPage';
+import { CustomAiAgentDevelopmentUkPage } from './components/CustomAiAgentDevelopmentUkPage';
 import { ProfessionalServicesCrmSupportUkPage } from './components/ProfessionalServicesCrmSupportUkPage';
 import { ServicesPage } from './components/ServicesPage';
 import { SuccessStoriesPage } from './components/SuccessStoriesPage';
@@ -122,6 +123,7 @@ export const App = ({ initialData }: AppProps) => {
         <Route path="/website-visibility-support" element={<WebsiteMaintenanceSubscriptionUkPage />} />
         <Route path="/maintenance" element={<WebsiteMaintenanceSubscriptionUkPage />} />
         <Route path="/crm-automation-support" element={<CrmIntegrationSupportUkPage />} />
+        <Route path="/custom-ai-agent-development-uk" element={<CustomAiAgentDevelopmentUkPage />} />
         <Route path="/software-development-subscription-uk" element={<SoftwareDevelopmentSubscriptionUkPage />} />
         <Route
           path="/software-development-subscription-uk/request-capacity"

@@ -1673,6 +1673,11 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
       description:
         'CRM setup, automation and integration services for UK SMEs covering website enquiries, lead routing, data migration, follow-up workflows and reporting.',
     },
+    '/custom-ai-agent-development-uk': {
+      title: 'Custom AI Agent Development Services UK | Primewayz',
+      description:
+        'Custom AI agent development for UK businesses, including AI workflow automation, RAG, system integrations, human approvals and controlled agent workflows.',
+    },
     '/remote-it-resources': {
       title: 'Remote IT Team Extension for UK Businesses | Primewayz',
       description:
