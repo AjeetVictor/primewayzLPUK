@@ -123,7 +123,7 @@ test('homepage review lenses and website visibility design remain distinct', () 
   assert.doesNotMatch(preview, /Review areas/);
 
   assert.match(websiteProblem, /What may be holding your website back/);
-  assert.match(websiteProblem, /src="\/images\/visibility-creative\.jpg"/);
+  assert.match(websiteProblem, /src="\/images\/visibility-creative\.webp"/);
   assert.match(websiteProblem, /width=\{1080\}/);
   assert.match(websiteProblem, /height=\{1920\}/);
   assert.match(websiteProblem, /loading="lazy"/);

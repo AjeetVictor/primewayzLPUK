@@ -129,7 +129,7 @@ export const HomepageContactSection = () => {
               style={{ borderRadius: '8px', border: '0.5px solid #c7d1dd' }}
             >
               <img
-                src="/images/free-review-image.png"
+                src="/images/free-review-image.webp"
                 alt="Illustration introducing the free Digital Systems Review"
                 width={1080}
                 height={1080}

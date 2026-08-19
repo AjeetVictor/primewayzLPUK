@@ -13,7 +13,7 @@ export const WebsiteProblemSection = () => {
       <div className="website-visibility-container">
         <div className="website-visibility-visual">
           <img
-            src="/images/visibility-creative.jpg"
+            src="/images/visibility-creative.webp"
             alt="A live business website surrounded by barriers, showing the importance of being found, building trust and creating a clear path to customer enquiries."
             width={1080}
             height={1920}

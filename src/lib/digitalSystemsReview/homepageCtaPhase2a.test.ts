@@ -362,7 +362,7 @@ test('HomepageContactSection uses a full-width square review visual and homepage
   const closing = read('src/components/sections/HomepageContactSection.tsx');
   const group = read('src/components/conversion/DigitalSystemsReviewCtaGroup.tsx');
 
-  assert.match(closing, /\/images\/free-review-image\.png/);
+  assert.match(closing, /\/images\/free-review-image\.webp/);
   assert.match(closing, /className="rounded-\[22px\] border bg-white p-2/);
   assert.match(closing, /className="aspect-square w-full overflow-hidden"/);
   assert.match(closing, /borderRadius: '8px'/);
