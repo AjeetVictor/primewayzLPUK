@@ -1,5 +1,6 @@
 import { getFirstUtmParams, getLatestUtmParams } from './utm';
 import { trackConversionEvent } from './analytics';
+import { assertNoProhibitedAnalyticsProps } from './digitalSystemsReview/analytics';
 
 export const CALENDLY_BASE_URL = 'https://calendly.com/primewayz-info/30-minute-meeting-uk';
 export const CALENDLY_SCRIPT_URL = 'https://assets.calendly.com/assets/external/widget.js';
@@ -128,6 +129,15 @@ export function subscribeCalendlyPostMessages(ctaLocation: string): () => void {
 
     if (calendlyEventName === 'calendly.event_scheduled') {
       trackConversionEvent('calendly_event_scheduled', basePayload);
+
+      const leadPayload = {
+        ...basePayload,
+        form_name: 'calendly_discovery_call',
+        submission_success: true,
+      };
+
+      assertNoProhibitedAnalyticsProps(leadPayload);
+      trackConversionEvent('generate_lead', leadPayload);
     }
   };
 

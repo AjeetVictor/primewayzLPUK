@@ -74,3 +74,42 @@ test('completed-booking payload contains non-PII context only', () => {
     /event\.data|\b(?:invitee|email|name|phone|uri|token|publicToken|reportToken)\s*:/i,
   );
 });
+
+test('confirmed Calendly booking emits generate_lead once', () => {
+  const scheduledBranch = source.match(
+    /if \(calendlyEventName === 'calendly\.event_scheduled'\) \{[\s\S]*?\r?\n    \}/,
+  )?.[0];
+
+  assert.ok(scheduledBranch);
+  assert.match(
+    scheduledBranch,
+    /trackConversionEvent\('calendly_event_scheduled', basePayload\);/,
+  );
+  assert.match(scheduledBranch, /const leadPayload = \{/);
+  assert.match(scheduledBranch, /form_name: 'calendly_discovery_call'/);
+  assert.match(scheduledBranch, /\.\.\.basePayload,/);
+  assert.match(scheduledBranch, /submission_success: true/);
+  assert.match(
+    scheduledBranch,
+    /assertNoProhibitedAnalyticsProps\(leadPayload\);/,
+  );
+  assert.match(
+    scheduledBranch,
+    /trackConversionEvent\('generate_lead', leadPayload\);/,
+  );
+
+  const generateLeadCalls =
+    source.match(/trackConversionEvent\('generate_lead', leadPayload\);/g) ?? [];
+
+  assert.equal(generateLeadCalls.length, 1);
+});
+
+test('date selection does not emit generate_lead', () => {
+  const dateBranch = source.match(
+    /if \(calendlyEventName === 'calendly\.date_and_time_selected'\) \{[\s\S]*?\r?\n    \}/,
+  )?.[0];
+
+  assert.ok(dateBranch);
+  assert.match(dateBranch, /calendly_date_selected/);
+  assert.doesNotMatch(dateBranch, /generate_lead/);
+});
