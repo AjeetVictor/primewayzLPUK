@@ -74,9 +74,9 @@ test('homepage MainContent keeps approved semantic section order once', () => {
 test('homepage has one H1 with approved text and preserved CTA hierarchy', () => {
   const hero = read('src/components/Hero.tsx');
   assert.equal((hero.match(/<h1\b/g) || []).length, 1);
-  assert.match(hero, /Reliable digital systems/);
-  assert.match(hero, /for growing/);
-  assert.match(hero, /UK businesses/);
+  assert.match(hero, /Digital Transformation Services/);
+  assert.match(hero, /Practical digital transformation for UK SMEs/);
+  assert.match(hero, /UK SMEs/);
   assert.match(hero, /homepage_hero_primary/);
   assert.match(hero, /homepage_hero_secondary/);
   assert.match(hero, /homepage_hero_website_checker/);
@@ -315,11 +315,11 @@ test('homepage SEO title and description are updated', () => {
   const server = read('server.ts');
   const indexHtml = read('index.html');
   const siteDescription = read('src/lib/seo/defaultStructuredData.ts');
-  assert.match(server, /Digital Systems Support for UK SMEs \| Primewayz UK/);
+  assert.match(server, /Digital Transformation Services for UK SMEs \| Primewayz UK/);
   assert.match(server, /description:\s*PRIMEWAYZ_UK_SITE_DESCRIPTION/);
   assert.match(
     siteDescription,
-    /improve website visibility, CRM workflows, software delivery, application support and remote IT capacity/,
+    /Practical digital transformation services for UK SMEs/,
   );
-  assert.match(indexHtml, /Digital Systems Support for UK SMEs \| Primewayz UK/);
+  assert.match(indexHtml, /Digital Transformation Services for UK SMEs \| Primewayz UK/);
 });

@@ -464,7 +464,7 @@ test('homepage has exactly one H1 via Hero and preferred next steps remain avail
 
   const hero = read('src/components/Hero.tsx');
   assert.equal((hero.match(/<h1\b/g) || []).length, 1);
-  assert.match(hero, /Reliable digital systems/);
+  assert.match(hero, /Digital Transformation Services/);
 
   assert.ok(REVIEW_PREFERRED_NEXT_STEPS.includes('Email me the recommended next step'));
   assert.ok(REVIEW_PREFERRED_NEXT_STEPS.includes('Arrange a short discovery call'));

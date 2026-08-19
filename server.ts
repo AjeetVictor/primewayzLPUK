@@ -1392,6 +1392,7 @@ function buildSeoTags(options: {
     <meta name="description" content="${escapeHtml(options.description)}" />
     <meta name="robots" content="${robots}" />
     <link rel="canonical" href="${escapeHtml(options.canonical)}" />
+      <link rel="alternate" hreflang="en-gb" href="${escapeHtml(options.canonical)}" />
     <meta property="og:type" content="${options.ogType || 'website'}" />
     <meta property="og:locale" content="en_GB" />
     <meta property="og:site_name" content="Primewayz UK" />
@@ -1425,6 +1426,7 @@ function stripExistingSeoTags(html: string) {
     .replace(/<meta\s+name=["']description["'][^>]*>/gi, '')
     .replace(/<meta\s+name=["']robots["'][^>]*>/gi, '')
     .replace(/<link\s+rel=["']canonical["'][^>]*>/gi, '')
+      .replace(/<link\s+rel=["']alternate["'][^>]*>/gi, '')
     .replace(/<meta\s+property=["']og:[^"']+["'][^>]*>/gi, '')
     .replace(/<meta\s+name=["']twitter:[^"']+["'][^>]*>/gi, '')
     .replace(/<script\s+type=["']application\/ld\+json["'][\s\S]*?<\/script>/gi, '');
@@ -1585,7 +1587,7 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
 
   const staticPageSeo: Record<string, { title: string; description: string }> = {
     '/': {
-      title: 'Digital Systems Support for UK SMEs | Primewayz UK',
+      title: 'Digital Transformation Services for UK SMEs | Primewayz UK',
       description: PRIMEWAYZ_UK_SITE_DESCRIPTION,
     },
     '/services': {

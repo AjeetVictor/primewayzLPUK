@@ -37,18 +37,17 @@ export const Hero = () => {
           >
             <p className={`inline-flex items-center gap-2 rounded-full border border-brand-border bg-white px-4 py-2 ${brandTypography.eyebrow} text-brand-blue shadow-sm`}>
               <span className="h-2 w-2 rounded-full bg-brand-cyan" aria-hidden />
-              Reliable digital systems for UK SMEs
+              Practical digital transformation for UK SMEs
             </p>
             <h1 className={`mt-5 ${shellClasses.heroTitle}`}>
-              Reliable digital systems{' '}
+              Digital Transformation Services
               <br />
-              for growing{' '}
-              <span className="text-brand-cyan">UK businesses</span>
+              for <span className="text-brand-cyan">UK SMEs</span>
             </h1>
             <p className="mt-4 max-w-lg text-base leading-7 text-slate-600 sm:leading-8">
-              Primewayz helps UK SMEs improve website visibility, connect CRM and workflows, build
-              and modernise software, support live applications, and strengthen technical
-              delivery—without the cost and complexity of building a large in-house team.
+              Primewayz helps UK SMEs improve and connect the digital systems their businesses depend
+              on—from websites and CRM workflows to software delivery, automation, application support
+              and additional technical capacity.
             </p>
 
             <DigitalSystemsReviewCtaGroup

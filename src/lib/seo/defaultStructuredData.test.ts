@@ -48,7 +48,7 @@ test('homepage structured data has exactly one ProfessionalService at the site r
   const data = buildHomepageStructuredData(
     siteUrl,
     `${siteUrl}/`,
-    'Digital Systems Support for UK SMEs | Primewayz UK',
+    'Digital Transformation Services for UK SMEs | Primewayz UK',
     PRIMEWAYZ_UK_SITE_DESCRIPTION,
   );
 

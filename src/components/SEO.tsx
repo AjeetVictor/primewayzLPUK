@@ -87,8 +87,7 @@ export const SEO = ({
       <meta name="rating" content="General" />
 
       <link rel="canonical" href={canonical} />
-      <link rel="alternate" hrefLang="en-gb" href="https://uk.primewayz.com/" />
-      <link rel="alternate" hrefLang="x-default" href="https://uk.primewayz.com/" />
+      <link rel="alternate" hrefLang="en-gb" href={canonical} />
       <link rel="apple-touch-icon" href="https://uk.primewayz.com/favicon.png" />
 
       <meta property="og:type" content="website" />

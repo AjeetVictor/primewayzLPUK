@@ -2,7 +2,7 @@ import { FAQ_FLAT_ITEMS, type FaqItem } from '../../content/faqPageContent.ts';
 
 /** Stable site-wide description used by WebSite schema and homepage SEO. */
 export const PRIMEWAYZ_UK_SITE_DESCRIPTION =
-  'Primewayz helps UK SMEs improve website visibility, CRM workflows, software delivery, application support and remote IT capacity through structured digital support.';
+  'Practical digital transformation services for UK SMEs, connecting websites, CRM workflows, software delivery, application support and technical capacity.';
 
 export const PRIMEWAYZ_UK_SERVICE_TYPES = [
   'Website visibility and conversion support',
