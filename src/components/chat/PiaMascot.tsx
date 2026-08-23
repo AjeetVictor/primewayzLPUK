@@ -22,10 +22,16 @@ const TEXT_CLASSES: Record<PiaMascotSize, string> = {
   lg: 'text-xs',
 };
 
+const DEFAULT_STATE_IMAGES: Record<PiaMascotState, string> = {
+  idle: '/images/chat/pia-mascot.webp',
+  thinking: '/images/chat/pia-mascot.webp',
+  speaking: '/images/chat/pia-mascot.webp',
+};
+
 export function PiaMascot({
   state = 'idle',
   size = 'md',
-  imageSrc,
+  imageSrc = DEFAULT_STATE_IMAGES[state],
   className = '',
 }: PiaMascotProps) {
   return (
