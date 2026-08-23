@@ -1725,7 +1725,7 @@ export const LiveChat = () => {
         }}
         whileHover={prefersReducedMotion ? undefined : { scale: 1.03 }}
         whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
-        className="relative inline-flex h-14 w-14 items-center justify-center rounded-full bg-brand-blue text-white shadow-[0_12px_28px_-16px_rgba(0,10,45,0.35)] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy"
+        className="relative inline-flex h-20 w-20 items-center justify-center bg-transparent text-white transition sm:h-24 sm:w-24 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy"
       >
         <PiaMascot state="idle" size="lg" />
         {showLauncherChrome && unreadBadgeLabel && (
