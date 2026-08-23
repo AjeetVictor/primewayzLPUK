@@ -149,10 +149,16 @@ test('4 Design uses existing project token/classes rather than a new theme', () 
   assert.doesNotMatch(visitorChatSources, /from-purple-|via-indigo-|neon|glow-|\bIntercom\b|\bZendesk\b|\bDrift\b/);
 });
 
-test('5 Existing launcher remains', () => {
+test('5 Existing mascot launcher remains accessible', () => {
   const liveChat = read('src/components/LiveChat.tsx');
-  assert.match(liveChat, /MessageCircle/);
-  assert.match(liveChat, /buildVisitorLauncherAriaLabel|Open Primewayz Assistant|data-chat-launcher/);
+  const mascot = read('src/components/chat/PiaMascot.tsx');
+
+  assert.match(liveChat, /<PiaMascot state="idle" size="lg" \/>/);
+  assert.match(liveChat, /<PiaMascot state="thinking" size="sm" \/>/);
+  assert.match(liveChat, /data-chat-launcher/);
+  assert.match(liveChat, /buildVisitorLauncherAriaLabel/);
+  assert.match(mascot, /data-pia-mascot="true"/);
+  assert.match(mascot, /data-state=\{state\}/);
   assert.match(read('src/components/LazyLiveChat.tsx'), /LiveChat/);
 });
 

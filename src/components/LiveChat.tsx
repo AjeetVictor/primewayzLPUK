@@ -10,7 +10,6 @@ import {
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  MessageCircle,
   Send,
   Paperclip,
   CalendarClock,
@@ -35,6 +34,7 @@ import { ChatRecommendationPanel } from './chat/ChatRecommendationPanel';
 import { ChatAvailabilityNotice } from './chat/ChatAvailabilityNotice';
 import { ChatMessageStatus } from './chat/ChatMessageStatus';
 import { ChatAttachmentStatus } from './chat/ChatAttachmentStatus';
+import { PiaMascot } from './chat/PiaMascot';
 import {
   resolveVisitorChatIdentity,
 } from '../lib/chat/visitorChatIdentity';
@@ -1394,7 +1394,8 @@ export const LiveChat = () => {
 
               {isAwaitingAutomatedReply && (
                 <div className="flex justify-start">
-                  <div className="rounded-2xl rounded-bl-md border border-brand-border bg-white px-3 py-2">
+                  <div className="flex items-center gap-2 rounded-2xl rounded-bl-md border border-brand-border bg-white px-3 py-2">
+                    <PiaMascot state="thinking" size="sm" />
                     <ChatIdentityBadge identity={resolveVisitorChatIdentity('bot')} />
                     <p className="text-[12px] text-slate-500">Preparing a response…</p>
                   </div>
@@ -1726,7 +1727,7 @@ export const LiveChat = () => {
         whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
         className="relative inline-flex h-14 w-14 items-center justify-center rounded-full bg-brand-blue text-white shadow-[0_12px_28px_-16px_rgba(0,10,45,0.35)] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy"
       >
-        <MessageCircle className="h-6 w-6" aria-hidden="true" />
+        <PiaMascot state="idle" size="lg" />
         {showLauncherChrome && unreadBadgeLabel && (
           <span
             data-testid="chat-unread-badge"
