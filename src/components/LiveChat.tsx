@@ -1145,7 +1145,7 @@ export const LiveChat = () => {
 
   const hostClassName = isMobileSheet
     ? 'fixed inset-0 z-[60] flex flex-col'
-    : 'fixed bottom-4 right-4 z-[60] flex max-w-[calc(100vw-2rem)] flex-col items-end p-1 sm:bottom-6 sm:right-6';
+    : 'fixed bottom-[max(0.5rem,env(safe-area-inset-bottom))] right-[max(0.5rem,env(safe-area-inset-right))] z-[60] flex max-w-[calc(100vw-2rem)] flex-col items-end p-1 sm:bottom-6 sm:right-6';
 
   const panelClassName = isMobileSheet
     ? 'flex h-[100vh] h-[100dvh] w-[100dvw] max-h-none max-w-none flex-col overflow-hidden rounded-none border-0 bg-white pt-[env(safe-area-inset-top)] shadow-none'
@@ -1724,9 +1724,9 @@ export const LiveChat = () => {
         }}
         whileHover={prefersReducedMotion ? undefined : { scale: 1.03 }}
         whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
-        className="relative inline-flex h-14 w-14 items-center justify-center rounded-full bg-brand-blue text-white shadow-[0_12px_28px_-16px_rgba(0,10,45,0.35)] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy"
+        className="relative inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-blue text-white shadow-[0_12px_28px_-16px_rgba(0,10,45,0.35)] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy sm:h-14 sm:w-14"
       >
-        <MessageCircle className="h-6 w-6" aria-hidden="true" />
+        <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
         {showLauncherChrome && unreadBadgeLabel && (
           <span
             data-testid="chat-unread-badge"
