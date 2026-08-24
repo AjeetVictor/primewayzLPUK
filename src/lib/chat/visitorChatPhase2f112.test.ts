@@ -143,6 +143,7 @@ describe('Phase 2F-1.1.2 mobile floating controls', () => {
   test('narrow screens expose one compact safe-area-aware floating action', () => {
     const liveChat = read('src/components/LiveChat.tsx');
     const scrollToTop = read('src/components/ScrollToTop.tsx');
+    const contactForm = read('src/components/ContactForm.tsx');
 
     assert.match(
       liveChat,
@@ -156,6 +157,7 @@ describe('Phase 2F-1.1.2 mobile floating controls', () => {
     assert.match(liveChat, /h-5 w-5 sm:h-6 sm:w-6/);
     assert.doesNotMatch(liveChat, /fixed bottom-4 right-4 z-\[60\]/);
     assert.match(scrollToTop, /hidden[\s\S]{0,300}sm:inline-flex/);
+    assert.match(contactForm, /space-y-3 pt-1 pr-16 sm:pr-0/);
   });
 });
 

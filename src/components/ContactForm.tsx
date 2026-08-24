@@ -509,7 +509,7 @@ export function ContactForm({ variant = 'full' }: ContactFormProps) {
           </div>
         ) : null}
 
-        <div className="space-y-3 pt-1">
+        <div className="space-y-3 pt-1 pr-16 sm:pr-0">
           <motion.button
             type="submit"
             disabled={isSubmitting}
