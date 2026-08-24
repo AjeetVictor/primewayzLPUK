@@ -20,6 +20,11 @@ const entryClient = fs.readFileSync(
   'utf8',
 );
 
+const contactUsPage = fs.readFileSync(
+  path.join(root, 'src/components/ContactUsPage.tsx'),
+  'utf8',
+);
+
 test('SPA page_view ignores hash-only navigation', () => {
   assert.match(
     tracker,
@@ -98,5 +103,12 @@ test('UTM attribution is captured before React client bootstrap', () => {
   assert.ok(
     captureIndex < renderIndex,
     'UTM attribution must be captured before React renders',
+  );
+});
+
+test('contact page sets the correct title during SPA navigation', () => {
+  assert.match(
+    contactUsPage,
+    /return \(\s*<>\s*<title>Contact Primewayz UK \| Discuss Your Digital Priorities<\/title>/
   );
 });
