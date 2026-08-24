@@ -139,6 +139,26 @@ describe('Phase 2F-1.1.2 launcher and close actions', () => {
   });
 });
 
+describe('Phase 2F-1.1.2 mobile floating controls', () => {
+  test('narrow screens expose one compact safe-area-aware floating action', () => {
+    const liveChat = read('src/components/LiveChat.tsx');
+    const scrollToTop = read('src/components/ScrollToTop.tsx');
+
+    assert.match(
+      liveChat,
+      /bottom-\[max\(0\.5rem,env\(safe-area-inset-bottom\)\)\]/,
+    );
+    assert.match(
+      liveChat,
+      /right-\[max\(0\.5rem,env\(safe-area-inset-right\)\)\]/,
+    );
+    assert.match(liveChat, /h-12 w-12[\s\S]{0,300}sm:h-14 sm:w-14/);
+    assert.match(liveChat, /h-5 w-5 sm:h-6 sm:w-6/);
+    assert.doesNotMatch(liveChat, /fixed bottom-4 right-4 z-\[60\]/);
+    assert.match(scrollToTop, /hidden[\s\S]{0,300}sm:inline-flex/);
+  });
+});
+
 describe('Phase 2F-1.1.2 three-region layout and overflow', () => {
   test('header and composer are non-scrolling; message area scrolls', () => {
     const liveChat = read('src/components/LiveChat.tsx');
