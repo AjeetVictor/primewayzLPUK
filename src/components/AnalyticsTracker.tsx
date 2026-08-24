@@ -12,7 +12,7 @@ export default function AnalyticsTracker() {
 
   useEffect(() => {
     captureUtmParams(location.search);
-    const path = `${location.pathname}${location.search}`;
+    const path = location.pathname;
     trackPageView(path, getFullUtmAnalyticsPayload());
   }, [location.pathname, location.search]);
 
