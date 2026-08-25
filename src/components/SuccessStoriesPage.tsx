@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { SelfAuditCta } from './SelfAuditCta';
 import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
 import { getPublishedSuccessStories, getSuccessStoryPath } from '../data/successStories';
@@ -48,7 +48,7 @@ export const SuccessStoriesPage = () => (
             return (
               <article
                 key={story.slug}
-                className="group flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl"
+                className="group relative flex cursor-pointer flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl focus-within:outline-none focus-within:ring-2 focus-within:ring-emerald-600 focus-within:ring-offset-2"
               >
                 <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
                   <img
@@ -71,7 +71,15 @@ export const SuccessStoriesPage = () => (
                     {story.relationshipType}
                   </p>
 
-                  <h2 className="mt-2 text-xl font-black tracking-tight text-slate-950">{story.title}</h2>
+                  <h2 className="mt-2 text-xl font-black tracking-tight text-slate-950">
+                    <Link
+                      to={href}
+                      aria-label={`Open ${story.title}`}
+                      className="after:absolute after:inset-0 focus:outline-none"
+                    >
+                      {story.title}
+                    </Link>
+                  </h2>
 
                   <p className="mt-3 text-sm leading-7 text-slate-600">{story.summary}</p>
 
@@ -81,14 +89,6 @@ export const SuccessStoriesPage = () => (
                     </p>
                     <p className="mt-1 text-sm leading-6 text-emerald-900">{story.keyOutcome}</p>
                   </div>
-
-                  <Link
-                    to={href}
-                    className="mt-6 inline-flex min-h-[44px] items-center text-sm font-bold text-emerald-700 transition hover:text-emerald-900"
-                  >
-                    Read success story
-                    <ArrowRight className="ml-2 h-4 w-4 transition group-hover:translate-x-0.5" />
-                  </Link>
                 </div>
               </article>
             );
