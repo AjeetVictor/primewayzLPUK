@@ -35,8 +35,8 @@ export const posts: BlogPost[] = [
       'Workflow Automation',
       'Software Development Subscription',
     ],
-    image: '/images/blog/primewayzuk-article-banner-placeholder.webp',
-    thumbnailImage: '/images/blog/primewayzuk-article-thumbnail-placeholder.webp',
+    image: '/images/blog/youre-already-paying-for-the-software-why-isnt-it-paying-you-back.webp',
+    thumbnailImage: '/images/blog/youre-already-paying-for-the-software-why-isnt-it-paying-you-back.webp',
     imageAlt:
       'UK business reviewing disconnected software systems, manual workflows, and opportunities for measurable operational improvement',
     featured: false,

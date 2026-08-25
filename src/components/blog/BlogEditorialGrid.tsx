@@ -35,7 +35,7 @@ const SecondaryStoryCard = ({ post }: { post: BlogPost }) => {
       <Link to={postHref} className="block overflow-hidden" aria-label={`Read insight: ${post.title}`}>
         <div className="aspect-[16/10] overflow-hidden bg-zinc-100">
           <img
-            src={getBlogThumbnailImage(post.thumbnailImage)}
+            src={getBlogThumbnailImage(post.thumbnailImage, post.image)}
             alt={post.imageAlt || post.title}
             className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
             loading="lazy"
@@ -65,7 +65,7 @@ const FeaturedStoryCard = ({ post }: { post: BlogPost }) => {
       <Link to={postHref} className="block" aria-label={`Read featured insight: ${post.title}`}>
         <div className="aspect-[16/9] overflow-hidden bg-zinc-100">
           <img
-            src={getBlogThumbnailImage(post.thumbnailImage)}
+            src={getBlogThumbnailImage(post.thumbnailImage, post.image)}
             alt={post.imageAlt || post.title}
             className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
             loading="eager"
@@ -111,7 +111,7 @@ const LatestListItem = ({ post }: { post: BlogPost }) => {
         className="h-16 w-16 shrink-0 overflow-hidden bg-zinc-100"
       >
         <img
-          src={getBlogThumbnailImage(post.thumbnailImage)}
+          src={getBlogThumbnailImage(post.thumbnailImage, post.image)}
           alt=""
           className="h-full w-full object-cover"
           loading="lazy"

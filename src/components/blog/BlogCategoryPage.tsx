@@ -156,7 +156,7 @@ export const BlogCategoryPage = ({ initialCategory, initialPosts }: BlogCategory
             >
               <div className="aspect-[16/10]">
                 <img
-                  src={getBlogThumbnailImage(featured.thumbnailImage)}
+                  src={getBlogThumbnailImage(featured.thumbnailImage, featured.image)}
                   alt={featured.imageAlt || featured.title}
                   className="h-full w-full object-cover"
                   loading="eager"

@@ -149,6 +149,7 @@ type BlogRecentSidebarProps = {
     date: string;
     category: string;
     thumbnailImage?: string;
+    image?: string;
     imageAlt?: string;
   }>;
 };
@@ -178,7 +179,7 @@ export const BlogRecentSidebar = ({ posts }: BlogRecentSidebarProps) => (
               className="h-14 w-14 shrink-0 overflow-hidden bg-zinc-100"
             >
               <img
-                src={getBlogThumbnailImage(post.thumbnailImage)}
+                src={getBlogThumbnailImage(post.thumbnailImage, post.image)}
                 alt=""
                 className="h-full w-full object-cover"
                 loading="lazy"
