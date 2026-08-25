@@ -4,8 +4,47 @@ import {
   aiContentFatigueFaqs,
   aiContentFatigueOutcomeDrivenContent,
 } from './content/aiContentFatigueOutcomeDrivenContent.ts';
+import {
+  businessSoftwareValueContent,
+  businessSoftwareValueFaqs,
+} from './content/businessSoftwareValue.ts';
 
 export const posts: BlogPost[] = [
+  {
+    id: 'business-software-not-delivering-value-uk-smes',
+    slug: 'business-software-not-delivering-value-uk-smes',
+    title: "You're Already Paying for the Software. Why Isn't It Paying You Back?",
+    description:
+      'Learn how UK SMEs can identify software value leakage, improve disconnected workflows, clear delivery backlogs, and increase returns from existing systems.',
+    excerpt:
+      'Your business may already own the software it needs. Find where value is leaking and turn disconnected systems into measurable operational improvements.',
+    content: businessSoftwareValueContent,
+    date: 'August 25, 2026',
+    updatedDate: 'August 25, 2026',
+    readTime: '13 min read',
+    author: 'Primewayz UK Team',
+    category: 'Software Development',
+    primaryCategory: 'software-development',
+    secondaryCategories: ['software-support', 'business-strategy'],
+    tags: [
+      'Business Software',
+      'Software Value',
+      'UK SMEs',
+      'Digital Systems Review',
+      'Software Integration',
+      'Workflow Automation',
+      'Software Development Subscription',
+    ],
+    image: '/images/blog/primewayzuk-article-banner-placeholder.webp',
+    thumbnailImage: '/images/blog/primewayzuk-article-thumbnail-placeholder.webp',
+    imageAlt:
+      'UK business reviewing disconnected software systems, manual workflows, and opportunities for measurable operational improvement',
+    featured: false,
+    seoTitle: 'Why Business Software Fails to Deliver Value | UK SMEs',
+    seoDescription:
+      'Learn how UK SMEs can find software value leakage, improve disconnected workflows, clear backlogs, and gain more return from existing systems.',
+    faqs: businessSoftwareValueFaqs,
+  },
   {
     id: 'ai-content-fatigue-uk-smes-outcome-driven-content',
     slug: 'ai-content-fatigue-uk-smes-outcome-driven-content',

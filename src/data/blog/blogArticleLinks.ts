@@ -10,3 +10,12 @@ export function fixedPriceArticleHref(path: string, _content?: string): string {
 export function aiContentFatigueArticleHref(path: string, _content?: string): string {
   return path;
 }
+
+export const BUSINESS_SOFTWARE_VALUE_CAMPAIGN = 'business_software_value';
+
+export function businessSoftwareValueArticleHref(
+  path: string,
+  _content?: string,
+): string {
+  return path;
+}
