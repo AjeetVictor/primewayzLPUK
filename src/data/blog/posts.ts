@@ -40,7 +40,7 @@ export const posts: BlogPost[] = [
     imageAlt:
       'Disconnected business tools and manual paperwork transformed into an integrated Primewayz workflow for UK SMEs',
     featured: false,
-    seoTitle: 'Disconnected Business Systems: Why UK SMEs Lose Software Value',
+    seoTitle: 'Disconnected Business Systems Cost UK SMEs',
     seoDescription:
       'See how UK SMEs can find software value leakage, fix disconnected workflows, reduce manual handovers, and improve existing systems.',
     faqs: businessSoftwareValueFaqs,
