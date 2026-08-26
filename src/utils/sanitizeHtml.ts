@@ -118,9 +118,6 @@ function sanitizeWithRegex(html: string): string {
 export function sanitizeBlogHtml(html: string): string {
   if (!html) return '';
 
-  if (typeof DOMParser !== 'undefined') {
-    return sanitizeWithDomParser(html);
-  }
-
+  // The server and initial browser render must produce identical markup.
   return sanitizeWithRegex(html);
 }

@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { Linkedin, Mail, Twitter } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { ArticleHeading } from '../../data/blog/contentUtils';
 import { getBlogThumbnailImage } from '../../data/blog/imageFallbacks';
@@ -15,10 +14,7 @@ type BlogArticleSidebarProps = {
   onHeadingActivate: (headingId: string) => void;
   linkedInEmbedHtml?: string;
   linkedInPostUrl?: string;
-  onShareTwitter: () => void;
-  onShareLinkedIn: () => void;
-  onShareEmail: () => void;
-  onCopyLink: () => void;
+
 };
 
 export const BlogArticleSidebar = ({
@@ -27,10 +23,7 @@ export const BlogArticleSidebar = ({
   onHeadingActivate,
   linkedInEmbedHtml,
   linkedInPostUrl,
-  onShareTwitter,
-  onShareLinkedIn,
-  onShareEmail,
-  onCopyLink,
+
 }: BlogArticleSidebarProps) => {
   const hasLinkedInEmbed = Boolean(sanitizeLinkedInEmbedHtml(linkedInEmbedHtml));
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
@@ -51,47 +44,9 @@ export const BlogArticleSidebar = ({
     <aside className="hidden lg:block">
       <div
         ref={sidebarScrollRef}
-        className="sticky top-28 max-h-[calc(100vh-8rem)] w-full max-w-[240px] space-y-10 overflow-y-auto pr-2"
+        className="sticky top-28 w-full max-w-[240px] space-y-10"
       >
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-zinc-400">Share</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={onShareTwitter}
-              className="rounded-full border border-zinc-200 p-2.5 text-zinc-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
-              title="Share on Twitter"
-            >
-              <Twitter className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={onShareLinkedIn}
-              className="rounded-full border border-zinc-200 p-2.5 text-zinc-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-              title="Share on LinkedIn"
-            >
-              <Linkedin className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={onShareEmail}
-              className="rounded-full border border-zinc-200 p-2.5 text-zinc-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-600"
-              title="Share via email"
-            >
-              <Mail className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={onCopyLink}
-              className="rounded-full border border-zinc-200 px-3 py-2 text-xs font-bold text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-50"
-              title="Copy link"
-            >
-              Copy link
-            </button>
-          </div>
-        </div>
-
-        {headings.length > 0 ? (
+{headings.length > 0 ? (
           <nav aria-label="In this article">
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-zinc-400">In this article</p>
             <ul className="mt-4 space-y-1">
@@ -152,43 +107,82 @@ type BlogRecentSidebarProps = {
     image?: string;
     imageAlt?: string;
   }>;
+  tags?: string[];
 };
 
-export const BlogRecentSidebar = ({ posts }: BlogRecentSidebarProps) => (
+export const BlogRecentSidebar = ({
+  posts,
+  tags = [],
+}: BlogRecentSidebarProps) => (
   <aside className="lg:block">
-    <div className="border-t border-zinc-900 pt-4 lg:sticky lg:top-28 lg:border-t-2">
-      <h2 className="text-xs font-bold uppercase tracking-[0.24em] text-zinc-900">Recent insights</h2>
-      <div className="mt-4 space-y-0">
-        {posts.map((post) => (
-          <article key={post.id} className="flex gap-4 border-b border-zinc-200 py-4 last:border-b-0">
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-600">
-                {post.category}
-              </p>
-              <h3 className="mt-1 text-sm font-bold leading-snug text-zinc-900">
-                <Link to={`/blog/${post.id}`} className="transition-colors hover:text-emerald-700">
-                  {post.title}
-                </Link>
-              </h3>
-              <p className="mt-2 text-xs font-semibold text-zinc-400">{post.date}</p>
-            </div>
-            <Link
-              to={`/blog/${post.id}`}
-              aria-hidden
-              tabIndex={-1}
-              className="h-14 w-14 shrink-0 overflow-hidden bg-zinc-100"
+    <div className="space-y-9 lg:sticky lg:top-28">
+      <section className="border-t border-zinc-900 pt-4 lg:border-t-2">
+        <h2 className="text-xs font-bold uppercase tracking-[0.24em] text-zinc-900">
+          Recent insights
+        </h2>
+
+        <div className="mt-4 space-y-0">
+          {posts.map((post) => (
+            <article
+              key={post.id}
+              className="flex gap-4 border-b border-zinc-200 py-4 last:border-b-0"
             >
-              <img
-                src={getBlogThumbnailImage(post.thumbnailImage, post.image)}
-                alt=""
-                className="h-full w-full object-cover"
-                loading="lazy"
-                decoding="async"
-              />
-            </Link>
-          </article>
-        ))}
-      </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-600">
+                  {post.category}
+                </p>
+
+                <h3 className="mt-1 text-sm font-bold leading-snug text-zinc-900">
+                  <Link
+                    to={`/blog/${post.id}`}
+                    className="transition-colors hover:text-emerald-700"
+                  >
+                    {post.title}
+                  </Link>
+                </h3>
+
+                <p className="mt-2 text-xs font-semibold text-zinc-400">
+                  {post.date}
+                </p>
+              </div>
+
+              <Link
+                to={`/blog/${post.id}`}
+                aria-hidden
+                tabIndex={-1}
+                className="h-14 w-14 shrink-0 overflow-hidden bg-zinc-100"
+              >
+                <img
+                  src={getBlogThumbnailImage(post.thumbnailImage, post.image)}
+                  alt=""
+                  className="h-full w-full object-cover object-center"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </Link>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {tags.length ? (
+        <section className="border-t border-zinc-200 pt-5">
+          <h2 className="text-xs font-bold uppercase tracking-[0.24em] text-zinc-900">
+            Article topics
+          </h2>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-semibold leading-5 text-zinc-600"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   </aside>
 );

@@ -17,9 +17,9 @@ const contact = (content: string) =>
 
 export const businessSoftwareValueFaqs = [
   {
-    question: 'Why does business software fail to deliver its expected value?',
+    question: 'Why do disconnected business systems underperform?',
     answer:
-      'The software may be capable, but disconnected data, unclear ownership, manual workarounds, weak integrations, inconsistent processes, and limited measurement prevent the business from using it effectively.',
+      'Individual applications may work correctly while the workflow between them remains fragmented. Duplicate records, manual handovers, unclear ownership, inconsistent processes, and unreliable reporting prevent the business from receiving their full operational value.',
   },
   {
     question: 'Should a business replace software that employees do not fully use?',
@@ -29,46 +29,49 @@ export const businessSoftwareValueFaqs = [
   {
     question: 'How can an SME measure whether its software is delivering value?',
     answer:
-      'Track operational outcomes such as processing time, duplicate entry, error rates, reporting effort, lead response time, task completion, customer delays, adoption levels, and work still completed outside the system.',
+      'Track operational outcomes such as processing time, duplicate entry, error rates, reporting effort, response time, customer delays, adoption levels, and work still completed outside the official system.',
   },
   {
     question: 'What is software value leakage?',
     answer:
-      'Software value leakage is the gap between what a business pays for a system and the operational value it receives because workflows remain fragmented, manual, duplicated, or poorly measured.',
+      'Software value leakage is the gap between what a business pays for its systems and the operational value it receives because workflows remain fragmented, manual, duplicated, or poorly measured.',
   },
   {
     question: 'Can existing business systems be improved without full replacement?',
     answer:
-      'Yes. Businesses can often gain more value through workflow redesign, configuration improvements, cleaner data, targeted integrations, dashboards, automation, and small custom extensions.',
+      'Yes. Businesses can often recover value through process simplification, configuration changes, cleaner data, clearer ownership, targeted integrations, automation, reporting improvements, or small custom extensions.',
   },
   {
-    question: 'When is custom software development appropriate?',
+    question: 'What should a digital systems review examine?',
     answer:
-      'Custom development is appropriate when an important workflow cannot be handled reliably by existing products, systems need a controlled integration layer, or repeated manual work creates measurable cost, delay, or risk.',
-  },
-  {
-    question: 'What should a software-value review examine?',
-    answer:
-      'It should examine business outcomes, system ownership, user behaviour, data flow, manual workarounds, integrations, reporting, recurring failures, security dependencies, licence overlap, and the improvement backlog.',
+      'It should examine business outcomes, critical workflows, system and data ownership, manual workarounds, integrations, reporting gaps, recurring failures, licence overlap, operational risks, and the prioritised improvement backlog.',
   },
 ];
 export const businessSoftwareValueContent = `
-  <p>It is Monday morning, and before the team meeting starts, someone is pulling numbers from three different places: the CRM, an export from the accounting system, and a spreadsheet that one person has quietly maintained because nobody fully trusts the official reports.</p>
+  <div class="blog-callout blog-callout-tip">
+    <strong>What you need to know</strong>
+    <p>Business software often underperforms because data, workflows, reporting, and responsibility remain disconnected between otherwise capable systems. Before buying or replacing another platform, identify where manual handovers, duplicate entry, delays, and unreliable reports are occurring.</p>
+    <ul>
+      <li>Configure an existing system when useful capability is already available but poorly set up.</li>
+      <li>Integrate systems when information must move reliably between applications.</li>
+      <li>Extend a system when a small missing capability is blocking an important workflow.</li>
+      <li>Retire overlapping software when it adds cost without a clear operational purpose.</li>
+      <li>Replace software only when the product itself is the genuine constraint.</li>
+    </ul>
+  </div>
 
-  <p>Nobody planned it this way. The CRM was a sensible decision. So was the accounting platform, the ecommerce system, and the job-management tool introduced when the business became busier. Each product solved a genuine problem when it was purchased.</p>
+  <p>It is Monday morning, and before the team meeting starts, someone is pulling numbers from three different places: the CRM, an export from the accounting system, and a spreadsheet that one person maintains because nobody fully trusts the official reports.</p>
 
-  <p>And yet the team is still assembling the truth by hand.</p>
+  <p>The CRM, accounting platform, ecommerce system, and job-management tool may each work as intended. Yet the team still assembles the truth by hand because the workflow between them is fragmented.</p>
 
-  <p>If that sounds familiar, the issue is probably not a lack of technology. It is the growing gap between what the business pays for its software and what those systems deliver in day-to-day operational value.</p>
+  <p>This is what disconnected business systems look like in practice. The problem is not limited to applications that cannot technically exchange data. It also appears when records are duplicated, ownership is unclear, handovers depend on people, and reporting cannot be trusted without manual correction.</p>
 
   <div class="blog-callout blog-callout-tip">
     <strong>The central issue</strong>
-    <p>Your business may already own most of the technology it needs. The value is being lost between systems, processes, data, ownership, and improvements that remain permanently stuck in a backlog.</p>
+    <p>Your business may already own most of the technology it needs. The value is being lost between systems, processes, data, ownership, and improvements that remain stuck in a backlog.</p>
   </div>
 
-  <p>Before buying another platform, UK SMEs should ask a more commercially useful question: <strong>how much more performance could we get from the systems we already own?</strong></p>
-
-  <p>A structured <a href="${review('opening_digital_systems_review')}">digital systems review</a> can identify where software value is leaking and which improvements could produce a measurable operational return.</p>
+  <p>Before buying another platform, UK SMEs should ask a more commercially useful question: <strong>where is operational value leaking from the systems we already pay for?</strong></p>
 
   <h2>The problem is not always the tools</h2>
 
@@ -111,8 +114,8 @@ export const businessSoftwareValueContent = `
   <p>A platform can contain thousands of records and still create limited commercial value. Login counts, stored contacts, sent emails, and completed fields do not prove that the software is reducing processing time, preventing errors, increasing conversion, accelerating delivery, or improving management decisions.</p>
 
   <div class="blog-callout blog-callout-tip">
-    <strong>The improvement backlog matters</strong>
-    <p>When useful fixes, integrations, reports, and workflow improvements remain permanently pending, the problem may be a lack of dependable delivery capacity rather than a lack of ideas. A <a href="${software('underperformance_delivery_capacity')}">software development subscription</a> can provide a structured route for completing those improvements incrementally.</p>
+    <strong>The problem is often between products</strong>
+    <p>One recurring delivery pattern is that each supplier can support its own application while nobody owns the handover between applications. The result is a backlog of useful reports, integrations, rules, and workflow changes that remain without a clear owner or delivery route.</p>
   </div>
 
   <h2>Seven signs your software is not paying you back</h2>
@@ -240,9 +243,9 @@ export const businessSoftwareValueContent = `
 
   <p>This approach creates evidence before the business commits to a large replacement programme. It also turns technology improvement into a repeatable operating discipline instead of an occasional rescue project.</p>
 
-  <h2>Should you improve, integrate, extend, or replace the software?</h2>
+  <h2>Should you improve, integrate, extend, retire, or replace the software?</h2>
 
-  <p>Identifying a system problem does not automatically justify replacing the product. The right response depends on whether the limitation sits inside the application, in its configuration, between systems, or in the surrounding business process.</p>
+  <p>Identifying a system problem does not automatically justify integration or replacement. The right response depends on whether the limitation sits inside the application, in its configuration, between systems, in the surrounding business process, or in an overlapping tool that no longer serves a clear purpose.</p>
 
   <h3>Improve the existing system when</h3>
 
@@ -271,6 +274,15 @@ export const businessSoftwareValueContent = `
     <li>The value of the improvement is greater than its delivery and maintenance cost.</li>
   </ul>
 
+  <h3>Retire a system when</h3>
+
+  <ul>
+    <li>Another platform already provides the same capability more reliably.</li>
+    <li>The tool has no clear owner, active workflow, or measurable business purpose.</li>
+    <li>Employees maintain it only because historical data or habits have never been reviewed.</li>
+    <li>Its licence, support, and reconciliation costs exceed the value it contributes.</li>
+  </ul>
+
   <h3>Replace a system when</h3>
 
   <ul>
@@ -288,7 +300,7 @@ export const businessSoftwareValueContent = `
 
   <h2>The software should improve the business, not create more administration</h2>
 
-  <p>Most growing businesses do not need another disconnected platform simply because their current environment feels inefficient. They need clarity about where value is being lost, which workflows matter most, and which improvements can create a measurable return.</p>
+  <p>Disconnected systems are a symptom, not a complete diagnosis. Integration may be the correct response, but so may better configuration, simpler process design, clearer ownership, cleaner data, a small extension, retirement of an overlapping tool, or replacement of a genuine constraint.</p>
 
   <p>The strongest starting point is usually:</p>
 
@@ -302,11 +314,11 @@ export const businessSoftwareValueContent = `
 
   <p>This turns software from a collection of recurring expenses into an operating capability that improves alongside the business.</p>
 
-  <p>Primewayz UK helps SMEs review fragmented digital environments, improve existing workflows, connect systems, clear software backlogs, and deliver practical enhancements through structured monthly capacity.</p>
+  <p>Primewayz UK helps SMEs identify where operational value is being lost and define the smallest practical improvement that can be measured before a wider programme begins.</p>
 
   <div class="blog-callout blog-callout-tip">
     <strong>Start with the operational problem</strong>
-    <p>Before replacing another system, identify where time, trust, revenue, or customer experience is being lost. Explore the <a href="${review('final_digital_systems_review')}">Digital Systems Review</a>, learn about <a href="${software('final_software_subscription')}">software development subscription support</a>, or <a href="${contact('final_discovery_call')}">book a UK discovery call</a>.</p>
+    <p>Before replacing or integrating another system, identify where time, trust, revenue, or customer experience is being lost. Start with the <a href="${review('final_digital_systems_review')}">Digital Systems Review</a> or <a href="${contact('final_discovery_call')}">book a UK discovery call</a>.</p>
   </div>
 
   <h2>Further reading</h2>

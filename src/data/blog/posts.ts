@@ -15,12 +15,12 @@ export const posts: BlogPost[] = [
     slug: 'business-software-not-delivering-value-uk-smes',
     title: "You're Already Paying for the Software. Why Isn't It Paying You Back?",
     description:
-      'Learn how UK SMEs can identify software value leakage, improve disconnected workflows, clear delivery backlogs, and increase returns from existing systems.',
+      'See why disconnected business systems, manual handovers, and unclear ownership stop UK SMEs getting full value from existing software.',
     excerpt:
-      'Your business may already own the software it needs. Find where value is leaking and turn disconnected systems into measurable operational improvements.',
+      'Your software may be capable, but disconnected workflows, duplicated data, and manual handovers can prevent it from delivering measurable value.',
     content: businessSoftwareValueContent,
     date: 'August 25, 2026',
-    updatedDate: 'August 25, 2026',
+    updatedDate: 'August 26, 2026',
     readTime: '13 min read',
     author: 'Primewayz UK Team',
     category: 'Software Development',
@@ -28,21 +28,21 @@ export const posts: BlogPost[] = [
     secondaryCategories: ['software-support', 'business-strategy'],
     tags: [
       'Business Software',
-      'Software Value',
+      'Disconnected Systems',
       'UK SMEs',
       'Digital Systems Review',
       'Software Integration',
       'Workflow Automation',
-      'Software Development Subscription',
+      'Data Silos',
     ],
     image: '/images/blog/youre-already-paying-for-the-software-why-isnt-it-paying-you-back.webp',
     thumbnailImage: '/images/blog/youre-already-paying-for-the-software-why-isnt-it-paying-you-back.webp',
     imageAlt:
-      'UK business reviewing disconnected software systems, manual workflows, and opportunities for measurable operational improvement',
+      'Disconnected business tools and manual paperwork transformed into an integrated Primewayz workflow for UK SMEs',
     featured: false,
-    seoTitle: 'Why Business Software Fails to Deliver Value | UK SMEs',
+    seoTitle: 'Disconnected Business Systems: Why UK SMEs Lose Software Value',
     seoDescription:
-      'Learn how UK SMEs can find software value leakage, improve disconnected workflows, clear backlogs, and gain more return from existing systems.',
+      'See how UK SMEs can find software value leakage, fix disconnected workflows, reduce manual handovers, and improve existing systems.',
     faqs: businessSoftwareValueFaqs,
   },
   {
