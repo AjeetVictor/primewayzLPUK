@@ -62,7 +62,7 @@ export const SuccessStories = () => {
                 whileInView={reveal.whileInView({ opacity: 1, y: 0 })}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.08 }}
-                className={shellClasses.sectionCard}
+                className={`${shellClasses.sectionCard} group relative cursor-pointer transition hover:-translate-y-1 hover:shadow-lg focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-blue focus-within:ring-offset-2`}
               >
                 <div className="relative mb-5 aspect-[4/3] overflow-hidden rounded-xl border border-brand-border bg-brand-surface">
                   <img
@@ -79,7 +79,7 @@ export const SuccessStories = () => {
                       {story.relationshipType}
                     </span>
                   </div>
-                  <div className="absolute right-3 top-3">
+                  <div className="absolute right-3 top-3 z-20">
                     <ShareButton
                       title={story.title}
                       url={`https://uk.primewayz.com${href}`}
@@ -91,7 +91,15 @@ export const SuccessStories = () => {
                   <Icon className="h-5 w-5" aria-hidden />
                 </div>
 
-                <h3 className="mt-4 text-xl font-bold text-brand-navy">{story.shortTitle}</h3>
+                <h3 className="mt-4 text-xl font-bold text-brand-navy">
+                  <Link
+                    to={href}
+                    aria-label={`Open ${story.shortTitle} success story`}
+                    className="after:absolute after:inset-0 focus:outline-none"
+                  >
+                    {story.shortTitle}
+                  </Link>
+                </h3>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
                   <span className="font-semibold text-brand-navy">Problem: </span>
                   {story.problem[0]}
@@ -109,19 +117,12 @@ export const SuccessStories = () => {
                   {serviceHref && serviceLabel ? (
                     <Link
                       to={serviceHref}
-                      className="inline-flex min-h-[44px] items-center gap-2 text-sm font-bold text-brand-blue transition hover:text-brand-navy"
+                      className="relative z-10 inline-flex min-h-[44px] items-center gap-2 text-sm font-bold text-brand-blue transition hover:text-brand-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue"
                     >
                       {serviceLabel}
                       <ArrowRight className="h-4 w-4" aria-hidden />
                     </Link>
                   ) : null}
-                  <Link
-                    to={href}
-                    className="inline-flex min-h-[44px] items-center gap-2 text-sm font-bold text-brand-navy transition hover:text-brand-blue"
-                  >
-                    Read success story
-                    <ArrowRight className="h-4 w-4" aria-hidden />
-                  </Link>
                 </div>
               </motion.article>
             );

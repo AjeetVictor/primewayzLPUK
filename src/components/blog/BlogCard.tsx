@@ -15,11 +15,11 @@ export const BlogCard = ({ post, variant = 'related' }: BlogCardProps) => {
   return (
     <article className="group flex h-full flex-col">
       <Link to={postHref} className="block overflow-hidden" aria-label={`Read insight: ${post.title}`}>
-        <div className="aspect-[16/10] overflow-hidden bg-zinc-100">
+        <div className="aspect-video overflow-hidden bg-zinc-100">
           <img
-            src={getBlogThumbnailImage(post.thumbnailImage)}
+            src={getBlogThumbnailImage(post.thumbnailImage, post.image)}
             alt={post.imageAlt || post.title}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+            className="h-full w-full object-cover object-center transition duration-500 group-hover:scale-[1.02]"
             loading="lazy"
             decoding="async"
           />

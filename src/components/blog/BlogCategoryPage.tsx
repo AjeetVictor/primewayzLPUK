@@ -154,11 +154,11 @@ export const BlogCategoryPage = ({ initialCategory, initialPosts }: BlogCategory
               className="block overflow-hidden bg-zinc-100"
               aria-label={`Read featured insight: ${featured.title}`}
             >
-              <div className="aspect-[16/10]">
+              <div className="aspect-video">
                 <img
-                  src={getBlogThumbnailImage(featured.thumbnailImage)}
+                  src={getBlogThumbnailImage(featured.thumbnailImage, featured.image)}
                   alt={featured.imageAlt || featured.title}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover object-center"
                   loading="eager"
                   decoding="async"
                 />

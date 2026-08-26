@@ -17,7 +17,7 @@ export const BlogLayout = ({
 }: BlogLayoutProps) => (
   <main className="min-h-screen bg-white pt-32 pb-24">
     <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-      <header className="mb-12 max-w-3xl border-b border-zinc-200 pb-10">
+      <header className="mb-12 w-full border-b border-zinc-200 pb-10">
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-emerald-600">{eyebrow}</p>
 
         <h1 className="mt-4 text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl">{title}</h1>

@@ -173,14 +173,20 @@ test('listing primary and secondary placements are allowlisted', () => {
 test('story cards and SelfAuditCta remain', () => {
   const page = read('src/components/SuccessStoriesPage.tsx');
   assert.match(page, /SelfAuditCta/);
-  assert.match(page, /Read success story/);
+  assert.match(page, /after:absolute after:inset-0/);
+  assert.match(page, /focus-within:ring-2/);
+  assert.doesNotMatch(page, />\s*Read success story\s*</);
   assert.match(page, /getPublishedSuccessStories|publishedStories/);
   assert.match(page, /<h1\b/);
   assert.equal((page.match(/<h1\b/g) || []).length, 1);
 });
 
-test('homepage SuccessStories remains unchanged', () => {
+test('homepage SuccessStories remains story-navigation-only', () => {
   const homepage = read('src/components/SuccessStories.tsx');
+  assert.match(homepage, /after:absolute after:inset-0/);
+  assert.match(homepage, /relative z-10/);
+  assert.match(homepage, /z-20/);
+  assert.doesNotMatch(homepage, />\s*Read success story\s*</);
   assert.doesNotMatch(homepage, /DigitalSystemsReviewCtaGroup/);
   assert.doesNotMatch(homepage, /buildFreeReviewCtaUrl/);
   assert.doesNotMatch(homepage, /review_source|review_service/);

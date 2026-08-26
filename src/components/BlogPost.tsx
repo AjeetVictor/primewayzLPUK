@@ -5,16 +5,13 @@ import {
   User,
   MessageSquare,
   Send,
-  Twitter,
   Linkedin,
-  Mail,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, FormEvent, useCallback } from 'react';
 import { BlogCard } from './blog/BlogCard';
 import { BlogArticleCTA } from './blog/BlogArticleCTA';
 import { BlogFaqSection } from './blog/BlogFaqSection';
 import { BlogBreadcrumbs } from './blog/BlogBreadcrumbs';
-import { BlogCategoryNav } from './blog/BlogCategoryNav';
 import {
   BlogArticleSidebar,
   BlogAuthorSection,
@@ -262,18 +259,6 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
     }
   };
 
-  const shareOnTwitter = () => {
-    if (post) {
-      trackEvent('blog_article_share', {
-        article_id: post.id,
-        article_title: post.title,
-        share_channel: 'twitter',
-      });
-    }
-    const url = encodeURIComponent(window.location.href);
-    const text = encodeURIComponent(`Check out this article: ${post?.title}`);
-    window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, '_blank');
-  };
 
   const shareOnLinkedIn = () => {
     if (post) {
@@ -287,29 +272,7 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
     window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}`, '_blank');
   };
 
-  const shareViaEmail = () => {
-    if (post) {
-      trackEvent('blog_article_share', {
-        article_id: post.id,
-        article_title: post.title,
-        share_channel: 'email',
-      });
-    }
-    const subject = encodeURIComponent(post?.title || '');
-    const body = encodeURIComponent(`I thought you might find this interesting: ${window.location.href}`);
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
-  };
 
-  const copyToClipboard = () => {
-    if (post) {
-      trackEvent('blog_article_share', {
-        article_id: post.id,
-        article_title: post.title,
-        share_channel: 'copy_link',
-      });
-    }
-    navigator.clipboard?.writeText(window.location.href);
-  };
 
   if (isPostLoading) {
     return (
@@ -346,56 +309,16 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
   return (
     <main className="min-h-screen bg-white pt-32 pb-24">
       <article className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        <div className="mb-8 space-y-4">
+        <div className="mb-8">
           <BlogBreadcrumbs items={breadcrumbs} />
-          {navigableCategories.length ? (
-            <BlogCategoryNav
-              categories={navigableCategories}
-              activeSlug={primaryCategorySlug}
-              articleCounts={articleCounts}
-            />
-          ) : null}
         </div>
 
-        <header className="mx-auto mb-14 max-w-3xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-wrap items-center justify-center gap-2"
-          >
-            {primaryCategory ? (
-              <Link
-                to={primaryCategory.canonicalPath}
-                className="text-[11px] font-bold uppercase tracking-[0.24em] text-emerald-600 transition hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-              >
-                {primaryCategory.name}
-              </Link>
-            ) : (
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-emerald-600">
-                {post.category}
-              </p>
-            )}
-          </motion.div>
-
-          {secondaryCategories.length ? (
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-              {secondaryCategories.map((category) => (
-                <Link
-                  key={category.slug}
-                  to={category.canonicalPath}
-                  className="rounded-full border border-zinc-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 transition hover:border-emerald-200 hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-                >
-                  {category.shortName || category.name}
-                </Link>
-              ))}
-            </div>
-          ) : null}
-
+        <header className="mb-14 w-full border-b border-zinc-200 pb-10">
           <motion.h1
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="mt-5 text-4xl font-bold leading-tight tracking-tight text-zinc-900 md:text-5xl"
+            className="max-w-5xl text-4xl font-bold leading-tight tracking-tight text-zinc-900 md:text-5xl"
           >
             {post.title}
           </motion.h1>
@@ -404,7 +327,7 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="mt-6 text-lg leading-8 text-zinc-600"
+            className="mt-5 max-w-3xl text-lg leading-8 text-zinc-600"
           >
             {post.description || post.excerpt}
           </motion.p>
@@ -413,7 +336,7 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="mt-8 flex flex-wrap items-center justify-center gap-4 text-xs font-bold uppercase tracking-[0.16em] text-zinc-400"
+            className="mt-7 flex flex-wrap items-center gap-4 text-xs font-bold uppercase tracking-[0.16em] text-zinc-400"
           >
             <span>{post.date}</span>
             <span aria-hidden>·</span>
@@ -423,6 +346,16 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
               <User className="h-4 w-4" aria-hidden />
               {post.author}
             </span>
+            <button
+              type="button"
+              onClick={shareOnLinkedIn}
+              aria-label="Share this article on LinkedIn"
+              title="Share on LinkedIn"
+              className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 shadow-sm transition-all duration-150 ease-out hover:-translate-y-0.5 hover:border-[#0A66C2] hover:bg-[#0A66C2] hover:text-white hover:shadow-md active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A66C2] focus-visible:ring-offset-2"
+            >
+              <Linkedin className="h-3.5 w-3.5" aria-hidden />
+            </button>
+
           </motion.div>
         </header>
 
@@ -433,10 +366,6 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
             onHeadingActivate={handleHeadingActivate}
             linkedInEmbedHtml={post.linkedInEmbedHtml}
             linkedInPostUrl={post.linkedInPostUrl}
-            onShareTwitter={shareOnTwitter}
-            onShareLinkedIn={shareOnLinkedIn}
-            onShareEmail={shareViaEmail}
-            onCopyLink={copyToClipboard}
           />
 
           <div className="min-w-0">
@@ -444,12 +373,12 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2 }}
-              className="mb-10 aspect-[16/9] overflow-hidden bg-zinc-100"
+              className="mb-10 aspect-video overflow-hidden bg-zinc-100"
             >
               <img
                 src={heroImage}
                 alt={post.imageAlt || post.title}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover object-center"
                 referrerPolicy="no-referrer"
               />
             </motion.div>
@@ -464,37 +393,7 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
               <div dangerouslySetInnerHTML={{ __html: renderedArticleContent }} />
             </motion.div>
 
-            <div className="mt-10 border-t border-zinc-200 pt-8 lg:hidden">
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-zinc-400">Share</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={shareOnTwitter}
-                  className="rounded-full border border-zinc-200 p-2.5 text-zinc-600"
-                  title="Share on Twitter"
-                >
-                  <Twitter className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={shareOnLinkedIn}
-                  className="rounded-full border border-zinc-200 p-2.5 text-zinc-600"
-                  title="Share on LinkedIn"
-                >
-                  <Linkedin className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={shareViaEmail}
-                  className="rounded-full border border-zinc-200 p-2.5 text-zinc-600"
-                  title="Share via email"
-                >
-                  <Mail className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            {hasLinkedInEmbed ? (
+{hasLinkedInEmbed ? (
               <div className="lg:hidden">
                 <BlogLinkedInEmbed
                   embedHtml={post.linkedInEmbedHtml}
@@ -505,7 +404,7 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
             ) : null}
           </div>
 
-          <BlogRecentSidebar posts={recentPosts} />
+          <BlogRecentSidebar posts={recentPosts} tags={post.tags} />
         </div>
 
         <BlogAuthorSection />
