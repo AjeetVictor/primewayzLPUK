@@ -962,7 +962,7 @@ enum SeoPageAliasSource {
 
 model SeoPage {
   id               Int      @id @default(autoincrement())
-  canonicalUrl     String   @unique @db.VarChar(2048)
+  canonicalUrl     String   @db.VarChar(2048)
   canonicalUrlHash String   @unique @db.VarChar(64)
   host             String   @db.VarChar(255)
   path             String   @db.VarChar(2048)

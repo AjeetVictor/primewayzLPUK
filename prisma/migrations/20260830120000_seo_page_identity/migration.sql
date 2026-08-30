@@ -19,7 +19,7 @@ CREATE TABLE `SeoPage` (
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
-    UNIQUE INDEX `SeoPage_canonicalUrl_key`(`canonicalUrl`),
+
     UNIQUE INDEX `SeoPage_canonicalUrlHash_key`(`canonicalUrlHash`),
     INDEX `SeoPage_host_path_idx`(`host`, `path`(191)),
     INDEX `SeoPage_pageType_idx`(`pageType`),
