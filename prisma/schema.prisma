@@ -95,85 +95,85 @@ model ToolLead {
 
 /// Free digital systems review enquiries. Separate lifecycle from ChatSession.
 model DigitalSystemsReviewLead {
-  id                      Int      @id @default(autoincrement())
-  submissionId            String   @unique @db.VarChar(64)
-  name                    String   @db.VarChar(80)
-  workEmail               String   @db.VarChar(191)
-  company                 String   @db.VarChar(120)
-  website                 String?  @db.VarChar(255)
-  serviceArea             String   @db.VarChar(100)
-  context                 String   @db.Text
-  preferredNextStep       String   @db.VarChar(100)
-  consentAt               DateTime
+  id                            Int                 @id @default(autoincrement())
+  submissionId                  String              @unique @db.VarChar(64)
+  name                          String              @db.VarChar(80)
+  workEmail                     String              @db.VarChar(191)
+  company                       String              @db.VarChar(120)
+  website                       String?             @db.VarChar(255)
+  serviceArea                   String              @db.VarChar(100)
+  context                       String              @db.Text
+  preferredNextStep             String              @db.VarChar(100)
+  consentAt                     DateTime
   /// Safe first-touch UTM object (utm_* keys only). No IP/UA/cookies.
-  firstTouchAttribution   Json?
+  firstTouchAttribution         Json?
   /// Safe latest-touch UTM object (utm_* keys only). No IP/UA/cookies.
-  latestTouchAttribution  Json?
-  landingPage             String?  @db.VarChar(500)
-  referrer                String?  @db.Text
-  sourceLocation          String?  @db.VarChar(80)
+  latestTouchAttribution        Json?
+  landingPage                   String?             @db.VarChar(500)
+  referrer                      String?             @db.Text
+  sourceLocation                String?             @db.VarChar(80)
   /// Opaque chat session id for journey linkage only. No FK to ChatSession.
-  chatSessionId           String?  @db.VarChar(64)
-  status                  String   @default("new") @db.VarChar(32)
-  notificationStatus      String   @default("pending") @db.VarChar(32)
+  chatSessionId                 String?             @db.VarChar(64)
+  status                        String              @default("new") @db.VarChar(32)
+  notificationStatus            String              @default("pending") @db.VarChar(32)
   /// Redacted, non-sensitive operational code only (never full SMTP text).
-  notificationErrorCode   String?  @db.VarChar(64)
-  selectedPlanSlug        String?  @db.VarChar(64)
-  selectedPlanName        String?  @db.VarChar(120)
-  displayedPrice          String?  @db.VarChar(32)
-  billingPeriod           String?  @db.VarChar(32)
-  pricingPolicyVersion    String?  @db.VarChar(32)
-  displayedPriceAtSelection String? @db.VarChar(32)
-  serviceInterest         String?  @db.VarChar(100)
-  journeyType             String?  @db.VarChar(64)
-  sourcePagePath          String?  @db.VarChar(500)
-  pageLocation            String?  @db.VarChar(500)
-  sourceSection           String?  @db.VarChar(80)
-  recommendedNextStepCommercial String? @db.VarChar(120)
-  firstTouchSource        String?  @db.VarChar(191)
-  firstTouchMedium        String?  @db.VarChar(191)
-  firstTouchCampaign      String?  @db.VarChar(191)
-  firstTouchContent       String?  @db.VarChar(191)
-  firstTouchTerm          String?  @db.VarChar(191)
-  latestTouchSource       String?  @db.VarChar(191)
-  latestTouchMedium       String?  @db.VarChar(191)
-  latestTouchCampaign     String?  @db.VarChar(191)
-  latestTouchContent      String?  @db.VarChar(191)
-  latestTouchTerm         String?  @db.VarChar(191)
-  journeyReference        String?  @db.VarChar(64)
-  sessionReference        String?  @db.VarChar(64)
-  leadOwnerId             Int?
-  statusUpdatedAt         DateTime?
-  validatedAt             DateTime?
-  assignedAt              DateTime?
-  firstContactedAt        DateTime?
-  qualifiedAt             DateTime?
-  proposalSentAt          DateTime?
-  wonAt                   DateTime?
-  lostAt                  DateTime?
-  nurtureAt               DateTime?
-  slaDueAt                DateTime?
-  slaBreachedAt           DateTime?
-  followUpAt              DateTime?
-  lastContactedAt         DateTime?
-  outcome                 String?  @db.VarChar(32)
-  lostReason              String?  @db.VarChar(64)
-  nurtureReason           String?  @db.VarChar(64)
-  validationScore         Int?
-  validationFlags         Json?
-  validationOutcome       String?  @db.VarChar(32)
-  duplicateOfLeadId       Int?
-  duplicateConfidence     String?  @db.VarChar(16)
-  proposalValueMinor      Int?
-  proposalCurrency        String?  @db.VarChar(8)
-  normalisedWorkEmail     String?  @db.VarChar(191)
-  normalisedCompanyDomain String?  @db.VarChar(191)
-  statusHistory           Json?
-  followUpNote            String?  @db.Text
-  followUpReason          String?  @db.VarChar(64)
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-  nurtureRecords          LeadNurtureRecord[]
+  notificationErrorCode         String?             @db.VarChar(64)
+  selectedPlanSlug              String?             @db.VarChar(64)
+  selectedPlanName              String?             @db.VarChar(120)
+  displayedPrice                String?             @db.VarChar(32)
+  billingPeriod                 String?             @db.VarChar(32)
+  pricingPolicyVersion          String?             @db.VarChar(32)
+  displayedPriceAtSelection     String?             @db.VarChar(32)
+  serviceInterest               String?             @db.VarChar(100)
+  journeyType                   String?             @db.VarChar(64)
+  sourcePagePath                String?             @db.VarChar(500)
+  pageLocation                  String?             @db.VarChar(500)
+  sourceSection                 String?             @db.VarChar(80)
+  recommendedNextStepCommercial String?             @db.VarChar(120)
+  firstTouchSource              String?             @db.VarChar(191)
+  firstTouchMedium              String?             @db.VarChar(191)
+  firstTouchCampaign            String?             @db.VarChar(191)
+  firstTouchContent             String?             @db.VarChar(191)
+  firstTouchTerm                String?             @db.VarChar(191)
+  latestTouchSource             String?             @db.VarChar(191)
+  latestTouchMedium             String?             @db.VarChar(191)
+  latestTouchCampaign           String?             @db.VarChar(191)
+  latestTouchContent            String?             @db.VarChar(191)
+  latestTouchTerm               String?             @db.VarChar(191)
+  journeyReference              String?             @db.VarChar(64)
+  sessionReference              String?             @db.VarChar(64)
+  leadOwnerId                   Int?
+  statusUpdatedAt               DateTime?
+  validatedAt                   DateTime?
+  assignedAt                    DateTime?
+  firstContactedAt              DateTime?
+  qualifiedAt                   DateTime?
+  proposalSentAt                DateTime?
+  wonAt                         DateTime?
+  lostAt                        DateTime?
+  nurtureAt                     DateTime?
+  slaDueAt                      DateTime?
+  slaBreachedAt                 DateTime?
+  followUpAt                    DateTime?
+  lastContactedAt               DateTime?
+  outcome                       String?             @db.VarChar(32)
+  lostReason                    String?             @db.VarChar(64)
+  nurtureReason                 String?             @db.VarChar(64)
+  validationScore               Int?
+  validationFlags               Json?
+  validationOutcome             String?             @db.VarChar(32)
+  duplicateOfLeadId             Int?
+  duplicateConfidence           String?             @db.VarChar(16)
+  proposalValueMinor            Int?
+  proposalCurrency              String?             @db.VarChar(8)
+  normalisedWorkEmail           String?             @db.VarChar(191)
+  normalisedCompanyDomain       String?             @db.VarChar(191)
+  statusHistory                 Json?
+  followUpNote                  String?             @db.Text
+  followUpReason                String?             @db.VarChar(64)
+  createdAt                     DateTime            @default(now())
+  updatedAt                     DateTime            @updatedAt
+  nurtureRecords                LeadNurtureRecord[]
 
   @@index([createdAt])
   @@index([sourceLocation])
@@ -194,19 +194,19 @@ model DigitalSystemsReviewLead {
 }
 
 model LeadNurtureRecord {
-  id                  Int      @id @default(autoincrement())
+  id                  Int                      @id @default(autoincrement())
   leadId              Int
-  leadType            String   @default("digital_systems_review") @db.VarChar(32)
-  segment             String   @db.VarChar(64)
-  currentLeadStatus   String?  @db.VarChar(32)
-  recommendedNextStep String?  @db.VarChar(120)
+  leadType            String                   @default("digital_systems_review") @db.VarChar(32)
+  segment             String                   @db.VarChar(64)
+  currentLeadStatus   String?                  @db.VarChar(32)
+  recommendedNextStep String?                  @db.VarChar(120)
   nextFollowUpDate    DateTime?
   ownerId             Int?
-  lawfulBasisNote     String?  @db.VarChar(255)
+  lawfulBasisNote     String?                  @db.VarChar(255)
   lastContactDate     DateTime?
-  notes               String?  @db.Text
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  notes               String?                  @db.Text
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
   lead                DigitalSystemsReviewLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   @@index([leadId])
@@ -458,16 +458,16 @@ model AutopilotTopic {
   performanceStatus String @default("NOT_TRACKED")
 
   // Draft-first queue state. Legacy status fields above remain during migration.
-  queueStatus      AutopilotQueueStatus       @default(GENERATING)
-  pipelineStage    AutopilotPipelineStage     @default(QUEUED)
-  reviewVerdict    AutopilotReviewVerdict     @default(NOT_REVIEWED)
+  queueStatus       AutopilotQueueStatus       @default(GENERATING)
+  pipelineStage     AutopilotPipelineStage     @default(QUEUED)
+  reviewVerdict     AutopilotReviewVerdict     @default(NOT_REVIEWED)
   humanReviewStatus AutopilotHumanReviewStatus @default(PENDING)
 
-  qualityScore      Decimal? @db.Decimal(5, 1)
-  factualScore      Decimal? @db.Decimal(5, 1)
-  brandVoiceScore   Decimal? @db.Decimal(5, 1)
-  originalityScore  Decimal? @db.Decimal(5, 1)
-  reviewIssues      Json?
+  qualityScore       Decimal? @db.Decimal(5, 1)
+  factualScore       Decimal? @db.Decimal(5, 1)
+  brandVoiceScore    Decimal? @db.Decimal(5, 1)
+  originalityScore   Decimal? @db.Decimal(5, 1)
+  reviewIssues       Json?
   sourceEvidenceJson Json?
   autoReviewJson     Json?
 
@@ -478,15 +478,15 @@ model AutopilotTopic {
   rejectedAt      DateTime?
   rejectionReason String?   @db.Text
 
-  attemptCount     Int       @default(0)
-  lastError        String?   @db.Text
-  lockedAt         DateTime?
-  lockedBy         String?
-  modelName        String?
-  promptVersion    String?
+  attemptCount      Int       @default(0)
+  lastError         String?   @db.Text
+  lockedAt          DateTime?
+  lockedBy          String?
+  modelName         String?
+  promptVersion     String?
   generationVersion String?
-  scheduledFor     DateTime?
-  publishedUrl     String?   @db.Text
+  scheduledFor      DateTime?
+  publishedUrl      String?   @db.Text
 
   currentVersionId   Int? @unique
   approvedVersionId  Int? @unique
@@ -542,10 +542,10 @@ model AutopilotTopic {
   keywordCandidatesMatched   AutopilotKeywordCandidate[] @relation("AutopilotKeywordCandidateMatchedTopic")
   keywordCandidatesConverted AutopilotKeywordCandidate[] @relation("AutopilotKeywordCandidateConvertedTopic")
   researchSnapshots          AutopilotResearchSnapshot[]
-  contentVersions            AutopilotContentVersion[] @relation("AutopilotContentVersions")
-  currentVersion             AutopilotContentVersion?  @relation("AutopilotCurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
-  approvedVersion            AutopilotContentVersion?  @relation("AutopilotApprovedVersion", fields: [approvedVersionId], references: [id], onDelete: SetNull)
-  publishedVersion           AutopilotContentVersion?  @relation("AutopilotPublishedVersion", fields: [publishedVersionId], references: [id], onDelete: SetNull)
+  contentVersions            AutopilotContentVersion[]   @relation("AutopilotContentVersions")
+  currentVersion             AutopilotContentVersion?    @relation("AutopilotCurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  approvedVersion            AutopilotContentVersion?    @relation("AutopilotApprovedVersion", fields: [approvedVersionId], references: [id], onDelete: SetNull)
+  publishedVersion           AutopilotContentVersion?    @relation("AutopilotPublishedVersion", fields: [publishedVersionId], references: [id], onDelete: SetNull)
 
   @@index([proposedSlug])
   @@index([topicStatus])
@@ -779,7 +779,6 @@ model AutopilotResearchSnapshot {
   @@index([confirmedAt])
 }
 
-
 model AutopilotContentVersion {
   id                 Int                           @id @default(autoincrement())
   topicId            Int
@@ -801,8 +800,8 @@ model AutopilotContentVersion {
   createdById        Int?
   createdAt          DateTime                      @default(now())
 
-  topic       AutopilotTopic @relation("AutopilotContentVersions", fields: [topicId], references: [id], onDelete: Restrict)
-  createdBy   User?          @relation("AutopilotContentVersionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  topic             AutopilotTopic  @relation("AutopilotContentVersions", fields: [topicId], references: [id], onDelete: Restrict)
+  createdBy         User?           @relation("AutopilotContentVersionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   currentForTopic   AutopilotTopic? @relation("AutopilotCurrentVersion")
   approvedForTopic  AutopilotTopic? @relation("AutopilotApprovedVersion")
   publishedForTopic AutopilotTopic? @relation("AutopilotPublishedVersion")
@@ -837,34 +836,34 @@ enum GscSyncTrigger {
 }
 
 model GscConnection {
-  id                       Int                 @id @default(autoincrement())
-  status                   GscConnectionStatus
-  siteUrl                  String?             @unique
-  requestedSiteUrl         String?             @db.VarChar(512)
-  expectedEmail            String?             @db.VarChar(320)
-  googleSubject            String?             @db.VarChar(255)
-  authorisedEmail          String?             @db.VarChar(320)
-  authorisedEmailVerified  Boolean?
-  identityValidatedAt      DateTime?
-  permissionLevel          String?
-  refreshTokenCiphertext   String              @db.Text
-  refreshTokenIv           String
-  refreshTokenAuthTag      String
-  tokenKeyVersion          Int                 @default(1)
-  scope                    String
-  connectedById            Int?
-  connectedAt              DateTime            @default(now())
-  lastValidatedAt          DateTime?
-  lastSuccessfulSyncAt     DateTime?
-  lastErrorCode            String?
-  lastErrorMessage         String?             @db.Text
-  syncLockToken            String?
-  syncLockedAt             DateTime?
-  isActive                 Boolean             @default(true)
-  createdAt                DateTime            @default(now())
-  updatedAt                DateTime            @updatedAt
+  id                      Int                 @id @default(autoincrement())
+  status                  GscConnectionStatus
+  siteUrl                 String?             @unique
+  requestedSiteUrl        String?             @db.VarChar(512)
+  expectedEmail           String?             @db.VarChar(320)
+  googleSubject           String?             @db.VarChar(255)
+  authorisedEmail         String?             @db.VarChar(320)
+  authorisedEmailVerified Boolean?
+  identityValidatedAt     DateTime?
+  permissionLevel         String?
+  refreshTokenCiphertext  String              @db.Text
+  refreshTokenIv          String
+  refreshTokenAuthTag     String
+  tokenKeyVersion         Int                 @default(1)
+  scope                   String
+  connectedById           Int?
+  connectedAt             DateTime            @default(now())
+  lastValidatedAt         DateTime?
+  lastSuccessfulSyncAt    DateTime?
+  lastErrorCode           String?
+  lastErrorMessage        String?             @db.Text
+  syncLockToken           String?
+  syncLockedAt            DateTime?
+  isActive                Boolean             @default(true)
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
 
-  connectedBy User?               @relation("GscConnectionConnectedBy", fields: [connectedById], references: [id], onDelete: SetNull)
+  connectedBy User?                @relation("GscConnectionConnectedBy", fields: [connectedById], references: [id], onDelete: SetNull)
   syncRuns    GscSyncRun[]
   metrics     GscQueryPageMetric[]
 
@@ -945,4 +944,57 @@ model GscQueryPageMetric {
   @@index([connectionId, metricDate])
   @@index([queryHash, metricDate])
   @@index([pageHash, metricDate])
+}
+
+// --- SEO Intelligence: canonical page identity ---
+enum SeoPageAliasSource {
+  GSC
+  GA4
+  CHAT
+  LEAD
+  CMS
+  INDEXING
+  GITHUB
+}
+
+model SeoPage {
+  id               Int      @id @default(autoincrement())
+  canonicalUrl     String   @unique @db.VarChar(2048)
+  canonicalUrlHash String   @unique @db.VarChar(64)
+  host             String   @db.VarChar(255)
+  path             String   @db.VarChar(2048)
+  pageType         String?  @db.VarChar(64)
+  serviceArea      String?  @db.VarChar(100)
+  cmsEntityType    String?  @db.VarChar(64)
+  cmsEntityId      String?  @db.VarChar(191)
+  title            String?  @db.VarChar(512)
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  aliases SeoPageAlias[]
+
+  @@index([host, path])
+  @@index([pageType])
+  @@index([active])
+}
+
+model SeoPageAlias {
+  id                Int                @id @default(autoincrement())
+  seoPageId         Int
+  source            SeoPageAliasSource
+  observedUrl       String             @db.Text
+  normalisedUrl     String             @db.Text
+  normalisedUrlHash String             @db.VarChar(64)
+  firstSeenAt       DateTime
+  lastSeenAt        DateTime
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  seoPage SeoPage @relation(fields: [seoPageId], references: [id], onDelete: Cascade)
+
+  @@unique([source, normalisedUrlHash])
+  @@index([seoPageId])
+  @@index([normalisedUrlHash])
+  @@index([source, lastSeenAt])
 }
