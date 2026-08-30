@@ -23,6 +23,7 @@ import { AutopilotErrorState } from './AutopilotErrorState';
 import { GscConnectionPanel } from './GscConnectionPanel';
 import { GscPerformancePanel } from './GscPerformancePanel';
 import { Ga4ReportingPanel } from './Ga4ReportingPanel';
+import { Ga4PerformancePanel } from './Ga4PerformancePanel';
 
 type AutopilotDashboardProps = {
   refreshKey: number;
@@ -132,6 +133,7 @@ export function AutopilotDashboard({
         />
         <GscPerformancePanel refreshKey={refreshKey} />
         <Ga4ReportingPanel refreshKey={refreshKey} canManage={canManageGsc ?? false} />
+        <Ga4PerformancePanel refreshKey={refreshKey} />
         <AutopilotEmptyState
           title="No Autopilot topics yet"
           description="Topics are reviewed before briefs or drafts are created. Create a candidate topic to begin the editorial pipeline."
@@ -151,6 +153,7 @@ export function AutopilotDashboard({
       />
       <GscPerformancePanel refreshKey={refreshKey} />
       <Ga4ReportingPanel refreshKey={refreshKey} canManage={canManageGsc ?? false} />
+      <Ga4PerformancePanel refreshKey={refreshKey} />
 
       {data.gscPerformanceSummary ? (
         <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">

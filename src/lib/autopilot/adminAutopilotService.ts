@@ -889,17 +889,25 @@ export const adminAutopilotApi = {
     return autopilotRequest<{
       configuration: {
         configured: boolean;
-        propertyConfigured: boolean;
         missing: string[];
+        propertyIdConfigured: boolean;
+        authenticationConfigured: boolean;
+        authenticationType: 'service_account' | null;
         propertyId: string | null;
-        latestSafeDate: string | null;
-        defaultLookback: number;
+        lookbackDays: number;
         dataDelayDays: number;
+        defaultDateFrom: string | null;
+        defaultDateTo: string | null;
+        latestSafeDate: string | null;
+        maxRangeDays: number;
         lastSuccessfulSync: string | null;
         currentErrorCode: string | null;
         currentErrorMessage: string | null;
         syncLocked: boolean;
+        defaultLookback: number;
+        propertyConfigured: boolean;
       };
+      latestMetricDate: string | null;
       recentSyncRuns: Array<{
         id: number;
         trigger: string;
@@ -910,6 +918,7 @@ export const adminAutopilotApi = {
         daysProcessed: number;
         rowsFetched: number;
         rowsUpserted: number;
+        unmatchedPages: number;
         startedAt: string | null;
         completedAt: string | null;
         errorCode: string | null;
@@ -929,6 +938,71 @@ export const adminAutopilotApi = {
       configId: number;
       correlationId: string;
     }>('/api/admin/autopilot/ga4/sync', { method: 'POST', body, signal });
+  },
+
+  testGa4Connection(signal?: AbortSignal) {
+    return autopilotRequest<{
+      ok: boolean;
+      errorCode?: string;
+      errorMessage?: string;
+      correlationId: string;
+    }>('/api/admin/autopilot/ga4/test-connection', { method: 'POST', signal });
+  },
+
+  listGa4SyncRuns(
+    query?: { limit?: number; offset?: number },
+    signal?: AbortSignal,
+  ) {
+    return autopilotRequest<{
+      items: Array<Record<string, unknown>>;
+      total: number;
+      limit: number;
+      offset: number;
+      correlationId: string;
+    }>('/api/admin/autopilot/ga4/sync-runs', { query, signal });
+  },
+
+  getGa4Performance(
+    query?: {
+      dateFrom?: string;
+      dateTo?: string;
+      comparisonDateFrom?: string;
+      comparisonDateTo?: string;
+      compare?: boolean;
+      seoPageId?: number;
+      page?: string;
+      channelGroup?: string;
+      source?: string;
+      medium?: string;
+      limit?: number;
+      offset?: number;
+    },
+    signal?: AbortSignal,
+  ) {
+    return autopilotRequest<{
+      configured: boolean;
+      summary: {
+        sessions: number;
+        organicSessions: number;
+        engagedSessions: number;
+        engagementRate: number | null;
+        averageEngagementTime: number | null;
+        keyEvents: number;
+        generateLeadEvents: number;
+        contactFormConversions: number;
+        bookingConversions: number;
+        pageCount: number;
+        metricRowCount: number;
+      } | null;
+      comparison: Record<string, unknown> | null;
+      trend: Array<Record<string, unknown>>;
+      topPages: Array<Record<string, unknown>>;
+      topPagesTotal: number;
+      dataQuality: Record<string, unknown> | null;
+      period: { dateFrom: string; dateTo: string } | null;
+      comparisonPeriod: { dateFrom: string; dateTo: string } | null;
+      correlationId: string;
+    }>('/api/admin/autopilot/ga4/performance', { query, signal });
   },
 };
 

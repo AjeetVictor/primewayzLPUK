@@ -42,3 +42,8 @@ export function canManageAutopilotSettings(role?: string): boolean {
 export function canManageGscConnection(role?: string): boolean {
   return role === 'super_admin';
 }
+
+/** GA4 sync / test connection — super_admin only (separate auth boundary from GSC OAuth). */
+export function canManageGa4Reporting(role?: string): boolean {
+  return role === 'super_admin';
+}

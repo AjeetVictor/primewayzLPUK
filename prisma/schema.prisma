@@ -1015,6 +1015,7 @@ enum Ga4SyncStatus {
   QUEUED
   RUNNING
   SUCCEEDED
+  PARTIAL
   FAILED
 }
 
@@ -1038,23 +1039,24 @@ model Ga4ConfigurationState {
 }
 
 model Ga4SyncRun {
-  id            Int            @id @default(autoincrement())
-  configId      Int            @default(1)
-  trigger       Ga4SyncTrigger
-  status        Ga4SyncStatus
-  dateFrom      DateTime       @db.Date
-  dateTo        DateTime       @db.Date
-  requestsMade  Int            @default(0)
-  daysProcessed Int            @default(0)
-  rowsFetched   Int            @default(0)
-  rowsUpserted  Int            @default(0)
-  startedAt     DateTime?
-  completedAt   DateTime?
-  errorCode     String?
-  errorMessage  String?        @db.Text
-  requestedById Int?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id             Int            @id @default(autoincrement())
+  configId       Int            @default(1)
+  trigger        Ga4SyncTrigger
+  status         Ga4SyncStatus
+  dateFrom       DateTime       @db.Date
+  dateTo         DateTime       @db.Date
+  requestsMade   Int            @default(0)
+  daysProcessed  Int            @default(0)
+  rowsFetched    Int            @default(0)
+  rowsUpserted   Int            @default(0)
+  unmatchedPages Int            @default(0)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  errorCode      String?        @db.VarChar(64)
+  errorMessage   String?        @db.Text
+  requestedById  Int?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   config      Ga4ConfigurationState @relation(fields: [configId], references: [id], onDelete: Cascade)
   requestedBy User?                 @relation("Ga4SyncRunRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
@@ -1064,35 +1066,44 @@ model Ga4SyncRun {
   @@index([dateFrom, dateTo])
 }
 
+/// Daily landing page + session default channel group (+ source/medium when present).
+/// Uniqueness is enforced on metricDate + dimensionKeyHash (SHA-256 of normalised dimensions).
 model Ga4PageMetric {
-  id                      BigInt   @id @default(autoincrement())
-  syncRunId               Int?
-  metricDate              DateTime @db.Date
-  seoPageId               Int?
-  observedLandingPage     String   @db.Text
-  observedLandingPageHash String   @db.VarChar(64)
-  source                  String   @db.VarChar(191)
-  medium                  String   @db.VarChar(191)
-  defaultChannelGroup     String   @db.VarChar(191)
-  sessions                Decimal  @db.Decimal(18, 2)
-  organicSessions         Decimal  @db.Decimal(18, 2)
-  engagedSessions         Decimal  @db.Decimal(18, 2)
-  engagementRate          Decimal  @db.Decimal(12, 8)
-  averageEngagementTime   Decimal  @db.Decimal(18, 4)
-  keyEvents               Decimal  @db.Decimal(18, 2)
-  generateLeadEvents      Decimal  @db.Decimal(18, 2)
-  contactFormConversions  Decimal  @db.Decimal(18, 2)
-  bookingConversions      Decimal  @db.Decimal(18, 2)
-  importedAt              DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  id                        BigInt   @id @default(autoincrement())
+  syncRunId                 Int?
+  metricDate                DateTime @db.Date
+  seoPageId                 Int?
+  observedLandingPage       String   @db.Text
+  observedLandingPageHash   String   @db.VarChar(64)
+  normalisedLandingPage     String   @db.Text
+  normalisedLandingPageHash String   @db.VarChar(64)
+  dimensionKeyHash          String   @db.VarChar(64)
+  source                    String   @db.VarChar(191)
+  medium                    String   @db.VarChar(191)
+  defaultChannelGroup       String   @db.VarChar(191)
+  sessions                  Int      @default(0)
+  organicSessions           Int      @default(0)
+  engagedSessions           Int      @default(0)
+  engagementRate            Decimal? @db.Decimal(12, 8)
+  averageEngagementTime     Decimal? @db.Decimal(18, 4)
+  keyEvents                 Int      @default(0)
+  generateLeadEvents        Int      @default(0)
+  contactFormConversions    Int      @default(0)
+  bookingConversions        Int      @default(0)
+  unclassifiedLeadEvents    Int?
+  qaLeadEvents              Int?
+  importedAt                DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 
   syncRun Ga4SyncRun? @relation(fields: [syncRunId], references: [id], onDelete: SetNull)
   seoPage SeoPage?    @relation(fields: [seoPageId], references: [id], onDelete: SetNull)
 
-  @@unique([metricDate, observedLandingPageHash, source, medium, defaultChannelGroup], map: "Ga4PageMetric_uniq")
+  @@unique([metricDate, dimensionKeyHash], map: "Ga4PageMetric_uniq")
   @@index([metricDate])
   @@index([observedLandingPageHash, metricDate])
+  @@index([normalisedLandingPageHash, metricDate])
   @@index([seoPageId, metricDate])
+  @@index([defaultChannelGroup, metricDate])
   @@index([syncRunId])
 }
 

@@ -4,23 +4,36 @@
  */
 
 import { AutopilotError } from '../autopilot/apiErrors.ts';
+import { computeDefaultGscDateWindow } from '../autopilot/gscDateUtils.ts';
+
+export const GA4_SYNC_MAX_RANGE_DAYS = 400;
 
 export const GA4_READONLY_SCOPE = 'https://www.googleapis.com/auth/analytics.readonly';
 export const GA4_DEFAULT_LOOKBACK_DAYS = 28;
 export const GA4_DEFAULT_DATA_DELAY_DAYS = 1;
+export const GA4_AUTHENTICATION_TYPE = 'service_account' as const;
 
 export type Ga4PublicConfigStatus = {
   configured: boolean;
-  propertyConfigured: boolean;
   missing: string[];
+  propertyIdConfigured: boolean;
+  authenticationConfigured: boolean;
+  authenticationType: typeof GA4_AUTHENTICATION_TYPE | null;
   propertyId: string | null;
-  latestSafeDate: string | null;
-  defaultLookback: number;
+  lookbackDays: number;
   dataDelayDays: number;
+  defaultDateFrom: string | null;
+  defaultDateTo: string | null;
+  latestSafeDate: string | null;
+  maxRangeDays: number;
   lastSuccessfulSync: string | null;
   currentErrorCode: string | null;
   currentErrorMessage: string | null;
   syncLocked: boolean;
+  /** @deprecated use lookbackDays */
+  defaultLookback: number;
+  /** @deprecated use propertyIdConfigured */
+  propertyConfigured: boolean;
 };
 
 function readTrimmed(env: NodeJS.ProcessEnv, key: string): string {
@@ -71,6 +84,12 @@ export function assertGa4Configured(env: NodeJS.ProcessEnv = process.env): {
   };
 }
 
+export function maskGa4PropertyId(propertyId: string | null): string | null {
+  if (!propertyId) return null;
+  if (propertyId.length <= 4) return '****';
+  return `${'*'.repeat(Math.max(propertyId.length - 4, 4))}${propertyId.slice(-4)}`;
+}
+
 export function getGa4PublicConfigStatus(
   env: NodeJS.ProcessEnv = process.env,
   runtime?: {
@@ -79,21 +98,39 @@ export function getGa4PublicConfigStatus(
     currentErrorCode?: string | null;
     currentErrorMessage?: string | null;
     syncLocked?: boolean;
+    now?: Date;
   },
 ): Ga4PublicConfigStatus {
   const missing = getGa4ConfigMissing(env);
   const propertyId = readTrimmed(env, 'GA4_PROPERTY_ID') || null;
+  const authConfigured =
+    !missing.includes('GA4_SERVICE_ACCOUNT_CLIENT_EMAIL') &&
+    !missing.includes('GA4_SERVICE_ACCOUNT_PRIVATE_KEY');
+  const lookbackDays = parsePositiveInt(readTrimmed(env, 'GA4_DEFAULT_LOOKBACK_DAYS'), GA4_DEFAULT_LOOKBACK_DAYS);
+  const dataDelayDays = parsePositiveInt(readTrimmed(env, 'GA4_DATA_DELAY_DAYS'), GA4_DEFAULT_DATA_DELAY_DAYS);
+  const window = computeDefaultGscDateWindow(runtime?.now ?? new Date(), {
+    lookbackDays,
+    dataDelayDays,
+  });
+
   return {
     configured: missing.length === 0,
-    propertyConfigured: Boolean(propertyId),
     missing,
-    propertyId,
-    latestSafeDate: runtime?.latestSafeDate ?? null,
-    defaultLookback: parsePositiveInt(readTrimmed(env, 'GA4_DEFAULT_LOOKBACK_DAYS'), GA4_DEFAULT_LOOKBACK_DAYS),
-    dataDelayDays: parsePositiveInt(readTrimmed(env, 'GA4_DATA_DELAY_DAYS'), GA4_DEFAULT_DATA_DELAY_DAYS),
+    propertyIdConfigured: Boolean(propertyId),
+    authenticationConfigured: authConfigured,
+    authenticationType: authConfigured ? GA4_AUTHENTICATION_TYPE : null,
+    propertyId: propertyId ? maskGa4PropertyId(propertyId) : null,
+    lookbackDays,
+    dataDelayDays,
+    defaultDateFrom: window.dateFrom,
+    defaultDateTo: window.dateTo,
+    latestSafeDate: runtime?.latestSafeDate ?? window.dateTo,
+    maxRangeDays: GA4_SYNC_MAX_RANGE_DAYS,
     lastSuccessfulSync: runtime?.lastSuccessfulSync ?? null,
     currentErrorCode: runtime?.currentErrorCode ?? null,
     currentErrorMessage: runtime?.currentErrorMessage ?? null,
     syncLocked: runtime?.syncLocked ?? false,
+    defaultLookback: lookbackDays,
+    propertyConfigured: Boolean(propertyId),
   };
 }

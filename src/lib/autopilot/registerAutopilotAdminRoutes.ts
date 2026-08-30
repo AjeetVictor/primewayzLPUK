@@ -18,6 +18,7 @@ import {
   canContributeTopics,
   canEditorialAutopilot,
   canManageAutopilotSettings,
+  canManageGa4Reporting,
   canManageGscConnection,
   canReadAutopilot,
 } from './autopilotPermissions.ts';
@@ -76,7 +77,13 @@ import { refreshGscOpportunitiesAfterSync } from './gscOpportunityOrchestrationS
 import { listSeoOpportunities } from './seoOpportunityService.ts';
 import { validateGscSyncDateRange } from './gscSyncDateValidation.ts';
 import { resolveGscAdminRedirect } from './gscRedirect.ts';
-import { getGa4ReportingStatus, runGa4Sync } from '../seo/ga4SyncService.ts';
+import { getGa4PerformanceReport } from '../seo/ga4PerformanceService.ts';
+import {
+  getGa4ReportingStatus,
+  listGa4SyncRuns,
+  runGa4Sync,
+  testGa4Connection,
+} from '../seo/ga4SyncService.ts';
 import { getSeoPageDiagnostics } from '../seo/seoPageDiagnosticsService.ts';
 
 type AdminRequest = Request & {
@@ -838,7 +845,7 @@ export function registerAutopilotAdminRoutes(options: RegisterAutopilotAdminRout
   app.post(
     '/api/admin/autopilot/ga4/sync',
     requireAdmin,
-    requireRole(canManageGscConnection),
+    requireRole(canManageGa4Reporting),
     withAutopilotHandler(async (req, res, correlationId) => {
       assertNoPrototypePollution(req.body);
       const actor = toActor(req);
@@ -851,6 +858,56 @@ export function registerAutopilotAdminRoutes(options: RegisterAutopilotAdminRout
       });
       res.setHeader('x-correlation-id', correlationId);
       res.json({ ...result, correlationId });
+    }),
+  );
+
+  app.get(
+    '/api/admin/autopilot/ga4/sync-runs',
+    requireAdmin,
+    requireRole(canReadAutopilot),
+    withAutopilotHandler(async (req, res, correlationId) => {
+      const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
+      const result = await listGa4SyncRuns(prisma, { limit, offset });
+      res.setHeader('x-correlation-id', correlationId);
+      res.json({ ...result, correlationId });
+    }),
+  );
+
+  app.post(
+    '/api/admin/autopilot/ga4/test-connection',
+    requireAdmin,
+    requireRole(canManageGa4Reporting),
+    withAutopilotHandler(async (_req, res, correlationId) => {
+      const result = await testGa4Connection(prisma);
+      res.setHeader('x-correlation-id', correlationId);
+      res.json({ ...result, correlationId });
+    }),
+  );
+
+  app.get(
+    '/api/admin/autopilot/ga4/performance',
+    requireAdmin,
+    requireRole(canReadAutopilot),
+    withAutopilotHandler(async (req, res, correlationId) => {
+      const q = req.query as Record<string, unknown>;
+      const report = await getGa4PerformanceReport(prisma, {
+        dateFrom: typeof q.dateFrom === 'string' ? q.dateFrom : undefined,
+        dateTo: typeof q.dateTo === 'string' ? q.dateTo : undefined,
+        comparisonDateFrom:
+          typeof q.comparisonDateFrom === 'string' ? q.comparisonDateFrom : undefined,
+        comparisonDateTo:
+          typeof q.comparisonDateTo === 'string' ? q.comparisonDateTo : undefined,
+        compare: q.compare === 'false' || q.compare === false ? false : undefined,
+        seoPageId: typeof q.seoPageId === 'string' ? Number(q.seoPageId) : undefined,
+        page: typeof q.page === 'string' ? q.page : undefined,
+        channelGroup: typeof q.channelGroup === 'string' ? q.channelGroup : undefined,
+        source: typeof q.source === 'string' ? q.source : undefined,
+        medium: typeof q.medium === 'string' ? q.medium : undefined,
+        limit: typeof q.limit === 'string' ? Number(q.limit) : undefined,
+        offset: typeof q.offset === 'string' ? Number(q.offset) : undefined,
+      });
+      res.setHeader('x-correlation-id', correlationId);
+      res.json({ ...report, correlationId });
     }),
   );
 
