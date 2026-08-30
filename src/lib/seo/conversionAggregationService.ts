@@ -290,16 +290,14 @@ export async function persistConversionBuckets(
 ): Promise<{ rowsDeleted: number }> {
   const deleteWhere = buildDeleteWhere(options, pageScope);
 
-  return withConversionRebuildLock(prisma, async () => {
-    return prisma.$transaction(async (tx) => {
-      const deleted = await tx.seoPageConversionDaily.deleteMany({ where: deleteWhere });
-      if (buckets.length > 0) {
-        await tx.seoPageConversionDaily.createMany({
-          data: buckets.map(toPersistedRow),
-        });
-      }
-      return { rowsDeleted: deleted.count };
-    });
+  return withConversionRebuildLock(prisma, async (tx) => {
+    const deleted = await tx.seoPageConversionDaily.deleteMany({ where: deleteWhere });
+    if (buckets.length > 0) {
+      await tx.seoPageConversionDaily.createMany({
+        data: buckets.map(toPersistedRow),
+      });
+    }
+    return { rowsDeleted: deleted.count };
   });
 }
 

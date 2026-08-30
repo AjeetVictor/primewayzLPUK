@@ -25,10 +25,6 @@ import {
   mapReviewLeadStatusToLeadQuality,
 } from './conversionTaxonomies.ts';
 import { computeConversionBucketKeyHash } from './conversionBucketKey.ts';
-import {
-  acquireConversionRebuildLock,
-  releaseConversionRebuildLock,
-} from './conversionRebuildLock.ts';
 
 type StoredConversionRow = {
   id: number;
@@ -51,6 +47,17 @@ type StoredConversionRow = {
   unknownAttributionCount: number;
 };
 
+type ConversionRebuildTxClient = {
+  seoPageConversionDaily: {
+    deleteMany: (args: { where: Record<string, unknown> }) => Promise<{ count: number }>;
+    createMany: (args: { data: Array<Record<string, unknown>> }) => Promise<{ count: number }>;
+  };
+  $queryRaw: (
+    strings: TemplateStringsArray,
+    ...values: unknown[]
+  ) => Promise<Array<{ result: unknown }>>;
+};
+
 type ConversionRebuildTestPrisma = {
   chatSession: { findMany: () => Promise<unknown[]> };
   formResponse: { findMany: () => Promise<unknown[]> };
@@ -67,29 +74,112 @@ type ConversionRebuildTestPrisma = {
     create: () => Promise<{ id: number }>;
     update: () => Promise<Record<string, never>>;
   };
-  seoPageConversionDaily: {
-    deleteMany: (args: { where: Record<string, unknown> }) => Promise<{ count: number }>;
-    createMany: (args: { data: Array<Record<string, unknown>> }) => Promise<{ count: number }>;
-  };
   $transaction: (
-    callback: (tx: ConversionRebuildTestPrisma) => Promise<unknown>,
+    callback: (tx: ConversionRebuildTxClient) => Promise<unknown>,
   ) => Promise<unknown>;
-  $queryRaw: (
-    strings: TemplateStringsArray,
-    ...values: unknown[]
-  ) => Promise<Array<{ result: number }>>;
   _rows: StoredConversionRow[];
-  _lockState: { held: boolean; acquireCount: number; releaseCount: number };
+  _tx: ConversionRebuildTxClient;
+  _lockState: {
+    acquireCount: number;
+    releaseCount: number;
+    deleteCount: number;
+    createCount: number;
+    lockHeld: boolean;
+    releaseResult: unknown;
+    transactionCount: number;
+    lockClientRefs: unknown[];
+  };
 };
 
 function createConversionRebuildPrisma(input?: {
   initialRows?: StoredConversionRow[];
   failCreate?: boolean;
   lockHeld?: boolean;
+  releaseResult?: unknown;
 }): ConversionRebuildTestPrisma {
   const rows = [...(input?.initialRows ?? [])];
   let nextId = rows.reduce((max, row) => Math.max(max, row.id), 0) + 1;
-  const lockState = { held: input?.lockHeld ?? false, acquireCount: 0, releaseCount: 0 };
+  const lockState = {
+    acquireCount: 0,
+    releaseCount: 0,
+    deleteCount: 0,
+    createCount: 0,
+    lockHeld: input?.lockHeld ?? false,
+    releaseResult:
+      input && 'releaseResult' in input ? input.releaseResult : 1,
+    transactionCount: 0,
+    lockClientRefs: [] as unknown[],
+  };
+
+  const txClient: ConversionRebuildTxClient = {
+    seoPageConversionDaily: {
+      deleteMany: async ({ where }: { where: Record<string, unknown> }) => {
+        lockState.deleteCount += 1;
+        const before = rows.length;
+        const metricDate = where.metricDate as { gte: Date; lte: Date } | undefined;
+        const seoPageId = where.seoPageId as number | null | undefined;
+
+        for (let index = rows.length - 1; index >= 0; index -= 1) {
+          const row = rows[index];
+          const inRange =
+            !metricDate ||
+            (row.metricDate >= metricDate.gte && row.metricDate <= metricDate.lte);
+          const pageMatch =
+            seoPageId === undefined ||
+            (seoPageId === null ? row.seoPageId === null : row.seoPageId === seoPageId);
+          if (inRange && pageMatch) rows.splice(index, 1);
+        }
+
+        return { count: before - rows.length };
+      },
+      createMany: async ({ data }: { data: Array<Record<string, unknown>> }) => {
+        lockState.createCount += 1;
+        if (input?.failCreate) {
+          throw new Error('insert failed');
+        }
+        for (const item of data) {
+          rows.push({
+            id: nextId,
+            metricDate: item.metricDate as Date,
+            seoPageId: (item.seoPageId as number | null) ?? null,
+            bucketKeyHash: item.bucketKeyHash as string,
+            attributionModel: item.attributionModel as 'first_touch' | 'last_touch',
+            channelGroup: item.channelGroup as string,
+            chatsInitiated: item.chatsInitiated as number,
+            qualifiedChats: item.qualifiedChats as number,
+            contactForms: item.contactForms as number,
+            reviewRequests: item.reviewRequests as number,
+            bookingRequests: item.bookingRequests as number,
+            bookingsCompleted: item.bookingsCompleted as number,
+            qualifiedLeads: item.qualifiedLeads as number,
+            proposals: item.proposals as number,
+            wonOpportunities: item.wonOpportunities as number,
+            attributedValueMinor: item.attributedValueMinor as number,
+            currency: item.currency as string,
+            unknownAttributionCount: item.unknownAttributionCount as number,
+          });
+          nextId += 1;
+        }
+        return { count: data.length };
+      },
+    },
+    $queryRaw: async (strings: TemplateStringsArray, ...values: unknown[]) => {
+      lockState.lockClientRefs.push(txClient);
+      const sql = strings.join('');
+      if (sql.includes('GET_LOCK')) {
+        lockState.acquireCount += 1;
+        if (lockState.lockHeld) return [{ result: 0 }];
+        lockState.lockHeld = true;
+        return [{ result: 1 }];
+      }
+      if (sql.includes('RELEASE_LOCK')) {
+        lockState.releaseCount += 1;
+        lockState.lockHeld = false;
+        return [{ result: lockState.releaseResult }];
+      }
+      throw new Error(`Unexpected query: ${sql}`);
+    },
+  };
 
   const prisma: ConversionRebuildTestPrisma = {
     chatSession: {
@@ -136,73 +226,18 @@ function createConversionRebuildPrisma(input?: {
       create: async () => ({ id: 1 }),
       update: async () => ({}),
     },
-    seoPageConversionDaily: {
-      deleteMany: async ({ where }: { where: Record<string, unknown> }) => {
-        const before = rows.length;
-        const metricDate = where.metricDate as { gte: Date; lte: Date } | undefined;
-        const seoPageId = where.seoPageId as number | null | undefined;
-
-        for (let index = rows.length - 1; index >= 0; index -= 1) {
-          const row = rows[index];
-          const inRange =
-            !metricDate ||
-            (row.metricDate >= metricDate.gte && row.metricDate <= metricDate.lte);
-          const pageMatch =
-            seoPageId === undefined ||
-            (seoPageId === null ? row.seoPageId === null : row.seoPageId === seoPageId);
-          if (inRange && pageMatch) rows.splice(index, 1);
-        }
-
-        return { count: before - rows.length };
-      },
-      createMany: async ({ data }: { data: Array<Record<string, unknown>> }) => {
-        if (input?.failCreate) {
-          throw new Error('insert failed');
-        }
-        for (const item of data) {
-          rows.push({
-            id: nextId,
-            metricDate: item.metricDate as Date,
-            seoPageId: (item.seoPageId as number | null) ?? null,
-            bucketKeyHash: item.bucketKeyHash as string,
-            attributionModel: item.attributionModel as 'first_touch' | 'last_touch',
-            channelGroup: item.channelGroup as string,
-            chatsInitiated: item.chatsInitiated as number,
-            qualifiedChats: item.qualifiedChats as number,
-            contactForms: item.contactForms as number,
-            reviewRequests: item.reviewRequests as number,
-            bookingRequests: item.bookingRequests as number,
-            bookingsCompleted: item.bookingsCompleted as number,
-            qualifiedLeads: item.qualifiedLeads as number,
-            proposals: item.proposals as number,
-            wonOpportunities: item.wonOpportunities as number,
-            attributedValueMinor: item.attributedValueMinor as number,
-            currency: item.currency as string,
-            unknownAttributionCount: item.unknownAttributionCount as number,
-          });
-          nextId += 1;
-        }
-        return { count: data.length };
-      },
-    },
-    $transaction: async (callback: (tx: ConversionRebuildTestPrisma) => Promise<unknown>) =>
-      callback(prisma),
-    $queryRaw: async (strings: TemplateStringsArray, ...values: unknown[]) => {
-      const sql = strings.join('');
-      if (sql.includes('GET_LOCK')) {
-        lockState.acquireCount += 1;
-        if (lockState.held) return [{ result: 0 }];
-        lockState.held = true;
-        return [{ result: 1 }];
+    $transaction: async (callback: (tx: ConversionRebuildTxClient) => Promise<unknown>) => {
+      lockState.transactionCount += 1;
+      const snapshot = JSON.stringify(rows);
+      try {
+        return await callback(txClient);
+      } catch (error) {
+        rows.splice(0, rows.length, ...JSON.parse(snapshot));
+        throw error;
       }
-      if (sql.includes('RELEASE_LOCK')) {
-        lockState.releaseCount += 1;
-        lockState.held = false;
-        return [{ result: 1 }];
-      }
-      throw new Error(`Unexpected query: ${sql}`);
     },
     _rows: rows,
+    _tx: txClient,
     _lockState: lockState,
   };
 
@@ -682,9 +717,12 @@ test('concurrent write rebuild is rejected', async () => {
       }),
     /already running/,
   );
+  assert.equal(prisma._lockState.deleteCount, 0);
+  assert.equal(prisma._lockState.createCount, 0);
+  assert.equal(prisma._lockState.releaseCount, 0);
 });
 
-test('dry-run does not acquire write lock', async () => {
+test('dry-run does not acquire write lock or open transaction', async () => {
   const prisma = createConversionRebuildPrisma();
   await rebuildSeoPageConversions(prisma as unknown as PrismaClient, {
     dateFrom: '2026-07-01',
@@ -693,6 +731,7 @@ test('dry-run does not acquire write lock', async () => {
   });
   assert.equal(prisma._lockState.acquireCount, 0);
   assert.equal(prisma._lockState.releaseCount, 0);
+  assert.equal(prisma._lockState.transactionCount, 0);
 });
 
 test('dry-run performs no delete or create', async () => {
@@ -767,16 +806,6 @@ test('transaction rollback preserves previous rows', async () => {
     failCreate: true,
   });
 
-  prisma.$transaction = async (callback: (tx: ConversionRebuildTestPrisma) => Promise<unknown>) => {
-    const snapshot = JSON.stringify(prisma._rows);
-    try {
-      return await callback(prisma);
-    } catch {
-      prisma._rows.splice(0, prisma._rows.length, ...JSON.parse(snapshot));
-      throw new Error('transaction rolled back');
-    }
-  };
-
   await assert.rejects(
     () =>
       rebuildSeoPageConversions(prisma as unknown as PrismaClient, {
@@ -784,10 +813,11 @@ test('transaction rollback preserves previous rows', async () => {
         dateTo: '2026-07-31',
         dryRun: false,
       }),
-    /transaction rolled back/,
+    /insert failed/,
   );
   assert.equal(prisma._rows.length, 1);
   assert.equal(prisma._rows[0]?.chatsInitiated, 4);
+  assert.equal(prisma._lockState.releaseCount, 1);
 });
 
 test('write rebuild releases lock after success', async () => {
@@ -799,7 +829,7 @@ test('write rebuild releases lock after success', async () => {
   });
   assert.equal(prisma._lockState.acquireCount, 1);
   assert.equal(prisma._lockState.releaseCount, 1);
-  assert.equal(prisma._lockState.held, false);
+  assert.equal(prisma._lockState.lockHeld, false);
 });
 
 test('write rebuild releases lock after failure', async () => {
@@ -815,7 +845,7 @@ test('write rebuild releases lock after failure', async () => {
   );
   assert.equal(prisma._lockState.acquireCount, 1);
   assert.equal(prisma._lockState.releaseCount, 1);
-  assert.equal(prisma._lockState.held, false);
+  assert.equal(prisma._lockState.lockHeld, false);
 });
 
 test('rebuild report and bucket keys contain no PII', async () => {
@@ -871,9 +901,56 @@ test('persistConversionBuckets uses scoped delete replacement', async () => {
   assert.equal(prisma._lockState.acquireCount, 1);
 });
 
-test('dry-run lock helpers are not invoked by aggregation dry-run path', async () => {
+test('persistConversionBuckets pins lock acquire, DML and release to tx client', async () => {
   const prisma = createConversionRebuildPrisma();
-  assert.equal(await acquireConversionRebuildLock(prisma as unknown as PrismaClient), true);
-  await releaseConversionRebuildLock(prisma as unknown as PrismaClient);
+  const buckets = aggregateConversionEvidenceRecords([
+    {
+      record: {
+        recordId: 'chat:2',
+        metricDate: '2026-07-10',
+        journeyKey: 'chat:2',
+        conversionTypes: ['chat_initiated'],
+        firstTouch: { page: '/services/crm', source: 'google', medium: 'organic' },
+        lastTouch: { page: '/services/crm', source: 'google', medium: 'organic' },
+        leadQuality: 'unknown',
+        attributedValueMinor: 0,
+        currency: 'GBP',
+      },
+      model: 'first_touch',
+      attribution: {
+        landingPageUrl: 'https://uk.primewayz.com/services/crm',
+        seoPageId: 7,
+        channelGroup: 'organic',
+        isUnknownLanding: false,
+      },
+    },
+  ]).buckets;
+
+  await persistConversionBuckets(
+    prisma as unknown as PrismaClient,
+    { dateFrom: '2026-07-01', dateTo: '2026-07-31' },
+    buckets,
+    { kind: 'page', seoPageId: 7 },
+  );
+
+  assert.equal(prisma._lockState.transactionCount, 1);
   assert.equal(prisma._lockState.acquireCount, 1);
+  assert.equal(prisma._lockState.releaseCount, 1);
+  assert.equal(prisma._lockState.deleteCount, 1);
+  assert.equal(prisma._lockState.createCount, 1);
+  assert.ok(prisma._lockState.lockClientRefs.every((client) => client === prisma._tx));
+});
+
+test('business error is preserved when lock release also fails', async () => {
+  const prisma = createConversionRebuildPrisma({ failCreate: true, releaseResult: 0 });
+  await assert.rejects(
+    () =>
+      rebuildSeoPageConversions(prisma as unknown as PrismaClient, {
+        dateFrom: '2026-07-01',
+        dateTo: '2026-07-31',
+        dryRun: false,
+      }),
+    /insert failed/,
+  );
+  assert.equal(prisma._lockState.releaseCount, 1);
 });
