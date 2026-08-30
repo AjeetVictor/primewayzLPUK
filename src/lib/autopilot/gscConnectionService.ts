@@ -40,6 +40,7 @@ import {
 import type { AdminActor } from './topicHelpers.ts';
 import { actorDisplayName } from './topicHelpers.ts';
 import { canManageGscConnection } from './autopilotPermissions.ts';
+import { resolveGscSyncDateBounds } from './gscSyncDateValidation.ts';
 
 const CLEARED_CIPHER = '';
 const CLEARED_IV = '';
@@ -231,7 +232,17 @@ export async function getGscConnectionStatus(
   prisma: PrismaClient,
   options?: { recentSyncLimit?: number },
 ): Promise<GscConnectionStatusDto> {
-  const configuration = getGscPublicConfigStatus();
+  const configurationBase = getGscPublicConfigStatus();
+  const syncDateBounds = resolveGscSyncDateBounds();
+  const configuration = {
+    ...configurationBase,
+    latestSafeDate: syncDateBounds.latestSafeDate,
+    maxRangeDays: syncDateBounds.maxRangeDays,
+    defaultDateFrom: syncDateBounds.defaultDateFrom,
+    defaultDateTo: syncDateBounds.defaultDateTo,
+    lookbackDays: syncDateBounds.lookbackDays,
+    dataDelayDays: syncDateBounds.dataDelayDays,
+  };
   const connection = await findRetainedGscConnection(prisma);
   const recentSyncRuns = connection
     ? await prisma.gscSyncRun.findMany({

@@ -674,6 +674,10 @@ export const adminAutopilotApi = {
         lookbackDays: number;
         dataDelayDays: number;
         scope: string;
+        latestSafeDate?: string;
+        maxRangeDays?: number;
+        defaultDateFrom?: string;
+        defaultDateTo?: string;
       };
       connection: {
         id: number;

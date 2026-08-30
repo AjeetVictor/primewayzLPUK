@@ -11,6 +11,13 @@ import {
   parseGscSyncRuns,
   type GscSyncRunRecord,
 } from '../../../lib/autopilot/gscSyncHistoryHelpers';
+import {
+  buildGscCustomSyncPayload,
+  countInclusiveCalendarDays,
+  isGscSyncControlsDisabled,
+  resolveGscDateRangePreset,
+  type GscDateRangePresetId,
+} from '../../../lib/autopilot/gscSyncDateValidation';
 import { GscSyncHistoryContent, RunningSyncCard, useGscSyncHistoryState } from './GscSyncHistory';
 import { useToast } from '../../ui/AppToast';
 import { AppConfirmDialog } from '../../ui/AppConfirmDialog';
@@ -54,6 +61,19 @@ function statusLabel(status: string | undefined): string {
   }
 }
 
+const PRESET_OPTIONS: Array<{ id: GscDateRangePresetId; label: string }> = [
+  { id: 'last_7_days', label: 'Last 7 days' },
+  { id: 'last_28_days', label: 'Last 28 days' },
+  { id: 'last_90_days', label: 'Last 90 days' },
+  { id: 'this_month', label: 'This month' },
+  { id: 'previous_month', label: 'Previous month' },
+  { id: 'custom', label: 'Custom' },
+];
+
+function formatDayCount(count: number): string {
+  return `${count} calendar day${count === 1 ? '' : 's'} selected`;
+}
+
 function isLikelyGscProperty(value: string): boolean {
   const trimmed = value.trim();
   if (!trimmed) return false;
@@ -87,6 +107,10 @@ export function GscConnectionPanel({
   >([]);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [customPanelOpen, setCustomPanelOpen] = useState(false);
+  const [customPreset, setCustomPreset] = useState<GscDateRangePresetId>('last_28_days');
+  const [customDateFrom, setCustomDateFrom] = useState('');
+  const [customDateTo, setCustomDateTo] = useState('');
   const [optimisticRunning, setOptimisticRunning] = useState<GscSyncRunRecord | null>(null);
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -145,6 +169,36 @@ export function GscConnectionPanel({
 
   const connection = data?.connection ?? null;
   const configured = data?.configuration.configured ?? false;
+  const syncBounds = useMemo(() => {
+    const cfg = data?.configuration;
+    if (!cfg?.latestSafeDate || !cfg.defaultDateFrom || !cfg.defaultDateTo) return null;
+    return {
+      latestSafeDate: cfg.latestSafeDate,
+      maxRangeDays: cfg.maxRangeDays ?? 400,
+      defaultDateFrom: cfg.defaultDateFrom,
+      defaultDateTo: cfg.defaultDateTo,
+      lookbackDays: cfg.lookbackDays,
+      dataDelayDays: cfg.dataDelayDays,
+    };
+  }, [data?.configuration]);
+
+  useEffect(() => {
+    if (!syncBounds) return;
+    const preset = resolveGscDateRangePreset(customPreset, syncBounds);
+    setCustomDateFrom(preset.dateFrom);
+    setCustomDateTo(preset.dateTo);
+  }, [syncBounds, customPreset]);
+
+  const customDayCount = useMemo(() => {
+    if (!customDateFrom || !customDateTo || customDateFrom > customDateTo) return 0;
+    return countInclusiveCalendarDays(customDateFrom, customDateTo);
+  }, [customDateFrom, customDateTo]);
+
+  const syncControlsDisabled = isGscSyncControlsDisabled({
+    syncing,
+    syncLocked: connection?.syncLocked ?? false,
+    connectionActive: connection?.status === 'ACTIVE',
+  });
   const isActive = connection?.status === 'ACTIVE';
   const needsReauth = connection?.status === 'NEEDS_REAUTHENTICATION';
   const isDisconnected = !connection || connection.status === 'DISCONNECTED';
@@ -222,10 +276,37 @@ export function GscConnectionPanel({
     }
   };
 
-  const handleSync = async () => {
-    if (!canManageGsc || syncing) return;
-    setSyncing(true);
-    setStatusMessage(null);
+  const applySyncResult = (result: Awaited<ReturnType<typeof adminAutopilotApi.runGscSync>>) => {
+    const run = parseGscSyncRun(result.syncRun);
+    showToast({ type: 'success', message: 'Search Console sync completed.' });
+    setStatusMessage(
+      `Sync succeeded — fetched ${String(run.rowsFetched ?? 0)} rows, stored ${String(run.rowsUpserted ?? 0)}.`,
+    );
+    setData((current) =>
+      current
+        ? {
+            ...current,
+            recentSyncRuns: mergeSyncRunIntoList(
+              parseGscSyncRuns(current.recentSyncRuns),
+              run,
+            ) as Array<Record<string, unknown>>,
+            connection: current.connection
+              ? {
+                  ...current.connection,
+                  syncLocked: false,
+                  lastSuccessfulSyncAt:
+                    run.status === 'SUCCEEDED' && run.completedAt
+                      ? run.completedAt
+                      : current.connection.lastSuccessfulSyncAt,
+                }
+              : current.connection,
+          }
+        : current,
+    );
+    void refreshStatus();
+  };
+
+  const beginOptimisticSync = () => {
     setOptimisticRunning({
       id: 'pending-manual-sync',
       status: 'RUNNING',
@@ -233,35 +314,42 @@ export function GscConnectionPanel({
       startedAt: new Date().toISOString(),
     });
     void refreshStatus();
+  };
+
+  const handleSyncLatestRange = async () => {
+    if (!canManageGsc || syncing) return;
+    setSyncing(true);
+    setStatusMessage(null);
+    beginOptimisticSync();
     try {
       const result = await adminAutopilotApi.runGscSync();
-      const run = parseGscSyncRun(result.syncRun);
-      showToast({ type: 'success', message: 'Search Console sync completed.' });
-      setStatusMessage(
-        `Sync succeeded — fetched ${String(run.rowsFetched ?? 0)} rows, stored ${String(run.rowsUpserted ?? 0)}.`,
-      );
-      setData((current) =>
-        current
-          ? {
-              ...current,
-              recentSyncRuns: mergeSyncRunIntoList(
-                parseGscSyncRuns(current.recentSyncRuns),
-                run,
-              ) as Array<Record<string, unknown>>,
-              connection: current.connection
-                ? {
-                    ...current.connection,
-                    syncLocked: false,
-                    lastSuccessfulSyncAt:
-                      run.status === 'SUCCEEDED' && run.completedAt
-                        ? run.completedAt
-                        : current.connection.lastSuccessfulSyncAt,
-                  }
-                : current.connection,
-            }
-          : current,
-      );
+      applySyncResult(result);
+    } catch (err) {
+      const message =
+        err instanceof AutopilotClientError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Sync failed.';
+      setStatusMessage(message);
+      showToast({ type: 'error', message });
       void refreshStatus();
+    } finally {
+      setSyncing(false);
+      setOptimisticRunning(null);
+    }
+  };
+
+  const handleCustomSync = async () => {
+    if (!canManageGsc || syncing || !customDateFrom || !customDateTo) return;
+    setSyncing(true);
+    setStatusMessage(null);
+    beginOptimisticSync();
+    try {
+      const payload = buildGscCustomSyncPayload(customDateFrom, customDateTo);
+      const result = await adminAutopilotApi.runGscSync(payload);
+      applySyncResult(result);
+      setCustomPanelOpen(false);
     } catch (err) {
       const message =
         err instanceof AutopilotClientError
@@ -522,40 +610,183 @@ export function GscConnectionPanel({
           ) : null}
 
           {canManageGsc ? (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => void handleSync()}
-                disabled={syncing || connection.syncLocked || connection.status !== 'ACTIVE'}
-                className={btnPrimary}
-              >
-                {syncing ? 'Syncing…' : 'Sync now'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (connection.requestedSiteUrl) {
-                    setRequestedSiteUrl(connection.requestedSiteUrl);
-                  }
-                  if (connection.expectedEmail) {
-                    setExpectedEmail(connection.expectedEmail);
-                  }
-                  void handleConnect();
-                }}
-                disabled={connecting || !formValid}
-                className={btnSecondary}
-              >
-                {connecting ? 'Connecting…' : 'Reconnect'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setDisconnectOpen(true)}
-                disabled={busy}
-                className={btnDanger}
-              >
-                <Unplug className="h-4 w-4" />
-                Disconnect
-              </button>
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleSyncLatestRange()}
+                  disabled={syncControlsDisabled}
+                  className={btnPrimary}
+                >
+                  {syncing ? 'Syncing…' : 'Sync latest range'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCustomPanelOpen((open) => !open)}
+                  disabled={syncControlsDisabled}
+                  className={btnSecondary}
+                  aria-expanded={customPanelOpen}
+                  aria-controls="gsc-custom-sync-panel"
+                >
+                  Custom date range
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (connection.requestedSiteUrl) {
+                      setRequestedSiteUrl(connection.requestedSiteUrl);
+                    }
+                    if (connection.expectedEmail) {
+                      setExpectedEmail(connection.expectedEmail);
+                    }
+                    void handleConnect();
+                  }}
+                  disabled={connecting || !formValid || syncing}
+                  className={btnSecondary}
+                >
+                  {connecting ? 'Connecting…' : 'Reconnect'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDisconnectOpen(true)}
+                  disabled={busy}
+                  className={btnDanger}
+                >
+                  <Unplug className="h-4 w-4" />
+                  Disconnect
+                </button>
+              </div>
+
+              {customPanelOpen && syncBounds ? (
+                <div
+                  id="gsc-custom-sync-panel"
+                  className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4"
+                >
+                  <h4 className="text-sm font-bold text-zinc-900">Custom sync date range</h4>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Sync stored Search Console metrics for a chosen range. This does not change the
+                    default latest-range sync.
+                  </p>
+
+                  <fieldset className="mt-3">
+                    <legend className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+                      Presets
+                    </legend>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {PRESET_OPTIONS.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          disabled={syncControlsDisabled}
+                          onClick={() => setCustomPreset(option.id)}
+                          className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-400 disabled:cursor-not-allowed disabled:opacity-50 ${
+                            customPreset === option.id
+                              ? 'border-zinc-900 bg-zinc-900 text-white'
+                              : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label
+                        htmlFor="gsc-custom-date-from"
+                        className="block text-xs font-bold uppercase tracking-widest text-zinc-400"
+                      >
+                        From date
+                      </label>
+                      <input
+                        id="gsc-custom-date-from"
+                        type="date"
+                        value={customDateFrom}
+                        max={customDateTo || syncBounds.latestSafeDate}
+                        disabled={syncControlsDisabled || customPreset !== 'custom'}
+                        onChange={(event) => {
+                          setCustomPreset('custom');
+                          setCustomDateFrom(event.target.value);
+                        }}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="gsc-custom-date-to"
+                        className="block text-xs font-bold uppercase tracking-widest text-zinc-400"
+                      >
+                        To date
+                      </label>
+                      <input
+                        id="gsc-custom-date-to"
+                        type="date"
+                        value={customDateTo}
+                        min={customDateFrom || undefined}
+                        max={syncBounds.latestSafeDate}
+                        disabled={syncControlsDisabled || customPreset !== 'custom'}
+                        onChange={(event) => {
+                          setCustomPreset('custom');
+                          setCustomDateTo(event.target.value);
+                        }}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+
+                  <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+                    <div>
+                      <dt className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                        Selected range
+                      </dt>
+                      <dd className="mt-1 font-medium text-zinc-800">
+                        {customDayCount > 0 ? formatDayCount(customDayCount) : 'Select valid dates'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                        Latest safe GSC date
+                      </dt>
+                      <dd className="mt-1 font-medium text-zinc-800">{syncBounds.latestSafeDate}</dd>
+                    </div>
+                  </dl>
+
+                  {customDayCount > 90 ? (
+                    <p
+                      className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+                      role="status"
+                    >
+                      This range may take several minutes. Existing rows for these dates will be
+                      refreshed.
+                    </p>
+                  ) : null}
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleCustomSync()}
+                      disabled={
+                        syncControlsDisabled ||
+                        !customDateFrom ||
+                        !customDateTo ||
+                        customDateFrom > customDateTo
+                      }
+                      className={btnPrimary}
+                    >
+                      {syncing ? 'Syncing…' : 'Run custom sync'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCustomPanelOpen(false)}
+                      disabled={syncing}
+                      className={btnSecondary}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
 

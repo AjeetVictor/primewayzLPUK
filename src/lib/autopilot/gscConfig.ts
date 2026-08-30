@@ -41,6 +41,11 @@ export type GscPublicConfigStatus = {
   lookbackDays: number;
   dataDelayDays: number;
   scope: string;
+  /** Populated by connection status; omitted from env-only config helper. */
+  latestSafeDate?: string;
+  maxRangeDays?: number;
+  defaultDateFrom?: string;
+  defaultDateTo?: string;
 };
 
 function readTrimmed(env: NodeJS.ProcessEnv, key: string): string {
