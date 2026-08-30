@@ -112,7 +112,10 @@ export function KeywordImportsPanel({
     try {
       const [batchData, candidateData] = await Promise.all([
         adminAutopilotApi.listKeywordImports({ limit: 20, offset: 0 }),
-        adminAutopilotApi.listKeywordCandidates(candidateQuery),
+        adminAutopilotApi.listKeywordCandidates({
+          ...candidateQuery,
+          excludeSourceType: 'gsc_opportunity',
+        }),
       ]);
       setBatches(batchData.items);
       setBatchTotal(batchData.total);
@@ -378,7 +381,7 @@ export function KeywordImportsPanel({
                   {batches.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-6 py-10 text-center text-sm italic text-zinc-400">
-                        No imports yet
+                        No manual keyword imports yet.
                       </td>
                     </tr>
                   ) : (

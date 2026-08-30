@@ -22,6 +22,7 @@ import {
 } from './AutopilotActivityLog';
 import { CreateTopicDialog } from './CreateTopicDialog';
 import { KeywordImportsPanel } from './KeywordImportsPanel';
+import { SeoOpportunitiesPanel } from './SeoOpportunitiesPanel';
 import { ResearchQueuePanel } from './ResearchQueuePanel';
 import {
   DEFAULT_RESEARCH_QUEUE_FILTERS,
@@ -31,6 +32,7 @@ import { DEFAULT_GSC_SYNC_ACTIVITY_FILTERS } from '../../../lib/autopilot/gscSyn
 
 export type AutopilotSubView =
   | 'dashboard'
+  | 'seo-opportunities'
   | 'keyword-imports'
   | 'research-queue'
   | 'pipeline'
@@ -43,6 +45,7 @@ type AutopilotPanelProps = {
 
 const SUBNAV: Array<{ id: Exclude<AutopilotSubView, 'topic-detail'>; label: string }> = [
   { id: 'dashboard', label: 'Dashboard' },
+  { id: 'seo-opportunities', label: 'SEO Opportunities' },
   { id: 'keyword-imports', label: 'Keyword Imports' },
   { id: 'research-queue', label: 'Research Queue' },
   { id: 'pipeline', label: 'Topic Pipeline' },
@@ -188,6 +191,16 @@ export function AutopilotPanel({ role }: AutopilotPanelProps) {
           onCreateTopic={() => setCreateOpen(true)}
           onOpenKeywordImports={() => setView('keyword-imports')}
           onOpenResearchQueue={() => setView('research-queue')}
+          onOpenSeoOpportunities={() => setView('seo-opportunities')}
+        />
+      ) : null}
+
+      {view === 'seo-opportunities' ? (
+        <SeoOpportunitiesPanel
+          refreshKey={refreshKey}
+          canContribute={caps.canContribute}
+          onOpenTopic={(id) => openTopic(id, 'seo-opportunities')}
+          onMutated={bumpRefresh}
         />
       ) : null}
 

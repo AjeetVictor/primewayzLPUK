@@ -32,6 +32,10 @@ import {
   validateGscSyncDateRange,
 } from './gscSyncDateValidation.ts';
 import { normaliseAutopilotKeyword } from './keywordNormalisation.ts';
+import {
+  refreshGscOpportunitiesAfterSync,
+  type GscOpportunityRefreshResult,
+} from './gscOpportunityOrchestrationService.ts';
 
 export { GSC_SYNC_MAX_RANGE_DAYS } from './gscSyncDateValidation.ts';
 
@@ -61,6 +65,7 @@ export type RunGscSyncInput = {
 export type GscSyncResultDto = {
   syncRun: Record<string, unknown>;
   connectionId: number;
+  opportunityRefresh: GscOpportunityRefreshResult | null;
 };
 
 export type GscDateWindow = {
@@ -377,9 +382,30 @@ export async function runGscSync(
       correlationId: input.correlationId ?? null,
     });
 
-    return {
-      syncRun: serializeSyncRun(succeeded as unknown as Record<string, unknown>),
+    const opportunityRefresh = await refreshGscOpportunitiesAfterSync(prisma, {
       connectionId: connection.id,
+      dateFrom,
+      dateTo,
+      actorId: input.actorId ?? null,
+      correlationId: input.correlationId ?? null,
+      syncRunId: succeeded.id,
+    });
+
+    const syncRunPayload = serializeSyncRun(succeeded as unknown as Record<string, unknown>);
+    if (opportunityRefresh.status === 'failed') {
+      syncRunPayload.opportunityRefreshWarning = opportunityRefresh.errorMessage;
+    } else if (opportunityRefresh.status === 'succeeded') {
+      syncRunPayload.opportunityRefresh = {
+        findingsCount: opportunityRefresh.findingsCount,
+        created: opportunityRefresh.upsert?.created ?? 0,
+        updated: opportunityRefresh.upsert?.updated ?? 0,
+      };
+    }
+
+    return {
+      syncRun: syncRunPayload,
+      connectionId: connection.id,
+      opportunityRefresh,
     };
   } catch (error) {
     const classified = classifyGscGoogleError(error);

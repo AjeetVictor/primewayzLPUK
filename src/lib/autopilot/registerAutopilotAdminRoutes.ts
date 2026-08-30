@@ -67,9 +67,14 @@ import {
   getGscConnectionStatus,
   GSC_RECONNECT_SAFE_MESSAGE,
   listAccessibleGscProperties,
+  loadActiveGscConnectionForSync,
   selectGscProperty,
 } from './gscConnectionService.ts';
 import { listGscSyncRuns, runGscSync } from './gscSyncService.ts';
+import { getGscPerformanceReport } from './gscPerformanceService.ts';
+import { refreshGscOpportunitiesAfterSync } from './gscOpportunityOrchestrationService.ts';
+import { listSeoOpportunities } from './seoOpportunityService.ts';
+import { validateGscSyncDateRange } from './gscSyncDateValidation.ts';
 import { resolveGscAdminRedirect } from './gscRedirect.ts';
 import { getGa4ReportingStatus, runGa4Sync } from '../seo/ga4SyncService.ts';
 
@@ -841,6 +846,68 @@ export function registerAutopilotAdminRoutes(options: RegisterAutopilotAdminRout
         trigger: 'MANUAL',
         dateFrom: typeof req.body?.dateFrom === 'string' ? req.body.dateFrom : undefined,
         dateTo: typeof req.body?.dateTo === 'string' ? req.body.dateTo : undefined,
+        correlationId,
+      });
+      res.setHeader('x-correlation-id', correlationId);
+      res.json({ ...result, correlationId });
+    }),
+  );
+
+  app.get(
+    '/api/admin/autopilot/gsc/performance',
+    requireAdmin,
+    requireRole(canReadAutopilot),
+    withAutopilotHandler(async (req, res, correlationId) => {
+      const q = req.query as Record<string, unknown>;
+      const report = await getGscPerformanceReport(prisma, {
+        dateFrom: typeof q.dateFrom === 'string' ? q.dateFrom : undefined,
+        dateTo: typeof q.dateTo === 'string' ? q.dateTo : undefined,
+        comparisonDateFrom:
+          typeof q.comparisonDateFrom === 'string' ? q.comparisonDateFrom : undefined,
+        comparisonDateTo:
+          typeof q.comparisonDateTo === 'string' ? q.comparisonDateTo : undefined,
+        compare: q.compare === 'false' || q.compare === false ? false : undefined,
+        page: typeof q.page === 'string' ? q.page : undefined,
+        query: typeof q.query === 'string' ? q.query : undefined,
+        limit: typeof q.limit === 'string' ? Number(q.limit) : undefined,
+        offset: typeof q.offset === 'string' ? Number(q.offset) : undefined,
+      });
+      res.setHeader('x-correlation-id', correlationId);
+      res.json({ ...report, correlationId });
+    }),
+  );
+
+  app.get(
+    '/api/admin/autopilot/seo-opportunities',
+    requireAdmin,
+    requireRole(canReadAutopilot),
+    withAutopilotHandler(async (req, res, correlationId) => {
+      const result = await listSeoOpportunities(prisma, req.query as Record<string, unknown>);
+      res.setHeader('x-correlation-id', correlationId);
+      res.json({ ...result, correlationId });
+    }),
+  );
+
+  app.post(
+    '/api/admin/autopilot/gsc/opportunities/refresh',
+    requireAdmin,
+    requireRole(canManageGscConnection),
+    withAutopilotHandler(async (req, res, correlationId) => {
+      assertNoPrototypePollution(req.body);
+      const actor = toActor(req);
+      const connection = await loadActiveGscConnectionForSync(prisma);
+      const dateFrom =
+        typeof req.body?.dateFrom === 'string'
+          ? req.body.dateFrom
+          : undefined;
+      const dateTo =
+        typeof req.body?.dateTo === 'string' ? req.body.dateTo : undefined;
+      const resolved = validateGscSyncDateRange({ dateFrom, dateTo });
+      const result = await refreshGscOpportunitiesAfterSync(prisma, {
+        connectionId: connection.id,
+        dateFrom: resolved.dateFrom,
+        dateTo: resolved.dateTo,
+        actorId: actor.id,
         correlationId,
       });
       res.setHeader('x-correlation-id', correlationId);

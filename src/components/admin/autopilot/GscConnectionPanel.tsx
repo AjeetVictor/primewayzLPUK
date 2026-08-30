@@ -279,9 +279,15 @@ export function GscConnectionPanel({
   const applySyncResult = (result: Awaited<ReturnType<typeof adminAutopilotApi.runGscSync>>) => {
     const run = parseGscSyncRun(result.syncRun);
     showToast({ type: 'success', message: 'Search Console sync completed.' });
-    setStatusMessage(
-      `Sync succeeded — fetched ${String(run.rowsFetched ?? 0)} rows, stored ${String(run.rowsUpserted ?? 0)}.`,
-    );
+    let message = `Sync succeeded — fetched ${String(run.rowsFetched ?? 0)} rows, stored ${String(run.rowsUpserted ?? 0)}.`;
+    if (result.opportunityRefresh?.status === 'failed') {
+      message += ` Opportunity refresh failed: ${result.opportunityRefresh.errorMessage ?? 'unknown error'}.`;
+    } else if (result.opportunityRefresh?.status === 'succeeded') {
+      const created = result.opportunityRefresh.upsert?.created ?? 0;
+      const updated = result.opportunityRefresh.upsert?.updated ?? 0;
+      message += ` Opportunities refreshed — ${result.opportunityRefresh.findingsCount} findings (${created} new, ${updated} updated).`;
+    }
+    setStatusMessage(message);
     setData((current) =>
       current
         ? {

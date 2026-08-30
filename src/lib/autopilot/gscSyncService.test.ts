@@ -182,12 +182,20 @@ function createSyncPrisma(options?: {
         metrics.set(key, created);
         return created;
       },
+      findMany: async () => Array.from(metrics.values()),
+    },
+    autopilotKeywordCandidate: {
+      findMany: async () => [],
+      findFirst: async () => null,
+      create: async ({ data }: { data: Record<string, unknown> }) => ({ id: 1, ...data }),
+      update: async ({ data }: { data: Record<string, unknown> }) => data,
     },
     autopilotActivityLog: {
       create: async ({ data }: { data: Record<string, unknown> }) => {
         activity.push(data);
         return data;
       },
+      findFirst: async () => null,
     },
     $transaction: async (ops: Array<Promise<unknown>> | ((tx: unknown) => Promise<unknown>)) => {
       if (typeof ops === 'function') return ops(prisma);

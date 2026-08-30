@@ -133,7 +133,7 @@ async function findPrimaryConnection(prisma: PrismaClient): Promise<GscConnectio
 }
 
 /** Latest retained row for dashboard history when no active connection exists. */
-async function findRetainedGscConnection(prisma: PrismaClient): Promise<GscConnection | null> {
+export async function findRetainedGscConnection(prisma: PrismaClient): Promise<GscConnection | null> {
   const active = await findPrimaryConnection(prisma);
   if (active) return active;
   return prisma.gscConnection.findFirst({

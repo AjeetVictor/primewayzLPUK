@@ -60,6 +60,9 @@ export async function listKeywordCandidates(
   if (typeof query.sourceType === 'string' && query.sourceType.trim()) {
     where.sourceType = query.sourceType.trim();
   }
+  if (typeof query.excludeSourceType === 'string' && query.excludeSourceType.trim()) {
+    where.sourceType = { not: query.excludeSourceType.trim() };
+  }
   if (typeof query.q === 'string' && query.q.trim()) {
     const q = query.q.trim();
     where.OR = [
@@ -431,11 +434,19 @@ export async function getKeywordImportDashboardStats(prisma: PrismaClient) {
     const [unreviewedCount, duplicateCount, convertedCount, recentImports] =
       await Promise.all([
         prisma.autopilotKeywordCandidate.count({
-          where: { status: { in: ['new', 'reviewing'] } },
+          where: {
+            status: { in: ['new', 'reviewing'] },
+            sourceType: { not: 'gsc_opportunity' },
+          },
         }),
-        prisma.autopilotKeywordCandidate.count({ where: { status: 'duplicate' } }),
         prisma.autopilotKeywordCandidate.count({
-          where: { convertedTopicId: { not: null } },
+          where: { status: 'duplicate', sourceType: { not: 'gsc_opportunity' } },
+        }),
+        prisma.autopilotKeywordCandidate.count({
+          where: {
+            convertedTopicId: { not: null },
+            sourceType: { not: 'gsc_opportunity' },
+          },
         }),
         prisma.autopilotKeywordImportBatch.findMany({
           orderBy: { createdAt: 'desc' },

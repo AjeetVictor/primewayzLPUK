@@ -60,10 +60,6 @@ import {
 } from './src/lib/leads/reviewLeadsAdminService.ts';
 import { normalizeLeadStatus } from './src/lib/leads/statuses.ts';
 import { buildContactEnquiryCommercialContext } from './src/lib/contactEnquiryContext.ts';
-import {
-  analyseGscOpportunities,
-  upsertGscOpportunityCandidates,
-} from './src/lib/autopilot/gscOpportunityService.ts';
 import { buildPricingContentBacklogCreateInputs } from './src/data/pricing/contentBacklogSeeds.ts';
 import {
   classifyUnmatchedRequest,
@@ -2062,20 +2058,6 @@ app.patch('/api/admin/review-leads/:id/owner', requireAdmin, requireRole(isOpera
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Assignment failed';
     res.status(400).json({ error: message });
-  }
-});
-
-app.post('/api/admin/gsc/opportunities/analyse', requireAdmin, requireRole(isOperationsRole), async (_req, res) => {
-  try {
-    const connection = await prisma.gscConnection.findFirst({ where: { isActive: true, status: 'ACTIVE' } });
-    if (!connection) return res.status(404).json({ error: 'No active GSC connection' });
-
-    const findings = await analyseGscOpportunities(prisma, connection.id);
-    const created = await upsertGscOpportunityCandidates(prisma, findings);
-    res.json({ findings: findings.length, candidatesCreated: created });
-  } catch (error) {
-    console.error('[admin-gsc-opportunities] analyse failed');
-    res.status(500).json({ error: 'Failed to analyse GSC opportunities' });
   }
 });
 
