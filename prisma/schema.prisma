@@ -973,8 +973,9 @@ model SeoPage {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  aliases    SeoPageAlias[]
-  ga4Metrics Ga4PageMetric[]
+  aliases         SeoPageAlias[]
+  ga4Metrics      Ga4PageMetric[]
+  conversionDaily SeoPageConversionDaily[]
 
   @@index([host, path])
   @@index([pageType])
@@ -1085,4 +1086,69 @@ model Ga4PageMetric {
   @@index([observedLandingPageHash, metricDate])
   @@index([seoPageId, metricDate])
   @@index([syncRunId])
+}
+
+// --- SEO Intelligence: conversion evidence (aggregate only, no PII) ---
+enum SeoLeadQuality {
+  unknown
+  unqualified
+  potentially_qualified
+  qualified
+  sales_accepted
+}
+
+enum SeoConversationOutcome {
+  informational
+  service_interest_identified
+  contact_details_captured
+  follow_up_required
+  meeting_requested
+  meeting_booked
+  proposal_opportunity
+  closed_without_opportunity
+}
+
+enum SeoConversionType {
+  chat_initiated
+  contact_submitted
+  systems_review_requested
+  booking_requested
+  booking_completed
+  qualified_lead
+  proposal_created
+  opportunity_won
+}
+
+enum SeoAttributionModel {
+  first_touch
+  last_touch
+}
+
+model SeoPageConversionDaily {
+  id                      Int                 @id @default(autoincrement())
+  metricDate              DateTime            @db.Date
+  seoPageId               Int?
+  attributionModel        SeoAttributionModel
+  channelGroup            String              @db.VarChar(64)
+  chatsInitiated          Int                 @default(0)
+  qualifiedChats          Int                 @default(0)
+  contactForms            Int                 @default(0)
+  reviewRequests          Int                 @default(0)
+  bookingRequests         Int                 @default(0)
+  bookingsCompleted       Int                 @default(0)
+  qualifiedLeads          Int                 @default(0)
+  proposals               Int                 @default(0)
+  wonOpportunities        Int                 @default(0)
+  attributedValueMinor    Int                 @default(0)
+  currency                String              @default("GBP") @db.VarChar(8)
+  unknownAttributionCount Int                 @default(0)
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+
+  seoPage SeoPage? @relation(fields: [seoPageId], references: [id], onDelete: SetNull)
+
+  @@unique([metricDate, seoPageId, attributionModel, channelGroup], map: "SeoPageConversionDaily_uniq")
+  @@index([metricDate])
+  @@index([seoPageId, metricDate])
+  @@index([channelGroup, metricDate])
 }
