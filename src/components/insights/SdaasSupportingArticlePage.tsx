@@ -55,9 +55,6 @@ function ArticleSection({
     <section id={id} ref={ref} className="scroll-mt-24 border-t border-slate-100 py-12 sm:py-14">
       <h2 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">{title}</h2>
       <div className="mt-6 space-y-5 text-base leading-8 text-slate-700">{children}</div>
-      <span className="sr-only">
-        {article.slug}:{sectionKey}
-      </span>
     </section>
   );
 }
@@ -314,11 +311,23 @@ export function SdaasSupportingArticlePage({ article }: SdaasSupportingArticlePa
           <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-500">
             <span className="inline-flex items-center gap-1.5">
               <User className="h-4 w-4" aria-hidden />
-              {seo.author}
+              <span>
+                <span className="font-medium text-slate-700">{seo.author}</span>
+                {seo.authorRole ? <span className="text-slate-500">, {seo.authorRole}</span> : null}
+              </span>
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Calendar className="h-4 w-4" aria-hidden />
-              <time dateTime={seo.datePublished}>{formatDisplayDate(seo.datePublished)}</time>
+              <span>
+                Published{' '}
+                <time dateTime={seo.datePublished}>{formatDisplayDate(seo.datePublished)}</time>
+                {seo.dateModified !== seo.datePublished ? (
+                  <>
+                    {' · Updated '}
+                    <time dateTime={seo.dateModified}>{formatDisplayDate(seo.dateModified)}</time>
+                  </>
+                ) : null}
+              </span>
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Clock className="h-4 w-4" aria-hidden />
@@ -326,6 +335,20 @@ export function SdaasSupportingArticlePage({ article }: SdaasSupportingArticlePa
             </span>
           </div>
         </header>
+
+        {article.heroImage ? (
+          <figure className="mt-10 overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-sm">
+            <img
+              src={article.heroImage}
+              alt={article.heroImageAlt || ''}
+              width={1672}
+              height={941}
+              loading="eager"
+              fetchPriority="high"
+              className="block h-auto w-full object-cover"
+            />
+          </figure>
+        ) : null}
 
         <div className="prose-sdaas mt-10 space-y-5 text-base leading-8 text-slate-700">
           {article.introParagraphs.map((paragraph) => (
@@ -352,6 +375,19 @@ export function SdaasSupportingArticlePage({ article }: SdaasSupportingArticlePa
             </aside>
           ) : null}
         </div>
+
+        {article.showTableOfContents ? (
+          <nav className="mt-10 rounded-2xl border border-slate-200 bg-slate-50/80 px-5 py-5 sm:px-6" aria-labelledby={`${article.slug}-contents-title`}>
+            <h2 id={`${article.slug}-contents-title`} className="text-base font-bold text-slate-950">In this guide</h2>
+            <ol className="mt-4 grid gap-x-8 gap-y-2 text-sm leading-6 sm:grid-cols-2">
+              <li><a className="font-medium text-emerald-800 hover:underline" href="#direct-answer">{article.directAnswerTitle}</a></li>
+              {article.sections.map((section) => (
+                <li key={section.id}><a className="font-medium text-emerald-800 hover:underline" href={`#${section.id}`}>{section.title}</a></li>
+              ))}
+              <li><a className="font-medium text-emerald-800 hover:underline" href="#faqs">Frequently Asked Questions</a></li>
+            </ol>
+          </nav>
+        ) : null}
 
         <ArticleSection
           id="direct-answer"

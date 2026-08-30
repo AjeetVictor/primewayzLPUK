@@ -15,24 +15,25 @@ import { SDAAS_CAPACITY_REQUEST_PATH, SDAAS_PAGE_PATH } from './commercialPage';
 import { SDAAS_COMMERCIAL_IMAGES } from './images';
 import type { SupportingArticleDefinition } from './supportingArticleTypes';
 
-/** TOF explainer — how monthly development capacity is allocated, estimated and delivered. */
+/** TOF explainer: how monthly development capacity is allocated, estimated and delivered. */
 export const SDAAS_CAPACITY_PATH = SDAAS_MONTHLY_CAPACITY_HREF;
 
 export const SDAAS_CAPACITY_SEO = {
   title: 'How Monthly Software Development Capacity Works',
   description:
-    'Learn how monthly software development capacity is allocated, prioritised, estimated and delivered across backlog items, QA, releases and urgent work.',
+    'Learn how monthly software development capacity covers backlog planning, clarification, development, QA and releases, and what happens when priorities change.',
   ogTitle: 'How Monthly Software Development Capacity Actually Works',
   ogDescription:
-    'Monthly development capacity is finite, prioritised delivery effort—not unlimited output. Learn how backlog intake, estimation, QA and releases fit within it.',
+    'Monthly development capacity is finite, prioritised delivery effort, not unlimited output. Learn how backlog intake, estimation, QA and releases fit within it.',
   h1: 'How Monthly Software Development Capacity Actually Works',
   standfirst:
     'Monthly software development capacity is the agreed amount of recurring delivery effort your business receives each cycle. Understanding how that capacity is allocated, estimated and consumed helps set realistic expectations before you commit.',
   category: 'Process Guide',
-  author: 'Primewayz UK',
+  author: 'Manish Kumar Mishra',
+  authorRole: 'UX-Led Product Manager at Primewayz Infotech',
   datePublished: '2026-07-16',
-  dateModified: '2026-07-16',
-  readTime: '17 min read',
+  dateModified: '2026-08-30',
+  readTime: '19 min read',
   keywords: [
     'monthly software development capacity',
     'development capacity allocation',
@@ -49,6 +50,9 @@ export const SDAAS_CAPACITY_SEO = {
 
 export const SDAAS_CAPACITY_OG_IMAGE =
   '/articles/sdaas/og-how-monthly-software-development-capacity-works.webp';
+
+export const SDAAS_CAPACITY_HERO_IMAGE =
+  '/articles/finite-monthly-capacity-prioritised-delivery.jpg';
 
 export const SDAAS_CAPACITY_DIRECT_ANSWER =
   'Monthly software development capacity is an agreed amount of recurring delivery effort used to clarify, build, test and release prioritised software work. It does not guarantee a fixed number of features because complexity, dependencies and review cycles vary.';
@@ -68,7 +72,7 @@ export const exampleAllocationRows = [
 ] as const;
 
 export const capacityBuyerChecklist = [
-  'How is monthly capacity defined—in hours, days, credits or planned outputs?',
+  'How is monthly capacity defined: in hours, days, credits or planned outputs?',
   'What proportion of capacity is normally reserved for QA, clarification and release work?',
   'How many active workstreams can run in parallel without splitting focus?',
   'How visible is the shared backlog, and who can add items to it?',
@@ -94,7 +98,7 @@ export const capacityFaqs = [
   {
     question: 'Is QA included in monthly capacity or billed separately?',
     answer:
-      'In a well-structured development subscription, QA, testing and release preparation are part of delivery capacity—not an optional add-on. Treating them as separate often underestimates how much effort is required to ship dependable software.',
+      'In a well-structured development subscription, QA, testing and release preparation are part of delivery capacity, not an optional add-on. Treating them as separate often underestimates how much effort is required to ship dependable software.',
   },
   {
     question: 'What happens when the backlog exceeds available capacity?',
@@ -104,12 +108,12 @@ export const capacityFaqs = [
   {
     question: 'Does unused capacity roll over to the next month?',
     answer:
-      'That depends on the commercial agreement. Some providers allow limited rollover when client delays prevented planned work; others treat each month as a fresh allocation. The important point is that capacity is finite—rollover is a contractual choice, not an automatic entitlement.',
+      'That depends on the commercial agreement. Some providers allow limited rollover when client delays prevented planned work; others treat each month as a fresh allocation. The important point is that capacity is finite. Rollover is a contractual choice, not an automatic entitlement.',
   },
   {
     question: 'How is capacity different from hiring a named developer?',
     answer:
-      'Named-developer arrangements usually assign one person full-time. Monthly capacity typically draws on a team with complementary skills—development, QA, release support—allocated to prioritised work. The model focuses on delivery outcomes within an agreed allocation, not on a single individual’s calendar.',
+      'Named-developer arrangements usually assign one person full-time. Monthly capacity typically draws on a team with complementary skills, including development, QA and release support, allocated to prioritised work. The model focuses on delivery outcomes within an agreed allocation, not on a single individual’s calendar.',
   },
   {
     question: 'Can multiple workstreams run at the same time?',
@@ -184,6 +188,10 @@ export const capacityArticle: SupportingArticleDefinition = {
   path: SDAAS_CAPACITY_PATH,
   seo: SDAAS_CAPACITY_SEO,
   ogImage: SDAAS_CAPACITY_OG_IMAGE,
+  heroImage: SDAAS_CAPACITY_HERO_IMAGE,
+  heroImageAlt:
+    'Finite monthly software development capacity selecting prioritised backlog work and moving it through clarification, development, testing and release.',
+  showTableOfContents: true,
   breadcrumbLabel: 'Monthly development capacity',
   cardCategory: 'Process Guide',
   contentType: 'explainer',
@@ -194,10 +202,10 @@ export const capacityArticle: SupportingArticleDefinition = {
   directAnswerTitle: 'What Does Monthly Development Capacity Mean?',
   directAnswer: SDAAS_CAPACITY_DIRECT_ANSWER,
   directAnswerFollow:
-    'Capacity is best understood as planned, prioritised delivery effort—not unlimited development throughput or a fixed feature count.',
+    'Capacity is best understood as planned, prioritised delivery effort, not unlimited development throughput or a fixed feature count.',
   introParagraphs: [
     'Businesses evaluating a software development subscription often ask how much work they will receive each month. The honest answer is that monthly capacity describes an agreed allocation of delivery effort, not a guaranteed list of features or tickets closed.',
-    'That distinction matters because real software delivery includes clarification, estimation, development, quality assurance, release preparation and coordination—not just coding time. When those activities are visible, expectations become more realistic and prioritisation conversations become easier.',
+    'That distinction matters because real software delivery includes clarification, estimation, development, quality assurance, release preparation and coordination, not just coding time. When those activities are visible, expectations become more realistic and prioritisation conversations become easier.',
     'This guide explains how monthly capacity is defined, how work enters the backlog, how estimates and priorities are agreed, and what happens when demand exceeds the allocation or client input is delayed.',
   ],
   introAsides: [
@@ -220,22 +228,6 @@ export const capacityArticle: SupportingArticleDefinition = {
   geoStatements: CAPACITY_GEO_STATEMENTS,
   sections: [
     {
-      id: 'direct-answer',
-      sectionKey: 'direct_answer',
-      title: 'What Does Monthly Development Capacity Mean?',
-      blocks: [
-        {
-          type: 'paragraphs',
-          texts: [
-            SDAAS_CAPACITY_DIRECT_ANSWER,
-            'Capacity is the recurring delivery effort your provider allocates each cycle to clarify requirements, implement changes, test them and release approved work. It is agreed commercially—often as a monthly plan—and then consumed through prioritised backlog items.',
-            'Thinking of capacity as effort rather than output helps explain why two months with the same fee can produce different visible results. A month dominated by a complex integration consumes more capacity than a month of small interface refinements, even when both are valuable.',
-          ],
-        },
-        { type: 'geo', statements: CAPACITY_GEO_STATEMENTS },
-      ],
-    },
-    {
       id: 'finite-not-unlimited',
       sectionKey: 'finite_capacity',
       title: 'Capacity Is Finite, Not Unlimited',
@@ -244,7 +236,7 @@ export const capacityArticle: SupportingArticleDefinition = {
           type: 'paragraphs',
           texts: [
             'Monthly development capacity has a boundary. Requests can continue to arrive, but only a prioritised subset can be worked on within the agreed allocation. Treating the model as unlimited development usually leads to disappointment on both sides.',
-            'Finite capacity is not a weakness—it is the mechanism that makes prioritisation honest. When capacity is visible, stakeholders can see trade-offs instead of assuming every request can start immediately.',
+            'Finite capacity is not a weakness. It is the mechanism that makes prioritisation honest. When capacity is visible, stakeholders can see trade-offs instead of assuming every request can start immediately.',
           ],
         },
         {
@@ -271,7 +263,7 @@ export const capacityArticle: SupportingArticleDefinition = {
         {
           type: 'paragraphs',
           texts: [
-            'Work usually enters through an agreed intake channel—shared document, project board, form or structured email—so requests are captured in one place rather than scattered across messages. The goal is to create a visible queue that both client and provider can review.',
+            'Work usually enters through an agreed intake channel, such as a shared document, project board, form or structured email, so requests are captured in one place rather than scattered across messages. The goal is to create a visible queue that both client and provider can review.',
             'Not every request should start immediately. Intake is the first filter: capture the idea, identify the requester, note urgency and attach any known context. Items then wait for clarification and estimation before they join the prioritised delivery plan.',
           ],
         },
@@ -295,7 +287,7 @@ export const capacityArticle: SupportingArticleDefinition = {
           type: 'paragraphs',
           texts: [
             'Clarification turns a request into something estimable and testable. That often means defining acceptance criteria, identifying affected users or workflows, confirming environments and agreeing what success looks like for the cycle.',
-            'Clarification consumes capacity. It is not overhead outside delivery—it is part of dependable software work. Skipping it may appear to save time early in a cycle, but it usually increases rework later.',
+            'Clarification consumes capacity. It is not overhead outside delivery. It is part of dependable software work. Skipping it may appear to save time early in a cycle, but it usually increases rework later.',
           ],
         },
         {
@@ -321,7 +313,7 @@ export const capacityArticle: SupportingArticleDefinition = {
         {
           type: 'paragraphs',
           texts: [
-            'Estimates compare the expected effort of a backlog item against available capacity. They are informed by system familiarity, technical complexity, dependency risk and the quality of clarification—not by wishful throughput targets.',
+            'Estimates compare the expected effort of a backlog item against available capacity. They are informed by system familiarity, technical complexity, dependency risk and the quality of clarification, not by wishful throughput targets.',
             'Estimates should be revisable. If investigation during development reveals unexpected complexity, the item should be re-discussed rather than silently absorbing unlimited extra effort within the same allocation.',
           ],
         },
@@ -344,7 +336,7 @@ export const capacityArticle: SupportingArticleDefinition = {
         {
           type: 'paragraphs',
           texts: [
-            'Priorities decide which clarified items enter the current cycle. That decision should combine business value, urgency, risk, dependencies and effort—not simply the most recent request or the loudest stakeholder.',
+            'Priorities decide which clarified items enter the current cycle. That decision should combine business value, urgency, risk, dependencies and effort, not simply the most recent request or the loudest stakeholder.',
             'Reprioritisation is normal in ongoing development. Changing the order of work is expected; assuming that change creates extra capacity is not. For a practical scoring approach, see the guide on prioritising software development requests.',
           ],
         },
@@ -363,7 +355,7 @@ export const capacityArticle: SupportingArticleDefinition = {
         {
           type: 'paragraphs',
           texts: [
-            'Many subscriptions work best with one primary workstream—such as product improvements on a single application—and occasional smaller parallel tasks that do not compete for the same attention.',
+            'Many subscriptions work best with one primary workstream, such as product improvements on a single application, and occasional smaller parallel tasks that do not compete for the same attention.',
             'Multiple active workstreams can be appropriate when capacity is large enough and coordination overhead is managed deliberately. Splitting a small allocation across several streams often produces context switching, partial progress and slower releases.',
           ],
         },
@@ -394,7 +386,7 @@ export const capacityArticle: SupportingArticleDefinition = {
           type: 'visual',
           image: SDAAS_COMMERCIAL_IMAGES.deliveryProcess,
           caption:
-            'Monthly delivery includes intake, clarification, development, quality assurance and release—not coding alone.',
+            'Monthly delivery includes intake, clarification, development, quality assurance and release, not coding alone.',
         },
         {
           type: 'bullets',
@@ -434,7 +426,7 @@ export const capacityArticle: SupportingArticleDefinition = {
         {
           type: 'paragraphs',
           texts: [
-            'When the prioritised backlog for a cycle exceeds available capacity, lower-priority items remain queued for future months. That is normal—not a failure of the model—provided the backlog stays visible and trade-offs are discussed openly.',
+            'When the prioritised backlog for a cycle exceeds available capacity, lower-priority items remain queued for future months. That is normal, not a failure of the model, provided the backlog stays visible and trade-offs are discussed openly.',
             'Options include deferring items, splitting large work into smaller releasable slices, increasing the agreed capacity level or scoping a separate fixed-price phase for a major module. Silent overcommitment helps no one.',
           ],
         },
@@ -462,13 +454,19 @@ export const capacityArticle: SupportingArticleDefinition = {
           ],
         },
         {
-          type: 'bullets',
-          items: [
-            'Name decision-makers for requirements and acceptance',
-            'Agree expected feedback turnaround for in-cycle items',
-            'Provide staging access and test accounts promptly',
-            'Escalate blockers early rather than at cycle end',
+          type: 'subsection',
+          title: 'The second-cycle decision gap',
+          paragraphs: [
+            'The first delivery cycle often contains obvious defects and already-understood improvements. The next cycle can be more demanding because the remaining backlog requires decisions about workflows, permissions, integrations or acceptance criteria.',
+            'We call this the second-cycle decision gap: delivery capacity is available, but work cannot progress confidently because the organisation has not assigned someone to make timely product and acceptance decisions.',
           ],
+          bullets: [
+            'Name one decision owner before the cycle begins.',
+            'Agree how quickly in-cycle questions should be answered.',
+            'Identify an alternative task that can progress if the primary item becomes blocked.',
+            'Record which delay resulted from missing access, feedback or approval.',
+          ],
+          ordered: true,
         },
       ],
     },
@@ -480,14 +478,14 @@ export const capacityArticle: SupportingArticleDefinition = {
         {
           type: 'paragraphs',
           texts: [
-            'Rollover policies vary. Some providers allow limited carry-forward when client delay prevented delivery; others treat each month as a distinct allocation. Neither approach makes capacity unlimited—it only defines what happens to unused effort.',
+            'Rollover policies vary. Some providers allow limited carry-forward when client delay prevented delivery; others treat each month as a distinct allocation. Neither approach makes capacity unlimited. It only defines what happens to unused effort.',
             'The more useful question is why capacity was unused. Repeated under-use may indicate unclear priorities, internal bottlenecks or a capacity level set higher than current demand. Repeated over-demand suggests the opposite.',
           ],
         },
         {
           type: 'callout',
           tone: 'info',
-          text: 'A predictable monthly fee creates budget consistency, not identical monthly output. Rollover, if offered, is a commercial term—not an automatic way to bank unlimited development time.',
+          text: 'A predictable monthly fee creates budget consistency, not identical monthly output. Rollover, if offered, is a commercial term, not an automatic way to bank unlimited development time.',
         },
       ],
     },
@@ -499,7 +497,7 @@ export const capacityArticle: SupportingArticleDefinition = {
         {
           type: 'paragraphs',
           texts: [
-            'Providers describe capacity in different units: hours, days, story points, credits or planned outputs. The unit matters less than whether both parties understand what is included—development, QA, release, meetings and clarification.',
+            'Providers describe capacity in different units: hours, days, story points, credits or planned outputs. The unit matters less than whether both parties understand what is included, including development, QA, release, meetings and clarification.',
             'Named-developer models assign an individual’s calendar. Capacity-based models assign delivery effort that may be fulfilled by different specialists across the month. Each approach has trade-offs in continuity, coverage and management overhead.',
           ],
         },
@@ -508,7 +506,7 @@ export const capacityArticle: SupportingArticleDefinition = {
           headers: ['Unit', 'What it usually implies', 'Watch for'],
           rows: [
             ['Hours or days', 'Time-based allocation across the team', 'Whether meetings, QA and release time are included'],
-            ['Credits or points', 'Relative effort currency for backlog items', 'How credits map to real clarificaton and testing work'],
+            ['Credits or points', 'Relative effort currency for backlog items', 'How credits map to real clarification and testing work'],
             ['Planned outputs', 'Agreed deliverables per cycle', 'What happens when scope expands after work starts'],
             ['Named developer', 'One primary individual assigned', 'Holiday cover, QA depth and skill breadth'],
           ],
@@ -516,28 +514,24 @@ export const capacityArticle: SupportingArticleDefinition = {
       ],
     },
     {
-      id: 'example-allocation',
-      sectionKey: 'example_allocation',
-      title: 'Example Monthly Allocation',
+      id: 'delivery-capacity-map',
+      sectionKey: 'delivery_capacity_map',
+      title: 'The Primewayz Delivery Capacity Map',
       blocks: [
-        {
-          type: 'paragraphs',
-          texts: [
-            'The table below is illustrative—not a universal formula. Actual allocation shifts with product maturity, defect volume, integration load and how much clarification a backlog requires.',
-            'Use it as a conversation starter with your provider: where does time go in a typical cycle, and what would change if urgent defects or a large feature dominated the month?',
-          ],
-        },
-        {
-          type: 'visual',
-          image: SDAAS_COMMERCIAL_IMAGES.monthlyCapacity,
-          caption:
-            'Illustrative allocation of monthly capacity across feature work, integrations, stabilisation, QA and planning.',
-        },
-        {
-          type: 'table',
-          headers: ['Category', 'Approximate share', 'Typical work'],
-          rows: exampleAllocationRows.map((row) => [...row]),
-        },
+        { type: 'paragraphs', texts: [
+          'A monthly development allocation is rarely consumed by feature coding alone. It must also accommodate clarification, integration work, stabilisation, testing and release preparation.',
+          'We use the Primewayz Delivery Capacity Map to make those competing demands visible before work is committed. It is not a fixed formula or delivery guarantee. It is a planning model for discussing where the available capacity is likely to go based on the condition of the system and the priorities in the backlog.',
+          'A mature, stable application may direct more capacity towards enhancements. A legacy application with undocumented integrations may require more investigation, testing and stabilisation. The allocation should respond to the work rather than force every month into the same percentage pattern.',
+        ] },
+        { type: 'visual', image: SDAAS_COMMERCIAL_IMAGES.monthlyCapacity, caption: 'Illustrative allocation of monthly capacity across feature work, integrations, stabilisation, QA and planning.' },
+        { type: 'table', headers: ['Category', 'Indicative range', 'Typical work'], rows: exampleAllocationRows.map((row) => [...row]) },
+        { type: 'subsection', title: 'Illustrative monthly capacity scenario', paragraphs: [
+          'Consider a business entering the month with eleven backlog items: a broken checkout redirect, a reporting dashboard, two integration changes and seven smaller enhancements.',
+          'During clarification, the dashboard request reveals an unresolved permissions question: finance users and operational managers require different levels of access. Instead of beginning development against an assumption, the dashboard is divided into a smaller reporting foundation and a later permissions phase.',
+          'The checkout redirect, one integration adjustment and four smaller items are completed, tested and released during the cycle. The remaining enhancements stay visible in the backlog and move into the next planning discussion.',
+          'The monthly allocation has not failed because all eleven requests were not completed. It has worked correctly because the highest-priority work was released, uncertainty was identified before it became rework, and deferred items remained visible rather than disappearing into an unexplained delay.',
+          'This example is illustrative. Actual delivery varies according to complexity, dependencies, system condition and the speed of client decisions.',
+        ] },
       ],
     },
     {
@@ -548,7 +542,7 @@ export const capacityArticle: SupportingArticleDefinition = {
         {
           type: 'paragraphs',
           texts: [
-            'Reporting should show what was prioritised, what progressed, what was released, what was blocked and what carries forward—not a vague activity summary. Good reporting connects delivery back to business priorities.',
+            'Reporting should show what was prioritised, what progressed, what was released, what was blocked and what carries forward, not a vague activity summary. Good reporting connects delivery back to business priorities.',
             'Cadence varies: weekly check-ins for active cycles, monthly summaries for stakeholders who approve budgets. Reports should mention capacity consumed by QA, clarification and release work so those efforts stay visible.',
           ],
         },
@@ -565,6 +559,22 @@ export const capacityArticle: SupportingArticleDefinition = {
       ],
     },
     {
+      id: 'delivery-model-comparison',
+      sectionKey: 'delivery_model_comparison',
+      title: 'Which Delivery Model Fits the Work?',
+      blocks: [
+        { type: 'paragraphs', texts: ['Monthly capacity is one delivery model among several. The appropriate choice depends on requirement stability, how frequently priorities change, how well the application is understood and who will make delivery decisions.'] },
+        { type: 'table', headers: ['Model', 'Best suited to', 'Main limitation'], rows: [
+          ['Fixed-price project', 'Stable requirements and clearly defined deliverables', 'Changes may require re-scoping and additional cost'],
+          ['Monthly capacity', 'Evolving applications, integrations and product roadmaps', 'Finite capacity does not guarantee a fixed feature count'],
+          ['Named developer', 'Team augmentation with internal technical leadership', 'Coverage and specialist breadth may depend on one person'],
+          ['Discovery or stabilisation', 'Unknown, undocumented or unstable applications', 'It prepares dependable delivery but may not produce major features'],
+          ['Ad hoc support', 'Infrequent and isolated changes', 'Repeated onboarding can slow delivery and fragment context'],
+        ] },
+        { type: 'callout', tone: 'geo', text: 'No model is universally better. The right choice depends on the work, the condition of the system and the organisation’s ability to make timely decisions.' },
+      ],
+    },
+    {
       id: 'buyer-questions',
       sectionKey: 'buyer_questions',
       title: 'Questions Buyers Should Ask',
@@ -572,7 +582,7 @@ export const capacityArticle: SupportingArticleDefinition = {
         {
           type: 'paragraphs',
           texts: [
-            'Before committing to a monthly plan, ask how capacity is defined in practice—not only on the pricing page. The answers should be specific enough to test against real backlog behaviour.',
+            'Before committing to a monthly plan, ask how capacity is defined in practice, not only on the pricing page. The answers should be specific enough to test against real backlog behaviour.',
           ],
         },
         { type: 'checklist', items: capacityBuyerChecklist },
@@ -602,7 +612,7 @@ export const capacityArticle: SupportingArticleDefinition = {
   ],
   conclusion: {
     paragraphs: [
-      'Monthly software development capacity is best understood as finite, prioritised delivery effort that includes clarification, build, test and release work—not a fixed feature quota or unlimited task list.',
+      'Monthly software development capacity is best understood as finite, prioritised delivery effort that includes clarification, build, test and release work, not a fixed feature quota or unlimited task list.',
       'When capacity, priorities and reporting are visible, businesses can plan more honestly, respond to urgent work without pretending capacity expanded, and decide when to increase the plan or choose a different delivery model.',
       'If you are evaluating how much capacity fits your backlog and risk profile, start with a structured conversation rather than assuming every provider defines capacity the same way.',
     ],

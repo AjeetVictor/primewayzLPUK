@@ -20,6 +20,7 @@ export type SupportingArticleSeo = {
   standfirst: string;
   category: string;
   author: string;
+  authorRole?: string;
   datePublished: string;
   dateModified: string;
   readTime: string;
@@ -71,6 +72,9 @@ export type SupportingArticleDefinition = {
   path: string;
   seo: SupportingArticleSeo;
   ogImage: string;
+  heroImage?: string;
+  heroImageAlt?: string;
+  showTableOfContents?: boolean;
   breadcrumbLabel: string;
   /** Blog-index card classification */
   cardCategory:

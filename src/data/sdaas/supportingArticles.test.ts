@@ -51,9 +51,20 @@ test('each supporting article has unique SEO, one H1, direct answer, FAQs and OG
     assert.ok(article.seo.title.length > 20);
     assert.ok(article.seo.description.length > 80);
     assert.ok(article.seo.h1.length > 20);
-    assert.equal(article.seo.author, 'Primewayz UK');
-    assert.equal(article.seo.datePublished, '2026-07-16');
-    assert.equal(article.seo.dateModified, '2026-07-16');
+    if (article.path === SDAAS_MONTHLY_CAPACITY_HREF) {
+      assert.equal(article.seo.author, 'Manish Kumar Mishra');
+      assert.equal(
+        article.seo.authorRole,
+        'UX-Led Product Manager at Primewayz Infotech',
+      );
+      assert.equal(article.seo.datePublished, '2026-07-16');
+      assert.equal(article.seo.dateModified, '2026-08-30');
+    } else {
+      assert.equal(article.seo.author, 'Primewayz UK');
+      assert.equal(article.seo.authorRole, undefined);
+      assert.equal(article.seo.datePublished, '2026-07-16');
+      assert.equal(article.seo.dateModified, '2026-07-16');
+    }
     assert.doesNotMatch(article.seo.title.toLowerCase(), /software development subscription uk/);
     assert.ok(article.directAnswer.length > 80);
     assert.ok(article.directAnswerTitle.length > 10);
@@ -159,4 +170,14 @@ test('content cluster marks all seven supporting articles live', () => {
 test('analytics namespaces stay distinct across supporting articles', () => {
   const namespaces = new Set(SDAAS_SUPPORTING_ARTICLES.map((article) => article.analyticsNamespace));
   assert.equal(namespaces.size, 7);
+});
+
+
+test('monthly capacity article contains no em dash characters', () => {
+  const article = SDAAS_SUPPORTING_ARTICLES.find(
+    (item) => item.path === SDAAS_MONTHLY_CAPACITY_HREF,
+  );
+
+  assert.ok(article);
+  assert.doesNotMatch(JSON.stringify(article), /\u2014/);
 });

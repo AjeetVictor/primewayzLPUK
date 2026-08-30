@@ -323,3 +323,40 @@ test('homepage SEO title and description are updated', () => {
   );
   assert.match(indexHtml, /Digital Transformation Services for UK SMEs \| Primewayz UK/);
 });
+
+
+test('homepage service routes expose the monthly capacity guide without changing section order', () => {
+  const section = read('src/components/sections/ServiceRoutesSection.tsx');
+
+  assert.match(section, /SDAAS_MONTHLY_CAPACITY_HREF/);
+  assert.match(
+    section,
+    /<Link[\s\S]*className="service-routes__insight"[\s\S]*to=\{SDAAS_MONTHLY_CAPACITY_HREF\}/,
+  );
+  assert.match(section, /How Monthly Software Development Capacity Works/);
+  assert.match(section, /data-homepage-capacity-guide="true"/);
+  assert.match(section, /onClick=\{trackCapacityGuideClick\}/);
+});
+
+test('supporting article SSR schema uses a person author and explicit primary image', () => {
+  const server = read('server.ts');
+  const start = server.indexOf(
+    'function buildSdaasSupportingArticleStructuredData',
+  );
+  const end = server.indexOf('function buildBreadcrumbList', start);
+
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+
+  const builder = server.slice(start, end);
+
+  assert.match(builder, /'@type': 'Person'/);
+  assert.match(builder, /jobTitle: article\.seo\.authorRole/);
+  assert.match(builder, /worksFor: \{ '@id': providerId \}/);
+  assert.match(builder, /'@type': 'ImageObject'/);
+  assert.match(builder, /contentUrl: ogImage/);
+  assert.match(builder, /'@type': 'BreadcrumbList'/);
+  assert.match(builder, /'@type': 'FAQPage'/);
+  assert.match(builder, /datePublished/);
+  assert.match(builder, /dateModified/);
+});

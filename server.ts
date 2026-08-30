@@ -1130,6 +1130,7 @@ function buildSdaasSupportingArticleStructuredData(
   const webpageId = `${canonical}#webpage`;
   const articleId = `${canonical}#article`;
   const ogImage = `${siteUrl}${article.ogImage}`;
+  const ogImageId = `${ogImage}#image`;
   const supportingImages = Object.values(SDAAS_COMMERCIAL_IMAGES)
     .filter((image) => article.reusableVisuals.includes(image.basePath))
     .slice(0, 2)
@@ -1146,6 +1147,12 @@ function buildSdaasSupportingArticleStructuredData(
         logo: `${siteUrl}/primewayz-uk-dark-logo.png`,
       },
       {
+        '@type': 'ImageObject',
+        '@id': ogImageId,
+        url: ogImage,
+        contentUrl: ogImage,
+      },
+      {
         '@type': 'WebPage',
         '@id': webpageId,
         url: canonical,
@@ -1154,7 +1161,7 @@ function buildSdaasSupportingArticleStructuredData(
         inLanguage: 'en-GB',
         isPartOf: { '@id': `${siteUrl}/#website` },
         breadcrumb: { '@id': `${canonical}#breadcrumb` },
-        primaryImageOfPage: { '@id': `${ogImage}#image` },
+        primaryImageOfPage: { '@id': ogImageId },
         about: { '@id': articleId },
       },
       {
@@ -1176,13 +1183,17 @@ function buildSdaasSupportingArticleStructuredData(
         '@id': articleId,
         headline: article.seo.h1,
         description: article.seo.description,
+        url: canonical,
         image: [ogImage, ...supportingImages.map((image) => image.contentUrl)],
         datePublished: `${article.seo.datePublished}T09:00:00+01:00`,
         dateModified: `${article.seo.dateModified}T09:00:00+01:00`,
         author: {
-          '@type': 'Organization',
-          '@id': providerId,
+          '@type': 'Person',
           name: article.seo.author,
+          ...(article.seo.authorRole
+            ? { jobTitle: article.seo.authorRole }
+            : {}),
+          worksFor: { '@id': providerId },
         },
         publisher: {
           '@type': 'Organization',

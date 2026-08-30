@@ -1,5 +1,8 @@
 import { Link } from 'react-router-dom';
-import { CANONICAL_ROUTES } from '../../constants/canonicalRoutes';
+import {
+  CANONICAL_ROUTES,
+  SDAAS_MONTHLY_CAPACITY_HREF,
+} from '../../constants/canonicalRoutes';
 import { trackConversionEvent } from '../../lib/analytics';
 import './ServiceRoutesSection.css';
 
@@ -120,6 +123,14 @@ function trackServiceCardClick(eventName: string, destination: string, cardTitle
     cta_location: 'homepage_service_routes',
     destination_url: destination,
     card_title: cardTitle,
+  });
+}
+
+function trackCapacityGuideClick() {
+  trackConversionEvent('homepage_capacity_guide_click', {
+    cta_location: 'homepage_service_routes',
+    destination_url: SDAAS_MONTHLY_CAPACITY_HREF,
+    article_title: 'How Monthly Software Development Capacity Works',
   });
 }
 
@@ -309,7 +320,7 @@ export const ServiceRoutesSection = () => {
 
           <p className="service-routes__intro">
             Start with visibility, CRM workflows, software delivery, managed support or remote
-            technical capacityâ€”then organise the work through the engagement model that fits.
+            technical capacity, then organise the work through the engagement model that fits.
           </p>
         </header>
 
@@ -318,6 +329,32 @@ export const ServiceRoutesSection = () => {
             <ServiceRouteCardItem key={route.title} {...route} />
           ))}
         </div>
+
+        <Link
+          className="service-routes__insight"
+          to={SDAAS_MONTHLY_CAPACITY_HREF}
+          aria-label="Read the guide: How Monthly Software Development Capacity Works"
+          data-homepage-capacity-guide="true"
+          onClick={trackCapacityGuideClick}
+        >
+          <div className="service-routes__insight-copy">
+            <span className="service-routes__insight-label">Practical guide</span>
+
+            <h3 className="service-routes__insight-title">
+              How Monthly Software Development Capacity Works
+            </h3>
+
+            <p className="service-routes__insight-description">
+              Understand backlog intake, prioritisation, QA, releases and what happens when
+              requests exceed the available monthly allocation.
+            </p>
+          </div>
+
+          <span className="service-routes__insight-cta" aria-hidden="true">
+            <span>Read the guide</span>
+            <CtaArrow />
+          </span>
+        </Link>
 
         <ul className="service-routes__benefits" role="list">
           {serviceRouteBenefits.map((benefit) => {

@@ -275,6 +275,125 @@
   border-radius: 4px;
 }
 
+/* ---------- Supporting insight ---------- */
+
+.service-routes__insight {
+  margin-top: 28px;
+  padding: 24px 26px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 28px;
+  color: inherit;
+  text-decoration: none;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--sr-purple-soft) 72%, white),
+      var(--sr-surface)
+    );
+  border: 1px solid color-mix(in srgb, var(--sr-purple) 24%, var(--sr-border));
+  border-left: 4px solid var(--sr-purple);
+  border-radius: var(--sr-radius);
+  box-shadow: var(--sr-card-shadow);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.service-routes__insight:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--sr-purple) 38%, var(--sr-border));
+  box-shadow:
+    0 24px 48px rgba(20, 54, 105, 0.1),
+    0 5px 14px rgba(20, 54, 105, 0.04);
+}
+
+.service-routes__insight:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--sr-purple) 28%, transparent);
+  outline-offset: 5px;
+}
+
+.service-routes__insight-copy {
+  min-width: 0;
+}
+
+.service-routes__insight-label {
+  display: inline-flex;
+  margin-bottom: 8px;
+  color: var(--sr-purple);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.service-routes__insight-title {
+  margin: 0;
+  color: var(--sr-navy);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+.service-routes__insight-description {
+  max-width: 780px;
+  margin: 9px 0 0;
+  color: var(--sr-copy);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.58;
+}
+
+.service-routes__insight-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--sr-purple);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.service-routes__insight-cta svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  transition: transform 180ms ease;
+}
+
+.service-routes__insight:hover .service-routes__insight-cta svg,
+.service-routes__insight:focus-visible .service-routes__insight-cta svg {
+  transform: translateX(4px);
+}
+
+@media (max-width: 700px) {
+  .service-routes__insight {
+    padding: 22px;
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .service-routes__insight-title {
+    font-size: 20px;
+  }
+
+  .service-routes__insight-cta {
+    justify-content: space-between;
+    white-space: normal;
+  }
+}
+
 /* ---------- Benefits ---------- */
 
 .service-routes__benefits {
@@ -476,11 +595,14 @@
 
 @media (prefers-reduced-motion: reduce) {
   .service-route-card,
-  .service-route-card__cta svg {
+  .service-routes__insight,
+  .service-route-card__cta svg,
+  .service-routes__insight-cta svg {
     transition: none;
   }
 
-  .service-route-card:hover {
+  .service-route-card:hover,
+  .service-routes__insight:hover {
     transform: none;
   }
 }
