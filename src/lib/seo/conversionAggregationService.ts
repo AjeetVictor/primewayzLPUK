@@ -2,7 +2,7 @@
  * Aggregate conversion evidence into daily SeoPageConversionDaily rows.
  */
 
-import type { PrismaClient, SeoAttributionModel } from '@prisma/client';
+import type { Prisma, PrismaClient, SeoAttributionModel } from '@prisma/client';
 import {
   collectConversionEvidence,
   type CollectConversionEvidenceOptions,
@@ -13,6 +13,11 @@ import {
   resolveLandingAttribution,
   type ResolvedAttribution,
 } from './conversionAttribution.ts';
+import { computeConversionBucketKeyHash } from './conversionBucketKey.ts';
+import {
+  ConversionRebuildLockError,
+  withConversionRebuildLock,
+} from './conversionRebuildLock.ts';
 import type { SeoConversionType } from './conversionTaxonomies.ts';
 import { registerSeoPageAlias } from './seoPageIdentityService.ts';
 
@@ -21,6 +26,7 @@ export type ConversionAggregationBucket = {
   seoPageId: number | null;
   attributionModel: SeoAttributionModel;
   channelGroup: string;
+  bucketKeyHash: string;
   chatsInitiated: number;
   qualifiedChats: number;
   contactForms: number;
@@ -35,12 +41,23 @@ export type ConversionAggregationBucket = {
   unknownAttributionCount: number;
 };
 
+export type ConversionRebuildPageScope =
+  | { kind: 'all' }
+  | { kind: 'page'; seoPageId: number }
+  | { kind: 'unknown' };
+
+export type RebuildConversionOptions = CollectConversionEvidenceOptions & {
+  dryRun?: boolean;
+  pageScope?: ConversionRebuildPageScope;
+};
+
 export type RebuildConversionReport = {
   dryRun: boolean;
   dateFrom: string;
   dateTo: string;
   recordsProcessed: number;
   bucketsWritten: number;
+  rowsDeleted: number;
   dedupedEvents: number;
   unknownAttributionCount: number;
 };
@@ -72,6 +89,11 @@ function emptyBucket(
     seoPageId,
     attributionModel,
     channelGroup,
+    bucketKeyHash: computeConversionBucketKeyHash({
+      seoPageId,
+      attributionModel,
+      channelGroup,
+    }),
     chatsInitiated: 0,
     qualifiedChats: 0,
     contactForms: 0,
@@ -195,11 +217,98 @@ async function resolveRecordAttribution(
   }) as Promise<ResolvedAttribution>;
 }
 
+export function resolveConversionRebuildPageScope(
+  options: CollectConversionEvidenceOptions & { pageScope?: ConversionRebuildPageScope },
+): ConversionRebuildPageScope {
+  if (options.pageScope) return options.pageScope;
+  if (options.seoPageId != null) {
+    return { kind: 'page', seoPageId: options.seoPageId };
+  }
+  return { kind: 'all' };
+}
+
+export function filterBucketsForPageScope(
+  buckets: ConversionAggregationBucket[],
+  pageScope: ConversionRebuildPageScope,
+): ConversionAggregationBucket[] {
+  switch (pageScope.kind) {
+    case 'page':
+      return buckets.filter((bucket) => bucket.seoPageId === pageScope.seoPageId);
+    case 'unknown':
+      return buckets.filter((bucket) => bucket.seoPageId === null);
+    default:
+      return buckets;
+  }
+}
+
+function buildDeleteWhere(
+  options: CollectConversionEvidenceOptions,
+  pageScope: ConversionRebuildPageScope,
+): Prisma.SeoPageConversionDailyWhereInput {
+  const metricDate = {
+    gte: new Date(`${options.dateFrom}T00:00:00.000Z`),
+    lte: new Date(`${options.dateTo}T23:59:59.999Z`),
+  };
+
+  switch (pageScope.kind) {
+    case 'page':
+      return { metricDate, seoPageId: pageScope.seoPageId };
+    case 'unknown':
+      return { metricDate, seoPageId: null };
+    default:
+      return { metricDate };
+  }
+}
+
+function toPersistedRow(bucket: ConversionAggregationBucket) {
+  return {
+    metricDate: new Date(`${bucket.metricDate}T00:00:00.000Z`),
+    seoPageId: bucket.seoPageId,
+    bucketKeyHash: bucket.bucketKeyHash,
+    attributionModel: bucket.attributionModel,
+    channelGroup: bucket.channelGroup,
+    chatsInitiated: bucket.chatsInitiated,
+    qualifiedChats: bucket.qualifiedChats,
+    contactForms: bucket.contactForms,
+    reviewRequests: bucket.reviewRequests,
+    bookingRequests: bucket.bookingRequests,
+    bookingsCompleted: bucket.bookingsCompleted,
+    qualifiedLeads: bucket.qualifiedLeads,
+    proposals: bucket.proposals,
+    wonOpportunities: bucket.wonOpportunities,
+    attributedValueMinor: bucket.attributedValueMinor,
+    currency: bucket.currency,
+    unknownAttributionCount: bucket.unknownAttributionCount,
+  };
+}
+
+export async function persistConversionBuckets(
+  prisma: PrismaClient,
+  options: CollectConversionEvidenceOptions,
+  buckets: ConversionAggregationBucket[],
+  pageScope: ConversionRebuildPageScope,
+): Promise<{ rowsDeleted: number }> {
+  const deleteWhere = buildDeleteWhere(options, pageScope);
+
+  return withConversionRebuildLock(prisma, async () => {
+    return prisma.$transaction(async (tx) => {
+      const deleted = await tx.seoPageConversionDaily.deleteMany({ where: deleteWhere });
+      if (buckets.length > 0) {
+        await tx.seoPageConversionDaily.createMany({
+          data: buckets.map(toPersistedRow),
+        });
+      }
+      return { rowsDeleted: deleted.count };
+    });
+  });
+}
+
 export async function rebuildSeoPageConversions(
   prisma: PrismaClient,
-  options: CollectConversionEvidenceOptions & { dryRun?: boolean },
+  options: RebuildConversionOptions,
 ): Promise<RebuildConversionReport> {
   const dryRun = options.dryRun !== false;
+  const pageScope = resolveConversionRebuildPageScope(options);
   const records = await collectConversionEvidence(prisma, options);
 
   const resolved = [];
@@ -213,56 +322,16 @@ export async function rebuildSeoPageConversions(
     }
   }
 
-  const { buckets, dedupedEvents } = aggregateConversionEvidenceRecords(resolved);
+  const { buckets: allBuckets, dedupedEvents } = aggregateConversionEvidenceRecords(resolved);
+  const buckets = filterBucketsForPageScope(allBuckets, pageScope);
   const unknownAttributionCount = buckets.reduce(
     (sum, bucket) => sum + bucket.unknownAttributionCount,
     0,
   );
 
+  let rowsDeleted = 0;
   if (!dryRun) {
-    for (const bucket of buckets) {
-      const metricDate = new Date(`${bucket.metricDate}T00:00:00.000Z`);
-      const data = {
-        chatsInitiated: bucket.chatsInitiated,
-        qualifiedChats: bucket.qualifiedChats,
-        contactForms: bucket.contactForms,
-        reviewRequests: bucket.reviewRequests,
-        bookingRequests: bucket.bookingRequests,
-        bookingsCompleted: bucket.bookingsCompleted,
-        qualifiedLeads: bucket.qualifiedLeads,
-        proposals: bucket.proposals,
-        wonOpportunities: bucket.wonOpportunities,
-        attributedValueMinor: bucket.attributedValueMinor,
-        currency: bucket.currency,
-        unknownAttributionCount: bucket.unknownAttributionCount,
-      };
-
-      const existing = await prisma.seoPageConversionDaily.findFirst({
-        where: {
-          metricDate,
-          seoPageId: bucket.seoPageId,
-          attributionModel: bucket.attributionModel,
-          channelGroup: bucket.channelGroup,
-        },
-      });
-
-      if (existing) {
-        await prisma.seoPageConversionDaily.update({
-          where: { id: existing.id },
-          data,
-        });
-      } else {
-        await prisma.seoPageConversionDaily.create({
-          data: {
-            metricDate,
-            seoPageId: bucket.seoPageId,
-            attributionModel: bucket.attributionModel,
-            channelGroup: bucket.channelGroup,
-            ...data,
-          },
-        });
-      }
-    }
+    ({ rowsDeleted } = await persistConversionBuckets(prisma, options, buckets, pageScope));
   }
 
   return {
@@ -271,7 +340,10 @@ export async function rebuildSeoPageConversions(
     dateTo: options.dateTo,
     recordsProcessed: records.length,
     bucketsWritten: buckets.length,
+    rowsDeleted,
     dedupedEvents,
     unknownAttributionCount,
   };
 }
+
+export { ConversionRebuildLockError };

@@ -1147,6 +1147,7 @@ model SeoPageConversionDaily {
   id                      Int                 @id @default(autoincrement())
   metricDate              DateTime            @db.Date
   seoPageId               Int?
+  bucketKeyHash           String              @db.VarChar(64)
   attributionModel        SeoAttributionModel
   channelGroup            String              @db.VarChar(64)
   chatsInitiated          Int                 @default(0)
@@ -1166,8 +1167,9 @@ model SeoPageConversionDaily {
 
   seoPage SeoPage? @relation(fields: [seoPageId], references: [id], onDelete: SetNull)
 
-  @@unique([metricDate, seoPageId, attributionModel, channelGroup], map: "SeoPageConversionDaily_uniq")
+  @@unique([metricDate, bucketKeyHash], map: "SeoPageConversionDaily_uniq")
   @@index([metricDate])
   @@index([seoPageId, metricDate])
   @@index([channelGroup, metricDate])
+  @@index([bucketKeyHash, metricDate])
 }

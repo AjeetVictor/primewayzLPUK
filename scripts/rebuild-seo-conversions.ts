@@ -5,7 +5,10 @@
 
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
-import { rebuildSeoPageConversions } from '../src/lib/seo/conversionAggregationService.ts';
+import {
+  rebuildSeoPageConversions,
+  type ConversionRebuildPageScope,
+} from '../src/lib/seo/conversionAggregationService.ts';
 
 dotenv.config({ path: '.env.local', override: false });
 dotenv.config({ override: false });
@@ -20,21 +23,44 @@ function safeLog(payload: Record<string, unknown>) {
   console.log(JSON.stringify({ ...payload, at: new Date().toISOString() }));
 }
 
+function parsePageScope(pageIdRaw: string | null): {
+  seoPageId: number | null;
+  pageScope: ConversionRebuildPageScope;
+} {
+  if (!pageIdRaw) {
+    return { seoPageId: null, pageScope: { kind: 'all' } };
+  }
+
+  if (pageIdRaw.trim().toLowerCase() === 'unknown') {
+    return { seoPageId: null, pageScope: { kind: 'unknown' } };
+  }
+
+  const seoPageId = Number.parseInt(pageIdRaw, 10);
+  if (!Number.isInteger(seoPageId)) {
+    throw new Error('Invalid --pageId value. Use a numeric id or "unknown".');
+  }
+
+  return {
+    seoPageId,
+    pageScope: { kind: 'page', seoPageId },
+  };
+}
+
 async function main() {
   const dateFrom = readArg('dateFrom');
   const dateTo = readArg('dateTo');
   if (!dateFrom || !dateTo) {
     safeLog({
       ok: false,
-      message: 'Usage: --dateFrom=YYYY-MM-DD --dateTo=YYYY-MM-DD [--write] [--pageId=123]',
+      message:
+        'Usage: --dateFrom=YYYY-MM-DD --dateTo=YYYY-MM-DD [--write] [--pageId=123|unknown]',
     });
     process.exitCode = 1;
     return;
   }
 
   const writeMode = process.argv.includes('--write');
-  const pageIdRaw = readArg('pageId');
-  const seoPageId = pageIdRaw ? Number.parseInt(pageIdRaw, 10) : null;
+  const { seoPageId, pageScope } = parsePageScope(readArg('pageId'));
 
   const prisma = new PrismaClient();
   try {
@@ -42,12 +68,13 @@ async function main() {
       dateFrom,
       dateTo,
       dryRun: !writeMode,
-      seoPageId: Number.isInteger(seoPageId) ? seoPageId : null,
+      seoPageId,
+      pageScope,
     });
     safeLog({ ok: true, ...report });
     if (!writeMode) {
       safeLog({
-        note: 'Dry-run only. Re-run with --write to persist SeoPageConversionDaily rows.',
+        note: 'Dry-run only. Re-run with --write or npm run seo:conversions:rebuild:write to persist SeoPageConversionDaily rows.',
       });
     }
   } catch (error) {
