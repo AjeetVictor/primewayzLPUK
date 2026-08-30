@@ -274,6 +274,68 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
 
 
 
+  useEffect(() => {
+    if (!post) return;
+
+    const articleSeoTitle = `${post.seoTitle || post.title} | Primewayz UK`;
+    const articleSeoDescription =
+      post.seoDescription || post.description || post.excerpt;
+    const articleCanonical =
+      `https://uk.primewayz.com/blog/${post.slug || post.id}`;
+    const articleSocialImage = heroImage.startsWith('http')
+      ? heroImage
+      : `https://uk.primewayz.com${heroImage}`;
+
+    const updateMeta = (selector: string, content: string) => {
+      const element = document.head.querySelector<HTMLMetaElement>(selector);
+
+      if (element) {
+        element.setAttribute('content', content);
+      }
+    };
+
+    const updateLink = (selector: string, href: string) => {
+      const element = document.head.querySelector<HTMLLinkElement>(selector);
+
+      if (element) {
+        element.setAttribute('href', href);
+      }
+    };
+
+    document.title = articleSeoTitle;
+
+    updateMeta('meta[name="description"]', articleSeoDescription);
+
+    updateLink('link[rel="canonical"]', articleCanonical);
+    updateLink(
+      'link[rel="alternate"][hreflang="en-gb"]',
+      articleCanonical,
+    );
+
+    updateMeta('meta[property="og:type"]', 'article');
+    updateMeta('meta[property="og:title"]', articleSeoTitle);
+    updateMeta('meta[property="og:description"]', articleSeoDescription);
+    updateMeta('meta[property="og:url"]', articleCanonical);
+    updateMeta('meta[property="og:image"]', articleSocialImage);
+    updateMeta('meta[property="og:image:secure_url"]', articleSocialImage);
+    updateMeta(
+      'meta[property="og:image:alt"]',
+      post.imageAlt || post.title,
+    );
+
+    updateMeta('meta[name="twitter:card"]', 'summary_large_image');
+    updateMeta('meta[name="twitter:title"]', articleSeoTitle);
+    updateMeta(
+      'meta[name="twitter:description"]',
+      articleSeoDescription,
+    );
+    updateMeta('meta[name="twitter:image"]', articleSocialImage);
+    updateMeta(
+      'meta[name="twitter:image:alt"]',
+      post.imageAlt || post.title,
+    );
+  }, [post, heroImage]);
+
   if (isPostLoading) {
     return (
       <main className="min-h-screen bg-white pt-32 pb-24">
