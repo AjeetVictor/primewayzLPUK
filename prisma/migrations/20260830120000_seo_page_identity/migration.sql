@@ -14,6 +14,8 @@ CREATE TABLE `SeoPage` (
     `cmsEntityId` VARCHAR(191) NULL,
     `title` VARCHAR(512) NULL,
     `active` BOOLEAN NOT NULL DEFAULT true,
+    `firstSeenAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `lastSeenAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
@@ -21,6 +23,8 @@ CREATE TABLE `SeoPage` (
     UNIQUE INDEX `SeoPage_canonicalUrlHash_key`(`canonicalUrlHash`),
     INDEX `SeoPage_host_path_idx`(`host`, `path`(191)),
     INDEX `SeoPage_pageType_idx`(`pageType`),
+    INDEX `SeoPage_serviceArea_idx`(`serviceArea`),
+    INDEX `SeoPage_cmsEntityType_cmsEntityId_idx`(`cmsEntityType`, `cmsEntityId`),
     INDEX `SeoPage_active_idx`(`active`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -29,8 +33,9 @@ CREATE TABLE `SeoPage` (
 CREATE TABLE `SeoPageAlias` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `seoPageId` INTEGER NOT NULL,
-    `source` ENUM('GSC', 'GA4', 'CHAT', 'LEAD', 'CMS', 'INDEXING', 'GITHUB') NOT NULL,
+    `source` ENUM('GSC', 'GA4', 'CHAT', 'LEAD', 'CMS', 'INDEXING', 'GITHUB', 'MANUAL', 'SYSTEM') NOT NULL,
     `observedUrl` TEXT NOT NULL,
+    `observedUrlHash` VARCHAR(64) NOT NULL,
     `normalisedUrl` TEXT NOT NULL,
     `normalisedUrlHash` VARCHAR(64) NOT NULL,
     `firstSeenAt` DATETIME(3) NOT NULL,
@@ -38,9 +43,10 @@ CREATE TABLE `SeoPageAlias` (
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
-    UNIQUE INDEX `SeoPageAlias_source_normalisedUrlHash_key`(`source`, `normalisedUrlHash`),
+    UNIQUE INDEX `SeoPageAlias_source_observedUrlHash_key`(`source`, `observedUrlHash`),
     INDEX `SeoPageAlias_seoPageId_idx`(`seoPageId`),
     INDEX `SeoPageAlias_normalisedUrlHash_idx`(`normalisedUrlHash`),
+    INDEX `SeoPageAlias_source_idx`(`source`),
     INDEX `SeoPageAlias_source_lastSeenAt_idx`(`source`, `lastSeenAt`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

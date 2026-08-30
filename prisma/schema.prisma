@@ -956,6 +956,8 @@ enum SeoPageAliasSource {
   CMS
   INDEXING
   GITHUB
+  MANUAL
+  SYSTEM
 }
 
 model SeoPage {
@@ -970,6 +972,8 @@ model SeoPage {
   cmsEntityId      String?  @db.VarChar(191)
   title            String?  @db.VarChar(512)
   active           Boolean  @default(true)
+  firstSeenAt      DateTime @default(now())
+  lastSeenAt       DateTime @default(now())
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -979,6 +983,8 @@ model SeoPage {
 
   @@index([host, path])
   @@index([pageType])
+  @@index([serviceArea])
+  @@index([cmsEntityType, cmsEntityId])
   @@index([active])
 }
 
@@ -987,6 +993,7 @@ model SeoPageAlias {
   seoPageId         Int
   source            SeoPageAliasSource
   observedUrl       String             @db.Text
+  observedUrlHash   String             @db.VarChar(64)
   normalisedUrl     String             @db.Text
   normalisedUrlHash String             @db.VarChar(64)
   firstSeenAt       DateTime
@@ -996,9 +1003,10 @@ model SeoPageAlias {
 
   seoPage SeoPage @relation(fields: [seoPageId], references: [id], onDelete: Cascade)
 
-  @@unique([source, normalisedUrlHash])
+  @@unique([source, observedUrlHash])
   @@index([seoPageId])
   @@index([normalisedUrlHash])
+  @@index([source])
   @@index([source, lastSeenAt])
 }
 

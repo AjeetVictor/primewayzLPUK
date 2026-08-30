@@ -77,6 +77,7 @@ import { listSeoOpportunities } from './seoOpportunityService.ts';
 import { validateGscSyncDateRange } from './gscSyncDateValidation.ts';
 import { resolveGscAdminRedirect } from './gscRedirect.ts';
 import { getGa4ReportingStatus, runGa4Sync } from '../seo/ga4SyncService.ts';
+import { getSeoPageDiagnostics } from '../seo/seoPageDiagnosticsService.ts';
 
 type AdminRequest = Request & {
   adminUser?: {
@@ -883,6 +884,24 @@ export function registerAutopilotAdminRoutes(options: RegisterAutopilotAdminRout
     requireRole(canReadAutopilot),
     withAutopilotHandler(async (req, res, correlationId) => {
       const result = await listSeoOpportunities(prisma, req.query as Record<string, unknown>);
+      res.setHeader('x-correlation-id', correlationId);
+      res.json({ ...result, correlationId });
+    }),
+  );
+
+  app.get(
+    '/api/admin/autopilot/seo-pages/diagnostics',
+    requireAdmin,
+    requireRole(canReadAutopilot),
+    withAutopilotHandler(async (req, res, correlationId) => {
+      const q = req.query as Record<string, unknown>;
+      const result = await getSeoPageDiagnostics(prisma, {
+        source: typeof q.source === 'string' ? (q.source as never) : undefined,
+        pageType: typeof q.pageType === 'string' ? q.pageType : undefined,
+        unmatchedOnly: q.unmatchedOnly === 'true' || q.unmatchedOnly === true,
+        limit: typeof q.limit === 'string' ? Number(q.limit) : undefined,
+        offset: typeof q.offset === 'string' ? Number(q.offset) : undefined,
+      });
       res.setHeader('x-correlation-id', correlationId);
       res.json({ ...result, correlationId });
     }),

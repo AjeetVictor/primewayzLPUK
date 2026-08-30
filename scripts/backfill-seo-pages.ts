@@ -5,11 +5,20 @@
  */
 
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
-import { runSeoPageBackfill } from '../src/lib/seo/seoPageBackfillService.ts';
+import { PrismaClient, type SeoPageAliasSource } from '@prisma/client';
+import {
+  runSeoPageBackfill,
+  type SeoPageBackfillSource,
+} from '../src/lib/seo/seoPageBackfillService.ts';
 
 dotenv.config({ path: '.env.local', override: false });
 dotenv.config({ override: false });
+
+function readArg(name: string): string | undefined {
+  const prefix = `--${name}=`;
+  const match = process.argv.find((arg) => arg.startsWith(prefix));
+  return match ? match.slice(prefix.length) : undefined;
+}
 
 function safeLog(payload: Record<string, unknown>) {
   console.log(JSON.stringify({ ...payload, at: new Date().toISOString() }));
@@ -17,9 +26,24 @@ function safeLog(payload: Record<string, unknown>) {
 
 async function main() {
   const writeMode = process.argv.includes('--write');
+  const verbose = process.argv.includes('--verbose');
+  const source = readArg('source') as SeoPageBackfillSource | SeoPageAliasSource | undefined;
+  const limit = readArg('limit') ? Number(readArg('limit')) : undefined;
+  const offset = readArg('offset') ? Number(readArg('offset')) : undefined;
+  const dateFrom = readArg('date-from') ? new Date(readArg('date-from')!) : undefined;
+  const dateTo = readArg('date-to') ? new Date(readArg('date-to')!) : undefined;
+
   const prisma = new PrismaClient();
   try {
-    const report = await runSeoPageBackfill(prisma, { dryRun: !writeMode });
+    const report = await runSeoPageBackfill(prisma, {
+      dryRun: !writeMode,
+      source: source as SeoPageBackfillSource | undefined,
+      dateFrom,
+      dateTo,
+      limit,
+      offset,
+      verbose,
+    });
     safeLog({ ok: true, ...report });
     if (!writeMode) {
       safeLog({
