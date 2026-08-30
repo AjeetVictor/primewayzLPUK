@@ -8,7 +8,6 @@ Disallow: /package.json
 Disallow: /vite.config.ts
 
 Sitemap: https://uk.primewayz.com/sitemap.xml
-Sitemap: https://uk.primewayz.com/sitemap-index.xml
 
 # AI and agent content usage preferences
 Content-Signal: ai-train=no, search=yes, ai-input=yes
