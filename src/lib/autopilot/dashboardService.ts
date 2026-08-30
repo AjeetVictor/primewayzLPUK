@@ -10,6 +10,10 @@ import { getKeywordImportDashboardStats } from './keywordCandidateService.ts';
 import { getResearchDashboardStats } from './researchSnapshotService.ts';
 import { serializeTopicRow } from './topicHelpers.ts';
 import { listRecentFailedWorkflowRuns } from './workflowRunService.ts';
+import { findRetainedGscConnection } from './gscConnectionService.ts';
+import { getGscOpportunitySummary } from './gscOpportunityService.ts';
+import { getLatestGscOpportunityRefreshStatus } from './gscOpportunityOrchestrationService.ts';
+import { getGscPerformanceReport } from './gscPerformanceService.ts';
 
 const ACTIVE_TOPIC_WHERE = { archivedAt: null } as const;
 
@@ -25,6 +29,10 @@ export async function getAutopilotDashboard(prisma: PrismaClient) {
     recentFailedWorkflowRuns,
     keywordImportStats,
     researchStatsBundle,
+    gscConnection,
+    gscPerformance,
+    gscOpportunitySummary,
+    gscOpportunityRefreshStatus,
   ] = await Promise.all([
     prisma.autopilotTopic.count({ where: ACTIVE_TOPIC_WHERE }),
     prisma.autopilotTopic.count({ where: { archivedAt: { not: null } } }),
@@ -62,6 +70,12 @@ export async function getAutopilotDashboard(prisma: PrismaClient) {
     listRecentFailedWorkflowRuns(prisma, 5),
     getKeywordImportDashboardStats(prisma),
     getResearchDashboardStats(prisma),
+    findRetainedGscConnection(prisma),
+    getGscPerformanceReport(prisma),
+    getGscOpportunitySummary(prisma),
+    findRetainedGscConnection(prisma).then((conn) =>
+      conn ? getLatestGscOpportunityRefreshStatus(prisma, conn.id) : null,
+    ),
   ]);
 
   return {
@@ -83,5 +97,17 @@ export async function getAutopilotDashboard(prisma: PrismaClient) {
     recentFailedWorkflowRuns,
     ...(keywordImportStats || {}),
     ...(researchStatsBundle || {}),
+    gscSourceHealth: {
+      connected: gscConnection?.status === 'ACTIVE',
+      lastSuccessfulSyncAt: gscConnection?.lastSuccessfulSyncAt?.toISOString() ?? null,
+      latestMetricDate: gscPerformance.dataQuality?.latestMetricDate ?? null,
+      missingDatesCount: gscPerformance.dataQuality?.missingDates.length ?? 0,
+      stale: gscPerformance.dataQuality?.stale ?? true,
+      opportunityRefreshStatus: gscOpportunityRefreshStatus?.status ?? null,
+      opportunityRefreshAt: gscOpportunityRefreshStatus?.at ?? null,
+    },
+    gscPerformanceSummary: gscPerformance.summary,
+    gscPerformanceComparison: gscPerformance.comparison,
+    gscOpportunityPipeline: gscOpportunitySummary,
   };
 }

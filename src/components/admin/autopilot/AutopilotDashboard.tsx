@@ -21,6 +21,9 @@ import { ScoreBadge } from './ScoreBadge';
 import { AutopilotEmptyState } from './AutopilotEmptyState';
 import { AutopilotErrorState } from './AutopilotErrorState';
 import { GscConnectionPanel } from './GscConnectionPanel';
+import { GscPerformancePanel } from './GscPerformancePanel';
+import { Ga4ReportingPanel } from './Ga4ReportingPanel';
+import { Ga4PerformancePanel } from './Ga4PerformancePanel';
 
 type AutopilotDashboardProps = {
   refreshKey: number;
@@ -32,9 +35,20 @@ type AutopilotDashboardProps = {
   onCreateTopic: () => void;
   onOpenKeywordImports?: () => void;
   onOpenResearchQueue?: () => void;
+  onOpenSeoOpportunities?: () => void;
 };
 
-function SummaryCard({ label, value }: { label: string; value: number }) {
+function formatPct(value: number | null | undefined): string {
+  if (value == null) return '—';
+  return `${(value * 100).toFixed(2)}%`;
+}
+
+function formatPosition(value: number | null | undefined): string {
+  if (value == null) return '—';
+  return value.toFixed(1);
+}
+
+function SummaryCard({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
       <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{label}</p>
@@ -60,6 +74,7 @@ export function AutopilotDashboard({
   onCreateTopic,
   onOpenKeywordImports,
   onOpenResearchQueue,
+  onOpenSeoOpportunities,
 }: AutopilotDashboardProps) {
   const [data, setData] = useState<AutopilotDashboardDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -116,6 +131,9 @@ export function AutopilotDashboard({
           canManageGsc={canManageGsc}
           onViewFullSyncHistory={onOpenGscSyncHistory}
         />
+        <GscPerformancePanel refreshKey={refreshKey} />
+        <Ga4ReportingPanel refreshKey={refreshKey} canManage={canManageGsc ?? false} />
+        <Ga4PerformancePanel refreshKey={refreshKey} />
         <AutopilotEmptyState
           title="No Autopilot topics yet"
           description="Topics are reviewed before briefs or drafts are created. Create a candidate topic to begin the editorial pipeline."
@@ -133,6 +151,77 @@ export function AutopilotDashboard({
         canManageGsc={canManageGsc}
         onViewFullSyncHistory={onOpenGscSyncHistory}
       />
+      <GscPerformancePanel refreshKey={refreshKey} />
+      <Ga4ReportingPanel refreshKey={refreshKey} canManage={canManageGsc ?? false} />
+      <Ga4PerformancePanel refreshKey={refreshKey} />
+
+      {data.gscPerformanceSummary ? (
+        <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h4 className="text-sm font-bold text-zinc-900">Search performance (default period)</h4>
+          </div>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+            <SummaryCard label="Clicks" value={data.gscPerformanceSummary.totalClicks.toLocaleString()} />
+            <SummaryCard
+              label="Impressions"
+              value={data.gscPerformanceSummary.totalImpressions.toLocaleString()}
+            />
+            <SummaryCard label="Search CTR" value={formatPct(data.gscPerformanceSummary.ctr)} />
+            <SummaryCard
+              label="Average position"
+              value={formatPosition(data.gscPerformanceSummary.averagePosition)}
+            />
+            <SummaryCard label="Ranking queries" value={data.gscPerformanceSummary.queryCount} />
+            <SummaryCard label="Landing pages" value={data.gscPerformanceSummary.pageCount} />
+          </div>
+        </div>
+      ) : null}
+
+      {data.gscOpportunityPipeline ? (
+        <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h4 className="text-sm font-bold text-zinc-900">Opportunity pipeline</h4>
+            {onOpenSeoOpportunities ? (
+              <button
+                type="button"
+                onClick={onOpenSeoOpportunities}
+                className="text-xs font-bold text-emerald-600 hover:text-emerald-700"
+              >
+                Open SEO opportunities
+              </button>
+            ) : null}
+          </div>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <SummaryCard label="New opportunities" value={data.gscOpportunityPipeline.newCount} />
+            <SummaryCard label="Reviewed" value={data.gscOpportunityPipeline.reviewedCount} />
+            <SummaryCard label="Converted" value={data.gscOpportunityPipeline.convertedCount} />
+            <SummaryCard label="Dismissed" value={data.gscOpportunityPipeline.dismissedCount} />
+          </div>
+        </div>
+      ) : null}
+
+      {data.gscSourceHealth ? (
+        <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h4 className="text-sm font-bold text-zinc-900">Source health</h4>
+          <ul className="mt-3 space-y-2 text-sm text-zinc-600">
+            <li>GSC connection: {data.gscSourceHealth.connected ? 'Active' : 'Not connected'}</li>
+            <li>
+              Last sync:{' '}
+              {data.gscSourceHealth.lastSuccessfulSyncAt
+                ? formatAutopilotDate(data.gscSourceHealth.lastSuccessfulSyncAt)
+                : 'Never'}
+            </li>
+            <li>Latest metric date: {data.gscSourceHealth.latestMetricDate ?? '—'}</li>
+            <li>Missing dates in default period: {data.gscSourceHealth.missingDatesCount}</li>
+            <li>
+              Opportunity refresh: {data.gscSourceHealth.opportunityRefreshStatus ?? 'Not run yet'}
+              {data.gscSourceHealth.opportunityRefreshAt
+                ? ` · ${formatAutopilotDate(data.gscSourceHealth.opportunityRefreshAt)}`
+                : ''}
+            </li>
+          </ul>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -167,7 +256,7 @@ export function AutopilotDashboard({
       typeof data.convertedKeywordCandidateCount === 'number' ? (
         <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h4 className="text-sm font-bold text-zinc-900">Keyword import triage</h4>
+            <h4 className="text-sm font-bold text-zinc-900">Manual keyword import triage</h4>
             {onOpenKeywordImports ? (
               <button
                 type="button"

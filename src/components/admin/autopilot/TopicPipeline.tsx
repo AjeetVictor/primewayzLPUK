@@ -31,6 +31,21 @@ import { ScoreBadge } from './ScoreBadge';
 import { AutopilotEmptyState } from './AutopilotEmptyState';
 import { AutopilotErrorState } from './AutopilotErrorState';
 
+function getTopicSourceLabel(source: string | undefined): string {
+  switch (source) {
+    case 'manual':
+      return 'Manual topic';
+    case 'import':
+      return 'Keyword import / GSC';
+    case 'cluster':
+      return 'Cluster';
+    case 'system':
+      return 'System';
+    default:
+      return source || 'Unknown';
+  }
+}
+
 type TopicPipelineProps = {
   filters: AutopilotPipelineFilters;
   onFiltersChange: (next: AutopilotPipelineFilters) => void;
@@ -324,6 +339,7 @@ export function TopicPipeline({
                 <tr className="bg-zinc-50 border-b border-zinc-100">
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Working title</th>
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Primary keyword</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Source</th>
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Category</th>
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Topic status</th>
                   <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Decision</th>
@@ -342,6 +358,7 @@ export function TopicPipeline({
                   >
                     <td className="px-6 py-4 text-sm font-semibold text-zinc-900">{topic.workingTitle}</td>
                     <td className="px-6 py-4 text-sm text-zinc-600">{topic.primaryKeyword}</td>
+                    <td className="px-6 py-4 text-sm text-zinc-600">{getTopicSourceLabel(topic.source)}</td>
                     <td className="px-6 py-4 text-sm text-zinc-600">{topic.primaryCategory || '—'}</td>
                     <td className="px-6 py-4"><TopicStatusBadge status={topic.topicStatus} /></td>
                     <td className="px-6 py-4"><DecisionStatusBadge status={topic.decisionStatus} /></td>

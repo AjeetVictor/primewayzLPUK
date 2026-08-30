@@ -2,6 +2,18 @@
  * Phase 2A keyword import status/source constants.
  */
 
+export const AUTOPILOT_KEYWORD_CANDIDATE_SOURCE_TYPES = [
+  'manual',
+  'csv',
+  'json',
+  'gsc_export',
+  'keyword_planner',
+  'gsc_opportunity',
+] as const;
+
+export type AutopilotKeywordCandidateSourceType =
+  (typeof AUTOPILOT_KEYWORD_CANDIDATE_SOURCE_TYPES)[number];
+
 export const AUTOPILOT_KEYWORD_IMPORT_SOURCE_TYPES = [
   'manual',
   'csv',

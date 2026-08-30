@@ -182,12 +182,20 @@ function createSyncPrisma(options?: {
         metrics.set(key, created);
         return created;
       },
+      findMany: async () => Array.from(metrics.values()),
+    },
+    autopilotKeywordCandidate: {
+      findMany: async () => [],
+      findFirst: async () => null,
+      create: async ({ data }: { data: Record<string, unknown> }) => ({ id: 1, ...data }),
+      update: async ({ data }: { data: Record<string, unknown> }) => data,
     },
     autopilotActivityLog: {
       create: async ({ data }: { data: Record<string, unknown> }) => {
         activity.push(data);
         return data;
       },
+      findFirst: async () => null,
     },
     $transaction: async (ops: Array<Promise<unknown>> | ((tx: unknown) => Promise<unknown>)) => {
       if (typeof ops === 'function') return ops(prisma);
@@ -433,6 +441,55 @@ test('lock released after failure and invalid_grant marks reauth', async () => {
   assert.equal(connection.status, 'NEEDS_REAUTHENTICATION');
   assert.equal(syncRuns[0].status, 'FAILED');
   assert.equal(String(syncRuns[0].errorMessage || '').includes('ya29'), false);
+});
+
+test('default latest-range sync without explicit dates still succeeds', async () => {
+  setGscEnv();
+  const { prisma } = createSyncPrisma();
+  const googleApi: GscGoogleApi = {
+    generateAuthUrl: () => '',
+    exchangeCode: async () => ({ refreshToken: null, accessToken: null, idToken: null, scope: null, expiryDate: null }),
+    verifyIdToken: async () => ({ sub: 'sub', email: 'a@b.com', emailVerified: true }),
+    listSites: async () => [],
+    querySearchAnalytics: async () => [],
+  };
+  const now = new Date('2026-07-20T19:00:00.000Z');
+  const result = await runGscSync(prisma as never, {
+    actorId: 1,
+    trigger: 'MANUAL',
+    googleApi,
+    now,
+  });
+  assert.equal(result.syncRun.status, 'SUCCEEDED');
+  assert.equal(result.syncRun.searchType, 'web');
+});
+
+test('custom date range validation rejects oversized window before sync starts', async () => {
+  setGscEnv();
+  const { prisma, syncRuns } = createSyncPrisma();
+  const googleApi: GscGoogleApi = {
+    generateAuthUrl: () => '',
+    exchangeCode: async () => ({ refreshToken: null, accessToken: null, idToken: null, scope: null, expiryDate: null }),
+    verifyIdToken: async () => ({ sub: 'sub', email: 'a@b.com', emailVerified: true }),
+    listSites: async () => [],
+    querySearchAnalytics: async () => [],
+  };
+  const now = new Date('2026-07-20T19:00:00.000Z');
+  const bounds = computeDefaultGscDateWindow(now, { lookbackDays: 28, dataDelayDays: 3 });
+  const dateFrom = addDaysToDateString(bounds.dateTo, -401);
+  await assert.rejects(
+    () =>
+      runGscSync(prisma as never, {
+        actorId: 1,
+        trigger: 'MANUAL',
+        dateFrom,
+        dateTo: bounds.dateTo,
+        googleApi,
+        now,
+      }),
+    (err: unknown) => err instanceof AutopilotError && err.status === 400,
+  );
+  assert.equal(syncRuns.length, 0);
 });
 
 test('persisted errors are sanitized', async () => {

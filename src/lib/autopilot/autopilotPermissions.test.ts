@@ -4,6 +4,7 @@ import {
   canContributeTopics,
   canEditorialAutopilot,
   canManageAutopilotSettings,
+  canManageGa4Reporting,
   canManageGscConnection,
   canReadAutopilot,
 } from './autopilotPermissions.ts';
@@ -38,4 +39,6 @@ test('only super_admin can manage settings and GSC (not admin alias)', () => {
   assert.equal(canManageGscConnection('super_admin'), true);
   assert.equal(canManageGscConnection('admin'), false);
   assert.equal(canManageGscConnection('blog_editor'), false);
+  assert.equal(canManageGa4Reporting('super_admin'), true);
+  assert.equal(canManageGa4Reporting('admin'), false);
 });

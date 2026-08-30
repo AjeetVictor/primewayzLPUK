@@ -6,12 +6,18 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Prisma, type GscSyncTrigger, type PrismaClient } from '@prisma/client';
 import { appendActivityLog } from './activityLogService.ts';
 import {
+  addDaysToDateString,
+  computeDefaultGscDateWindow,
+  enumerateDateStringsInclusive as enumerateDates,
+  getPacificDateString,
+} from './gscDateUtils.ts';
+import {
   AutopilotError,
   AUTOPILOT_ERROR_CODES,
   conflict,
   validationError,
 } from './apiErrors.ts';
-import { assertGscConfigured, getGscPublicConfigStatus } from './gscConfig.ts';
+import { assertGscConfigured } from './gscConfig.ts';
 import {
   classifyGscGoogleError,
   createDefaultGscGoogleApi,
@@ -21,13 +27,29 @@ import {
   type GscSearchAnalyticsRow,
 } from './gscClient.ts';
 import { loadActiveGscConnectionForSync } from './gscConnectionService.ts';
+import {
+  GSC_SYNC_MAX_RANGE_DAYS,
+  validateGscSyncDateRange,
+} from './gscSyncDateValidation.ts';
 import { normaliseAutopilotKeyword } from './keywordNormalisation.ts';
+import {
+  refreshGscOpportunitiesAfterSync,
+  type GscOpportunityRefreshResult,
+} from './gscOpportunityOrchestrationService.ts';
+
+export { GSC_SYNC_MAX_RANGE_DAYS } from './gscSyncDateValidation.ts';
 
 export const GSC_SYNC_ROW_LIMIT = 25000;
 export const GSC_SYNC_MAX_PAGES_PER_DAY = 40;
 export const GSC_SYNC_UPSERT_CHUNK = 400;
 export const GSC_SYNC_LOCK_STALE_MS = 60 * 60 * 1000;
-export const GSC_PACIFIC_TZ = 'America/Los_Angeles';
+
+export {
+  addDaysToDateString,
+  computeDefaultGscDateWindow,
+  getPacificDateString,
+  GSC_PACIFIC_TZ,
+} from './gscDateUtils.ts';
 
 export type RunGscSyncInput = {
   actorId?: number | null;
@@ -43,6 +65,7 @@ export type RunGscSyncInput = {
 export type GscSyncResultDto = {
   syncRun: Record<string, unknown>;
   connectionId: number;
+  opportunityRefresh: GscOpportunityRefreshResult | null;
 };
 
 export type GscDateWindow = {
@@ -50,82 +73,10 @@ export type GscDateWindow = {
   dateTo: string;
 };
 
-function pad2(n: number): string {
-  return n < 10 ? `0${n}` : String(n);
-}
-
-/** Calendar date in America/Los_Angeles as YYYY-MM-DD. */
-export function getPacificDateString(now: Date = new Date()): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: GSC_PACIFIC_TZ,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(now);
-  const y = parts.find((p) => p.type === 'year')?.value;
-  const m = parts.find((p) => p.type === 'month')?.value;
-  const d = parts.find((p) => p.type === 'day')?.value;
-  if (!y || !m || !d) {
-    throw new Error('Unable to resolve Pacific calendar date.');
-  }
-  return `${y}-${m}-${d}`;
-}
-
-export function addDaysToDateString(dateStr: string, deltaDays: number): string {
-  const [y, m, d] = dateStr.split('-').map((v) => Number.parseInt(v, 10));
-  const utc = Date.UTC(y, m - 1, d) + deltaDays * 24 * 60 * 60 * 1000;
-  const dt = new Date(utc);
-  return `${dt.getUTCFullYear()}-${pad2(dt.getUTCMonth() + 1)}-${pad2(dt.getUTCDate())}`;
-}
-
-export function computeDefaultGscDateWindow(
-  now: Date = new Date(),
-  options?: { lookbackDays?: number; dataDelayDays?: number },
-): GscDateWindow {
-  const publicCfg = getGscPublicConfigStatus();
-  const lookbackDays = options?.lookbackDays ?? publicCfg.lookbackDays;
-  const dataDelayDays = options?.dataDelayDays ?? publicCfg.dataDelayDays;
-  const todayPacific = getPacificDateString(now);
-  const dateTo = addDaysToDateString(todayPacific, -dataDelayDays);
-  const dateFrom = addDaysToDateString(dateTo, -(lookbackDays - 1));
-  return { dateFrom, dateTo };
-}
-
-export function enumerateDateStringsInclusive(dateFrom: string, dateTo: string): string[] {
-  if (dateFrom > dateTo) {
-    throw validationError('dateFrom must be on or before dateTo.', { dateFrom, dateTo });
-  }
-  const days: string[] = [];
-  let cursor = dateFrom;
-  let guard = 0;
-  while (cursor <= dateTo) {
-    days.push(cursor);
-    cursor = addDaysToDateString(cursor, 1);
-    guard += 1;
-    if (guard > 400) {
-      throw validationError('Date range is too large.', { dateFrom, dateTo });
-    }
-  }
-  return days;
-}
+export { enumerateDateStringsInclusive } from './gscDateUtils.ts';
 
 export function sha256Hex(value: string): string {
   return createHash('sha256').update(value, 'utf8').digest('hex');
-}
-
-function parseDateInput(value: string | Date | undefined, field: string): string | null {
-  if (value == null) return null;
-  if (value instanceof Date) {
-    if (Number.isNaN(value.getTime())) {
-      throw validationError(`Invalid ${field}.`, { field });
-    }
-    return value.toISOString().slice(0, 10);
-  }
-  const trimmed = value.trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    throw validationError(`Invalid ${field}; expected YYYY-MM-DD.`, { field });
-  }
-  return trimmed;
 }
 
 function dateOnly(dateStr: string): Date {
@@ -292,11 +243,14 @@ export async function runGscSync(
 ): Promise<GscSyncResultDto> {
   assertGscConfigured();
   const now = input.now ?? new Date();
-  const searchType = (input.searchType ?? 'web').trim() || 'web';
-  const defaults = computeDefaultGscDateWindow(now);
-  const dateFrom = parseDateInput(input.dateFrom, 'dateFrom') ?? defaults.dateFrom;
-  const dateTo = parseDateInput(input.dateTo, 'dateTo') ?? defaults.dateTo;
-  const days = enumerateDateStringsInclusive(dateFrom, dateTo);
+  const resolved = validateGscSyncDateRange({
+    dateFrom: input.dateFrom,
+    dateTo: input.dateTo,
+    searchType: input.searchType,
+    now,
+  });
+  const { dateFrom, dateTo, searchType } = resolved;
+  const days = enumerateDates(dateFrom, dateTo, GSC_SYNC_MAX_RANGE_DAYS);
 
   const connection = await loadActiveGscConnectionForSync(prisma);
   const siteUrl = connection.siteUrl!;
@@ -428,9 +382,30 @@ export async function runGscSync(
       correlationId: input.correlationId ?? null,
     });
 
-    return {
-      syncRun: serializeSyncRun(succeeded as unknown as Record<string, unknown>),
+    const opportunityRefresh = await refreshGscOpportunitiesAfterSync(prisma, {
       connectionId: connection.id,
+      dateFrom,
+      dateTo,
+      actorId: input.actorId ?? null,
+      correlationId: input.correlationId ?? null,
+      syncRunId: succeeded.id,
+    });
+
+    const syncRunPayload = serializeSyncRun(succeeded as unknown as Record<string, unknown>);
+    if (opportunityRefresh.status === 'failed') {
+      syncRunPayload.opportunityRefreshWarning = opportunityRefresh.errorMessage;
+    } else if (opportunityRefresh.status === 'succeeded') {
+      syncRunPayload.opportunityRefresh = {
+        findingsCount: opportunityRefresh.findingsCount,
+        created: opportunityRefresh.upsert?.created ?? 0,
+        updated: opportunityRefresh.upsert?.updated ?? 0,
+      };
+    }
+
+    return {
+      syncRun: syncRunPayload,
+      connectionId: connection.id,
+      opportunityRefresh,
     };
   } catch (error) {
     const classified = classifyGscGoogleError(error);

@@ -102,6 +102,38 @@ export type AutopilotDashboardDto = {
     topicsWithExactConflicts: number;
     topicsWithHighOverlap: number;
   } | null;
+  gscPerformanceSummary?: {
+    totalClicks: number;
+    totalImpressions: number;
+    ctr: number | null;
+    averagePosition: number | null;
+    queryCount: number;
+    pageCount: number;
+    metricRowCount: number;
+  } | null;
+  gscPerformanceComparison?: {
+    clicksChange: number | null;
+    impressionsChange: number | null;
+    ctrChange: number | null;
+    positionChange: number | null;
+    queryCountChange: number | null;
+    pageCountChange: number | null;
+  } | null;
+  gscOpportunityPipeline?: {
+    newCount: number;
+    reviewedCount: number;
+    convertedCount: number;
+    dismissedCount: number;
+  } | null;
+  gscSourceHealth?: {
+    connected: boolean;
+    lastSuccessfulSyncAt: string | null;
+    latestMetricDate: string | null;
+    missingDatesCount: number;
+    stale: boolean;
+    opportunityRefreshStatus: string | null;
+    opportunityRefreshAt: string | null;
+  } | null;
   recentResearchActivity?: AutopilotActivityLogRecord[];
   correlationId: string;
 };
@@ -674,6 +706,10 @@ export const adminAutopilotApi = {
         lookbackDays: number;
         dataDelayDays: number;
         scope: string;
+        latestSafeDate?: string;
+        maxRangeDays?: number;
+        defaultDateFrom?: string;
+        defaultDateTo?: string;
       };
       connection: {
         id: number;
@@ -736,8 +772,97 @@ export const adminAutopilotApi = {
     return autopilotRequest<{
       syncRun: Record<string, unknown>;
       connectionId: number;
+      opportunityRefresh?: {
+        status: string;
+        findingsCount: number;
+        upsert: { created: number; updated: number; skipped: number } | null;
+        errorMessage: string | null;
+      } | null;
       correlationId: string;
     }>('/api/admin/autopilot/gsc/sync', { method: 'POST', body, signal });
+  },
+
+  getGscPerformance(
+    query?: {
+      dateFrom?: string;
+      dateTo?: string;
+      compare?: boolean;
+      page?: string;
+      query?: string;
+      limit?: number;
+      offset?: number;
+    },
+    signal?: AbortSignal,
+  ) {
+    return autopilotRequest<{
+      configured: boolean;
+      connectionId: number | null;
+      summary: AutopilotDashboardDto['gscPerformanceSummary'];
+      comparison: AutopilotDashboardDto['gscPerformanceComparison'];
+      trend: Array<{
+        date: string;
+        clicks: number;
+        impressions: number;
+        ctr: number | null;
+        averagePosition: number | null;
+      }>;
+      topQueries: Array<{
+        query: string;
+        clicks: number;
+        impressions: number;
+        ctr: number | null;
+        averagePosition: number | null;
+        landingPageCount: number;
+      }>;
+      topPages: Array<{
+        page: string;
+        clicks: number;
+        impressions: number;
+        ctr: number | null;
+        averagePosition: number | null;
+        queryCount: number;
+      }>;
+      topQueriesTotal: number;
+      topPagesTotal: number;
+      dataQuality: {
+        dateFrom: string;
+        dateTo: string;
+        latestMetricDate: string | null;
+        missingDates: string[];
+        stale: boolean;
+        sourceRowCount: number;
+        lastSuccessfulSyncAt: string | null;
+      } | null;
+      period: { dateFrom: string; dateTo: string } | null;
+      comparisonPeriod: { dateFrom: string; dateTo: string } | null;
+      correlationId: string;
+    }>('/api/admin/autopilot/gsc/performance', { query, signal });
+  },
+
+  listSeoOpportunities(
+    query?: Record<string, string | number | boolean | undefined | null>,
+    signal?: AbortSignal,
+  ) {
+    return autopilotRequest<{
+      items: Array<Record<string, unknown>>;
+      total: number;
+      limit: number;
+      offset: number;
+      correlationId: string;
+    }>('/api/admin/autopilot/seo-opportunities', { query, signal });
+  },
+
+  refreshGscOpportunities(
+    body: { dateFrom?: string; dateTo?: string } = {},
+    signal?: AbortSignal,
+  ) {
+    return autopilotRequest<{
+      status: string;
+      findingsCount: number;
+      upsert: { created: number; updated: number; skipped: number } | null;
+      errorMessage: string | null;
+      correlationId: string;
+    }>('/api/admin/autopilot/gsc/opportunities/refresh', { method: 'POST', body, signal });
   },
 
   listGscSyncRuns(
@@ -758,6 +883,126 @@ export const adminAutopilotApi = {
       connection: Record<string, unknown>;
       correlationId: string;
     }>('/api/admin/autopilot/gsc/disconnect', { method: 'POST', signal });
+  },
+
+  getGa4Status(signal?: AbortSignal) {
+    return autopilotRequest<{
+      configuration: {
+        configured: boolean;
+        missing: string[];
+        propertyIdConfigured: boolean;
+        authenticationConfigured: boolean;
+        authenticationType: 'service_account' | null;
+        propertyId: string | null;
+        lookbackDays: number;
+        dataDelayDays: number;
+        defaultDateFrom: string | null;
+        defaultDateTo: string | null;
+        latestSafeDate: string | null;
+        maxRangeDays: number;
+        lastSuccessfulSync: string | null;
+        currentErrorCode: string | null;
+        currentErrorMessage: string | null;
+        syncLocked: boolean;
+        defaultLookback: number;
+        propertyConfigured: boolean;
+      };
+      latestMetricDate: string | null;
+      recentSyncRuns: Array<{
+        id: number;
+        trigger: string;
+        status: string;
+        dateFrom: string;
+        dateTo: string;
+        requestsMade: number;
+        daysProcessed: number;
+        rowsFetched: number;
+        rowsUpserted: number;
+        unmatchedPages: number;
+        startedAt: string | null;
+        completedAt: string | null;
+        errorCode: string | null;
+        errorMessage: string | null;
+        createdAt: string;
+      }>;
+      correlationId: string;
+    }>('/api/admin/autopilot/ga4/status', { signal });
+  },
+
+  runGa4Sync(
+    body: { dateFrom?: string; dateTo?: string } = {},
+    signal?: AbortSignal,
+  ) {
+    return autopilotRequest<{
+      syncRun: Record<string, unknown>;
+      configId: number;
+      correlationId: string;
+    }>('/api/admin/autopilot/ga4/sync', { method: 'POST', body, signal });
+  },
+
+  testGa4Connection(signal?: AbortSignal) {
+    return autopilotRequest<{
+      ok: boolean;
+      errorCode?: string;
+      errorMessage?: string;
+      correlationId: string;
+    }>('/api/admin/autopilot/ga4/test-connection', { method: 'POST', signal });
+  },
+
+  listGa4SyncRuns(
+    query?: { limit?: number; offset?: number },
+    signal?: AbortSignal,
+  ) {
+    return autopilotRequest<{
+      items: Array<Record<string, unknown>>;
+      total: number;
+      limit: number;
+      offset: number;
+      correlationId: string;
+    }>('/api/admin/autopilot/ga4/sync-runs', { query, signal });
+  },
+
+  getGa4Performance(
+    query?: {
+      dateFrom?: string;
+      dateTo?: string;
+      comparisonDateFrom?: string;
+      comparisonDateTo?: string;
+      compare?: boolean;
+      seoPageId?: number;
+      page?: string;
+      channelGroup?: string;
+      source?: string;
+      medium?: string;
+      limit?: number;
+      offset?: number;
+    },
+    signal?: AbortSignal,
+  ) {
+    return autopilotRequest<{
+      configured: boolean;
+      summary: {
+        sessions: number;
+        organicSessions: number;
+        engagedSessions: number;
+        engagementRate: number | null;
+        averageEngagementTime: number | null;
+        keyEvents: number;
+        generateLeadEvents: number;
+        contactFormConversions: number;
+        bookingConversions: number;
+        pageCount: number;
+        metricRowCount: number;
+      } | null;
+      comparison: Record<string, unknown> | null;
+      trend: Array<Record<string, unknown>>;
+      topPages: Array<Record<string, unknown>>;
+      topPagesTotal: number;
+      dataQuality: Record<string, unknown> | null;
+      period: { dateFrom: string; dateTo: string } | null;
+      comparisonPeriod: { dateFrom: string; dateTo: string } | null;
+      correlationId: string;
+    }>('/api/admin/autopilot/ga4/performance', { query, signal });
   },
 };
 

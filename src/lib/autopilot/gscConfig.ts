@@ -4,8 +4,9 @@
  */
 
 import { AutopilotError } from './apiErrors.ts';
-import { GSC_TOKEN_KEY_BYTES } from './gscCrypto.ts';
-import { GSC_OAUTH_STATE_SECRET_MIN_LENGTH } from './gscOAuthState.ts';
+
+const GSC_TOKEN_KEY_BYTES = 32;
+const GSC_OAUTH_STATE_SECRET_MIN_LENGTH = 32;
 
 export const GSC_WEBMASTERS_READONLY_SCOPE =
   'https://www.googleapis.com/auth/webmasters.readonly';
@@ -41,6 +42,11 @@ export type GscPublicConfigStatus = {
   lookbackDays: number;
   dataDelayDays: number;
   scope: string;
+  /** Populated by connection status; omitted from env-only config helper. */
+  latestSafeDate?: string;
+  maxRangeDays?: number;
+  defaultDateFrom?: string;
+  defaultDateTo?: string;
 };
 
 function readTrimmed(env: NodeJS.ProcessEnv, key: string): string {

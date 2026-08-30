@@ -25,18 +25,67 @@ const contactUsPage = fs.readFileSync(
   'utf8',
 );
 
-test('SPA page_view ignores hash-only navigation', () => {
-  assert.match(
-    tracker,
-    /const path = `\$\{location\.pathname\}\$\{location\.search\}`;/,
-  );
+const trackPageViewStart = analytics.indexOf('export function trackPageView');
+const trackPageViewEnd = analytics.indexOf('export function trackEvent', trackPageViewStart);
 
-  assert.match(
-    tracker,
-    /\}, \[location\.pathname, location\.search\]\);/,
-  );
+assert.ok(trackPageViewStart >= 0, 'trackPageView was not found');
+assert.ok(trackPageViewEnd > trackPageViewStart, 'trackPageView block boundary was not found');
+
+const trackPageViewBlock = analytics.slice(trackPageViewStart, trackPageViewEnd);
+
+test('SPA page_view ignores hash-only navigation', () => {
+  assert.match(tracker, /const path = location\.pathname;/);
+
+  assert.match(tracker, /\}, \[location\.pathname, location\.search\]\);/);
 
   assert.doesNotMatch(tracker, /location\.hash/);
+});
+
+test('SPA page_view fires on initial direct load', () => {
+  assert.match(
+    tracker,
+    /useEffect\(\(\) => \{[\s\S]*trackPageView\(path, getFullUtmAnalyticsPayload\(\)\);[\s\S]*\}, \[location\.pathname, location\.search\]\);/,
+  );
+});
+
+test('SPA page_view fires on pathname navigation', () => {
+  assert.match(tracker, /location\.pathname/);
+  assert.match(tracker, /\}, \[location\.pathname, location\.search\]\);/);
+});
+
+test('SPA page_view fires on query-string navigation', () => {
+  assert.match(tracker, /captureUtmParams\(location\.search\);/);
+  assert.match(tracker, /\}, \[location\.pathname, location\.search\]\);/);
+});
+
+test('SPA page_view ignores hash removal on the same pathname and query', () => {
+  assert.doesNotMatch(tracker, /location\.hash/);
+  assert.match(tracker, /\}, \[location\.pathname, location\.search\]\);/);
+});
+
+test('SPA page_view follows router location changes for back and forward navigation', () => {
+  assert.match(tracker, /const location = useLocation\(\);/);
+  assert.doesNotMatch(tracker, /addEventListener\(['"]popstate['"]/);
+  assert.match(tracker, /\}, \[location\.pathname, location\.search\]\);/);
+});
+
+test('page_view sends pathname-only page_path without UTM query noise', () => {
+  assert.match(tracker, /const path = location\.pathname;/);
+  assert.match(tracker, /trackPageView\(path, getFullUtmAnalyticsPayload\(\)\);/);
+  assert.match(trackPageViewBlock, /page_path: path,/);
+});
+
+test('page_view sends full page_location from the browser URL', () => {
+  assert.match(trackPageViewBlock, /page_location: window\.location\.href,/);
+});
+
+test('page_view sends the current document title', () => {
+  assert.match(trackPageViewBlock, /page_title: document\.title,/);
+});
+
+test('AnalyticsTracker does not attach duplicate history listeners', () => {
+  assert.doesNotMatch(tracker, /addEventListener\(/);
+  assert.doesNotMatch(tracker, /removeEventListener\(/);
 });
 
 test('conversion events send full attribution payload to GA4', () => {
@@ -109,6 +158,6 @@ test('UTM attribution is captured before React client bootstrap', () => {
 test('contact page sets the correct title during SPA navigation', () => {
   assert.match(
     contactUsPage,
-    /return \(\s*<>\s*<title>Contact Primewayz UK \| Discuss Your Digital Priorities<\/title>/
+    /return \(\s*<>\s*<title>Contact Primewayz UK \| Discuss Your Digital Priorities<\/title>/,
   );
 });
