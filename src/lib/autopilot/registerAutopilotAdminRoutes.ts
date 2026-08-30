@@ -71,6 +71,7 @@ import {
 } from './gscConnectionService.ts';
 import { listGscSyncRuns, runGscSync } from './gscSyncService.ts';
 import { resolveGscAdminRedirect } from './gscRedirect.ts';
+import { getGa4ReportingStatus, runGa4Sync } from '../seo/ga4SyncService.ts';
 
 type AdminRequest = Request & {
   adminUser?: {
@@ -812,6 +813,36 @@ export function registerAutopilotAdminRoutes(options: RegisterAutopilotAdminRout
     requireRole(canManageGscConnection),
     withAutopilotHandler(async (req, res, correlationId) => {
       const result = await disconnectGsc(prisma, toActor(req), { correlationId });
+      res.setHeader('x-correlation-id', correlationId);
+      res.json({ ...result, correlationId });
+    }),
+  );
+
+  app.get(
+    '/api/admin/autopilot/ga4/status',
+    requireAdmin,
+    requireRole(canReadAutopilot),
+    withAutopilotHandler(async (_req, res, correlationId) => {
+      const result = await getGa4ReportingStatus(prisma);
+      res.setHeader('x-correlation-id', correlationId);
+      res.json({ ...result, correlationId });
+    }),
+  );
+
+  app.post(
+    '/api/admin/autopilot/ga4/sync',
+    requireAdmin,
+    requireRole(canManageGscConnection),
+    withAutopilotHandler(async (req, res, correlationId) => {
+      assertNoPrototypePollution(req.body);
+      const actor = toActor(req);
+      const result = await runGa4Sync(prisma, {
+        actorId: actor.id,
+        trigger: 'MANUAL',
+        dateFrom: typeof req.body?.dateFrom === 'string' ? req.body.dateFrom : undefined,
+        dateTo: typeof req.body?.dateTo === 'string' ? req.body.dateTo : undefined,
+        correlationId,
+      });
       res.setHeader('x-correlation-id', correlationId);
       res.json({ ...result, correlationId });
     }),

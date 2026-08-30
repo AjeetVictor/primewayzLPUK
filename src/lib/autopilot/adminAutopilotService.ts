@@ -763,6 +763,52 @@ export const adminAutopilotApi = {
       correlationId: string;
     }>('/api/admin/autopilot/gsc/disconnect', { method: 'POST', signal });
   },
+
+  getGa4Status(signal?: AbortSignal) {
+    return autopilotRequest<{
+      configuration: {
+        configured: boolean;
+        propertyConfigured: boolean;
+        missing: string[];
+        propertyId: string | null;
+        latestSafeDate: string | null;
+        defaultLookback: number;
+        dataDelayDays: number;
+        lastSuccessfulSync: string | null;
+        currentErrorCode: string | null;
+        currentErrorMessage: string | null;
+        syncLocked: boolean;
+      };
+      recentSyncRuns: Array<{
+        id: number;
+        trigger: string;
+        status: string;
+        dateFrom: string;
+        dateTo: string;
+        requestsMade: number;
+        daysProcessed: number;
+        rowsFetched: number;
+        rowsUpserted: number;
+        startedAt: string | null;
+        completedAt: string | null;
+        errorCode: string | null;
+        errorMessage: string | null;
+        createdAt: string;
+      }>;
+      correlationId: string;
+    }>('/api/admin/autopilot/ga4/status', { signal });
+  },
+
+  runGa4Sync(
+    body: { dateFrom?: string; dateTo?: string } = {},
+    signal?: AbortSignal,
+  ) {
+    return autopilotRequest<{
+      syncRun: Record<string, unknown>;
+      configId: number;
+      correlationId: string;
+    }>('/api/admin/autopilot/ga4/sync', { method: 'POST', body, signal });
+  },
 };
 
 /** Exported for unit tests — builds query strings without side effects. */

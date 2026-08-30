@@ -21,6 +21,7 @@ import { ScoreBadge } from './ScoreBadge';
 import { AutopilotEmptyState } from './AutopilotEmptyState';
 import { AutopilotErrorState } from './AutopilotErrorState';
 import { GscConnectionPanel } from './GscConnectionPanel';
+import { Ga4ReportingPanel } from './Ga4ReportingPanel';
 
 type AutopilotDashboardProps = {
   refreshKey: number;
@@ -116,6 +117,7 @@ export function AutopilotDashboard({
           canManageGsc={canManageGsc}
           onViewFullSyncHistory={onOpenGscSyncHistory}
         />
+        <Ga4ReportingPanel refreshKey={refreshKey} canManage={canManageGsc ?? false} />
         <AutopilotEmptyState
           title="No Autopilot topics yet"
           description="Topics are reviewed before briefs or drafts are created. Create a candidate topic to begin the editorial pipeline."
@@ -133,6 +135,7 @@ export function AutopilotDashboard({
         canManageGsc={canManageGsc}
         onViewFullSyncHistory={onOpenGscSyncHistory}
       />
+      <Ga4ReportingPanel refreshKey={refreshKey} canManage={canManageGsc ?? false} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
