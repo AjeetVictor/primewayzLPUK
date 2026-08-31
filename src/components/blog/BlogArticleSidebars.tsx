@@ -154,6 +154,8 @@ export const BlogRecentSidebar = ({
               >
                 <img
                   src={getBlogThumbnailImage(post.thumbnailImage, post.image)}
+                  width={56}
+                  height={56}
                   alt={post.imageAlt || post.title}
                   className="h-full w-full object-cover object-center"
                   loading="lazy"

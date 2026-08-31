@@ -39,6 +39,8 @@ const SecondaryStoryCard = ({ post }: { post: BlogPost }) => {
         <div className="aspect-video overflow-hidden bg-zinc-50">
           <img
             src={getBlogThumbnailImage(post.thumbnailImage, post.image)}
+            width={1600}
+            height={900}
             alt={post.imageAlt || post.title}
             className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-[1.015]"
             loading="lazy"
@@ -71,6 +73,8 @@ const FeaturedStoryCard = ({ post }: { post: BlogPost }) => {
         <div className="aspect-video overflow-hidden bg-zinc-100">
           <img
             src={getBlogThumbnailImage(post.thumbnailImage, post.image)}
+            width={1600}
+            height={900}
             alt={post.imageAlt || post.title}
             className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-[1.015]"
             loading="eager"

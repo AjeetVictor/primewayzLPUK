@@ -157,6 +157,8 @@ export const BlogCategoryPage = ({ initialCategory, initialPosts }: BlogCategory
               <div className="aspect-video">
                 <img
                   src={getBlogThumbnailImage(featured.thumbnailImage, featured.image)}
+                  width={1600}
+                  height={900}
                   alt={featured.imageAlt || featured.title}
                   className="h-full w-full object-cover object-center"
                   loading="eager"

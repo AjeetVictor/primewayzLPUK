@@ -18,6 +18,8 @@ export const BlogCard = ({ post, variant = 'related' }: BlogCardProps) => {
         <div className="aspect-video overflow-hidden bg-zinc-100">
           <img
             src={getBlogThumbnailImage(post.thumbnailImage, post.image)}
+            width={1600}
+            height={900}
             alt={post.imageAlt || post.title}
             className="h-full w-full object-cover object-center transition duration-500 group-hover:scale-[1.02]"
             loading="lazy"

@@ -64,6 +64,8 @@ function InsightCardItem({
       <Link to={href} className="block aspect-[16/10] overflow-hidden bg-slate-100" aria-label={`Read article: ${post.title}`}>
         <img
           src={getBlogThumbnailImage(post.thumbnailImage, post.image)}
+          width={1600}
+          height={1000}
           alt={post.imageAlt || post.title}
           className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
           loading="lazy"

@@ -65,6 +65,8 @@ export const Navbar = () => {
           >
             <img
               src={LOGO_LIGHT_SRC}
+              width={320}
+              height={72}
               alt="Primewayz Infotech Pvt. Ltd. UK"
               className="h-9 w-auto object-contain"
             />

@@ -360,3 +360,26 @@ test('supporting article SSR schema uses a person author and explicit primary im
   assert.match(builder, /datePublished/);
   assert.match(builder, /dateModified/);
 });
+
+test('shared public image renderers declare explicit dimensions matching reserved aspect ratios', () => {
+  const expectations: Array<[string, number, number, number]> = [
+    ['src/components/Navbar.tsx', 1, 320, 72],
+    ['src/components/Footer.tsx', 1, 652, 147],
+    ['src/components/blog/BlogCard.tsx', 1, 1600, 900],
+    ['src/components/blog/BlogEditorialGrid.tsx', 2, 1600, 900],
+    ['src/components/blog/BlogCategoryPage.tsx', 1, 1600, 900],
+    ['src/components/blog/BlogCategorySections.tsx', 1, 1600, 900],
+    ['src/components/blog/BlogArticleSidebars.tsx', 1, 56, 56],
+    ['src/components/sections/InsightsSection.tsx', 1, 1600, 1000],
+  ];
+
+  for (const [file, expectedCount, width, height] of expectations) {
+    const tags = read(file).match(/<img\b[\s\S]*?\/>/g) || [];
+    assert.equal(tags.length, expectedCount, `${file} image tag count changed`);
+
+    for (const tag of tags) {
+      assert.ok(tag.includes(`width={${width}}`), `${file} image missing width`);
+      assert.ok(tag.includes(`height={${height}}`), `${file} image missing height`);
+    }
+  }
+});

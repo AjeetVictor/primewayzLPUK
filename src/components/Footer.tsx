@@ -186,6 +186,8 @@ export const Footer = () => {
           <div className="sm:col-span-2 lg:col-span-1">
             <img
               src="/primewayz-infotech-logo.svg"
+              width={652}
+              height={147}
               alt="Primewayz Infotech Pvt. Ltd."
               className="h-12 w-auto max-w-[200px] object-contain object-left"
               loading="lazy"
