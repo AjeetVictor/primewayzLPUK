@@ -33,7 +33,7 @@ function read(relativePath: string): string {
 }
 
 function collectDashboardPanelJsxOrder(source: string): string[] {
-  const tagPattern = new RegExp(`^<(${PANEL_JSX_TAGS.join('|')})(\\s|>|/)`);
+  const tagPattern = new RegExp(`^<(${PANEL_JSX_TAGS.join('|')})(?:\\s|>|/|$)`);
   return source
     .split('\n')
     .filter((line) => !line.trimStart().startsWith('import '))
@@ -44,6 +44,10 @@ function collectDashboardPanelJsxOrder(source: string): string[] {
     });
 }
 
+test('dashboard panel collector recognises LF multiline JSX', () => {
+  const source = ['<GscConnectionPanel', '  refreshKey={0}', '/>'].join('\n');
+  assert.deepEqual(collectDashboardPanelJsxOrder(source), ['GscConnectionPanel']);
+});
 test('Autopilot dashboard renders separate GA4 connection and performance panels', () => {
   const dashboard = read('src/components/admin/autopilot/AutopilotDashboard.tsx');
   assert.match(dashboard, /Ga4ReportingPanel/);
