@@ -15,7 +15,7 @@ const payload = {
   urlList: [
     'https://uk.primewayz.com/',
     'https://uk.primewayz.com/software-development-subscription-uk',
-    'https://uk.primewayz.com/website-maintenance-subscription-uk',
+    'https://uk.primewayz.com/maintenance',
     'https://uk.primewayz.com/crm-integration-support-uk',
     'https://uk.primewayz.com/uk-sme-digital-visibility-checker',
     'https://uk.primewayz.com/blog',
