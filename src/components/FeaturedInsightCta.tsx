@@ -40,6 +40,8 @@ export const FeaturedInsightCta = ({ insight }: FeaturedInsightCtaProps) => {
         >
           <img
             src={insight.image.src}
+            width={1735}
+            height={906}
             alt={insight.image.alt}
             className="aspect-[16/9] w-full rounded-2xl object-cover shadow-lg transition duration-300 group-hover:scale-[1.01]"
             loading="lazy"

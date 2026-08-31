@@ -154,6 +154,8 @@ function TrustHub() {
     <div className="relative z-10 mx-auto flex w-full max-w-[22rem] flex-col items-center justify-center text-center lg:max-w-[360px]">
       <img
         src="/images/shield-trust.png"
+        width={1254}
+        height={1254}
         alt=""
         className="relative z-10 h-auto w-[240px] object-contain mix-blend-multiply [mask-image:radial-gradient(circle_at_center,black_58%,rgba(0,0,0,0.72)_68%,transparent_82%)] sm:w-[270px] lg:w-[300px]"
         loading="lazy"

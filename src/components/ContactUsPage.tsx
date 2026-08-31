@@ -95,6 +95,8 @@ export const ContactUsPage = () => {
       <section className="relative isolate overflow-hidden bg-brand-navy pt-14 text-white sm:pt-16">
         <img
           src="/images/hero/software-delivery-hero.webp"
+          width={1200}
+          height={799}
           alt=""
           className="absolute inset-0 h-full w-full object-cover opacity-35"
           aria-hidden
@@ -208,6 +210,8 @@ export const ContactUsPage = () => {
           <aside className="relative overflow-hidden rounded-2xl border border-slate-200 bg-brand-navy text-white">
             <img
               src="/images/hero/business-planning.webp"
+              width={1200}
+              height={800}
               alt=""
               className="absolute inset-0 h-full w-full object-cover opacity-25"
               aria-hidden

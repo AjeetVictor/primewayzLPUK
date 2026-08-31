@@ -166,6 +166,8 @@ function EnquiriesHub() {
     <div className="relative z-10 mx-auto flex w-full max-w-[22rem] flex-col items-center justify-center text-center lg:max-w-[360px]">
       <img
         src="/images/chat-bubble-icon.png"
+        width={446}
+        height={446}
         alt=""
         className="h-auto w-[250px] object-contain sm:w-[280px] lg:w-[320px]"
         loading="lazy"
@@ -212,6 +214,8 @@ function EnquiryFormPreview() {
   return (
     <img
       src="/images/confirmation-icon.png"
+      width={1152}
+      height={584}
       alt=""
       className="hidden h-auto w-[200px] shrink-0 object-contain lg:block"
       loading="lazy"

@@ -383,3 +383,29 @@ test('shared public image renderers declare explicit dimensions matching reserve
     }
   }
 });
+
+test('fixed public asset renderers declare intrinsic image dimensions', () => {
+  const expectations: Array<[string, string, number, number]> = [
+    ['src/components/ContactUsPage.tsx', 'src="/images/hero/software-delivery-hero.webp"', 1200, 799],
+    ['src/components/ContactUsPage.tsx', 'src="/images/hero/business-planning.webp"', 1200, 800],
+    ['src/components/FeaturedInsightCta.tsx', 'src={insight.image.src}', 1735, 906],
+    ['src/components/sections/EnquiriesPillarSection.tsx', 'src="/images/chat-bubble-icon.png"', 446, 446],
+    ['src/components/sections/EnquiriesPillarSection.tsx', 'src="/images/confirmation-icon.png"', 1152, 584],
+    ['src/components/sections/TrustPillarSection.tsx', 'src="/images/shield-trust.png"', 1254, 1254],
+  ];
+
+  for (const [file, sourceMarker, width, height] of expectations) {
+    const tags = read(file).match(/<img\b[\s\S]*?\/>/g) || [];
+    const tag = tags.find((candidate) => candidate.includes(sourceMarker));
+
+    assert.ok(tag, `${file} image ${sourceMarker} not found`);
+    assert.ok(
+      tag.includes(`width={${width}}`),
+      `${file} image ${sourceMarker} missing width`,
+    );
+    assert.ok(
+      tag.includes(`height={${height}}`),
+      `${file} image ${sourceMarker} missing height`,
+    );
+  }
+});
