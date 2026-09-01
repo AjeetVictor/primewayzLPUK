@@ -250,7 +250,7 @@ test('software legacy route permanently redirects once to canonical subscription
 });
 
 test('utility and legal routes have unique metadata and dedicated pages', () => {
-  const server = read('server.ts');
+  const staticPageSeo = read('src/lib/seo/staticPageSeo.ts');
   const expectations: Array<[string, string]> = [
     ['/privacy-policy', 'Privacy Policy | Primewayz UK'],
     ['/terms-of-service', 'Terms of Service | Primewayz UK'],
@@ -260,7 +260,7 @@ test('utility and legal routes have unique metadata and dedicated pages', () => 
     ['/pricing', 'Primewayz UK Pricing & Engagement Options'],
   ];
   for (const [route, title] of expectations) {
-    assert.match(server, new RegExp(`['"]${route.replace(/\//g, '\\/')}['"]\\s*:\\s*\\{[\\s\\S]*?title:\\s*['"]${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]`));
+    assert.match(staticPageSeo, new RegExp(`['"]${route.replace(/\//g, '\\/')}['"]\\s*:\\s*\\{[\\s\\S]*?title:\\s*['"]${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]`));
   }
 
   assert.match(read('src/components/LegalPage.tsx'), /Privacy Policy/);
@@ -312,11 +312,11 @@ test('sitemap lists canonical owners and excludes legacy software/service aliase
 });
 
 test('homepage SEO title and description are updated', () => {
-  const server = read('server.ts');
+  const staticPageSeo = read('src/lib/seo/staticPageSeo.ts');
   const indexHtml = read('index.html');
   const siteDescription = read('src/lib/seo/defaultStructuredData.ts');
-  assert.match(server, /Digital Transformation Services for UK SMEs \| Primewayz UK/);
-  assert.match(server, /description:\s*PRIMEWAYZ_UK_SITE_DESCRIPTION/);
+  assert.match(staticPageSeo, /Digital Transformation Services for UK SMEs \| Primewayz UK/);
+  assert.match(staticPageSeo, /description:\s*PRIMEWAYZ_UK_SITE_DESCRIPTION/);
   assert.match(
     siteDescription,
     /Practical digital transformation services for UK SMEs/,
