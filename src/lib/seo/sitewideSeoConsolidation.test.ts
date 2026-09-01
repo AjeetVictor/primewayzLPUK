@@ -266,7 +266,9 @@ test('utility and legal routes have unique metadata and dedicated pages', () => 
   assert.match(read('src/components/LegalPage.tsx'), /Privacy Policy/);
   assert.match(read('src/components/FaqPage.tsx'), /Frequently Asked Questions/);
   assert.match(read('src/components/HowItWorksPage.tsx'), /How Primewayz UK Works/);
-  assert.match(read('src/components/Pricing.tsx'), /Pricing & Engagement Options/);
+  assert.match(read('src/components/Pricing.tsx'), /PricingPageContent/);
+  assert.doesNotMatch(read('src/components/Pricing.tsx'), /<Helmet\b|react-helmet-async/);
+  assert.match(staticPageSeo, /Primewayz UK Pricing & Engagement Options/);
   assert.match(read('src/components/pricing/PricingPageContent.tsx'), /<h1 id="pricing-hero-title"/);
   assert.equal((read('src/components/FaqPage.tsx').match(/<h1\b/g) || []).length, 1);
   assert.equal((read('src/components/HowItWorksPage.tsx').match(/<h1\b/g) || []).length, 1);

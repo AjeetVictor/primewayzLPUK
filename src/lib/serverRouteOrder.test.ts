@@ -42,7 +42,7 @@ test('legacy SEO routes are resolved before the SSR fallback', () => {
 
   assert.ok(retiredIndex >= 0 && retiredIndex < catchAllIndex);
   assert.match(serverSource, /\.status\(410\)[\s\S]*?X-Robots-Tag[\s\S]*?noindex, nofollow/);
-  assert.match(serverSource, /const pageSeo = staticPageSeo\[pagePathname\];[\s\S]*?if \(!pageSeo\)[\s\S]*?statusCode: 404[\s\S]*?buildNoIndexSeoTags/);
+  assert.match(serverSource, /const pageSeo = STATIC_PAGE_SEO\[pagePathname\];[\s\S]*?if \(!pageSeo\)[\s\S]*?statusCode: 404[\s\S]*?buildNoIndexSeoTags/);
   assert.doesNotMatch(serverSource, /staticPageSeo\[pagePathname\]\s*\|\|\s*staticPageSeo\[['"]\/['"]\]/);
   assert.match(appSource, /<Route path="\*" element=\{<NotFoundPage \/>\} \/>/);
   assert.match(routesSource, /'\/testimonial': CANONICAL_ROUTES\.successStories/);

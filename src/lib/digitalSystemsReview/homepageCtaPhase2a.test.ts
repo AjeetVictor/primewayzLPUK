@@ -27,6 +27,7 @@ import {
   buildDigitalSystemsReviewAnalyticsPayload,
 } from './analytics.ts';
 import { validateAndNormalizeDigitalSystemsReviewLead } from './validateReviewLead.ts';
+import { resolveRouteMetadataSnapshot } from '../seo/routeMetadataHelpers.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '../../..');
@@ -108,12 +109,18 @@ test('canonical review URL remains query-free', () => {
   assert.equal(buildFreeReviewCtaUrl('digital_systems_review_page'), '/digital-systems-review');
   assert.equal(FREE_REVIEW_SOURCE_QUERY_PARAM, 'review_source');
 
+  const routeMetadata = read('src/lib/seo/routeMetadataHelpers.ts');
+  const staticPageSeo = read('src/lib/seo/staticPageSeo.ts');
   const page = read('src/components/DigitalSystemsReviewPage.tsx');
-  assert.match(
-    page,
-    /rel="canonical"[^>]*href=\{`https:\/\/uk\.primewayz\.com\$\{DIGITAL_SYSTEMS_REVIEW_PATH\}`\}/,
+
+  assert.match(staticPageSeo, /\/digital-systems-review':\s*\{/);
+  assert.equal(
+    resolveRouteMetadataSnapshot('/digital-systems-review')?.canonical,
+    'https://uk.primewayz.com/digital-systems-review',
   );
+  assert.doesNotMatch(page, /rel="canonical"/);
   assert.doesNotMatch(page, /canonical[\s\S]*review_source/);
+  assert.match(routeMetadata, /buildStaticRouteCanonicalUrl/);
 });
 
 test('DigitalSystemsReviewPage passes resolved sourceLocation to the form', () => {

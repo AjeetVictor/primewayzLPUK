@@ -40,6 +40,8 @@ import { trackEvent } from '../lib/analytics';
 import { sanitizeLinkedInEmbedHtml } from '../utils/linkedInEmbed';
 import { scrollToArticleHeading } from '../utils/articleAnchorScroll';
 import { useActiveArticleHeading } from '../hooks/useActiveArticleHeading';
+import { applyRouteMetadataSnapshot } from '../lib/seo/routeMetadataDom';
+import { resolveBlogArticleNotFoundSnapshot } from '../lib/seo/routeMetadataHelpers';
 
 interface Comment {
   id: number;
@@ -273,6 +275,14 @@ export const BlogPost = ({ initialPost }: BlogPostProps) => {
   };
 
 
+
+  useEffect(() => {
+    if (isPostLoading || post || !id) return;
+
+    applyRouteMetadataSnapshot(
+      resolveBlogArticleNotFoundSnapshot(`/blog/${id}`),
+    );
+  }, [isPostLoading, post, id]);
 
   useEffect(() => {
     if (!post) return;

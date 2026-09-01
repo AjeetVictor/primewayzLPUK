@@ -21,10 +21,6 @@ import {
   buildDigitalSystemsReviewAnalyticsPayload,
 } from '../lib/digitalSystemsReview/analytics';
 
-const PAGE_TITLE = 'Free Digital Systems Review for UK SMEs | Primewayz';
-const PAGE_DESCRIPTION =
-  'Ask Primewayz to review where your website, CRM, software or support model is creating friction and identify the most useful next step.';
-
 export function DigitalSystemsReviewPage() {
   const [searchParams] = useSearchParams();
 
@@ -77,11 +73,6 @@ export function DigitalSystemsReviewPage() {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#e8eef8_0%,_#f8fafc_45%,_#ffffff_100%)] text-slate-950">
-      <title>{PAGE_TITLE}</title>
-      <meta name="description" content={PAGE_DESCRIPTION} />
-      <meta name="robots" content="index, follow" />
-      <link rel="canonical" href={`https://uk.primewayz.com${DIGITAL_SYSTEMS_REVIEW_PATH}`} />
-
       <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-16 pt-24 text-white sm:px-6 lg:px-8">
         <div
           className="pointer-events-none absolute inset-0 opacity-40"

@@ -133,12 +133,20 @@ test('sitemap includes review landing without invented lastmod and excludes than
   assert.doesNotMatch(blockMatch![0], /<lastmod>/);
 });
 
-test('server SEO strings and API wiring are present', () => {
+test('static review SEO strings and API wiring are present', () => {
+  const staticPageSeo = fs.readFileSync(
+    path.join(root, 'src/lib/seo/staticPageSeo.ts'),
+    'utf8',
+  );
   const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
-  assert.match(server, /Free Digital Systems Review for UK SMEs \| Primewayz/);
-  assert.match(server, /Digital Systems Review Request Received \| Primewayz/);
+
+  assert.match(staticPageSeo, /Free Digital Systems Review for UK SMEs \| Primewayz/);
+  assert.match(staticPageSeo, /Digital Systems Review Request Received \| Primewayz/);
   assert.match(server, /thank-you\/digital-systems-review/);
-  assert.match(server, /noindex[\s\S]*thank-you\/digital-systems-review|thank-you\/digital-systems-review[\s\S]*noindex/);
+  assert.match(
+    server,
+    /noindex[\s\S]*thank-you\/digital-systems-review|thank-you\/digital-systems-review[\s\S]*noindex/,
+  );
   assert.match(server, /checkDigitalSystemsReviewRateLimit/);
   assert.match(server, /resultCategory/);
   assert.match(server, /503/);

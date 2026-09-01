@@ -155,9 +155,17 @@ test('UTM attribution is captured before React client bootstrap', () => {
   );
 });
 
-test('contact page sets the correct title during SPA navigation', () => {
-  assert.match(
-    contactUsPage,
-    /return \(\s*<>\s*<title>Contact Primewayz UK \| Discuss Your Digital Priorities<\/title>/,
+test('contact page metadata is owned centrally for SPA navigation', () => {
+  const staticPageSeo = fs.readFileSync(
+    path.join(root, 'src/lib/seo/staticPageSeo.ts'),
+    'utf8',
   );
+  const routeMetadata = fs.readFileSync(
+    path.join(root, 'src/components/RouteMetadata.tsx'),
+    'utf8',
+  );
+
+  assert.match(staticPageSeo, /\/contact-us':\s*\{[\s\S]*Contact Primewayz UK \| Discuss Your Digital Priorities/);
+  assert.match(routeMetadata, /resolveRouteMetadataSnapshot/);
+  assert.doesNotMatch(contactUsPage, /<title>Contact Primewayz UK/);
 });

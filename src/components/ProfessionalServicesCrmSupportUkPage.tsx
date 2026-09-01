@@ -13,7 +13,6 @@ import {
   Workflow,
 } from 'lucide-react';
 import { TrackedLink } from './common/TrackedLink';
-import { SEO } from './SEO';
 import { getSuccessStoryPath } from '../data/successStories';
 
 const painPoints = [
@@ -113,12 +112,6 @@ const relatedLinks = [
 
 export const ProfessionalServicesCrmSupportUkPage = () => (
   <main className="min-h-screen bg-white text-slate-950">
-    <SEO
-      title="Professional Services CRM Support UK | Primewayz UK"
-      description="CRM integration, lead-flow cleanup, website enquiry tracking, follow-up workflows, and reporting support for UK professional services firms."
-      canonical="https://uk.primewayz.com/professional-services-crm-support-uk"
-    />
-
     <section className="relative overflow-hidden bg-[#000A2D] px-4 pb-20 pt-24 text-white sm:px-6 lg:px-8">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.24),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(37,99,235,0.22),transparent_34%)]" />
 

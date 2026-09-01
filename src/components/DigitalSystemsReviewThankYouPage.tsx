@@ -22,8 +22,6 @@ import {
 } from '../lib/digitalSystemsReview/confirmationSummary';
 import { consumeFreeReviewSuccessMarker } from '../lib/digitalSystemsReview/successMarker';
 
-const PAGE_TITLE = 'Digital Systems Review Request Received | Primewayz';
-
 const GENERIC_SUPPORTING_COPY =
   'Primewayz will review the submitted information and respond with a focus on the most useful next step. You do not need to submit the form again.';
 
@@ -180,10 +178,6 @@ export function DigitalSystemsReviewThankYouPage() {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#e8eef8_0%,_#f8fafc_50%,_#ffffff_100%)] text-slate-950">
-      <title>{PAGE_TITLE}</title>
-      <meta name="robots" content="noindex, follow" />
-      <link rel="canonical" href={`https://uk.primewayz.com${FREE_REVIEW_THANK_YOU_ROUTE}`} />
-
       <section className="px-4 pb-20 pt-28 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[720px]">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-emerald-700">

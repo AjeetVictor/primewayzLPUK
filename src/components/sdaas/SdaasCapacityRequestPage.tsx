@@ -1,20 +1,12 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { CANONICAL_ROUTES } from '../../constants/canonicalRoutes';
-import { SDAAS_SEO } from '../../data/sdaas/commercialPage';
 import { CapacityReassuranceStrip } from '../commercial/CapacityReassuranceStrip';
 import { SdaasCapacityRequestForm } from './SdaasCapacityRequestForm';
 
 export function SdaasCapacityRequestPage() {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
-      <title>{`Request Capacity Recommendation | ${SDAAS_SEO.title}`}</title>
-      <meta
-        name="description"
-        content="Request a recommended monthly software development capacity plan from Primewayz UK."
-      />
-      <meta name="robots" content="noindex, follow" />
-
       <section className="bg-[#000A2D] px-4 pb-16 pt-24 text-white sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[800px]">
           <Link

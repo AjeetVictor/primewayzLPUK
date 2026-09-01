@@ -54,6 +54,7 @@ import { Pricing } from './components/Pricing';
 import { FaqPage } from './components/FaqPage';
 import { HowItWorksPage } from './components/HowItWorksPage';
 import { NotFoundPage } from './components/NotFoundPage';
+import { RouteMetadata } from './components/RouteMetadata';
 
 const ClientOnly = ({ children }: { children: ReactNode }) => {
   const [mounted, setMounted] = useState(false);
@@ -99,6 +100,8 @@ export const App = ({ initialData }: AppProps) => {
       <ScrollToTop />
       {showSiteChrome ? <Navbar /> : null}
       {showSiteChrome ? <ScrollToTopButton /> : null}
+
+      <RouteMetadata />
 
       <Routes>
         <Route path="/" element={<MainContent />} />

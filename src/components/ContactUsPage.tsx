@@ -87,10 +87,7 @@ export const ContactUsPage = () => {
   };
 
   return (
-    <>
-      <title>Contact Primewayz UK | Discuss Your Digital Priorities</title>
-
-      <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white">
       {/* 1. Visual contact hero */}
       <section className="relative isolate overflow-hidden bg-brand-navy pt-14 text-white sm:pt-16">
         <img
@@ -296,6 +293,5 @@ export const ContactUsPage = () => {
         </div>
       </section>
     </main>
-    </>
   );
 };

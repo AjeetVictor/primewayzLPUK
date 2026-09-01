@@ -72,17 +72,6 @@ export function WebPresenceAuditSharedReportPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const robotsMeta = document.createElement('meta');
-    robotsMeta.name = 'robots';
-    robotsMeta.content = 'noindex, nofollow';
-    document.head.appendChild(robotsMeta);
-
-    return () => {
-      document.head.removeChild(robotsMeta);
-    };
-  }, []);
-
-  useEffect(() => {
     if (!publicToken) {
       setError('This shared report link is invalid.');
       setIsLoading(false);

@@ -246,11 +246,13 @@ test('WebPage url and @id keep the supplied canonical without site-root normalis
 
 test('server wires homepage, FAQ and default builders without ProfessionalService on utility routes', () => {
   const server = read('server.ts');
+  const staticPageSeo = read('src/lib/seo/staticPageSeo.ts');
   assert.match(server, /buildHomepageStructuredData\(/);
   assert.match(server, /buildDefaultStructuredData\(/);
   assert.match(server, /buildFaqPageStructuredData\(/);
   assert.match(server, /pagePathname === ['"]\/['"]/);
-  assert.match(server, /PRIMEWAYZ_UK_SITE_DESCRIPTION/);
+  assert.match(staticPageSeo, /PRIMEWAYZ_UK_SITE_DESCRIPTION/);
+  assert.match(server, /STATIC_PAGE_SEO/);
   assert.doesNotMatch(
     server,
     /function buildDefaultStructuredData\(|function buildFaqPageStructuredData\(|function buildHomepageStructuredData\(/,

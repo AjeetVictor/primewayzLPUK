@@ -10,6 +10,7 @@ import {
   homepagePricingPlans,
 } from '../../content/homepagePricingPlans.ts';
 import { rememberHomepageSelectedPlan } from '../../lib/homepagePricingSelection.ts';
+import { resolveRouteMetadataSnapshot } from '../../lib/seo/routeMetadataHelpers.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '../../..');
@@ -197,9 +198,15 @@ test('existing homepage sections still render once and pricing is not duplicated
 test('pricing page uses canonical registry and single-page grid structure', () => {
   const pricing = read('src/components/Pricing.tsx');
   const pageContent = read('src/components/pricing/PricingPageContent.tsx');
+  const staticPageSeo = read('src/lib/seo/staticPageSeo.ts');
 
   assert.match(pricing, /PricingPageContent/);
-  assert.match(pricing, /canonical.*https:\/\/uk\.primewayz\.com\/pricing/);
+  assert.doesNotMatch(pricing, /<Helmet\b|react-helmet-async/);
+  assert.match(staticPageSeo, /\/pricing':\s*\{[\s\S]*Primewayz UK Pricing & Engagement Options/);
+  assert.equal(
+    resolveRouteMetadataSnapshot('/pricing')?.canonical,
+    'https://uk.primewayz.com/pricing',
+  );
   assert.match(pageContent, /data\/pricing\/gridConfig/);
   assert.match(pageContent, /usePricingSelection/);
   assert.match(pageContent, /PricingGridCard/);

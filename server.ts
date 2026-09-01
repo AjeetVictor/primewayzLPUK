@@ -78,6 +78,10 @@ import {
 } from './src/lib/seo/defaultStructuredData.ts';
 import { STATIC_PAGE_SEO } from './src/lib/seo/staticPageSeo.ts';
 import {
+  BLOG_ARTICLE_NOT_FOUND_SEO,
+  SHARED_WEB_PRESENCE_AUDIT_REPORT_SEO,
+} from './src/lib/seo/routeMetadataContent.ts';
+import {
   buildRedirectLocation,
   isLiveInsightsSlug,
   normalizeInsightsPathname,
@@ -1459,8 +1463,8 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
     return {
       initialData: {},
       seoTags: buildNoIndexSeoTags({
-        title: 'Shared Web Presence Audit Report | Primewayz UK',
-        description: 'Shared public-signal web presence audit overview from Primewayz UK.',
+        title: SHARED_WEB_PRESENCE_AUDIT_REPORT_SEO.title,
+        description: SHARED_WEB_PRESENCE_AUDIT_REPORT_SEO.description,
       }),
     };
   }
@@ -1544,8 +1548,8 @@ async function getInitialDataAndSeo(pathname: string): Promise<{
       initialData: { blogPost: null, notFound: true },
       statusCode: 404,
       seoTags: buildNoIndexSeoTags({
-        title: 'Article Not Found | Primewayz UK',
-        description: 'This blog article is not available on Primewayz UK.',
+        title: BLOG_ARTICLE_NOT_FOUND_SEO.title,
+        description: BLOG_ARTICLE_NOT_FOUND_SEO.description,
       }),
     };
   }
