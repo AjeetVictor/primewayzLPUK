@@ -253,8 +253,32 @@ function normaliseRowsForComparison(rows: StoredConversionRow[]) {
 test('organic source classification requires reliable evidence', () => {
   assert.equal(classifyChannelGroup('google', 'organic'), 'organic');
   assert.equal(isReliableOrganicEvidence('google', 'organic'), true);
+  assert.equal(classifyChannelGroup('bing', 'organic'), 'organic');
+  assert.equal(isReliableOrganicEvidence('bing', 'organic'), true);
   assert.equal(classifyChannelGroup('(direct)', '(none)'), 'direct');
   assert.equal(isReliableOrganicEvidence('(direct)', '(none)'), false);
+});
+
+test('owned UTM mediums classify into deterministic channel groups', () => {
+  assert.equal(classifyChannelGroup('linkedin', 'organic-social'), 'social');
+  assert.equal(classifyChannelGroup('linkedin', 'paid-social'), 'paid');
+  assert.equal(classifyChannelGroup('google', 'paid-search'), 'paid');
+  assert.equal(classifyChannelGroup('bing', 'paid-search'), 'paid');
+  assert.equal(classifyChannelGroup('primewayz', 'email'), 'email');
+  assert.equal(classifyChannelGroup('partner', 'referral'), 'referral');
+});
+
+test('owned social and paid mediums are not treated as organic-search evidence', () => {
+  assert.equal(isReliableOrganicEvidence('linkedin', 'organic-social'), false);
+  assert.equal(isReliableOrganicEvidence('linkedin', 'paid-social'), false);
+  assert.equal(isReliableOrganicEvidence('google', 'paid-search'), false);
+  assert.notEqual(classifyChannelGroup('linkedin', 'organic-social'), 'organic');
+});
+
+test('legacy paid medium aliases still classify as paid', () => {
+  for (const medium of ['cpc', 'ppc', 'paid', 'paidsearch']) {
+    assert.equal(classifyChannelGroup('google', medium), 'paid');
+  }
 });
 
 test('journey dedupe prefers journeyReference then sessionReference then chatSessionId', () => {

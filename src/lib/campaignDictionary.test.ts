@@ -119,6 +119,17 @@ test('owned UTM zoho + email is accepted', () => {
   assert.equal(result.valid, true);
 });
 
+test('owned UTM primewayz + email is accepted', () => {
+  const result = validateOwnedCampaignUtm({
+    utm_source: 'primewayz',
+    utm_medium: 'email',
+    utm_campaign: 'PWUK-VIS-2026-01',
+    utm_content: 'in-depth-audit-cta-v1',
+  });
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.errors, []);
+});
+
 test('owned UTM google + paid-search is accepted', () => {
   const result = validateOwnedCampaignUtm({
     utm_source: 'google',
@@ -279,7 +290,7 @@ test('campaignDictionary is not imported by utm.ts', () => {
 
 test('existing inbound UTM capture in utm.ts remains unchanged', () => {
   const utmSource = fs.readFileSync(path.join(root, 'src/lib/utm.ts'), 'utf8');
-  assert.match(utmSource, /function readUtmFromSearch\(search: string\): UtmParams/);
+  assert.match(utmSource, /export function readUtmParamsFromSearch\(search: string\): UtmParams/);
   assert.match(
     utmSource,
     /utm_source: params\.get\('utm_source'\),\s+utm_medium: params\.get\('utm_medium'\),/,

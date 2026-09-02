@@ -24,6 +24,7 @@ export type CampaignServiceCode = keyof typeof CAMPAIGN_SERVICE_CODES;
 
 export const OWNED_UTM_SOURCES = [
   'linkedin',
+  'primewayz',
   'zoho',
   'google',
   'bing',

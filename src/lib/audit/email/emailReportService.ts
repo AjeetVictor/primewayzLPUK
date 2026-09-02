@@ -1,3 +1,5 @@
+import { buildOwnedCampaignUrl } from '../../ownedCampaignUrls.ts';
+import { WEB_PRESENCE_AUDIT_CANONICAL_CAMPAIGN } from '../../utm.ts';
 import type { PrismaClient } from '@prisma/client';
 import type { SharedWebPresenceAuditReport } from '../types.ts';
 import { getInternalNotificationEmail, isEmailConfigured, sendEmail } from '../../email/sendEmail.ts';
@@ -18,8 +20,15 @@ import {
   buildUserAuditReportEmail,
 } from './auditReportEmailTemplates.ts';
 
-const IN_DEPTH_AUDIT_URL =
-  'https://uk.primewayz.com/contact-us?utm_source=audit_email&utm_medium=email&utm_campaign=web_presence_audit_email&utm_content=in_depth_cta#book-call';
+const IN_DEPTH_AUDIT_URL = buildOwnedCampaignUrl(
+  'https://uk.primewayz.com/contact-us#book-call',
+  {
+    utm_source: 'primewayz',
+    utm_medium: 'email',
+    utm_campaign: WEB_PRESENCE_AUDIT_CANONICAL_CAMPAIGN,
+    utm_content: 'in-depth-audit-cta-v1',
+  },
+);
 
 /** @deprecated Use AuditLeadValidationError */
 export { AuditLeadValidationError as EmailReportValidationError } from '../leads/auditLeadRecord.ts';

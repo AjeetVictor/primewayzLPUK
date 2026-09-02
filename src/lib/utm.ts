@@ -1,3 +1,5 @@
+import { buildOwnedCampaignUrl } from './ownedCampaignUrls.ts';
+
 export type UtmParams = {
   utm_source: string | null;
   utm_medium: string | null;
@@ -11,6 +13,7 @@ const FIRST_UTM_STORAGE_KEY = 'primewayz_first_utm_attribution';
 const LATEST_UTM_STORAGE_KEY = 'primewayz_latest_utm_attribution';
 
 export const WEB_PRESENCE_AUDIT_CAMPAIGN = 'web_presence_audit_launch';
+export const WEB_PRESENCE_AUDIT_CANONICAL_CAMPAIGN = 'PWUK-VIS-2026-01';
 export const WEB_PRESENCE_AUDIT_SECTION_ID = 'free-web-presence-audit';
 export const WEB_PRESENCE_AUDIT_SECTION_ALIAS = 'web-presence-audit';
 
@@ -24,7 +27,7 @@ const EMPTY_UTM: UtmParams = {
   utm_term: null,
 };
 
-function readUtmFromSearch(search: string): UtmParams {
+export function readUtmParamsFromSearch(search: string): UtmParams {
   const params = new URLSearchParams(search);
   return {
     utm_source: params.get('utm_source'),
@@ -88,13 +91,13 @@ export function getLatestUtmParams(): UtmParams {
 }
 
 export function hasUtmInSearch(search: string): boolean {
-  return hasUtmValues(readUtmFromSearch(search));
+  return hasUtmValues(readUtmParamsFromSearch(search));
 }
 
 export function captureUtmParams(search?: string): UtmParams {
   if (typeof window === 'undefined') return { ...EMPTY_UTM };
 
-  const fromUrl = readUtmFromSearch(search ?? window.location.search);
+  const fromUrl = readUtmParamsFromSearch(search ?? window.location.search);
   if (!hasUtmValues(fromUrl)) {
     return getFirstUtmParams();
   }
@@ -142,26 +145,9 @@ export function getFullUtmAnalyticsPayload(): Record<string, string> {
   return payload;
 }
 
-export function buildInternalUtmUrl(
-  path: string,
-  medium: string,
-  campaign: string,
-  content: string,
-): string {
-  const hashIndex = path.indexOf('#');
-  const hash = hashIndex >= 0 ? path.slice(hashIndex) : '';
-  const pathWithoutHash = hashIndex >= 0 ? path.slice(0, hashIndex) : path;
-  const [basePath, existingQuery] = pathWithoutHash.split('?');
-  const params = new URLSearchParams(existingQuery || '');
-  params.set('utm_source', 'website');
-  params.set('utm_medium', medium);
-  params.set('utm_campaign', campaign);
-  params.set('utm_content', content);
-  return `${basePath}?${params.toString()}${hash}`;
-}
-
 export function isWebPresenceAuditCampaign(utm: UtmParams = getFirstUtmParams()): boolean {
-  return utm.utm_campaign === WEB_PRESENCE_AUDIT_CAMPAIGN;
+  return utm.utm_campaign === WEB_PRESENCE_AUDIT_CAMPAIGN
+    || utm.utm_campaign === WEB_PRESENCE_AUDIT_CANONICAL_CAMPAIGN;
 }
 
 export function scrollToWebPresenceAuditSection(): void {
@@ -178,13 +164,14 @@ export function scrollToWebPresenceAuditSection(): void {
   window.location.assign('/uk-sme-digital-visibility-checker');
 }
 
-export function buildWebPresenceAuditLaunchUrl(content = 'company_page_launch'): string {
-  const params = new URLSearchParams({
-    utm_source: 'linkedin',
-    utm_medium: 'organic',
-    utm_campaign: WEB_PRESENCE_AUDIT_CAMPAIGN,
-    utm_content: content,
-  });
-
-  return `https://uk.primewayz.com/uk-sme-digital-visibility-checker?${params.toString()}`;
+export function buildWebPresenceAuditLaunchUrl(content = 'company-page-launch-v1'): string {
+  return buildOwnedCampaignUrl(
+    'https://uk.primewayz.com/uk-sme-digital-visibility-checker',
+    {
+      utm_source: 'linkedin',
+      utm_medium: 'organic-social',
+      utm_campaign: WEB_PRESENCE_AUDIT_CANONICAL_CAMPAIGN,
+      utm_content: content,
+    },
+  );
 }

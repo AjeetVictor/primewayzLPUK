@@ -7,6 +7,7 @@ import {
   getUtmAnalyticsPayload,
   hasUtmInSearch,
   isWebPresenceAuditCampaign,
+  readUtmParamsFromSearch,
   WEB_PRESENCE_AUDIT_SECTION_ALIAS,
   WEB_PRESENCE_AUDIT_SECTION_ID,
 } from '../lib/utm';
@@ -28,17 +29,20 @@ export function CampaignLandingHandler() {
   useEffect(() => {
     if (location.pathname === AUDIT_CHECKER_PATH) return;
 
-    const utm = captureUtmParams(location.search);
+    captureUtmParams(location.search);
+
+    const currentUtm = readUtmParamsFromSearch(location.search);
 
     if (hasUtmInSearch(location.search)) {
       trackEvent('campaign_landing', {
         landing_path: location.pathname,
-        ...getUtmAnalyticsPayload(utm),
+        ...getUtmAnalyticsPayload(currentUtm),
       });
     }
 
     const auditLanding =
-      shouldRouteToAuditPage(location.hash) || (location.pathname === '/' && isWebPresenceAuditCampaign(utm));
+      shouldRouteToAuditPage(location.hash)
+      || (location.pathname === '/' && isWebPresenceAuditCampaign(currentUtm));
 
     if (!auditLanding) return;
 
