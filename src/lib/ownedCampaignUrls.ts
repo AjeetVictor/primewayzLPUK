@@ -26,7 +26,9 @@ export function buildOwnedCampaignUrl(
   const hashIndex = destination.indexOf('#');
   const hash = hashIndex >= 0 ? destination.slice(hashIndex) : '';
   const pathWithoutHash = hashIndex >= 0 ? destination.slice(0, hashIndex) : destination;
-  const [basePath, existingQuery] = pathWithoutHash.split('?');
+  const questionMarkIndex = pathWithoutHash.indexOf('?');
+  const basePath = questionMarkIndex >= 0 ? pathWithoutHash.slice(0, questionMarkIndex) : pathWithoutHash;
+  const existingQuery = questionMarkIndex >= 0 ? pathWithoutHash.slice(questionMarkIndex + 1) : '';
   const params = new URLSearchParams(existingQuery || '');
 
   params.set('utm_source', utm.utm_source);
@@ -36,6 +38,8 @@ export function buildOwnedCampaignUrl(
 
   if (utm.utm_term) {
     params.set('utm_term', utm.utm_term);
+  } else {
+    params.delete('utm_term');
   }
 
   return `${basePath}?${params.toString()}${hash}`;

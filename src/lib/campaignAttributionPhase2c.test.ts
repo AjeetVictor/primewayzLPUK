@@ -105,6 +105,69 @@ test('buildOwnedCampaignUrl rejects invalid owned campaign definitions', () => {
   );
 });
 
+const ownedUtmBase = {
+  utm_source: 'primewayz',
+  utm_medium: 'email',
+  utm_campaign: WEB_PRESENCE_AUDIT_CANONICAL_CAMPAIGN,
+  utm_content: 'in-depth-audit-cta-v1',
+};
+
+test('buildOwnedCampaignUrl preserves functional query values containing a second question mark', () => {
+  const url = buildOwnedCampaignUrl('/contact-us?next=/pricing?plan=starter#book-call', ownedUtmBase);
+  const hashIndex = url.indexOf('#');
+  const query = url.slice(url.indexOf('?') + 1, hashIndex >= 0 ? hashIndex : undefined);
+  const params = new URLSearchParams(query);
+
+  assert.equal(params.get('next'), '/pricing?plan=starter');
+  assert.equal(params.get('utm_source'), ownedUtmBase.utm_source);
+  assert.equal(params.get('utm_medium'), ownedUtmBase.utm_medium);
+  assert.equal(params.get('utm_campaign'), ownedUtmBase.utm_campaign);
+  assert.equal(params.get('utm_content'), ownedUtmBase.utm_content);
+});
+
+test('buildOwnedCampaignUrl preserves existing non-UTM query parameters', () => {
+  const url = buildOwnedCampaignUrl('https://uk.primewayz.com/contact-us?ref=partner&locale=en-gb', ownedUtmBase);
+  const params = new URLSearchParams(url.split('?')[1]);
+
+  assert.equal(params.get('ref'), 'partner');
+  assert.equal(params.get('locale'), 'en-gb');
+  assert.equal(params.get('utm_source'), ownedUtmBase.utm_source);
+});
+
+test('buildOwnedCampaignUrl removes stale utm_term when input omits utm_term', () => {
+  const url = buildOwnedCampaignUrl(
+    'https://uk.primewayz.com/contact-us?utm_term=stale-term&locale=en-gb',
+    ownedUtmBase,
+  );
+  const params = new URLSearchParams(url.split('?')[1]);
+
+  assert.equal(params.get('utm_term'), null);
+  assert.equal(params.get('locale'), 'en-gb');
+  assert.equal(params.get('utm_source'), ownedUtmBase.utm_source);
+});
+
+test('buildOwnedCampaignUrl replaces existing utm_term when input supplies utm_term', () => {
+  const url = buildOwnedCampaignUrl(
+    'https://uk.primewayz.com/contact-us?utm_term=stale-term',
+    { ...ownedUtmBase, utm_term: 'fresh-term' },
+  );
+  const params = new URLSearchParams(url.split('?')[1]);
+
+  assert.equal(params.get('utm_term'), 'fresh-term');
+  assert.equal(params.get('utm_source'), ownedUtmBase.utm_source);
+});
+
+test('buildOwnedCampaignUrl keeps hash last in the owned URL', () => {
+  const url = buildOwnedCampaignUrl(
+    'https://uk.primewayz.com/contact-us?ref=partner#book-call',
+    ownedUtmBase,
+  );
+
+  assert.match(url, /#book-call$/);
+  assert.doesNotMatch(url, /#book-call\?/);
+  assert.ok(url.indexOf('#') > url.indexOf('?'));
+});
+
 test('CampaignLandingHandler uses current URL UTM for campaign_landing and routing', () => {
   const source = read('src/components/CampaignLandingHandler.tsx');
 
