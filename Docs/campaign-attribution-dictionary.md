@@ -1,0 +1,223 @@
+# Primewayz UK Campaign Attribution Dictionary
+
+## Purpose
+
+This document defines the governance foundation for **Primewayz-owned** marketing campaigns on the UK site. It introduces a canonical campaign-ID format, controlled UTM vocabularies, and content rules for future campaign URL construction.
+
+**Phase 2A scope:** governance definitions only. This phase does not change inbound UTM capture, first-touch/latest-touch storage, GA4 events, form attribution, or existing hardcoded campaign links.
+
+The internal CRM / DIGI-MOS mapping may associate a prospect with a campaign without exposing prospect-level identifiers in public URLs.
+
+## Workspace ID
+
+| Constant | Value | Usage |
+|----------|-------|-------|
+| `PRIMEWAYZ_UK_WORKSPACE_ID` | `PWUK` | Internal governance identifier only |
+
+**Do not:**
+
+- add `workspace_id` to URLs
+- send `workspace_id` to GA4 automatically
+- include `workspace_id` in form payloads
+
+## Campaign-ID format
+
+Approved canonical format:
+
+```text
+PWUK-{SERVICE}-{YYYY}-{NN}
+```
+
+| Part | Rule |
+|------|------|
+| Workspace | Must be `PWUK` |
+| `SERVICE` | One approved service code (see table below) |
+| `YYYY` | Four-digit year within supported range (2020–2099) |
+| `NN` | Exactly two digits, `01`–`99` |
+
+Examples:
+
+- `PWUK-CRM-2026-01`
+- `PWUK-VIS-2026-01`
+- `PWUK-GEN-2026-02`
+
+Rules:
+
+- Uppercase canonical representation
+- IDs are stable and must never be repurposed
+- Invalid service codes, years, or sequences must be rejected at generation time
+
+Implementation helpers (pure, no runtime side effects):
+
+- `isCanonicalCampaignId(value)`
+- `buildCanonicalCampaignId(serviceCode, year, sequence)`
+- `parseCanonicalCampaignId(value)`
+
+## Service-code table
+
+Registry for **campaign identity** (not the general service-area taxonomy).
+
+| Code | Meaning |
+|------|---------|
+| `GEN` | Primewayz UK / multi-service |
+| `DSR` | Digital Systems Review |
+| `VIS` | Website Visibility & SEO |
+| `MNT` | Website Maintenance |
+| `CRM` | CRM & Automation |
+| `SWE` | Software & Product Engineering |
+| `CAP` | Software Development Capacity |
+| `RIT` | Remote IT Resources |
+| `AI` | Custom AI Agent Development |
+
+## Source dictionary (owned campaigns)
+
+Controlled values for Primewayz-generated campaigns:
+
+| `utm_source` | Typical use |
+|--------------|-------------|
+| `linkedin` | LinkedIn posts and company activity |
+| `zoho` | Zoho Campaigns / CRM email sends |
+| `google` | Google Ads or owned Google placements |
+| `bing` | Bing Ads |
+| `partner` | Partner referrals |
+
+These rules apply to **owned campaign generation only**. Unknown external sources must continue to be accepted by inbound UTM capture.
+
+## Medium dictionary (owned campaigns)
+
+| `utm_medium` | Meaning |
+|--------------|---------|
+| `organic-social` | Unpaid social distribution |
+| `paid-social` | Paid social placements |
+| `email` | Email campaigns |
+| `paid-search` | Paid search ads |
+| `referral` | Partner or referral traffic |
+
+Legacy values such as `organic` or `cpc` may still appear on inbound traffic. They are not valid for newly generated owned campaigns under this dictionary.
+
+## `utm_campaign` rule
+
+- Required for owned campaigns
+- Must be a valid canonical Primewayz campaign ID (`PWUK-{SERVICE}-{YYYY}-{NN}`)
+- Do not use legacy slug identifiers for new campaigns after dictionary adoption
+
+## `utm_content` rule
+
+- Required
+- Represents asset, message, creative, or version — not a person or prospect
+- Lowercase slug: letters, numbers, and hyphens
+- Conservative maximum length (64 characters)
+- Must not contain obvious personal identifiers
+
+Good example:
+
+```text
+utm_content=crm-operations-gap-v1
+```
+
+## `utm_term` rule
+
+- Optional
+- Intended mainly for paid search usage
+- Not required for normal email or social campaigns
+- When present, the current validator permits lowercase letters, numbers, hyphens, and underscores within the documented maximum length (128 characters)
+
+## Internal-link policy
+
+- Ordinary internal Primewayz links must remain UTM-free
+- Internal CTA attribution should use existing event / `source_location` mechanisms where available
+- Do not add UTMs merely to track navigation inside the site
+- Canonical URLs remain query-free
+- Google / Bing organic-search result URLs are never manually UTM-tagged
+
+## Organic-search policy
+
+Search engines deliver organic traffic without manual UTM parameters. Owned paid-search campaigns use `utm_medium=paid-search` with an approved source (`google` or `bing`). Do not tag organic search landing URLs with UTMs.
+
+## Prohibited identifiers
+
+Do not place these kinds of values into campaign URLs or owned UTM fields:
+
+- `prospect_id`
+- `dossier_id`
+- email addresses
+- phone numbers
+- person names
+- individual company-contact identifiers
+- CRM record IDs
+- chat session IDs
+- submission IDs
+- journey IDs
+- opaque person / prospect-level identifiers
+
+**Governance prohibition (operational policy):**
+
+Values such as `PWUK-015` or `PWUK-015-OM-v1` **must not** be used in Primewayz-owned campaign URLs or UTM values when they identify an individual prospect or dossier. This is an operational/governance prohibition for campaign authors and tooling — not automatic validator behaviour.
+
+- Phase 2A does **not** heuristically detect prospect IDs
+- `validateOwnedCampaignUtm` enforces structure and vocabulary only (canonical campaign ID, owned source/medium vocabularies, slug shape, length limits)
+- Prospect/dossier relationships stay inside DIGI-MOS / CRM mappings and must not be exposed in public campaign metadata
+
+Internal systems may map prospects to campaigns privately. Public campaign metadata must not expose prospect-level identifiers.
+
+This policy governs **Primewayz-generated** campaign metadata. Phase 2A does not implement speculative PII detection for arbitrary inbound URLs.
+
+## Legacy campaign treatment
+
+Existing historical identifiers remain in use at runtime and must not be deleted or migrated in Phase 2A:
+
+- `web_presence_audit_launch`
+- `web_presence_audit_actions`
+- `verified_visibility_audit`
+- `web_presence_audit_email`
+- `web_presence_audit_share`
+
+Do not use these legacy values for newly created campaigns after this dictionary is formally adopted.
+
+## Examples
+
+### Good owned campaign set
+
+```text
+campaign_id: PWUK-CRM-2026-01
+
+utm_source=zoho
+utm_medium=email
+utm_campaign=PWUK-CRM-2026-01
+utm_content=crm-operations-gap-v1
+```
+
+### Owned organic LinkedIn campaign
+
+```text
+utm_source=linkedin
+utm_medium=organic-social
+utm_campaign=PWUK-GEN-2026-01
+utm_content=linkedin-company-post-v1
+```
+
+`organic-social` refers to organic social media activity (for example unpaid LinkedIn company posts). It is **not** the same as organic search. Google and Bing organic search traffic should not be manually UTM-tagged.
+
+### Paid search with optional term
+
+```text
+utm_source=google
+utm_medium=paid-search
+utm_campaign=PWUK-VIS-2026-01
+utm_content=visibility-audit-v1
+utm_term=website-seo-audit
+```
+
+### Prohibited content identifier (governance only)
+
+```text
+utm_content=PWUK-015-OM-v1
+```
+
+**Must not** be used when `PWUK-015` identifies an individual prospect or dossier. Use creative/version slugs instead (for example `crm-operations-gap-v1`). The validator does not detect prospect IDs; it enforces lowercase slug structure and vocabulary rules only.
+
+## Implementation reference
+
+Source module: `src/lib/campaignDictionary.ts`
+
+Validation helper for owned UTM sets: `validateOwnedCampaignUtm(input)`
