@@ -118,18 +118,18 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => {
     : 'Website Maintenance & Technical Support';
   const h1 = isVisibilityPage
     ? 'Website Optimisation Services for UK Businesses'
-    : 'Website Maintenance Services for UK Businesses';
+    : 'Website Maintenance Subscription for UK Businesses';
   const intro = isVisibilityPage
     ? 'Improve search visibility, technical SEO foundations, website performance, page clarity and enquiry journeys through structured ongoing optimisation and support.'
-    : 'Predictable monthly website maintenance and technical support for updates, fixes, security, performance, monitoring and ongoing improvements. Application support can be included where your wider digital systems also need continuity.';
+    : 'Predictable monthly website maintenance subscription for UK SMEs covering updates, fixes, security monitoring, performance checks and continuous improvements. Get reliable technical ownership without managing every website issue as a separate project.';
   const supportItems = isVisibilityPage ? visibilitySupportItems : maintenanceSupportItems;
   const painPoints = isVisibilityPage ? visibilityPainPoints : maintenancePainPoints;
   const supportHeading = isVisibilityPage
     ? 'Website optimisation and technical SEO services that improve search visibility and enquiry readiness'
-    : 'Website maintenance services that protect reliability and support ongoing improvement';
+    : 'Website maintenance subscription that keeps UK SME websites secure, reliable and improving';
   const supportLead = isVisibilityPage
     ? 'Visibility and conversion work focuses on discovery, clarity, trust and enquiry completion. Related website maintenance can sit alongside this service when ongoing ownership is also required.'
-    : 'Maintenance keeps systems stable, secure and operational. Improvement delivers controlled enhancements and prioritised fixes. Substantial new features or integrations are handled as development work, not as unlimited monthly requests.';
+    : 'A website maintenance subscription keeps your digital presence stable through planned checks, fixes, security updates and controlled improvements. Larger features, integrations and new product work are managed separately through structured development engagements.';
   const relatedHeading = isVisibilityPage
     ? 'Connect visibility work with the services around it'
     : 'Connect managed support with the services around it';
