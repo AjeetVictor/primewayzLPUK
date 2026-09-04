@@ -105,18 +105,15 @@ export const RemoteItResourceAugmentationPage = () => (
         <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
           <div>
             <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">
-              IT Staff Augmentation & Team Extension
+              Remote IT Resources & Team Extension
             </p>
 
             <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              IT Staff Augmentation Services for UK Businesses
+              Remote IT Resources and Staff Augmentation for UK Businesses
             </h1>
 
             <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
-              Extend your existing technology team with dependable developers, QA professionals,
-              analysts, project coordinators and technical specialists. Primewayz provides flexible
-              staff augmentation with UK working-hour overlap and structured delivery—without
-              immediately expanding permanent headcount.
+              Extend your technology team with remote IT resources including developers, QA professionals, analysts, project coordinators and technical specialists. Primewayz provides structured staff augmentation with UK working-hour overlap, clear ownership and delivery rhythm without immediately expanding permanent headcount.
             </p>
 
             <div className="mt-8 flex flex-col gap-4">

@@ -114,18 +114,18 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => {
     normalisedPathname === '/website-maintenance-subscription-uk';
 
   const eyebrow = isVisibilityPage
-    ? 'Website Optimisation & SEO Support'
+    ? 'Website Visibility & SEO Support'
     : 'Website Maintenance & Technical Support';
   const h1 = isVisibilityPage
-    ? 'Website Optimisation Services for UK Businesses'
+    ? 'Website Visibility Support for UK Businesses'
     : 'Website Maintenance Subscription for UK Businesses';
   const intro = isVisibilityPage
-    ? 'Improve search visibility, technical SEO foundations, website performance, page clarity and enquiry journeys through structured ongoing optimisation and support.'
+    ? 'Improve website visibility, technical SEO foundations, page clarity, performance and enquiry journeys through structured optimisation, conversion improvements and ongoing support.'
     : 'Predictable monthly website maintenance subscription for UK SMEs covering updates, fixes, security monitoring, performance checks and continuous improvements. Get reliable technical ownership without managing every website issue as a separate project.';
   const supportItems = isVisibilityPage ? visibilitySupportItems : maintenanceSupportItems;
   const painPoints = isVisibilityPage ? visibilityPainPoints : maintenancePainPoints;
   const supportHeading = isVisibilityPage
-    ? 'Website optimisation and technical SEO services that improve search visibility and enquiry readiness'
+    ? 'Website visibility support that improves search discovery and enquiry readiness'
     : 'Website maintenance subscription that keeps UK SME websites secure, reliable and improving';
   const supportLead = isVisibilityPage
     ? 'Visibility and conversion work focuses on discovery, clarity, trust and enquiry completion. Related website maintenance can sit alongside this service when ongoing ownership is also required.'

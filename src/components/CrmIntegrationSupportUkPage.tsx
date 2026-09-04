@@ -173,11 +173,11 @@ export function CrmIntegrationSupportUkPage() {
           <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
             <div>
               <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">
-                CRM Setup & Workflow Automation
+                CRM Automation Support
               </p>
 
               <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-                CRM Setup & Automation for UK SMEs
+                CRM Automation Support for UK SMEs
               </h1>
 
               <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
@@ -247,7 +247,7 @@ export function CrmIntegrationSupportUkPage() {
             </p>
 
             <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-              CRM setup and automation services built around real enquiry and follow-up problems
+              CRM automation support built around real enquiry, workflow and follow-up challenges
             </h2>
 
             <p className="mt-4 text-lg leading-8 text-slate-600">
