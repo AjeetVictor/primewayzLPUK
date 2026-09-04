@@ -81,19 +81,19 @@ export const STATIC_PAGE_SEO: Record<string, { title: string; description: strin
         'Your digital systems review request has been received. Primewayz will review the submitted information and identify the most useful next step.',
     },
     '/website-visibility-support': {
-      title: 'Website Optimisation & SEO Services UK | Primewayz',
+      title: 'Website Visibility & SEO Support UK | Primewayz',
       description:
-        'Website optimisation and SEO services for UK businesses covering technical SEO, crawlability, indexability, Search Console fixes, performance and enquiry journeys.',
+        'Website visibility and SEO support for UK businesses covering technical SEO, crawlability, indexability, Search Console fixes, performance and enquiry journeys.',
     },
     '/maintenance': {
-      title: 'Website Maintenance Services UK | Primewayz',
+      title: 'Website Maintenance Subscription UK | Primewayz',
       description:
-        'Website maintenance services for UK businesses with predictable monthly support for updates, fixes, security, performance, monitoring and ongoing technical care.',
+        'Website maintenance subscription for UK businesses with predictable monthly support for updates, fixes, security monitoring, performance checks and ongoing technical care.',
     },
     '/crm-automation-support': {
-      title: 'CRM Setup & Automation for UK SMEs | Primewayz',
+      title: 'CRM Automation Support for UK SMEs | Primewayz',
       description:
-        'CRM setup, automation and integration services for UK SMEs covering website enquiries, lead routing, data migration, follow-up workflows and reporting.',
+        'CRM automation support for UK SMEs covering website enquiries, lead routing, data migration, follow-up workflows, integrations and reporting.',
     },
     '/custom-ai-agent-development-uk': {
       title: 'Custom AI Agent Development Services UK | Primewayz',
@@ -101,9 +101,9 @@ export const STATIC_PAGE_SEO: Record<string, { title: string; description: strin
         'Custom AI agent development for UK businesses, including AI workflow automation, RAG, system integrations, human approvals and controlled agent workflows.',
     },
     '/remote-it-resources': {
-      title: 'IT Staff Augmentation Services UK | Primewayz',
+      title: 'Remote IT Resources & Staff Augmentation UK | Primewayz',
       description:
-        'IT staff augmentation services for UK businesses needing flexible developers, QA professionals, analysts and technical specialists to extend existing delivery teams.',
+        'Remote IT resources and staff augmentation for UK businesses needing developers, QA professionals, analysts and technical specialists to extend existing delivery teams.',
     },
     '/pricing': {
       title: 'Primewayz UK Pricing & Engagement Options',
