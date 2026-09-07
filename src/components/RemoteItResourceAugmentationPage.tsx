@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { SelfAuditCta } from './SelfAuditCta';
 import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
 import { AuthorityProofSection } from './sections/AuthorityProofSection';
+import { REMOTE_IT_COMMERCIAL_POLICY } from '../data/remoteIt/commercialPolicy';
 
 const resourceTypes = [
   'Frontend and backend developers for websites, dashboards, and business tools',
@@ -13,25 +14,12 @@ const resourceTypes = [
   'Project coordination for priorities, checkpoints, updates, and delivery rhythm',
 ];
 
-const engagementModels = [
-  {
-    title: 'Individual resource',
-    text: 'A focused specialist when your internal owner needs dependable additional capacity for a defined stream of work.',
-  },
-  {
-    title: 'Managed delivery pod',
-    text: 'A coordinated mix of delivery roles with clear ownership across development, QA and project coordination.',
-  },
-  {
-    title: 'Dedicated team',
-    text: 'A named remote team for deeper continuity across product work, releases and ongoing technical delivery.',
-  },
-];
+const engagementModels = REMOTE_IT_COMMERCIAL_POLICY.engagementModels;
 
 const benefits = [
   'Add dependable capacity without immediately expanding a permanent in-house team',
-  'Choose individual resource, managed delivery pod or dedicated team arrangements',
-  'Keep delivery continuity with clear ownership and UK working-hour overlap',
+  'Choose part-time specialist, dedicated specialist, managed delivery pod or dedicated team arrangements',
+  'Keep delivery continuity with clear ownership and at least ' + REMOTE_IT_COMMERCIAL_POLICY.ukOverlap.minimumHoursPerScheduledWorkingDay + ' working hours of UK business-day overlap on scheduled working days',
   'Include developers, QA, business analysis, project coordination and technical specialists',
 ];
 
@@ -205,11 +193,12 @@ export const RemoteItResourceAugmentationPage = () => (
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {engagementModels.map((model) => (
               <div key={model.title} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="font-bold text-slate-950">{model.title}</h3>
-                <p className="mt-4 text-sm leading-6 text-slate-600">{model.text}</p>
+                <p className="mt-2 text-sm font-semibold text-emerald-700">{model.allocation}</p>
+                <p className="mt-4 text-sm leading-6 text-slate-600">{model.description}</p>
               </div>
             ))}
           </div>
