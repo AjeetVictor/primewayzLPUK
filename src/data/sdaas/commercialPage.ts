@@ -304,7 +304,7 @@ export const sdaasFaqs = [
   {
     question: 'Can the subscription be paused or cancelled?',
     answer:
-      'Plans normally begin with a short initial commitment—typically three months—to allow proper onboarding and meaningful delivery, then continue on a rolling monthly basis. After the initial term, plans may be paused or cancelled with agreed notice. Active work is brought to a safe stopping point and completed work is handed over. Exact terms are confirmed in the proposal and agreement.',
+      'Plans normally begin with an initial three-month commitment to allow proper onboarding and meaningful delivery, then continue on a rolling monthly basis. After the initial term, plans may be cancelled with 30 days’ written notice. Plans are not automatically pausable; any exceptional pause must be agreed in writing. Active work is brought to a safe stopping point and completed work is handed over. Exact terms are confirmed in the proposal and agreement.',
   },
   {
     question: 'Who owns the source code?',

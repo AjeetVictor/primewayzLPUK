@@ -159,6 +159,7 @@ export const PRICING_PLANS: readonly PricingPlanDefinition[] = [
       'Stability and continuity support',
     ],
     exclusions: ['Active roadmap development unless upgraded'],
+    importantBoundary: 'New Maintenance Mode engagements start with an initial three-month commitment, then continue on a rolling monthly basis with 30 days’ written notice. Existing Primewayz recurring delivery clients stepping down to Maintenance Mode do not automatically restart the initial commitment.',
     active: true,
     displayOrder: 5,
     ctaLabel: 'Discuss Maintenance Support',

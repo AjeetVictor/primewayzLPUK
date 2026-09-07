@@ -152,7 +152,7 @@ export const PRICING_COMMERCIAL_CLARITY_ITEMS = [
   },
   {
     id: 'maintenance',
-    label: 'Move to maintenance anytime',
+    label: 'Step down to maintenance as delivery needs change',
     icon: 'refresh' as const,
   },
 ] as const;

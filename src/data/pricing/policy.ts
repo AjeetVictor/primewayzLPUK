@@ -2,12 +2,12 @@ import type { PricingCommercialPolicy } from './types';
 
 /** Canonical commercial policy — single source of truth for website copy and lead context. */
 export const PRICING_COMMERCIAL_POLICY: PricingCommercialPolicy = {
-  version: '2026.07.1',
-  effectiveFrom: '2026-07-01',
+  version: '2026.09.1',
+  effectiveFrom: '2026-09-07',
   vatTreatment:
     'Displayed prices exclude VAT where applicable. VAT is added to invoices in line with UK tax treatment.',
   invoicingTiming:
-    'Recurring delivery plans are invoiced in advance each billing month. Foundation Sprint and fixed engagements follow the approved proposal schedule.',
+    'Recurring delivery plans and Maintenance Mode are invoiced in advance each billing month. Foundation Sprint and fixed engagements follow the approved proposal schedule. Custom engagements follow the signed proposal or statement of work.',
   paymentTerms: 'Default payment terms are 14 calendar days from invoice date unless a signed agreement states otherwise.',
   capacityDefinition:
     'Monthly capacity includes multidisciplinary delivery time: product management, requirement clarification, UX and UI work, software development, technical configuration, QA and testing, standard deployment activities, delivery documentation, scheduled client meetings, internal delivery coordination directly related to the engagement, and delivery and progress reporting. These activities are included within the plan but consume the plan’s allocated capacity.',
@@ -26,13 +26,13 @@ export const PRICING_COMMERCIAL_POLICY: PricingCommercialPolicy = {
   additionalCapacityPolicy:
     'Additional capacity must be requested and approved before work is performed. It is subject to delivery-team availability and may be supplied as an additional approved block or through a temporary plan upgrade at the applicable commercial rate from the canonical pricing configuration or an approved proposal.',
   minimumCommitment:
-    'Foundation Sprint is a one-off engagement. Recurring delivery plans use an initial three-month commitment unless a signed proposal states otherwise. After the initial commitment, the plan continues on a rolling monthly basis. Custom engagements follow their signed proposal or statement of work.',
+    'Foundation Sprint is a one-off engagement. Recurring delivery plans and new Maintenance Mode engagements use an initial three-month commitment unless a signed proposal states otherwise. After the initial commitment, the plan continues on a rolling monthly basis. Existing Primewayz recurring delivery clients stepping down to Maintenance Mode do not automatically restart the initial commitment; the transition follows the existing commitment and applicable billing cycle. Custom engagements follow their signed proposal or statement of work.',
   cancellationPolicy:
-    'Recurring plans require 30 days’ written notice after any initial minimum commitment. Cancellation becomes effective at the end of the applicable paid billing period. Already invoiced capacity is not retrospectively refunded. Outstanding approved work and invoices remain payable.',
+    'Recurring delivery plans and Maintenance Mode require 30 days’ written notice after any initial minimum commitment. Cancellation becomes effective at the end of the applicable paid billing period. Already invoiced capacity is not retrospectively refunded. Outstanding approved work and invoices remain payable. Custom engagements follow the signed proposal or statement of work.',
   upgradePolicy:
     'Upgrades may take effect during the current billing period when operationally possible, subject to explicit acceptance of any price or capacity adjustment. Otherwise, the upgrade starts with the next billing cycle.',
   downgradePolicy:
-    'Downgrades take effect from the next billing cycle, cannot retrospectively reduce committed or already allocated capacity, and are subject to completion of the initial minimum commitment.',
+    'Downgrades take effect from the next billing cycle, cannot retrospectively reduce committed or already allocated capacity, and are subject to completion of the applicable initial minimum commitment. Moving from a recurring delivery plan to Maintenance Mode does not automatically restart the initial three-month commitment.',
   pausePolicy:
     'Plans are not automatically pausable. A client may downgrade or cancel under the applicable policy. Any exceptional pause must be agreed in writing.',
   clientDelayPolicy:
