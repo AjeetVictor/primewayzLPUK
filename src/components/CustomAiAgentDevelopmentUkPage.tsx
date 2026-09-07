@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { SelfAuditCta } from './SelfAuditCta';
 import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
+import { AI_COMMERCIAL_POLICY } from '../data/ai/commercialPolicy';
 
 const services = [
   {
@@ -399,6 +400,14 @@ export function CustomAiAgentDevelopmentUkPage() {
           </div>
         </div>
       </section>
+
+      <div className="mx-auto max-w-[1200px] px-4 pb-4 sm:px-6 lg:px-8">
+        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
+          <h3 className="text-lg font-bold text-slate-950">AI commercial and production boundaries</h3>
+          <p className="mt-3 text-sm leading-7 text-slate-600">{AI_COMMERCIAL_POLICY.thirdPartyCosts.statement}</p>
+          <p className="mt-3 text-sm leading-7 text-slate-600">{AI_COMMERCIAL_POLICY.productionBoundaries.statement}</p>
+        </div>
+      </div>
 
       <section id="ai-agent-control-areas" className="px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-[1200px] gap-6 lg:grid-cols-3">
