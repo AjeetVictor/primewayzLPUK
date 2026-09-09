@@ -44,11 +44,10 @@ export const Hero = () => {
               <br />
               for <span className="text-brand-cyan">UK SMEs</span>
             </h1>
-            <p className="mt-4 max-w-lg text-base leading-7 text-slate-600 sm:leading-8">
-              Primewayz helps UK SMEs improve and connect the digital systems their businesses depend
-              on—from websites and CRM workflows to software delivery, automation, application support
-              and additional technical capacity.
-            </p>
+            <div className="mt-4 max-w-lg space-y-3 text-base leading-7 text-slate-600 sm:leading-8">
+              <p>Primewayz UK is the UK-focused business vertical of Primewayz Infotech, helping SMEs modernise operations through custom software, CRM and workflow automation, AI agents and agentic workflows, website and application support, SEO and digital visibility, and remote IT resources.</p>
+              <p>We focus on reducing repetitive work, connecting disconnected systems and improving existing technology through practical, controlled delivery.</p>
+            </div>
 
             <DigitalSystemsReviewCtaGroup
               className="mt-7"

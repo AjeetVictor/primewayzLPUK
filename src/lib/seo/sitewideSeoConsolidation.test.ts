@@ -99,14 +99,14 @@ test('homepage hero supporting content represents the full digital systems mix',
   assert.match(hero, /Application support/);
   assert.match(hero, /Development capacity/);
 
-  assert.match(preview, /Digital systems review/);
-  assert.match(preview, /Systems Review Snapshot/);
-  assert.match(preview, /Website & visibility/);
-  assert.match(preview, /CRM & workflows/);
-  assert.match(preview, /Software & applications/);
-  assert.match(preview, /Delivery capacity/);
-  assert.match(preview, /Priority overview/);
-  assert.match(preview, /Recommended next step/);
+  assert.match(preview, /custom-ai-agent-development-uk/);
+  assert.match(preview, /ai-agent-workflow-automation-uk-smes\.webp/);
+  assert.match(preview, /AI agent workflow automation connecting website, CRM, software and business systems for UK SMEs/);
+  assert.match(preview, /width=\{941\}/);
+  assert.match(preview, /height=\{1672\}/);
+  assert.match(preview, /loading=/);
+  assert.match(preview, /fetchPriority=/);
+  assert.doesNotMatch(preview, /Digital systems review|Systems Review Snapshot|Priority overview|Recommended next step/);
 
   assert.doesNotMatch(
     preview,
@@ -114,13 +114,13 @@ test('homepage hero supporting content represents the full digital systems mix',
   );
 });
 
-test('homepage review lenses and website visibility design remain distinct', () => {
+test('homepage AI workflow hero and website visibility design remain distinct', () => {
   const preview = read('src/components/hero/HeroPromoJourney.tsx');
   const websiteProblem = read('src/components/sections/WebsiteProblemSection.tsx');
   const websiteProblemCss = read('src/components/sections/WebsiteProblemSection.css');
 
-  assert.match(preview, /Review lenses/);
-  assert.doesNotMatch(preview, /Review areas/);
+  assert.match(preview, /ai-agent-workflow-automation-uk-smes\.webp/);
+  assert.doesNotMatch(preview, /Review lenses|Review areas|Systems Review Snapshot/);
 
   assert.match(websiteProblem, /What may be holding your website back/);
   assert.match(websiteProblem, /src="\/images\/visibility-creative\.webp"/);

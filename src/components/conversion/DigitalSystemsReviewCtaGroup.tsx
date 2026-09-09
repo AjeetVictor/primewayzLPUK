@@ -169,7 +169,7 @@ export function DigitalSystemsReviewCtaGroup({
               />
             </span>
             <span className="text-xs leading-5 text-slate-600 sm:text-[13px] sm:leading-6">
-              Check how easily customers can find, trust and contact your business — usually in under
+              Check how easily customers can find, trust and contact your business, usually in under
               a minute.
             </span>
             <span className="mt-0.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
