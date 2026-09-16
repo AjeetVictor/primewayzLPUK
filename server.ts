@@ -20,6 +20,7 @@ import {
 import { runDigitalVisibilityCheck } from './src/lib/digitalVisibilityCheck.ts';
 import { runWebPresenceAudit } from './src/lib/audit/runWebPresenceAudit.ts';
 import { AuditInputError } from './src/lib/audit/types.ts';
+import { checkAuditApiRateLimit, isAuditApiKeyAllowed, isAuditApiOriginAllowed } from './src/lib/audit/api/auditApiAccess.ts';
 import { createSharedReport, getSharedReport } from './src/lib/audit/share/shareReportService.ts';
 import { ensureReportStoreReady } from './src/lib/audit/share/reportStore.ts';
 import { isValidPublicToken } from './src/lib/audit/share/publicToken.ts';
@@ -2429,6 +2430,43 @@ app.post('/api/tools/web-presence-audit', async (req, res) => {
     const status = error instanceof AuditInputError ? 400 : 500;
     console.error('Web presence audit error:', error);
     res.status(status).json({ error: message });
+  }
+});
+
+function applyAuditApiCors(req: Request, res: Response): boolean {
+  const origin = req.get('origin');
+  if (!isAuditApiOriginAllowed(origin)) return false;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Primewayz-Audit-Key');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  return true;
+}
+
+app.options('/api/v1/website-audits', (req, res) => {
+  if (!applyAuditApiCors(req, res)) return res.status(403).json({ error: 'Origin is not allowed.' });
+  return res.status(204).end();
+});
+
+app.post('/api/v1/website-audits', async (req, res) => {
+  if (!applyAuditApiCors(req, res)) return res.status(403).json({ error: 'Origin is not allowed.' });
+  if (!isAuditApiKeyAllowed(req.get('x-primewayz-audit-key'))) return res.status(401).json({ error: 'Invalid audit API credentials.' });
+  const rate = checkAuditApiRateLimit(getClientIp(req));
+  if (!rate.allowed) {
+    res.setHeader('Retry-After', String(rate.retryAfterSeconds));
+    return res.status(429).json({ error: 'Too many audit requests. Please try again later.' });
+  }
+  try {
+    const report = await runWebPresenceAudit(req.body);
+    return res.json({ apiVersion: '2026-09-16', provider: 'Primewayz UK', report });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'The website audit could not be completed.';
+    const status = error instanceof AuditInputError ? 400 : 500;
+    console.error('[audit-api] website audit failed');
+    return res.status(status).json({ error: message });
   }
 });
 

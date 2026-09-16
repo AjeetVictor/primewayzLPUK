@@ -895,6 +895,12 @@ export function WebPresenceAuditResult({
   const auditStatus = getAuditStatus(score);
   const statusCopy = report.summary || getAuditStatusCopy(score);
   const priorityFixes = buildRecommendedFocus(checks, CATEGORY_HELP);
+  const detailedFindings = Array.isArray(report.findings) ? report.findings : [];
+  const priorityFindings = detailedFindings
+    .filter((finding) => finding.result !== 'found' && finding.result !== 'not_verified')
+    .sort((a, b) => b.scoreImpact - a.scoreImpact)
+    .slice(0, 8);
+  const externalVerification = Array.isArray(report.externalVerification) ? report.externalVerification : [];
   const primaryOpportunity = priorityFixes[0]?.categoryTitle || getRecommendedRoute(score);
   const performanceCheck = checks.find((item) => item.id === 'performance-ux');
   const diagnosticCategoryResults = DIAGNOSTIC_CATEGORIES.map((category) => {
@@ -986,6 +992,49 @@ export function WebPresenceAuditResult({
           </div>
         </div>
       </section>
+
+      {priorityFindings.length > 0 ? (
+        <section className="rounded-[24px] border border-[#D7E7EC] bg-white p-6 shadow-sm sm:p-8">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">Evidence-led findings</p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight text-[#000A2D]">Highest-impact detected gaps</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
+            Each item is tied to a deterministic website check. Score impact is the raw check-level gap before category weighting.
+          </p>
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            {priorityFindings.map((finding) => (
+              <article key={finding.checkId} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="rounded-full bg-rose-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-rose-800">
+                    {finding.severity} priority
+                  </span>
+                  <span className="text-xs font-bold text-slate-500">Score impact: -{finding.scoreImpact}</span>
+                </div>
+                <h3 className="mt-4 text-base font-black text-[#000A2D]">{finding.finding}</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600"><strong>Why it matters:</strong> {finding.whyItMatters}</p>
+                {finding.recommendation ? (
+                  <p className="mt-3 text-sm leading-6 text-emerald-900"><strong>Recommended action:</strong> {finding.recommendation}</p>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {externalVerification.length > 0 ? (
+        <section className="rounded-[24px] border border-sky-200 bg-sky-50 p-6 sm:p-8">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-800">Not included in the automated score</p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight text-[#000A2D]">External checks still required</h2>
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
+            {externalVerification.map((item) => (
+              <article key={item.id} className="rounded-2xl border border-sky-200 bg-white p-5">
+                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-sky-800">External verification required</p>
+                <h3 className="mt-3 font-black text-[#000A2D]">{item.name}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{item.explanation}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="rounded-[24px] border border-[#D7E7EC] bg-white p-6 shadow-sm sm:p-8">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#007C89]">Recommended focus</p>

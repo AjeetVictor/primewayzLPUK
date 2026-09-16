@@ -43,6 +43,27 @@ export type AuditCheck = {
   recommendations: string[];
 };
 
+export type AuditFindingSeverity = 'critical' | 'high' | 'medium' | 'low' | 'advisory';
+
+export type AuditFinding = {
+  checkId: string;
+  category: AuditCategoryId;
+  finding: string;
+  result: AuditSignalStatus;
+  severity: AuditFindingSeverity;
+  scoreImpact: number;
+  whyItMatters: string;
+  evidence: AuditEvidence[];
+  recommendation?: string;
+};
+
+export type AuditExternalVerification = {
+  id: string;
+  name: string;
+  status: 'external_verification_required';
+  explanation: string;
+};
+
 export type WebPresenceAuditInput = {
   websiteUrl: string;
   businessName: string;
@@ -106,7 +127,7 @@ export type WebPresenceAuditMetadata = {
   pagesCrawled: number;
   pagesAttempted: number;
   generatedAt: string;
-  version: 'web-presence-audit-v1';
+  version: 'web-presence-audit-v1' | 'web-presence-audit-v2';
 };
 
 export type WebPresenceAuditBenchmark = {
@@ -166,6 +187,8 @@ export type WebPresenceAuditReport = {
   classification?: WebPresenceAuditClassification;
   mobileReadiness?: WebPresenceAuditMobileReadiness;
   headReadiness?: WebPresenceAuditHeadReadiness;
+  findings?: AuditFinding[];
+  externalVerification?: AuditExternalVerification[];
 };
 
 export type SharedWebPresenceAuditProfile = Omit<

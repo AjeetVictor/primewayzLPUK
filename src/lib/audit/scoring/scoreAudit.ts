@@ -83,6 +83,7 @@ const NATURAL_PARTIAL_EXPLANATIONS: Partial<Record<AuditCategoryId, string>> = {
 };
 
 function statusForSignals(signals: AuditSignal[], points: number, maxPoints: number): AuditCheckStatus {
+  if (maxPoints === 0) return 'not_verified';
   const verifiable = signals.filter((signal) => signal.status !== 'not_verified');
   if (!verifiable.length) return 'not_verified';
   const ratio = maxPoints > 0 ? points / maxPoints : 0;
@@ -168,11 +169,15 @@ function resolveRecommendations(
  * Core analytics score comes only from scored signals such as GA / tag manager.
  */
 function scoredPointsForCategory(categorySignals: AuditSignal[], maxPoints: number): number {
-  const scored = categorySignals.reduce((total, signal) => {
+  if (maxPoints <= 0) return 0;
+  const scoredSignals = categorySignals.filter((signal) => signal.maxPoints > 0 && signal.status !== 'not_verified');
+  const earned = scoredSignals.reduce((total, signal) => {
     if (signal.maxPoints <= 0) return total;
     return total + signal.points;
   }, 0);
-  return Math.min(maxPoints, scored);
+  const available = scoredSignals.reduce((total, signal) => total + signal.maxPoints, 0);
+  if (available <= 0) return 0;
+  return Number(Math.min(maxPoints, (earned / available) * maxPoints).toFixed(1));
 }
 
 export function scoreAudit(signals: AuditSignal[]): { score: number; checks: AuditCheck[] } {

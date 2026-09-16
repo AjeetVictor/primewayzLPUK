@@ -7,6 +7,7 @@ import { extractSchemaSignals } from './extractors/schemaSignals.ts';
 import { extractSeoSignals } from './extractors/seoSignals.ts';
 import { extractSocialSignals } from './extractors/socialSignals.ts';
 import { extractTrustSignals } from './extractors/trustSignals.ts';
+import { extractBusinessSignals } from './extractors/businessSignals.ts';
 import { NoopSearchPresenceProvider } from './external/noopSearchProvider.ts';
 import { buildAuditReport } from './report/buildAuditReport.ts';
 import {
@@ -166,6 +167,7 @@ export async function runWebPresenceAudit(rawInput: unknown): Promise<WebPresenc
     ...extractWebsiteBasicSignals(context),
     ...extractSeoSignals(context),
     ...extractTrustSignals(context),
+    ...extractBusinessSignals(context),
     ...extractLeadSignals(context),
     ...extractLocalSignals(context),
     ...extractSocialSignals(context),

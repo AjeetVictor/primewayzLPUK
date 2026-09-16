@@ -5,6 +5,8 @@ import type {
   WebPresenceAuditHeadReadiness,
   WebPresenceAuditMobileReadiness,
   WebPresenceAuditReport,
+  AuditFinding,
+  AuditExternalVerification,
 } from '../types.ts';
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -47,6 +49,46 @@ function sanitizeBenchmark(raw: unknown): WebPresenceAuditBenchmark | undefined 
 
 function sanitizeStringArray(raw: unknown): string[] {
   return Array.isArray(raw) ? raw.filter((item): item is string => typeof item === 'string') : [];
+}
+
+function sanitizeFindings(raw: unknown): AuditFinding[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(isObject).flatMap((item) => {
+    const result = item.result;
+    const severity = item.severity;
+    if (
+      typeof item.checkId !== 'string'
+      || typeof item.category !== 'string'
+      || typeof item.finding !== 'string'
+      || typeof item.whyItMatters !== 'string'
+      || !['found', 'partial', 'missing', 'not_verified'].includes(String(result))
+      || !['critical', 'high', 'medium', 'low', 'advisory'].includes(String(severity))
+    ) return [];
+    return [{
+      checkId: item.checkId,
+      category: item.category as AuditFinding['category'],
+      finding: item.finding,
+      result: result as AuditFinding['result'],
+      severity: severity as AuditFinding['severity'],
+      scoreImpact: Math.max(0, Number(item.scoreImpact) || 0),
+      whyItMatters: item.whyItMatters,
+      evidence: Array.isArray(item.evidence) ? item.evidence as AuditFinding['evidence'] : [],
+      recommendation: typeof item.recommendation === 'string' ? item.recommendation : undefined,
+    }];
+  });
+}
+
+function sanitizeExternalVerification(raw: unknown): AuditExternalVerification[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(isObject).flatMap((item) => {
+    if (typeof item.id !== 'string' || typeof item.name !== 'string' || typeof item.explanation !== 'string') return [];
+    return [{
+      id: item.id,
+      name: item.name,
+      status: 'external_verification_required' as const,
+      explanation: item.explanation,
+    }];
+  });
 }
 
 function sanitizeClassification(raw: unknown): WebPresenceAuditClassification | undefined {
@@ -152,6 +194,8 @@ export function sanitizeSharedReport(raw: unknown): SharedWebPresenceAuditReport
   const classification = sanitizeClassification(raw.classification);
   const mobileReadiness = sanitizeMobileReadiness(raw.mobileReadiness);
   const headReadiness = sanitizeHeadReadiness(raw.headReadiness);
+  const findings = sanitizeFindings(raw.findings);
+  const externalVerification = sanitizeExternalVerification(raw.externalVerification);
 
   const report: SharedWebPresenceAuditReport = {
     score: Math.max(0, Math.min(100, Number(raw.score) || 0)),
@@ -185,7 +229,7 @@ export function sanitizeSharedReport(raw: unknown): SharedWebPresenceAuditReport
       pagesCrawled: Number(metadata.pagesCrawled) || 0,
       pagesAttempted: Number(metadata.pagesAttempted) || 0,
       generatedAt: typeof metadata.generatedAt === 'string' ? metadata.generatedAt : new Date().toISOString(),
-      version: 'web-presence-audit-v1',
+      version: metadata.version === 'web-presence-audit-v2' ? 'web-presence-audit-v2' : 'web-presence-audit-v1',
     },
   };
 
@@ -201,6 +245,8 @@ export function sanitizeSharedReport(raw: unknown): SharedWebPresenceAuditReport
   if (headReadiness) {
     report.headReadiness = headReadiness;
   }
+  if (findings.length) report.findings = findings;
+  if (externalVerification.length) report.externalVerification = externalVerification;
 
   return report;
 }

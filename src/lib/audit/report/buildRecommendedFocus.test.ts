@@ -352,7 +352,7 @@ describe('analytics scoring and wording', () => {
     const analytics = checks.find((check) => check.id === 'analytics-readiness');
 
     assert.ok(analytics);
-    assert.equal(analytics.points, 5);
+    assert.equal(analytics.points, 10);
     assert.equal(analytics.status, 'good');
     assert.equal(analytics.recommendations.length, 0);
 

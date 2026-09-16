@@ -4,6 +4,7 @@ import { buildAuditDiagnostics } from './buildAuditDiagnostics.ts';
 import { scoreAudit } from '../scoring/scoreAudit.ts';
 import { getScoreBand, summaryForScore } from '../scoreBands.ts';
 import { buildAuditProfile } from './buildAuditProfile.ts';
+import { buildAuditFindings } from './buildAuditFindings.ts';
 
 export function buildAuditReport(signals: AuditSignal[], context: AuditContext): WebPresenceAuditReport {
   const { crawl, input } = context;
@@ -28,7 +29,7 @@ export function buildAuditReport(signals: AuditSignal[], context: AuditContext):
       pagesCrawled: crawl.pages.filter((page) => page.ok).length,
       pagesAttempted: crawl.pagesAttempted,
       generatedAt: new Date().toISOString(),
-      version: 'web-presence-audit-v1',
+      version: 'web-presence-audit-v2',
     },
     benchmark: buildAuditBenchmark({
       score,
@@ -41,5 +42,26 @@ export function buildAuditReport(signals: AuditSignal[], context: AuditContext):
       websiteUrl: input.websiteUrl,
     }),
     ...diagnostics,
+    findings: buildAuditFindings(signals),
+    externalVerification: [
+      {
+        id: 'competitor-local-search',
+        name: 'Competitor & Local Search Verification',
+        status: 'external_verification_required',
+        explanation: 'Actual ranking competitors, Local Pack, Local Services Ads, Google Guaranteed, review volume, service coverage and location coverage require authorised search or platform data and are not scored by this automated audit.',
+      },
+      {
+        id: 'keyword-demand',
+        name: 'Keyword Demand Validation',
+        status: 'external_verification_required',
+        explanation: 'Search demand and query opportunity require Search Console access or separate keyword research. No keyword volume is fabricated by this report.',
+      },
+      {
+        id: 'conversion-tracking',
+        name: 'Conversion Tracking Verification',
+        status: 'external_verification_required',
+        explanation: 'Visible tags can be detected, but event accuracy and recorded enquiries require authenticated analytics and tag-manager access.',
+      },
+    ],
   };
 }
