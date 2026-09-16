@@ -29,9 +29,13 @@ import { QuotedMessagePreview } from './chat/QuotedMessagePreview';
 import { trackAdminChatReply, trackChatLeadConverted } from '../lib/analytics';
 import { canShowAutopilotTab } from '../lib/autopilot/adminAutopilotCapabilities';
 import {
-  getAutopilotTenantScopeNote,
-  isAutopilotAvailableForAdminTenant,
-} from '../lib/autopilot/adminAutopilotTenantScope';
+  GLOBAL_CHAT_PRESENCE_NOTE,
+  PLATFORM_USER_MANAGEMENT_NOTE,
+  PLATFORM_USER_MANAGEMENT_TITLE,
+  getPlatformUserManagementAvailability,
+  resolveUkModuleAvailability,
+  shouldLeaveUkOnlyAdminTab,
+} from '../lib/admin/adminModuleScope';
 
 interface FormResponse {
   id: number;
@@ -596,7 +600,7 @@ const AdminPanelContent = () => {
   }, [isAuthenticated, adminTenantFilter]);
 
   useEffect(() => {
-    if (adminTenantFilter === 'pw-infotech' && activeTab === 'autopilot') {
+    if (shouldLeaveUkOnlyAdminTab(activeTab, adminTenantFilter)) {
       setActiveTab('forms');
     }
   }, [adminTenantFilter, activeTab]);
@@ -1452,9 +1456,16 @@ const AdminPanelContent = () => {
   }
 
   const canViewOperations = isOperationsRole(user?.role);
-  const canViewAutopilot =
-    canShowAutopilotTab(user?.role) && isAutopilotAvailableForAdminTenant(adminTenantFilter);
-  const autopilotTenantScopeNote = getAutopilotTenantScopeNote(adminTenantFilter);
+  const autopilotScope = resolveUkModuleAvailability('autopilot', adminTenantFilter);
+  const blogCmsScope = resolveUkModuleAvailability('blogCms', adminTenantFilter);
+  const blogCommentsScope = resolveUkModuleAvailability('blogComments', adminTenantFilter);
+  const userManagementScope = getPlatformUserManagementAvailability(adminTenantFilter);
+  const canViewAutopilot = canShowAutopilotTab(user?.role) && autopilotScope.available;
+  const canViewBlogCms = isBlogAuthor(user?.role) && blogCmsScope.available;
+  const canViewBlogComments = canViewOperations && blogCommentsScope.available;
+  const showAutopilotUnavailable = canShowAutopilotTab(user?.role) && !autopilotScope.available;
+  const showBlogCmsUnavailable = isBlogAuthor(user?.role) && !blogCmsScope.available;
+  const showBlogCommentsUnavailable = canViewOperations && !blogCommentsScope.available;
   const availabilityDotClass = chatAvailability?.status === 'online'
     ? 'bg-emerald-500'
     : chatAvailability?.status === 'away'
@@ -1577,7 +1588,7 @@ const AdminPanelContent = () => {
                 )}
               </p>
               <p className="mt-1 text-[11px] text-zinc-400">
-                Global presence — one team services all Primewayz entities.
+                {GLOBAL_CHAT_PRESENCE_NOTE}
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -1813,7 +1824,7 @@ const AdminPanelContent = () => {
                 </Tabs.Trigger>
               </>
             )}
-            {isBlogAuthor(user?.role) && (
+            {canViewBlogCms && (
               <Tabs.Trigger 
                 value="blog"
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
@@ -1823,7 +1834,21 @@ const AdminPanelContent = () => {
                 <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
                   {cmsBlogPosts.length}
                 </span>
+                {blogCmsScope.scopeBadge && (
+                  <span className="ml-1 max-w-[140px] truncate rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-zinc-500">
+                    {blogCmsScope.scopeBadge}
+                  </span>
+                )}
               </Tabs.Trigger>
+            )}
+            {showBlogCmsUnavailable && (
+              <span
+                className="flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-zinc-400"
+                title={blogCmsScope.scopeNote ?? undefined}
+              >
+                <FileText className="w-4 h-4" />
+                {blogCmsScope.unavailableLabel}
+              </span>
             )}
             {canViewAutopilot && (
               <Tabs.Trigger
@@ -1832,23 +1857,23 @@ const AdminPanelContent = () => {
               >
                 <Bot className="w-4 h-4" />
                 Autopilot
-                {autopilotTenantScopeNote && (
+                {autopilotScope.scopeBadge && (
                   <span className="ml-1 max-w-[140px] truncate rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-zinc-500">
-                    UK scoped
+                    {autopilotScope.scopeBadge}
                   </span>
                 )}
               </Tabs.Trigger>
             )}
-            {canShowAutopilotTab(user?.role) && adminTenantFilter === 'pw-infotech' && (
+            {showAutopilotUnavailable && (
               <span
                 className="flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-zinc-400"
-                title={autopilotTenantScopeNote ?? undefined}
+                title={autopilotScope.scopeNote ?? undefined}
               >
                 <Bot className="w-4 h-4" />
-                Autopilot unavailable — configured for Primewayz UK
+                {autopilotScope.unavailableLabel}
               </span>
             )}
-            {canViewOperations && (
+            {canViewBlogComments && (
               <Tabs.Trigger 
                 value="comments"
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
@@ -1858,17 +1883,31 @@ const AdminPanelContent = () => {
                 <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
                   {blogComments.length}
                 </span>
+                {blogCommentsScope.scopeBadge && (
+                  <span className="ml-1 max-w-[140px] truncate rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-zinc-500">
+                    {blogCommentsScope.scopeBadge}
+                  </span>
+                )}
               </Tabs.Trigger>
             )}
-            {isSuperAdmin(user?.role) && (
+            {showBlogCommentsUnavailable && (
+              <span
+                className="flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-zinc-400"
+                title={blogCommentsScope.scopeNote ?? undefined}
+              >
+                <MessageSquare className="w-4 h-4" />
+                {blogCommentsScope.unavailableLabel}
+              </span>
+            )}
+            {isSuperAdmin(user?.role) && userManagementScope.available && (
               <Tabs.Trigger 
                 value="users"
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
               >
                 <Users className="w-4 h-4" />
                 User Management
-                <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
-                  {users.length}
+                <span className="ml-1 max-w-[140px] truncate rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-zinc-500">
+                  {userManagementScope.scopeBadge}
                 </span>
               </Tabs.Trigger>
             )}
@@ -2602,17 +2641,22 @@ const AdminPanelContent = () => {
 
           {canViewAutopilot && (
             <Tabs.Content value="autopilot" className="outline-none">
-              {autopilotTenantScopeNote && (
+              {autopilotScope.scopeNote && (
                 <p className="mb-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  {autopilotTenantScopeNote}
+                  {autopilotScope.scopeNote}
                 </p>
               )}
               <AutopilotPanel role={user?.role} />
             </Tabs.Content>
           )}
 
-          {isBlogAuthor(user?.role) && (
+          {canViewBlogCms && (
             <Tabs.Content value="blog" className="outline-none space-y-8">
+              {blogCmsScope.scopeNote && (
+                <p className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  {blogCmsScope.scopeNote}
+                </p>
+              )}
               <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-8">
                 <div className="bg-white rounded-3xl border border-zinc-200 shadow-sm p-6">
                   <div className="flex items-center justify-between mb-6">
@@ -2843,8 +2887,13 @@ const AdminPanelContent = () => {
             </Tabs.Content>
           )}
 
-          {canViewOperations && (
+          {canViewBlogComments && (
           <Tabs.Content value="comments" className="outline-none">
+            {blogCommentsScope.scopeNote && (
+              <p className="mb-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                {blogCommentsScope.scopeNote}
+              </p>
+            )}
             <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
@@ -2893,8 +2942,12 @@ const AdminPanelContent = () => {
           </Tabs.Content>
           )}
 
-          {isSuperAdmin(user?.role) && (
+          {isSuperAdmin(user?.role) && userManagementScope.available && (
             <Tabs.Content value="users" className="outline-none space-y-8">
+              <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
+                <p className="text-sm font-bold text-zinc-900">{PLATFORM_USER_MANAGEMENT_TITLE}</p>
+                <p className="mt-1 text-xs text-zinc-500">{PLATFORM_USER_MANAGEMENT_NOTE}</p>
+              </div>
               {/* Create User Form */}
               <div className="bg-white p-8 rounded-3xl border border-zinc-200 shadow-sm max-w-2xl">
                 <div className="flex items-center gap-3 mb-6">
