@@ -59,7 +59,29 @@ test('public Chat allowed origins come from active tenant registry', () => {
   assert.ok(origins.includes('https://primewayz.com'));
   assert.ok(origins.includes('https://www.primewayz.com'));
   assert.ok(origins.includes('https://uk.primewayz.com'));
+  assert.ok(origins.includes('https://rentreadbuy.com'));
+  assert.ok(origins.includes('https://www.rentreadbuy.com'));
   assert.equal(origins.includes('https://us.primewayz.com'), false);
+});
+
+test('rentreadbuy.com Chat preflight is allowed', () => {
+  const req = mockReq({ method: 'OPTIONS', path: '/api/chat/session', origin: 'https://rentreadbuy.com' });
+  const res = mockRes();
+  publicChatApiCorsMiddleware(req as never, res as never, () => {
+    assert.fail('should not continue after preflight');
+  });
+  assert.equal(res.statusCode, 204);
+  assert.equal(res.headers.get('Access-Control-Allow-Origin'), 'https://rentreadbuy.com');
+});
+
+test('www.rentreadbuy.com Chat preflight is allowed', () => {
+  const req = mockReq({ method: 'OPTIONS', path: '/api/chat/respond', origin: 'https://www.rentreadbuy.com' });
+  const res = mockRes();
+  publicChatApiCorsMiddleware(req as never, res as never, () => {
+    assert.fail('should not continue after preflight');
+  });
+  assert.equal(res.statusCode, 204);
+  assert.equal(res.headers.get('Access-Control-Allow-Origin'), 'https://www.rentreadbuy.com');
 });
 
 test('primewayz.com Chat preflight is allowed', () => {

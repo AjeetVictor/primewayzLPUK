@@ -1206,3 +1206,137 @@ model SeoPageConversionDaily {
   @@index([bucketKeyHash, metricDate])
   @@index([tenantId, metricDate])
 }
+
+// --- Scheduling (provider-neutral; Calendly is provider #1) ---
+enum SchedulingProvider {
+  CALENDLY
+  CAL_COM
+  MICROSOFT_BOOKINGS
+  GOOGLE_CALENDAR
+  CUSTOM
+}
+
+enum SchedulingConnectionStatus {
+  active
+  inactive
+  needs_credentials
+  error
+}
+
+enum SchedulingWebhookStatus {
+  received
+  processed
+  ignored
+  rejected
+  error
+}
+
+enum SchedulingAppointmentStatus {
+  scheduled
+  cancelled
+  completed
+  no_show
+  pending
+}
+
+/**
+ * Tenant-owned scheduling connection metadata.
+ * OAuth secrets must NOT be stored in plaintext — use encrypted columns or env-backed credentials.
+ * Current UK Calendly remains environment-backed; rows are additive for future OAuth / multi-tenant config.
+ */
+model SchedulingConnection {
+  id                       String                     @id @default(uuid())
+  connectionKey            String                     @unique @db.VarChar(64)
+  tenantId                 String                     @db.VarChar(32)
+  provider                 SchedulingProvider
+  status                   SchedulingConnectionStatus @default(inactive)
+  providerOrganizationUri  String?                    @db.VarChar(512)
+  providerUserUri          String?                    @db.VarChar(512)
+  /// Env var name for webhook signing secret — never the secret value.
+  webhookSigningSecretEnv  String?                    @db.VarChar(128)
+  /// Env var name for future OAuth client credentials reference.
+  credentialEnvPrefix      String?                    @db.VarChar(128)
+  clientSideAnalyticsOwned Boolean                    @default(false)
+  /// Reserved for future AES-GCM ciphertext (do not write raw tokens).
+  oauthRefreshCiphertext   String?                    @db.Text
+  oauthRefreshIv           String?                    @db.VarChar(64)
+  oauthRefreshAuthTag      String?                    @db.VarChar(64)
+  oauthTokenKeyVersion     Int?
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  eventTypes               SchedulingEventType[]
+
+  @@index([tenantId, status])
+  @@index([provider, providerOrganizationUri])
+  @@index([provider, providerUserUri])
+}
+
+model SchedulingEventType {
+  id                   String               @id @default(uuid())
+  connectionId         String
+  connection           SchedulingConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  tenantId             String               @db.VarChar(32)
+  key                  String               @db.VarChar(64)
+  label                String               @db.VarChar(191)
+  active               Boolean              @default(true)
+  providerEventTypeUri String?              @db.VarChar(512)
+  publicBookingUrl     String?              @db.VarChar(1024)
+  metadataJson         String?              @db.Text
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  @@unique([connectionId, key])
+  @@index([tenantId, active])
+}
+
+/**
+ * Provider-confirmed appointments (distinct from ChatAppointmentRequest soft booking intents).
+ * connectionKey is a server-side ownership reference (env registry and/or SchedulingConnection row).
+ * No FK to SchedulingConnection so env-backed UK Calendly works before DB connection rows exist.
+ */
+model SchedulingAppointment {
+  id                 String                      @id @default(uuid())
+  tenantId           String                      @db.VarChar(32)
+  connectionKey      String                      @db.VarChar(64)
+  provider           SchedulingProvider
+  providerEventId    String                      @db.VarChar(512)
+  providerInviteeId  String?                     @db.VarChar(512)
+  eventTypeKey       String                      @db.VarChar(64)
+  status             SchedulingAppointmentStatus @default(pending)
+  scheduledStart     DateTime?
+  scheduledEnd       DateTime?
+  inviteeName        String?                     @db.VarChar(191)
+  inviteeEmail       String?                     @db.VarChar(320)
+  sourceSite         String?                     @db.VarChar(191)
+  sourceChannel      String?                     @db.VarChar(64)
+  chatSessionId      String?                     @db.VarChar(64)
+  conversionEmitted  Boolean                     @default(false)
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+  webhookEvents      SchedulingWebhookEvent[]
+
+  @@unique([provider, providerEventId])
+  @@index([tenantId, scheduledStart])
+  @@index([chatSessionId])
+  @@index([connectionKey])
+}
+
+model SchedulingWebhookEvent {
+  id              String                  @id @default(uuid())
+  provider        SchedulingProvider
+  providerEventId String                  @db.VarChar(512)
+  tenantId        String                  @db.VarChar(32)
+  connectionKey   String?                 @db.VarChar(64)
+  eventType       String                  @db.VarChar(128)
+  status          SchedulingWebhookStatus @default(received)
+  appointmentId   String?
+  appointment     SchedulingAppointment?  @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  errorSummary    String?                 @db.VarChar(512)
+  receivedAt      DateTime                @default(now())
+  processedAt     DateTime?
+
+  @@unique([provider, providerEventId])
+  @@index([tenantId, receivedAt])
+  @@index([status, receivedAt])
+  @@index([connectionKey])
+}

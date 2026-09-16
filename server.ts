@@ -67,11 +67,18 @@ import {
   shouldLogRouteClassification,
 } from './src/lib/serverRouteClassification.ts';
 import type { NextFunction, Request, Response } from 'express';
-import { resolveSourceContext, SourceResolutionError, assertChatSessionTenantAccess } from './src/lib/platform/sourceResolver.ts';
+import { resolveSourceContext, SourceResolutionError, assertChatSessionTenantAccess, assertTenantCapability } from './src/lib/platform/sourceResolver.ts';
 import { toPersistedSourceContext, type PrimewayzSourceChannel, type SourceContext } from './src/lib/platform/sourceContext.ts';
 import { resolveAdminTenantFilter } from './src/lib/platform/adminTenantFilter.ts';
+import { getTenantDisplayName } from './src/lib/platform/tenantRegistry.ts';
+import { buildPublicPlatformCapabilities } from './src/lib/platform/publicCapabilities.ts';
+import { publicPlatformApiCorsMiddleware } from './src/lib/platform/publicPlatformApiCors.ts';
 import { getAdminNotificationSummary } from './src/lib/admin/adminNotificationSummaryService.ts';
 import { publicChatApiCorsMiddleware } from './src/lib/chat/publicChatApiCors.ts';
+import {
+  getSchedulingAvailability,
+  processCalendlyWebhookEvent,
+} from './src/lib/scheduling/index.ts';
 import type { BlogCategory, BlogPost, BreadcrumbItem } from './src/data/blog/types.ts';
 import {
   LEGACY_ROUTE_REDIRECTS,
@@ -384,7 +391,7 @@ function requireRole(canAccess: (role?: string) => boolean) {
   };
 }
 
-async function getChatAvailabilityPayload() {
+async function getChatAvailabilityPayload(source?: SourceContext) {
   let setting = null;
   let latestPresence = null;
   try {
@@ -402,6 +409,16 @@ async function getChatAvailabilityPayload() {
   const mode = (setting?.mode || 'auto') as 'auto' | 'online' | 'away' | 'offline';
   const computedStatus = hasActiveAdmin ? 'online' : 'assistant';
   const status = mode === 'auto' ? computedStatus : mode === 'online' ? 'online' : mode;
+  // Admin presence endpoints may omit source — never default canBookCall true (tenant leak risk).
+  const scheduling = source
+    ? getSchedulingAvailability(source)
+    : {
+        enabled: false,
+        canBookFromChat: false,
+        publicBookingUrl: null as string | null,
+        provider: null as string | null,
+        eventTypeKey: null as string | null,
+      };
 
   return {
     status,
@@ -410,7 +427,14 @@ async function getChatAvailabilityPayload() {
     responseExpectation: status === 'online' ? 'Usually replies shortly.' : 'We usually respond within one business day.',
     businessHours: 'Mon-Fri, UK business hours',
     canAcceptMessages: status !== 'offline',
-    canBookCall: true,
+    canBookCall: scheduling.canBookFromChat,
+    tenantId: source?.tenantId ?? null,
+    scheduling: {
+      enabled: scheduling.enabled,
+      provider: scheduling.provider,
+      eventTypeKey: scheduling.eventTypeKey,
+      publicBookingUrl: scheduling.publicBookingUrl,
+    },
     serverTime: new Date().toISOString(),
     mode,
     computedStatus,
@@ -1743,7 +1767,16 @@ if (process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true') {
   app.set('trust proxy', 1);
 }
 warnIfProductionProxyAttributionShared();
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      const url = req.url || '';
+      if (url.startsWith('/api/scheduling/webhooks/')) {
+        (req as Request & { rawBody?: string }).rawBody = buf.toString('utf8');
+      }
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: true }));
 
 // --- API routes: keep these above static files and frontend catch-all ---
@@ -2307,6 +2340,7 @@ registerAutopilotAdminRoutes({
 app.post('/api/contact', async (req, res) => {
   try {
     const sourceContext = resolveRequestSource(req, 'contact-form');
+    assertTenantCapability(sourceContext, 'forms');
     const { name, email, message, phone } = req.body;
     if (!name || !email || !message) {
       return res.status(400).json({ error: 'Name, email, and message are required' });
@@ -2344,6 +2378,7 @@ app.post('/api/contact', async (req, res) => {
 app.post('/api/digital-systems-review', async (req, res) => {
   try {
     const sourceContext = resolveRequestSource(req, 'digital-systems-review');
+    assertTenantCapability(sourceContext, 'forms');
     assertJsonContentType(
       typeof req.headers['content-type'] === 'string' ? req.headers['content-type'] : undefined,
     );
@@ -2468,8 +2503,17 @@ app.post('/api/v1/website-audits', async (req, res) => {
   }
   try {
     const sourceContext = resolveRequestSource(req, 'website-audit');
+    assertTenantCapability(sourceContext, 'audit');
     const report = await runWebPresenceAudit(req.body);
-    return res.json({ apiVersion: '2026-09-16', provider: 'Primewayz UK', source: { entity: sourceContext.tenantId === 'pw-uk' ? 'Primewayz UK' : 'Primewayz Infotech', market: sourceContext.market }, report });
+    return res.json({
+      apiVersion: '2026-09-16',
+      provider: 'Primewayz UK',
+      source: {
+        entity: getTenantDisplayName(sourceContext.tenantId),
+        market: sourceContext.market,
+      },
+      report,
+    });
   } catch (error) {
     const sourceFailure = sourceResolutionFailure(res, error);
     if (sourceFailure) return sourceFailure;
@@ -2576,9 +2620,83 @@ app.post('/api/tools/digital-visibility-check/lead', async (req, res) => {
 
 // Visitor Chat CORS only (/api/chat/*). Does not apply to /api/admin/*.
 app.use(publicChatApiCorsMiddleware);
+// Public platform + scheduling availability CORS (not webhooks).
+app.use(publicPlatformApiCorsMiddleware);
 
-app.get('/api/chat/availability', async (_req, res) => {
-  res.json(await getChatAvailabilityPayload());
+app.get('/api/platform/capabilities', (req, res) => {
+  try {
+    const sourceContext = resolveRequestSource(req, 'other');
+    return res.json(buildPublicPlatformCapabilities(sourceContext));
+  } catch (error) {
+    return sourceResolutionFailure(res, error) ?? res.status(500).json({ error: 'Failed to resolve platform capabilities' });
+  }
+});
+
+app.get('/api/scheduling/availability', (req, res) => {
+  try {
+    const sourceContext = resolveRequestSource(req, 'scheduling');
+    const availability = getSchedulingAvailability(sourceContext);
+    return res.json({
+      tenant: sourceContext.tenantId,
+      enabled: availability.enabled,
+      provider: availability.provider,
+      eventTypeKey: availability.eventTypeKey,
+      publicBookingUrl: availability.publicBookingUrl,
+      canBookFromChat: availability.canBookFromChat,
+    });
+  } catch (error) {
+    return sourceResolutionFailure(res, error) ?? res.status(500).json({ error: 'Failed to resolve scheduling availability' });
+  }
+});
+
+app.post('/api/scheduling/webhooks/calendly', async (req, res) => {
+  try {
+    // Signature verification requires the exact raw HTTP body captured by express.json verify.
+    // Never fall back to JSON.stringify(req.body) — re-serialization can change the payload.
+    const rawBody = (req as Request & { rawBody?: string }).rawBody;
+    if (typeof rawBody !== 'string') {
+      return res.status(400).json({ error: 'Missing raw webhook body for signature verification.' });
+    }
+    let body: unknown = req.body;
+    if (!body || typeof body !== 'object') {
+      try {
+        body = JSON.parse(rawBody);
+      } catch {
+        return res.status(400).json({ error: 'Invalid webhook JSON body.' });
+      }
+    }
+    const result = await processCalendlyWebhookEvent({
+      prisma,
+      rawBody,
+      signatureHeader: req.get('Calendly-Webhook-Signature'),
+      body: body as never,
+    });
+    if (result.status === 'rejected') {
+      return res.status(403).json({ error: result.reason });
+    }
+    if (result.status === 'ignored') {
+      return res.status(202).json({ status: 'ignored', reason: result.reason });
+    }
+    return res.status(200).json({
+      status: result.status,
+      tenantId: result.tenantId,
+      appointmentId: result.appointmentId,
+      duplicate: result.duplicate,
+    });
+  } catch (error) {
+    console.error('[scheduling/calendly] webhook failed', error instanceof Error ? error.message : error);
+    return res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
+
+app.get('/api/chat/availability', async (req, res) => {
+  try {
+    const sourceContext = resolveRequestSource(req, 'chat');
+    assertTenantCapability(sourceContext, 'chat');
+    res.json(await getChatAvailabilityPayload(sourceContext));
+  } catch (error) {
+    return sourceResolutionFailure(res, error) ?? res.status(500).json({ error: 'Failed to load chat availability' });
+  }
 });
 
 app.post('/api/chat/session', async (req, res) => {
@@ -2587,6 +2705,7 @@ app.post('/api/chat/session', async (req, res) => {
 
   try {
     const sourceContext = resolveRequestSource(req, 'chat');
+    assertTenantCapability(sourceContext, 'chat');
     await assertChatSessionSource(sessionId, sourceContext);
     const sourceData = buildSessionSourceData(req.body);
     const session = await prisma.chatSession.upsert({
@@ -2631,6 +2750,7 @@ app.post('/api/chat/heartbeat', async (req, res) => {
 
   try {
     const sourceContext = resolveRequestSource(req, 'chat');
+    assertTenantCapability(sourceContext, 'chat');
     await assertChatSessionSource(sessionId, sourceContext);
     const sourceData = buildSessionSourceData(req.body);
     const session = await prisma.chatSession.upsert({
@@ -2680,6 +2800,7 @@ app.post('/api/chat/heartbeat', async (req, res) => {
 app.get('/api/chat/:sessionId', async (req, res) => {
   try {
     const sourceContext = resolveRequestSource(req, 'chat');
+    assertTenantCapability(sourceContext, 'chat');
     await assertChatSessionSource(req.params.sessionId, sourceContext);
     const messages = await prisma.chatMessage.findMany({
       where: { sessionId: req.params.sessionId },
@@ -2717,7 +2838,10 @@ app.post('/api/chat', async (req: AdminRequest, res) => {
     const sourceContext = adminUser
       ? null
       : resolveRequestSource(req, 'chat');
-    if (sourceContext) await assertChatSessionSource(sessionId, sourceContext);
+    if (sourceContext) {
+      assertTenantCapability(sourceContext, 'chat');
+      await assertChatSessionSource(sessionId, sourceContext);
+    }
 
     await prisma.chatSession.upsert({
       where: { id: sessionId },
@@ -2764,6 +2888,7 @@ app.post('/api/chat/respond', async (req, res) => {
 
   try {
     const sourceContext = resolveRequestSource(req, 'chat');
+    assertTenantCapability(sourceContext, 'chat');
     await assertChatSessionSource(sessionId, sourceContext);
     await prisma.chatSession.upsert({
       where: { id: sessionId },
@@ -2803,7 +2928,7 @@ app.post('/api/chat/respond', async (req, res) => {
     return res.json({
       userMessage: formatVisitorMessage(userMessage),
       botMessage: formatVisitorMessage(botMessage),
-      availability: await getChatAvailabilityPayload(),
+      availability: await getChatAvailabilityPayload(sourceContext),
     });
   } catch (err) {
     const sourceFailure = sourceResolutionFailure(res, err);
@@ -2824,6 +2949,12 @@ app.post('/api/chat/appointments', async (req, res) => {
 
   try {
     const sourceContext = resolveRequestSource(req, 'booking');
+    assertTenantCapability(sourceContext, 'chat');
+    assertTenantCapability(sourceContext, 'scheduling');
+    const scheduling = getSchedulingAvailability(sourceContext);
+    if (!scheduling.canBookFromChat) {
+      return res.status(403).json({ error: 'Scheduling is not available for this tenant.' });
+    }
     await assertChatSessionSource(sessionId, sourceContext);
     await prisma.chatSession.upsert({
       where: { id: sessionId },

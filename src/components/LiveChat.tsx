@@ -42,6 +42,7 @@ import {
   getVisitorChatIntent,
   type VisitorChatIntentKey,
 } from '../lib/chat/visitorChatIntents';
+import { resolveChatBookingDestination } from '../lib/chat/resolveChatBookingDestination';
 import { trackVisitorChatEvent } from '../lib/chat/visitorChatAnalytics';
 import {
   DEFAULT_CHAT_AVAILABILITY,
@@ -222,6 +223,11 @@ export const LiveChat = () => {
     serviceAvailable,
   });
   const teamAway = isTeamAwayStatus(availabilityStatus);
+  const bookingHref = resolveChatBookingDestination({
+    tenantId: availability.tenantId,
+    canBookCall: availability.canBookCall,
+    publicBookingUrl: availability.scheduling?.publicBookingUrl ?? null,
+  });
   const launcherAriaLabel = buildVisitorLauncherAriaLabel({
     presence: presenceTone,
     unreadCount,
@@ -234,7 +240,7 @@ export const LiveChat = () => {
   const hasUploading = hasUploadingAttachment(pendingAttachments);
   const hasFailed = hasFailedAttachment(pendingAttachments);
   const hasBlocking = hasBlockingAttachment(pendingAttachments);
-  const showComposerBooking = !showRecommendations && !showAwayFollowUp;
+  const showComposerBooking = Boolean(bookingHref) && !showRecommendations && !showAwayFollowUp;
   const prefersReducedMotion =
     typeof window !== 'undefined'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1206,6 +1212,7 @@ export const LiveChat = () => {
 {showAwayFollowUp && teamAway && !showRecommendations && (
                 <ChatAvailabilityNotice
                   serviceArea={selectedIntent?.serviceArea}
+                  bookingHref={bookingHref}
                   onLeaveMessage={() => {
                     setShowAwayFollowUp(true);
                     setShowLeadForm(true);
@@ -1251,6 +1258,7 @@ export const LiveChat = () => {
               {selectedIntent && showRecommendations && (
                 <ChatRecommendationPanel
                   intent={selectedIntent}
+                  bookingHref={bookingHref}
                   onReviewClick={() => {
                     trackVisitorChatEvent('chat_review_started', {
                       route: location.pathname,

@@ -1,10 +1,12 @@
 /**
  * Typed visitor intent registry for Phase 2F-1 chat guidance.
  * No free-text classification — intents are explicit visitor choices only.
+ *
+ * Booking destinations are NOT hardcoded here — resolve via
+ * resolveChatBookingDestination() from tenant-aware Scheduling availability.
  */
 
 import {
-  DISCOVERY_CALL_DESTINATION,
   FREE_REVIEW_CTA_LABEL,
   DISCOVERY_CALL_CTA_LABEL,
   buildFreeReviewCtaUrl,
@@ -39,7 +41,6 @@ export type VisitorChatIntentDefinition = {
   recommendationTitle: string;
   recommendationExplanation: string;
   reviewHref: string;
-  bookingHref: string;
 };
 
 const INTENT_SERVICE_AREA: Record<VisitorChatIntentKey, FreeReviewServiceArea> = {
@@ -190,7 +191,6 @@ function buildIntent(key: VisitorChatIntentKey): VisitorChatIntentDefinition {
     recommendationTitle: recommendation.title,
     recommendationExplanation: recommendation.explanation,
     reviewHref: buildFreeReviewCtaUrl('chat_widget', serviceArea),
-    bookingHref: DISCOVERY_CALL_DESTINATION,
   };
 }
 
@@ -243,24 +243,27 @@ export type VisitorChatRecommendationActions = {
   reviewLabel: string;
   serviceHref: string;
   serviceLabel: string;
-  bookingHref: string;
+  bookingHref: string | null;
   bookingLabel: string;
+  showBooking: boolean;
 };
 
 export function buildVisitorChatRecommendationActions(
   intent: VisitorChatIntentDefinition,
+  bookingHref: string | null = null,
 ): VisitorChatRecommendationActions {
   return {
     reviewHref: intent.reviewHref,
     reviewLabel: VISITOR_CHAT_REVIEW_ACTION_LABEL,
     serviceHref: intent.serviceRoute,
     serviceLabel: intent.serviceLinkLabel,
-    bookingHref: intent.bookingHref,
+    bookingHref,
     bookingLabel: VISITOR_CHAT_BOOKING_ACTION_LABEL,
+    showBooking: Boolean(bookingHref),
   };
 }
 
-/** Exactly three primary next-step actions — never more. */
+/** Exactly three primary next-step actions when booking is available — never more. */
 export function listRecommendationActionTypes(): readonly [
   'review',
   'service',

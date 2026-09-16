@@ -33,7 +33,10 @@ import {
   PLATFORM_USER_MANAGEMENT_NOTE,
   PLATFORM_USER_MANAGEMENT_TITLE,
   getPlatformUserManagementAvailability,
+  getPreferredAdminOperationsTab,
+  resolveTenantCapabilityModuleAvailability,
   resolveUkModuleAvailability,
+  shouldLeaveCapabilityDisabledAdminTab,
   shouldLeaveUkOnlyAdminTab,
 } from '../lib/admin/adminModuleScope';
 
@@ -299,7 +302,7 @@ const isSuperAdmin = (role?: string) => role === 'super_admin' || role === 'admi
 const isBlogEditor = (role?: string) => isSuperAdmin(role) || role === 'blog_editor' || role === 'editor';
 const isBlogAuthor = (role?: string) => isBlogEditor(role) || role === 'blog_author';
 const isOperationsRole = (role?: string) => isSuperAdmin(role) || role === 'editor' || role === 'viewer';
-const getDefaultAdminTab = (role?: string) => isOperationsRole(role) ? 'forms' : 'blog';
+const getDefaultAdminTab = (role?: string) => isOperationsRole(role) ? 'leads' : 'blog';
 
 const adminRequest = (path: string, init: RequestInit = {}) => {
   return fetch(apiUrl(path), {
@@ -601,7 +604,13 @@ const AdminPanelContent = () => {
 
   useEffect(() => {
     if (shouldLeaveUkOnlyAdminTab(activeTab, adminTenantFilter)) {
-      setActiveTab('forms');
+      setActiveTab(getPreferredAdminOperationsTab(adminTenantFilter));
+    }
+  }, [adminTenantFilter, activeTab]);
+
+  useEffect(() => {
+    if (shouldLeaveCapabilityDisabledAdminTab(activeTab, adminTenantFilter)) {
+      setActiveTab(getPreferredAdminOperationsTab(adminTenantFilter));
     }
   }, [adminTenantFilter, activeTab]);
 
@@ -1460,12 +1469,30 @@ const AdminPanelContent = () => {
   const blogCmsScope = resolveUkModuleAvailability('blogCms', adminTenantFilter);
   const blogCommentsScope = resolveUkModuleAvailability('blogComments', adminTenantFilter);
   const userManagementScope = getPlatformUserManagementAvailability(adminTenantFilter);
+  const formsScope = resolveTenantCapabilityModuleAvailability('forms', adminTenantFilter);
+  const auditLeadsScope = resolveTenantCapabilityModuleAvailability('auditLeads', adminTenantFilter);
+  const conversionScope = resolveTenantCapabilityModuleAvailability('conversion', adminTenantFilter);
+  const chatLeadsScope = resolveTenantCapabilityModuleAvailability('chatLeads', adminTenantFilter);
+  const chatHistoryScope = resolveTenantCapabilityModuleAvailability('chatHistory', adminTenantFilter);
+  const schedulingScope = resolveTenantCapabilityModuleAvailability('scheduling', adminTenantFilter);
   const canViewAutopilot = canShowAutopilotTab(user?.role) && autopilotScope.available;
   const canViewBlogCms = isBlogAuthor(user?.role) && blogCmsScope.available;
   const canViewBlogComments = canViewOperations && blogCommentsScope.available;
+  const canViewForms = canViewOperations && formsScope.available;
+  const canViewAuditLeads = canViewOperations && auditLeadsScope.available;
+  const canViewConversion = canViewOperations && conversionScope.available;
+  const canViewChatLeads = canViewOperations && chatLeadsScope.available;
+  const canViewChatHistory = canViewOperations && chatHistoryScope.available;
   const showAutopilotUnavailable = canShowAutopilotTab(user?.role) && !autopilotScope.available;
   const showBlogCmsUnavailable = isBlogAuthor(user?.role) && !blogCmsScope.available;
   const showBlogCommentsUnavailable = canViewOperations && !blogCommentsScope.available;
+  const showFormsUnavailable = canViewOperations && !formsScope.available;
+  const showAuditLeadsUnavailable = canViewOperations && !auditLeadsScope.available;
+  const showConversionUnavailable = canViewOperations && !conversionScope.available;
+  const showSchedulingCapabilityNote =
+    canViewOperations &&
+    schedulingScope.available &&
+    schedulingScope.configurationActive === false;
   const availabilityDotClass = chatAvailability?.status === 'online'
     ? 'bg-emerald-500'
     : chatAvailability?.status === 'away'
@@ -1646,6 +1673,7 @@ const AdminPanelContent = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:min-w-[620px]">
+                {canViewForms ? (
                 <button
                   type="button"
                   onClick={() => setActiveTab('forms')}
@@ -1654,7 +1682,9 @@ const AdminPanelContent = () => {
                   <span className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400">Forms today</span>
                   <span className="mt-1 block text-lg font-black text-zinc-900">{notificationCounts?.todayContactForms ?? '-'}</span>
                 </button>
+                ) : null}
 
+                {canViewChatLeads ? (
                 <button
                   type="button"
                   onClick={() => setActiveTab('leads')}
@@ -1663,7 +1693,9 @@ const AdminPanelContent = () => {
                   <span className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400">New chats</span>
                   <span className="mt-1 block text-lg font-black text-zinc-900">{notificationCounts?.todayChatSessions ?? '-'}</span>
                 </button>
+                ) : null}
 
+                {canViewChatHistory ? (
                 <button
                   type="button"
                   onClick={() => setActiveTab('chats')}
@@ -1674,7 +1706,9 @@ const AdminPanelContent = () => {
                     {notificationCounts?.todayUnansweredAlerts ?? '-'}
                   </span>
                 </button>
+                ) : null}
 
+                {canViewChatHistory ? (
                 <button
                   type="button"
                   onClick={() => setActiveTab('chats')}
@@ -1685,6 +1719,7 @@ const AdminPanelContent = () => {
                     {notificationCounts?.todayEmailFailedAlerts ?? '-'}
                   </span>
                 </button>
+                ) : null}
               </div>
             </div>
 
@@ -1740,11 +1775,13 @@ const AdminPanelContent = () => {
               </div>
             )}
 
-            <div className="mt-3 flex flex-col gap-2 border-t border-white/70 pt-3 text-xs text-zinc-600 md:flex-row md:items-center md:justify-between">
+              <div className="mt-3 flex flex-col gap-2 border-t border-white/70 pt-3 text-xs text-zinc-600 md:flex-row md:items-center md:justify-between">
               <div className="flex flex-wrap gap-2">
+                {schedulingScope.available && schedulingScope.configurationActive !== false ? (
                 <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold">
                   Pending appointments: {notificationCounts?.pendingAppointments ?? '-'}
                 </span>
+                ) : null}
                 <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold">
                   Alert emails sent: {notificationCounts?.todayEmailSentAlerts ?? '-'}
                 </span>
@@ -1778,6 +1815,7 @@ const AdminPanelContent = () => {
           <Tabs.List className="flex flex-wrap gap-2 p-1 bg-zinc-200/50 rounded-2xl w-fit">
             {canViewOperations && (
               <>
+                {canViewForms && (
                 <Tabs.Trigger 
                   value="forms"
                   className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
@@ -1788,6 +1826,17 @@ const AdminPanelContent = () => {
                     {formResponses.length + toolLeads.length}
                   </span>
                 </Tabs.Trigger>
+                )}
+                {showFormsUnavailable && (
+                  <span
+                    className="flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-zinc-400"
+                    title={formsScope.scopeNote ?? undefined}
+                  >
+                    <ClipboardList className="w-4 h-4" />
+                    {formsScope.unavailableLabel}
+                  </span>
+                )}
+                {canViewAuditLeads && (
                 <Tabs.Trigger
                   value="audit-leads"
                   className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
@@ -1795,6 +1844,17 @@ const AdminPanelContent = () => {
                   <Gauge className="w-4 h-4" />
                   Audit Leads
                 </Tabs.Trigger>
+                )}
+                {showAuditLeadsUnavailable && (
+                  <span
+                    className="flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-zinc-400"
+                    title={auditLeadsScope.scopeNote ?? undefined}
+                  >
+                    <Gauge className="w-4 h-4" />
+                    {auditLeadsScope.unavailableLabel}
+                  </span>
+                )}
+                {canViewConversion && (
                 <Tabs.Trigger
                   value="conversion"
                   className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
@@ -1802,6 +1862,17 @@ const AdminPanelContent = () => {
                   <LayoutDashboard className="w-4 h-4" />
                   Conversion
                 </Tabs.Trigger>
+                )}
+                {showConversionUnavailable && (
+                  <span
+                    className="flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-zinc-400"
+                    title={conversionScope.scopeNote ?? undefined}
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                    {conversionScope.unavailableLabel}
+                  </span>
+                )}
+                {canViewChatLeads && (
                 <Tabs.Trigger 
                   value="leads"
                   className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
@@ -1812,6 +1883,8 @@ const AdminPanelContent = () => {
                     {chatSessions.length}
                   </span>
                 </Tabs.Trigger>
+                )}
+                {canViewChatHistory && (
                 <Tabs.Trigger 
                   value="chats"
                   className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
@@ -1822,6 +1895,16 @@ const AdminPanelContent = () => {
                     {chatConversations.length}
                   </span>
                 </Tabs.Trigger>
+                )}
+                {showSchedulingCapabilityNote && (
+                  <span
+                    className="flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-zinc-400"
+                    title={schedulingScope.scopeNote ?? undefined}
+                  >
+                    <CalendarClock className="w-4 h-4" />
+                    Scheduling — configuration not active
+                  </span>
+                )}
               </>
             )}
             {canViewBlogCms && (
@@ -1915,6 +1998,7 @@ const AdminPanelContent = () => {
 
           {canViewOperations && (
             <>
+          {canViewForms && (
           <Tabs.Content value="forms" className="outline-none">
             <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
@@ -2047,7 +2131,9 @@ const AdminPanelContent = () => {
               </div>
             </div>
           </Tabs.Content>
+          )}
 
+          {canViewAuditLeads && (
           <Tabs.Content value="audit-leads" className="outline-none">
             <AdminAuditLeadsPanel
               globalSearch={searchTerm}
@@ -2055,11 +2141,15 @@ const AdminPanelContent = () => {
               onTenantFilterChange={setAdminTenantFilter}
             />
           </Tabs.Content>
+          )}
 
+          {canViewConversion && (
           <Tabs.Content value="conversion" className="outline-none">
             <AdminConversionDashboard tenantId={adminTenantFilter} />
           </Tabs.Content>
+          )}
 
+          {canViewChatLeads && (
           <Tabs.Content value="leads" className="outline-none">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredLeads.length === 0 ? (
@@ -2155,7 +2245,9 @@ const AdminPanelContent = () => {
               )}
             </div>
           </Tabs.Content>
+          )}
 
+          {canViewChatHistory && (
           <Tabs.Content value="chats" className="outline-none">
             <div className="mb-4 flex flex-wrap gap-2">
               {CHAT_STATUS_FILTERS.map((filter) => (
@@ -2635,6 +2727,7 @@ const AdminPanelContent = () => {
               </div>
             </div>
           </Tabs.Content>
+          )}
 
             </>
           )}

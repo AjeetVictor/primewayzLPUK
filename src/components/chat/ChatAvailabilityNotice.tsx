@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import {
   DISCOVERY_CALL_CTA_LABEL,
-  DISCOVERY_CALL_DESTINATION,
   buildFreeReviewCtaUrl,
   type FreeReviewServiceArea,
 } from '../../constants/conversionCta';
@@ -12,6 +11,7 @@ import {
 
 type ChatAvailabilityNoticeProps = {
   serviceArea?: FreeReviewServiceArea | null;
+  bookingHref?: string | null;
   onLeaveMessage: () => void;
   onReviewClick: () => void;
   onBookingClick: () => void;
@@ -20,6 +20,7 @@ type ChatAvailabilityNoticeProps = {
 
 export function ChatAvailabilityNotice({
   serviceArea,
+  bookingHref = null,
   onLeaveMessage,
   onReviewClick,
   onBookingClick,
@@ -52,16 +53,18 @@ export function ChatAvailabilityNotice({
         >
           Continue with a Digital Systems Review
         </Link>
-        <Link
-          to={DISCOVERY_CALL_DESTINATION}
-          onClick={() => {
-            onBookingClick();
-            onNavigateFromChat?.();
-          }}
-          className="flex min-h-[44px] items-center justify-center rounded-lg px-3 py-2 text-[13px] font-semibold text-brand-blue underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
-        >
-          {DISCOVERY_CALL_CTA_LABEL}
-        </Link>
+        {bookingHref ? (
+          <Link
+            to={bookingHref}
+            onClick={() => {
+              onBookingClick();
+              onNavigateFromChat?.();
+            }}
+            className="flex min-h-[44px] items-center justify-center rounded-lg px-3 py-2 text-[13px] font-semibold text-brand-blue underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
+          >
+            {DISCOVERY_CALL_CTA_LABEL}
+          </Link>
+        ) : null}
       </div>
     </div>
   );

@@ -1,10 +1,10 @@
 /**
- * Trusted source resolution for the shared Primewayz platform.
+ * Trusted source resolution for the shared multi-tenant service platform.
  *
  * Browser calls: derive tenant from exact registered Origin.
  * No-Origin S2S calls: fall back to registered Host only (not X-Forwarded-Host).
  *
- * Current S2S limitation (documented, non-blocking for browser Infotech integration):
+ * Current S2S limitation (documented, non-blocking for browser integrations):
  * authenticated S2S token→tenant mapping is future hardening. Until then, no-Origin
  * callers must present a canonical registered Host; body fields never override identity.
  * campaignId remains attribution data only — never tenant identity.
@@ -12,9 +12,13 @@
 
 import type { PrimewayzSourceChannel, SourceContext } from './sourceContext.ts';
 import { getTenantByHost, getTenantByOrigin, getTenantById } from './tenantRegistry.ts';
+import { tenantSupportsCapability, type TenantCapability } from './tenantCapabilities.ts';
 
 export class SourceResolutionError extends Error {
-  constructor(message: string) { super(message); this.name = 'SourceResolutionError'; }
+  constructor(message: string) {
+    super(message);
+    this.name = 'SourceResolutionError';
+  }
 }
 
 const FORBIDDEN_BODY_KEYS = ['tenantId', 'market', 'sourceSite', 'sourceOrigin', 'sourceChannel'] as const;
@@ -49,7 +53,7 @@ export function resolveSourceContext(input: {
     }
   }
   if (!tenant || !tenant.active) {
-    throw new SourceResolutionError('Request source is not a registered Primewayz property.');
+    throw new SourceResolutionError('Request source is not a registered platform property.');
   }
   return {
     tenantId: tenant.tenantId,
@@ -62,9 +66,12 @@ export function resolveSourceContext(input: {
   };
 }
 
-export function assertSourceOwnership(existingTenantId: string | null | undefined, source: SourceContext): void {
+export function assertSourceOwnership(
+  existingTenantId: string | null | undefined,
+  source: SourceContext,
+): void {
   if (existingTenantId && existingTenantId !== source.tenantId) {
-    throw new SourceResolutionError('This record belongs to a different Primewayz entity.');
+    throw new SourceResolutionError('This record belongs to a different platform entity.');
   }
 }
 
@@ -78,7 +85,21 @@ export function assertChatSessionTenantAccess(
   source: SourceContext,
 ): void {
   if (!existingTenantId && source.tenantId !== 'pw-uk') {
-    throw new SourceResolutionError('Legacy chat ownership cannot be reassigned to another Primewayz entity.');
+    throw new SourceResolutionError(
+      'Legacy chat ownership cannot be reassigned to another platform entity.',
+    );
   }
   assertSourceOwnership(existingTenantId, source);
+}
+
+/** Reject when the resolved tenant does not expose the required public capability. */
+export function assertTenantCapability(
+  source: SourceContext,
+  capability: TenantCapability,
+): void {
+  if (!tenantSupportsCapability(source.tenantId, capability)) {
+    throw new SourceResolutionError(
+      `Capability "${capability}" is not enabled for this tenant.`,
+    );
+  }
 }

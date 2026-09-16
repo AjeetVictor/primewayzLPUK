@@ -6,6 +6,7 @@ import {
 
 type ChatRecommendationPanelProps = {
   intent: VisitorChatIntentDefinition;
+  bookingHref?: string | null;
   onReviewClick: () => void;
   onServiceClick: () => void;
   onBookingClick: () => void;
@@ -14,12 +15,13 @@ type ChatRecommendationPanelProps = {
 
 export function ChatRecommendationPanel({
   intent,
+  bookingHref = null,
   onReviewClick,
   onServiceClick,
   onBookingClick,
   onNavigateFromChat,
 }: ChatRecommendationPanelProps) {
-  const actions = buildVisitorChatRecommendationActions(intent);
+  const actions = buildVisitorChatRecommendationActions(intent, bookingHref);
 
   return (
     <div className="rounded-xl border border-brand-border bg-brand-surface/80 p-3 max-[479px]:p-2.5">
@@ -54,16 +56,18 @@ export function ChatRecommendationPanel({
         >
           {actions.serviceLabel}
         </Link>
-        <Link
-          to={actions.bookingHref}
-          onClick={() => {
-            onBookingClick();
-            onNavigateFromChat?.();
-          }}
-          className="flex min-h-[48px] items-center justify-center rounded-lg px-3.5 py-3 text-center text-[15px] font-semibold text-brand-blue underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40 sm:min-h-[44px] sm:px-3 sm:py-2 sm:text-[13px]"
-        >
-          {actions.bookingLabel}
-        </Link>
+        {actions.showBooking && actions.bookingHref ? (
+          <Link
+            to={actions.bookingHref}
+            onClick={() => {
+              onBookingClick();
+              onNavigateFromChat?.();
+            }}
+            className="flex min-h-[48px] items-center justify-center rounded-lg px-3.5 py-3 text-center text-[15px] font-semibold text-brand-blue underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40 sm:min-h-[44px] sm:px-3 sm:py-2 sm:text-[13px]"
+          >
+            {actions.bookingLabel}
+          </Link>
+        ) : null}
       </div>
     </div>
   );

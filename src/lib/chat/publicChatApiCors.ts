@@ -1,11 +1,12 @@
 /**
  * Browser CORS for visitor-facing public Chat APIs only.
- * Allowed origins come from the active tenant registry — not a second hardcoded list.
+ * Allowed origins come from the active tenant registry (chat capability) — not a second hardcoded list.
  * CORS is transport permission only; tenant identity still comes from sourceResolver.
  */
 
 import type { Request, Response } from 'express';
 import { getTenantByOrigin, PRIMEWAYZ_TENANTS } from '../platform/tenantRegistry.ts';
+import { tenantSupportsCapability } from '../platform/tenantCapabilities.ts';
 
 const PUBLIC_CHAT_EXACT_PATHS = new Set([
   '/api/chat',
@@ -19,15 +20,16 @@ const PUBLIC_CHAT_EXACT_PATHS = new Set([
 
 export function getPublicChatAllowedOrigins(): readonly string[] {
   return PRIMEWAYZ_TENANTS
-    .filter((tenant) => tenant.active)
+    .filter((tenant) => tenant.active && tenantSupportsCapability(tenant.tenantId, 'chat'))
     .flatMap((tenant) => [...tenant.allowedOrigins]);
 }
 
-/** Exact Origin match against active tenant allowedOrigins. Missing Origin is allowed (S2S / same-host). */
+/** Exact Origin match against active chat-capable tenant allowedOrigins. Missing Origin is allowed (S2S / same-host). */
 export function isPublicChatOriginAllowed(origin: string | undefined): boolean {
   if (!origin) return true;
   const normalized = origin.trim().replace(/\/$/, '');
-  return Boolean(getTenantByOrigin(normalized));
+  const tenant = getTenantByOrigin(normalized);
+  return Boolean(tenant && tenantSupportsCapability(tenant.tenantId, 'chat'));
 }
 
 /** Visitor Chat paths under /api/chat — never /api/admin/*. */

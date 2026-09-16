@@ -5,6 +5,13 @@
 
 export type ChatAvailabilityStatus = 'online' | 'away' | 'offline' | 'assistant';
 
+export type ChatAvailabilityScheduling = {
+  enabled: boolean;
+  provider: string | null;
+  eventTypeKey: string | null;
+  publicBookingUrl: string | null;
+};
+
 export type ChatAvailability = {
   status: ChatAvailabilityStatus;
   title: string;
@@ -14,6 +21,9 @@ export type ChatAvailability = {
   canAcceptMessages: boolean;
   canBookCall: boolean;
   serverTime: string;
+  /** Server-resolved tenant — never trust browser-supplied tenantId. */
+  tenantId?: string | null;
+  scheduling?: ChatAvailabilityScheduling;
 };
 
 export const DEFAULT_CHAT_AVAILABILITY: ChatAvailability = {
@@ -23,8 +33,16 @@ export const DEFAULT_CHAT_AVAILABILITY: ChatAvailability = {
   responseExpectation: 'The Primewayz team replies during UK business hours.',
   businessHours: 'Mon-Fri, UK business hours',
   canAcceptMessages: true,
-  canBookCall: true,
+  /** Fail closed until /api/chat/availability resolves tenant scheduling. */
+  canBookCall: false,
   serverTime: '',
+  tenantId: null,
+  scheduling: {
+    enabled: false,
+    provider: null,
+    eventTypeKey: null,
+    publicBookingUrl: null,
+  },
 };
 
 export type ChatAttachment = {

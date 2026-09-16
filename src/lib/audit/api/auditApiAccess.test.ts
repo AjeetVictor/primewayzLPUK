@@ -7,6 +7,7 @@ test('allows Primewayz Infotech origins by default and rejects unrelated browser
   assert.equal(isAuditApiOriginAllowed('https://uk.primewayz.com', env), true);
   assert.equal(isAuditApiOriginAllowed('https://primewayz.com', env), true);
   assert.equal(isAuditApiOriginAllowed('https://www.primewayz.com', env), true);
+  assert.equal(isAuditApiOriginAllowed('https://rentreadbuy.com', env), false);
   assert.equal(isAuditApiOriginAllowed('https://example.com', env), false);
   assert.equal(isAuditApiOriginAllowed(undefined, env), true);
 });

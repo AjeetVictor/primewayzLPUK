@@ -105,10 +105,23 @@ test('Infotech notification never falls back to UK recipient when env is missing
   assert.notEqual(getTenantNotificationRecipient(infotech, env), env.INTERNAL_NOTIFICATION_EMAIL);
 });
 
+test('RRB notification never falls back to UK or Infotech recipients', () => {
+  const rrb = resolveSourceContext({ origin: 'https://rentreadbuy.com', sourceChannel: 'chat' });
+  const env = {
+    INTERNAL_NOTIFICATION_EMAIL: 'uk-ops@example.com',
+    PW_INFOTECH_NOTIFICATION_EMAIL: 'infotech@example.com',
+  };
+  assert.equal(getTenantNotificationRecipient(rrb, env), null);
+  assert.equal(
+    getTenantNotificationRecipient(rrb, { ...env, RRB_NOTIFICATION_EMAIL: 'rrb@example.com' }),
+    'rrb@example.com',
+  );
+});
+
 test('admin filter options expose only active tenants plus all', () => {
   assert.deepEqual(
     ADMIN_TENANT_FILTER_OPTIONS.map((option) => option.value),
-    ['pw-uk', 'pw-infotech', 'all'],
+    ['pw-uk', 'pw-infotech', 'rrb', 'all'],
   );
 });
 
@@ -117,7 +130,7 @@ test('legacy chat ownership cannot be claimed by Infotech', () => {
   const uk = resolveSourceContext({ origin: 'https://uk.primewayz.com', sourceChannel: 'chat' });
   assert.throws(() => assertChatSessionTenantAccess(null, infotech), /Legacy chat ownership/);
   assert.doesNotThrow(() => assertChatSessionTenantAccess(null, uk));
-  assert.throws(() => assertChatSessionTenantAccess('pw-uk', infotech), /different Primewayz entity/);
+  assert.throws(() => assertChatSessionTenantAccess('pw-uk', infotech), /different platform entity/);
   assert.doesNotThrow(() => assertChatSessionTenantAccess('pw-infotech', infotech));
 });
 
@@ -131,4 +144,17 @@ test('NULL audit lead entity marker stays Legacy / unknown', async () => {
   const all = await listAdminAuditLeads(prisma as never, { tenantId: 'all' });
   assert.equal(all.items[0]?.sourceContext.entity, 'Legacy / unknown');
   assert.equal(all.items[0]?.sourceContext.tenantId, null);
+});
+
+test('RRB audit/source label derives registry display name RentReadBuy', async () => {
+  const leads = [
+    toolLead({ id: 3, tenantId: 'rrb', market: 'IN', sourceSite: 'rentreadbuy.com' }),
+  ];
+  const prisma = {
+    toolLead: {
+      findMany: async () => leads,
+    },
+  };
+  const listed = await listAdminAuditLeads(prisma as never, { tenantId: 'rrb' });
+  assert.equal(listed.items[0]?.sourceContext.entity, 'RentReadBuy');
 });

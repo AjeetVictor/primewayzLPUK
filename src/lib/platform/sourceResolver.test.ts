@@ -2,12 +2,16 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { assertSourceOwnership, resolveSourceContext, SourceResolutionError } from './sourceResolver.ts';
 
-test('resolves exact UK and Infotech origins', () => {
+test('resolves exact UK, Infotech, and RentReadBuy origins', () => {
   assert.equal(resolveSourceContext({ origin: 'https://uk.primewayz.com', sourceChannel: 'chat' }).tenantId, 'pw-uk');
   assert.equal(resolveSourceContext({ origin: 'https://primewayz.com', sourceChannel: 'chat' }).tenantId, 'pw-infotech');
   assert.equal(resolveSourceContext({ origin: 'https://www.primewayz.com', sourceChannel: 'chat' }).tenantId, 'pw-infotech');
+  assert.equal(resolveSourceContext({ origin: 'https://rentreadbuy.com', sourceChannel: 'chat' }).tenantId, 'rrb');
+  assert.equal(resolveSourceContext({ origin: 'https://www.rentreadbuy.com', sourceChannel: 'chat' }).tenantId, 'rrb');
   assert.equal(resolveSourceContext({ origin: 'https://uk.primewayz.com', sourceChannel: 'chat' }).market, 'UK');
   assert.equal(resolveSourceContext({ origin: 'https://primewayz.com', sourceChannel: 'chat' }).market, 'IN');
+  assert.equal(resolveSourceContext({ origin: 'https://rentreadbuy.com', sourceChannel: 'chat' }).market, 'IN');
+  assert.equal(resolveSourceContext({ origin: 'https://rentreadbuy.com', sourceChannel: 'chat' }).brand, 'RentReadBuy');
 });
 
 test('rejects unknown origins and browser source spoofing', () => {
@@ -67,7 +71,7 @@ test('inactive future markets cannot activate through browser input', () => {
 
 test('prevents tenant switching on an existing parent record', () => {
   const infotech = resolveSourceContext({ origin: 'https://primewayz.com', sourceChannel: 'chat' });
-  assert.throws(() => assertSourceOwnership('pw-uk', infotech), /different Primewayz entity/);
+  assert.throws(() => assertSourceOwnership('pw-uk', infotech), /different platform entity/);
   assert.doesNotThrow(() => assertSourceOwnership('pw-infotech', infotech));
   assert.doesNotThrow(() => assertSourceOwnership(null, infotech));
 });

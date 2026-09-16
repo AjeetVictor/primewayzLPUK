@@ -1,8 +1,10 @@
 import { getFirstUtmParams, getLatestUtmParams } from './utm';
 import { trackConversionEvent } from './analytics';
 import { assertNoProhibitedAnalyticsProps } from './digitalSystemsReview/analytics';
+import { DEFAULT_PW_UK_CALENDLY_BOOKING_URL } from './scheduling/calendlyDefaults';
 
-export const CALENDLY_BASE_URL = 'https://calendly.com/primewayz-info/30-minute-meeting-uk';
+/** UK site widget URL — first implementation of the Scheduling service public booking URL. */
+export const CALENDLY_BASE_URL = DEFAULT_PW_UK_CALENDLY_BOOKING_URL;
 export const CALENDLY_SCRIPT_URL = 'https://assets.calendly.com/assets/external/widget.js';
 
 export function buildCalendlyUrl(): string {

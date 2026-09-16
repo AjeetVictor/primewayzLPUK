@@ -10,9 +10,12 @@ import {
   doesTenantScopedModuleUseTenantFilter,
   getPlatformUserManagementAvailability,
   isPlatformModuleAvailable,
+  isTenantCapabilityModuleAvailable,
   isTenantScopedModuleAvailable,
   isUkModuleAvailable,
+  resolveTenantCapabilityModuleAvailability,
   resolveUkModuleAvailability,
+  shouldLeaveCapabilityDisabledAdminTab,
   shouldLeaveUkOnlyAdminTab,
 } from './adminModuleScope.ts';
 import {
@@ -100,6 +103,16 @@ test('Conversion remains available and tenant-scoped for pw-infotech', () => {
   assert.equal(doesTenantScopedModuleUseTenantFilter(), true);
 });
 
+test('RentReadBuy tenant-scoped modules follow capability flags', () => {
+  assert.equal(isTenantCapabilityModuleAvailable('chatLeads', 'rrb'), true);
+  assert.equal(isTenantCapabilityModuleAvailable('forms', 'rrb'), false);
+  assert.equal(isTenantCapabilityModuleAvailable('auditLeads', 'rrb'), false);
+  assert.equal(isTenantCapabilityModuleAvailable('conversion', 'rrb'), false);
+  assert.equal(isTenantCapabilityModuleAvailable('scheduling', 'rrb'), false);
+  // Compatibility helper: still true because chat modules remain available
+  assert.equal(isTenantScopedModuleAvailable('rrb'), true);
+});
+
 test('global Chat presence copy remains platform-wide', () => {
   assert.equal(
     GLOBAL_CHAT_PRESENCE_NOTE,
@@ -126,4 +139,24 @@ test('Infotech selection forces leave from UK-only Admin tabs', () => {
   assert.equal(shouldLeaveUkOnlyAdminTab('conversion', 'pw-infotech'), false);
   assert.equal(shouldLeaveUkOnlyAdminTab('blog', 'pw-uk'), false);
   assert.equal(shouldLeaveUkOnlyAdminTab('blog', 'all'), false);
+});
+
+test('RentReadBuy selection forces leave from UK-only Admin tabs', () => {
+  assert.equal(shouldLeaveUkOnlyAdminTab('autopilot', 'rrb'), true);
+  assert.equal(shouldLeaveUkOnlyAdminTab('blog', 'rrb'), true);
+  assert.equal(shouldLeaveUkOnlyAdminTab('comments', 'rrb'), true);
+  assert.equal(shouldLeaveUkOnlyAdminTab('forms', 'rrb'), false);
+  assert.equal(isUkModuleAvailable('autopilot', 'rrb'), false);
+  assert.equal(isUkModuleAvailable('blogCms', 'rrb'), false);
+});
+
+test('User Management and Conversion remain unchanged for RentReadBuy selector', () => {
+  assert.equal(isPlatformModuleAvailable('rrb'), true);
+  assert.equal(getPlatformUserManagementAvailability('rrb').scopeBadge, PLATFORM_WIDE_BADGE);
+  assert.equal(isTenantScopedModuleAvailable('rrb'), true);
+  assert.equal(doesTenantScopedModuleUseTenantFilter(), true);
+  assert.equal(shouldLeaveCapabilityDisabledAdminTab('forms', 'rrb'), true);
+  assert.equal(shouldLeaveCapabilityDisabledAdminTab('conversion', 'rrb'), true);
+  assert.equal(shouldLeaveCapabilityDisabledAdminTab('leads', 'rrb'), false);
+  assert.equal(resolveTenantCapabilityModuleAvailability('forms', 'rrb').available, false);
 });

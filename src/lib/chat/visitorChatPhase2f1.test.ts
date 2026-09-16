@@ -302,34 +302,42 @@ test('25 Relevant service link is correct for each intent', () => {
   assert.equal(getVisitorChatIntent('unsure')?.serviceRoute, '/services');
 });
 
-test('26 Booking destination remains canonical', () => {
+test('26 Booking destination resolves through Scheduling — not hardcoded on intents', () => {
   for (const intent of VISITOR_CHAT_INTENTS) {
-    assert.equal(intent.bookingHref, DISCOVERY_CALL_DESTINATION);
-    assert.equal(intent.bookingHref, '/contact-us#book-call');
+    assert.equal('bookingHref' in intent, false);
+    const withUk = buildVisitorChatRecommendationActions(intent, DISCOVERY_CALL_DESTINATION);
+    assert.equal(withUk.bookingHref, DISCOVERY_CALL_DESTINATION);
+    assert.equal(withUk.showBooking, true);
+    const without = buildVisitorChatRecommendationActions(intent, null);
+    assert.equal(without.bookingHref, null);
+    assert.equal(without.showBooking, false);
   }
 });
 
-test('27 Recommendation panel exposes exactly one booking action', () => {
+test('27 Recommendation panel exposes exactly one booking action when available', () => {
   const panel = read('src/components/chat/ChatRecommendationPanel.tsx');
   const bookingLinks = panel.match(/to=\{actions\.bookingHref\}/g) || [];
   assert.equal(bookingLinks.length, 1);
   assert.equal(listRecommendationActionTypes().filter((t) => t === 'booking').length, 1);
+  assert.match(panel, /actions\.showBooking/);
 });
 
-test('27b Away follow-up panel exposes exactly three actions without service link', () => {
+test('27b Away follow-up panel exposes booking only when bookingHref is provided', () => {
   const away = read('src/components/chat/ChatAvailabilityNotice.tsx');
   assert.match(away, /Leave contact details/);
   assert.match(away, /Continue with a Digital Systems Review/);
   assert.match(away, /DISCOVERY_CALL_CTA_LABEL/);
+  assert.match(away, /bookingHref/);
+  assert.doesNotMatch(away, /DISCOVERY_CALL_DESTINATION/);
   assert.doesNotMatch(away, /serviceHref|serviceLabel|onServiceClick/);
   const actionButtons = away.match(/min-h-\[44px\]/g) || [];
-  assert.ok(actionButtons.length >= 3);
+  assert.ok(actionButtons.length >= 2);
 });
 
 test('27c Composer booking is hidden when recommendation or away follow-up is active', () => {
   const liveChat = read('src/components/LiveChat.tsx');
   assert.match(liveChat, /showComposerBooking/);
-  assert.match(liveChat, /!showRecommendations && !showAwayFollowUp/);
+  assert.match(liveChat, /Boolean\(bookingHref\) && !showRecommendations && !showAwayFollowUp/);
 });
 
 test('27d Initial away state does not stack full away panel with intent chooser', () => {
@@ -341,7 +349,10 @@ test('27d Initial away state does not stack full away panel with intent chooser'
 
 test('28 No more than three primary next-step actions are shown', () => {
   assert.equal(listRecommendationActionTypes().length, 3);
-  const actions = buildVisitorChatRecommendationActions(getVisitorChatIntent('crm_workflow')!);
+  const actions = buildVisitorChatRecommendationActions(
+    getVisitorChatIntent('crm_workflow')!,
+    DISCOVERY_CALL_DESTINATION,
+  );
   assert.ok(actions.reviewHref && actions.serviceHref && actions.bookingHref);
 });
 
@@ -369,10 +380,12 @@ test('32 Offline state preserves leave-message capability', () => {
   assert.match(read('src/components/chat/ChatAvailabilityNotice.tsx'), /Leave contact details/);
 });
 
-test('33 Offline state preserves booking', () => {
+test('33 Offline state preserves booking when scheduling resolves a destination', () => {
   assert.ok(VISITOR_CHAT_OFFLINE_ACTIONS.includes('booking'));
   const offlineUi = read('src/components/chat/ChatAvailabilityNotice.tsx');
-  assert.match(offlineUi, /DISCOVERY_CALL_CTA_LABEL|DISCOVERY_CALL_DESTINATION/);
+  assert.match(offlineUi, /DISCOVERY_CALL_CTA_LABEL/);
+  assert.match(offlineUi, /bookingHref/);
+  assert.doesNotMatch(offlineUi, /DISCOVERY_CALL_DESTINATION/);
   assert.match(VISITOR_CHAT_OFFLINE_BODY, /discovery call/i);
 });
 
