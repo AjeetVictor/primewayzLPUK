@@ -70,6 +70,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { resolveSourceContext, SourceResolutionError, assertChatSessionTenantAccess } from './src/lib/platform/sourceResolver.ts';
 import { toPersistedSourceContext, type PrimewayzSourceChannel, type SourceContext } from './src/lib/platform/sourceContext.ts';
 import { getTenantById } from './src/lib/platform/tenantRegistry.ts';
+import { publicChatApiCorsMiddleware } from './src/lib/chat/publicChatApiCors.ts';
 import type { BlogCategory, BlogPost, BreadcrumbItem } from './src/data/blog/types.ts';
 import {
   LEGACY_ROUTE_REDIRECTS,
@@ -2631,6 +2632,9 @@ app.post('/api/tools/digital-visibility-check/lead', async (req, res) => {
     res.status(500).json({ error: 'Could not save your request' });
   }
 });
+
+// Visitor Chat CORS only (/api/chat/*). Does not apply to /api/admin/*.
+app.use(publicChatApiCorsMiddleware);
 
 app.get('/api/chat/availability', async (_req, res) => {
   res.json(await getChatAvailabilityPayload());
