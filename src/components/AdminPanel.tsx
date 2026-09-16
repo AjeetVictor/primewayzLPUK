@@ -28,6 +28,10 @@ import {
 import { QuotedMessagePreview } from './chat/QuotedMessagePreview';
 import { trackAdminChatReply, trackChatLeadConverted } from '../lib/analytics';
 import { canShowAutopilotTab } from '../lib/autopilot/adminAutopilotCapabilities';
+import {
+  getAutopilotTenantScopeNote,
+  isAutopilotAvailableForAdminTenant,
+} from '../lib/autopilot/adminAutopilotTenantScope';
 
 interface FormResponse {
   id: number;
@@ -382,10 +386,10 @@ const renderVisitorActivityBadge = (visitorLastSeenAt?: string | null) => {
   );
 };
 
-export 
 type AdminNotificationSummary = {
   dateKey: string;
   generatedAt: string;
+  tenantId?: string;
   priority: 'high' | 'medium' | 'normal' | string;
   counts: {
     todayContactForms: number;
@@ -407,6 +411,9 @@ type AdminNotificationSummary = {
     status: string;
     createdAt: string;
     sentAt?: string | null;
+    tenantId?: string | null;
+    market?: string | null;
+    sourceSite?: string | null;
   }>;
   latestDailySummary?: {
     id: number;
@@ -416,6 +423,7 @@ type AdminNotificationSummary = {
     sentAt?: string | null;
     createdAt: string;
   } | null;
+  dailySummaryScope?: 'pw-uk' | 'none';
 };
 
 type AdminConfirmKind =
@@ -585,14 +593,22 @@ const AdminPanelContent = () => {
     const interval = setInterval(fetchNotificationSummary, 30000);
 
     return () => clearInterval(interval);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, adminTenantFilter]);
+
+  useEffect(() => {
+    if (adminTenantFilter === 'pw-infotech' && activeTab === 'autopilot') {
+      setActiveTab('forms');
+    }
+  }, [adminTenantFilter, activeTab]);
 
 
   const fetchNotificationSummary = async () => {
     setIsLoadingNotificationSummary(true);
 
     try {
-      const res = await adminRequest('/api/admin/notifications/summary');
+      const res = await adminRequest(
+        `/api/admin/notifications/summary?tenantId=${encodeURIComponent(adminTenantFilter)}`,
+      );
 
       if (!res.ok) {
         if (res.status !== 403) {
@@ -1436,7 +1452,9 @@ const AdminPanelContent = () => {
   }
 
   const canViewOperations = isOperationsRole(user?.role);
-  const canViewAutopilot = canShowAutopilotTab(user?.role);
+  const canViewAutopilot =
+    canShowAutopilotTab(user?.role) && isAutopilotAvailableForAdminTenant(adminTenantFilter);
+  const autopilotTenantScopeNote = getAutopilotTenantScopeNote(adminTenantFilter);
   const availabilityDotClass = chatAvailability?.status === 'online'
     ? 'bg-emerald-500'
     : chatAvailability?.status === 'away'
@@ -1481,7 +1499,10 @@ const AdminPanelContent = () => {
     : notificationSummary?.priority === 'medium'
       ? 'bg-amber-100 text-amber-700'
       : 'bg-emerald-100 text-emerald-700';
-  const latestDailySummaryStatus = notificationSummary?.latestDailySummary?.status || 'not_sent';
+  const latestDailySummaryStatus =
+    notificationSummary?.dailySummaryScope === 'none'
+      ? 'uk_only'
+      : notificationSummary?.latestDailySummary?.status || 'not_sent';
 
   return (
     <div className="min-h-screen bg-zinc-50 pt-20 pb-12 px-4 sm:px-6 lg:px-8">
@@ -1554,6 +1575,9 @@ const AdminPanelContent = () => {
                 {chatAvailability?.latestAdminSeenAt && (
                   <span> Last admin heartbeat {format(new Date(chatAvailability.latestAdminSeenAt), 'MMM d, h:mm a')}.</span>
                 )}
+              </p>
+              <p className="mt-1 text-[11px] text-zinc-400">
+                Global presence — one team services all Primewayz entities.
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -1672,6 +1696,11 @@ const AdminPanelContent = () => {
                           <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700">
                             {alert.status}
                           </span>
+                          <EntitySourceBadge
+                            tenantId={alert.tenantId}
+                            market={alert.market}
+                            sourceSite={alert.sourceSite}
+                          />
                         </div>
                         <p className="mt-0.5 text-[11px] text-zinc-400">
                           Message #{alert.messageId} · {format(new Date(alert.createdAt), 'MMM d, h:mm a')}
@@ -1709,7 +1738,7 @@ const AdminPanelContent = () => {
                   Alert emails sent: {notificationCounts?.todayEmailSentAlerts ?? '-'}
                 </span>
                 <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold">
-                  Daily summary: {latestDailySummaryStatus}
+                  Daily summary: {latestDailySummaryStatus === 'uk_only' ? 'Primewayz UK only' : latestDailySummaryStatus}
                 </span>
               </div>
               <span className="text-[11px] text-zinc-400">
@@ -1803,7 +1832,21 @@ const AdminPanelContent = () => {
               >
                 <Bot className="w-4 h-4" />
                 Autopilot
+                {autopilotTenantScopeNote && (
+                  <span className="ml-1 max-w-[140px] truncate rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-zinc-500">
+                    UK scoped
+                  </span>
+                )}
               </Tabs.Trigger>
+            )}
+            {canShowAutopilotTab(user?.role) && adminTenantFilter === 'pw-infotech' && (
+              <span
+                className="flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-zinc-400"
+                title={autopilotTenantScopeNote ?? undefined}
+              >
+                <Bot className="w-4 h-4" />
+                Autopilot unavailable — configured for Primewayz UK
+              </span>
             )}
             {canViewOperations && (
               <Tabs.Trigger 
@@ -2559,6 +2602,11 @@ const AdminPanelContent = () => {
 
           {canViewAutopilot && (
             <Tabs.Content value="autopilot" className="outline-none">
+              {autopilotTenantScopeNote && (
+                <p className="mb-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  {autopilotTenantScopeNote}
+                </p>
+              )}
               <AutopilotPanel role={user?.role} />
             </Tabs.Content>
           )}

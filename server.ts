@@ -69,7 +69,8 @@ import {
 import type { NextFunction, Request, Response } from 'express';
 import { resolveSourceContext, SourceResolutionError, assertChatSessionTenantAccess } from './src/lib/platform/sourceResolver.ts';
 import { toPersistedSourceContext, type PrimewayzSourceChannel, type SourceContext } from './src/lib/platform/sourceContext.ts';
-import { getTenantById } from './src/lib/platform/tenantRegistry.ts';
+import { resolveAdminTenantFilter } from './src/lib/platform/adminTenantFilter.ts';
+import { getAdminNotificationSummary } from './src/lib/admin/adminNotificationSummaryService.ts';
 import { publicChatApiCorsMiddleware } from './src/lib/chat/publicChatApiCors.ts';
 import type { BlogCategory, BlogPost, BreadcrumbItem } from './src/data/blog/types.ts';
 import {
@@ -174,11 +175,7 @@ function sourceResolutionFailure(res: Response, error: unknown): Response | null
 }
 
 function adminTenantId(req: Request): string | undefined {
-  const requested = typeof req.query.tenantId === 'string' ? req.query.tenantId : 'pw-uk';
-  if (requested === 'all') return undefined;
-  const tenant = getTenantById(requested);
-  if (!tenant?.active) throw new SourceResolutionError('Unknown or inactive tenant filter.');
-  return tenant.tenantId;
+  return resolveAdminTenantFilter(typeof req.query.tenantId === 'string' ? req.query.tenantId : undefined);
 }
 
 function getJwtSecret() {
@@ -232,18 +229,6 @@ function toTagArray(tags: unknown) {
 function normalizeRole(role?: string) {
   if (!role) return 'viewer';
   return role === 'ADMIN' ? 'admin' : role;
-}
-
-function todayRange() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return { start, end };
-}
-
-function dateKey(date = new Date()) {
-  return date.toISOString().slice(0, 10);
 }
 
 const CONVERSATION_STATUSES = [
@@ -2286,58 +2271,14 @@ app.post('/api/admin/presence/heartbeat', requireAdmin, requireRole(isOperations
   res.json({ success: true });
 });
 
-app.get('/api/admin/notifications/summary', requireAdmin, requireRole(isOperationsRole), async (_req, res) => {
-  const { start, end } = todayRange();
-  const [
-    todayContactForms,
-    todayChatSessions,
-    todayVisitorMessages,
-    todayAdminReplies,
-    todayAppointments,
-    pendingAppointments,
-    todayUnansweredAlerts,
-    todayEmailSentAlerts,
-    todayEmailFailedAlerts,
-    todayEmailSkippedAlerts,
-    recentAlertCount,
-    latestAlerts,
-    latestDailySummary,
-  ] = await Promise.all([
-    prisma.formResponse.count({ where: { createdAt: { gte: start, lt: end } } }),
-    prisma.chatSession.count({ where: { createdAt: { gte: start, lt: end } } }),
-    prisma.chatMessage.count({ where: { sender: 'user', timestamp: { gte: start, lt: end } } }),
-    prisma.chatMessage.count({ where: { sender: 'admin', timestamp: { gte: start, lt: end } } }),
-    prisma.chatAppointmentRequest.count({ where: { createdAt: { gte: start, lt: end } } }),
-    prisma.chatAppointmentRequest.count({ where: { status: 'pending' } }),
-    prisma.chatAlert.count({ where: { alertType: 'unanswered_chat', createdAt: { gte: start, lt: end } } }),
-    prisma.chatAlert.count({ where: { status: 'sent', createdAt: { gte: start, lt: end } } }),
-    prisma.chatAlert.count({ where: { status: 'failed', createdAt: { gte: start, lt: end } } }),
-    prisma.chatAlert.count({ where: { status: 'skipped', createdAt: { gte: start, lt: end } } }),
-    prisma.chatAlert.count({ where: { createdAt: { gte: start, lt: end } } }),
-    prisma.chatAlert.findMany({ orderBy: { createdAt: 'desc' }, take: 5 }),
-    prisma.leadSummaryEmail.findFirst({ orderBy: { createdAt: 'desc' } }),
-  ]);
-
-  res.json({
-    dateKey: dateKey(),
-    generatedAt: new Date().toISOString(),
-    priority: pendingAppointments || todayUnansweredAlerts ? 'medium' : 'normal',
-    counts: {
-      todayContactForms,
-      todayChatSessions,
-      todayVisitorMessages,
-      todayAdminReplies,
-      todayAppointments,
-      pendingAppointments,
-      todayUnansweredAlerts,
-      todayEmailSentAlerts,
-      todayEmailFailedAlerts,
-      todayEmailSkippedAlerts,
-      recentAlertCount,
-    },
-    latestAlerts,
-    latestDailySummary,
-  });
+app.get('/api/admin/notifications/summary', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
+  try {
+    const tenantId = adminTenantId(req);
+    const summary = await getAdminNotificationSummary(prisma, { tenantId });
+    res.json(summary);
+  } catch (error) {
+    sourceResolutionFailure(res, error) ?? res.status(500).json({ error: 'Failed to load notification summary' });
+  }
 });
 
 app.patch('/api/admin/chat-alerts/:id/status', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
