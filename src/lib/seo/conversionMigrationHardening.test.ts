@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { computeConversionBucketKeyHash } from './conversionBucketKey.ts';
+import { buildConversionBucketKeyInput, computeConversionBucketKeyHash } from './conversionBucketKey.ts';
 
 const migrationPath = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -27,17 +27,12 @@ type DuplicateRow = {
 };
 
 function buildSqlBucketKeyHash(input: {
+  tenantId?: string | null;
   seoPageId: number | null;
   attributionModel: string;
   channelGroup: string;
 }): string {
-  const pagePart =
-    input.seoPageId === null || input.seoPageId === undefined
-      ? 'unknown'
-      : String(input.seoPageId);
-  const payload = [pagePart, input.attributionModel, input.channelGroup.trim().toLowerCase()].join(
-    '\0',
-  );
+  const payload = buildConversionBucketKeyInput(input);
   return createHash('sha256').update(payload, 'utf8').digest('hex');
 }
 
@@ -67,7 +62,10 @@ test('bucket hash SQL uses CHAR(0) separators', () => {
   assert.equal(sql.includes("'\\0'"), false);
 });
 
-test('SQL CHAR(0) hash payload matches Node bucket helper', () => {
+test('pre-tenant SQL hash formula differs from current tenant-aware Node helper', () => {
+  // Historical hardening migration hashed page\0model\0channel only.
+  // Current runtime prefixes tenantId or the `legacy` sentinel. Source-context
+  // migration does not rewrite hashes; controlled rebuild aligns them.
   const cases = [
     { seoPageId: 42, attributionModel: 'first_touch', channelGroup: 'organic' },
     { seoPageId: null, attributionModel: 'last_touch', channelGroup: ' Direct ' },
@@ -75,8 +73,29 @@ test('SQL CHAR(0) hash payload matches Node bucket helper', () => {
   ] as const;
 
   for (const input of cases) {
-    assert.equal(buildSqlBucketKeyHash(input), computeConversionBucketKeyHash(input));
+    const pagePart = input.seoPageId === null ? 'unknown' : String(input.seoPageId);
+    const historicalPayload = [pagePart, input.attributionModel, input.channelGroup.trim().toLowerCase()].join('\0');
+    const historicalHash = createHash('sha256').update(historicalPayload, 'utf8').digest('hex');
+    assert.notEqual(historicalHash, computeConversionBucketKeyHash(input));
+    assert.equal(
+      buildSqlBucketKeyHash(input),
+      computeConversionBucketKeyHash(input),
+    );
   }
+});
+
+test('current Node helper remains the single rebuild/runtime hash authority', () => {
+  const withTenant = {
+    tenantId: 'pw-uk' as const,
+    seoPageId: 9,
+    attributionModel: 'first_touch',
+    channelGroup: 'organic',
+  };
+  assert.equal(buildSqlBucketKeyHash(withTenant), computeConversionBucketKeyHash(withTenant));
+  assert.equal(
+    buildConversionBucketKeyInput(withTenant).startsWith('pw-uk\0'),
+    true,
+  );
 });
 
 test('newest duplicate snapshot survives without summing counters', () => {

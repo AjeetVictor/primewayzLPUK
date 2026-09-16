@@ -11,6 +11,8 @@ import { ToastProvider, useToast } from './ui/AppToast';
 import { RichBlogEditor } from './admin/RichBlogEditor';
 import { AdminAuditLeadsPanel } from './admin/AdminAuditLeadsPanel';
 import { AdminConversionDashboard } from './admin/AdminConversionDashboard';
+import { AdminTenantFilter } from './admin/AdminTenantFilter';
+import { getTenantDisplayName } from '../lib/platform/tenantRegistry';
 import { AutopilotPanel } from './admin/autopilot/AutopilotPanel';
 import { ChatConfirmDialog } from './admin/ChatConfirmDialog';
 import { sanitizeBlogHtml } from '../utils/sanitizeHtml';
@@ -33,6 +35,9 @@ interface FormResponse {
   email: string;
   message: string;
   phone: string | null;
+  tenantId?: string | null;
+  market?: string | null;
+  sourceSite?: string | null;
   createdAt: string;
 }
 
@@ -59,6 +64,9 @@ interface ToolLead {
   email: string | null;
   phone: string | null;
   message: string | null;
+  tenantId?: string | null;
+  market?: string | null;
+  sourceSite?: string | null;
   createdAt: string;
 }
 
@@ -87,6 +95,9 @@ interface ChatMessage {
     serviceInterest?: string | null;
     firstLandingPage?: string | null;
     currentPageUrl?: string | null;
+    tenantId?: string | null;
+    market?: string | null;
+    sourceSite?: string | null;
   };
   attachments?: ChatAttachment[];
 }
@@ -133,6 +144,9 @@ interface ChatSession {
   deviceType?: string | null;
   browser?: string | null;
   serviceInterest?: string | null;
+  tenantId?: string | null;
+  market?: string | null;
+  sourceSite?: string | null;
   createdAt: string;
   messages: {
     text: string;
@@ -158,6 +172,31 @@ interface ChatConversation {
   utmSource?: string | null;
   deviceType?: string | null;
   browser?: string | null;
+  tenantId?: string | null;
+  market?: string | null;
+  sourceSite?: string | null;
+}
+
+function EntitySourceBadge({
+  tenantId,
+  market,
+  sourceSite,
+}: {
+  tenantId?: string | null;
+  market?: string | null;
+  sourceSite?: string | null;
+}) {
+  // Always render a marker so All-entities and historical NULL rows never look like UK by omission.
+  return (
+    <span className="inline-flex w-fit flex-col rounded-lg border border-violet-100 bg-violet-50 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.06em] text-violet-800">
+      <span>{getTenantDisplayName(tenantId)}</span>
+      {(market || sourceSite) && (
+        <span className="font-medium normal-case tracking-normal text-violet-600">
+          {[market, sourceSite].filter(Boolean).join(' · ')}
+        </span>
+      )}
+    </span>
+  );
 }
 
 type ChatAvailabilityStatus = 'online' | 'away' | 'offline' | 'assistant';
@@ -460,6 +499,7 @@ const AdminPanelContent = () => {
   const [blogError, setBlogError] = useState('');
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [adminTenantFilter, setAdminTenantFilter] = useState('pw-uk');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyingToMessageId, setReplyingToMessageId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState('');
@@ -530,7 +570,13 @@ const AdminPanelContent = () => {
       const interval = setInterval(() => fetchData(true), 5000);
       return () => clearInterval(interval);
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, adminTenantFilter]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchData(true, user ?? undefined);
+    }
+  }, [adminTenantFilter]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -669,6 +715,9 @@ const AdminPanelContent = () => {
     });
   };
 
+  const adminTenantQuery = (path: string) =>
+    apiUrl(`${path}${path.includes('?') ? '&' : '?'}tenantId=${encodeURIComponent(adminTenantFilter)}`);
+
   const fetchData = async (silent = false, currentUser = user) => {
     if (!silent) setLoading(true);
     try {
@@ -676,12 +725,12 @@ const AdminPanelContent = () => {
 
       if (isOperationsRole(currentUser?.role)) {
         endpoints.push(
-          fetch(apiUrl('/api/admin/forms'), { credentials: 'include' }),
-          fetch(apiUrl('/api/admin/tool-leads'), { credentials: 'include' }),
-          fetch(apiUrl('/api/admin/chats'), { credentials: 'include' }),
-          fetch(apiUrl('/api/admin/sessions'), { credentials: 'include' }),
+          fetch(adminTenantQuery('/api/admin/forms'), { credentials: 'include' }),
+          fetch(adminTenantQuery('/api/admin/tool-leads'), { credentials: 'include' }),
+          fetch(adminTenantQuery('/api/admin/chats'), { credentials: 'include' }),
+          fetch(adminTenantQuery('/api/admin/sessions'), { credentials: 'include' }),
           fetch(apiUrl('/api/admin/blog-comments'), { credentials: 'include' }),
-          fetch(apiUrl('/api/admin/chat/appointments'), { credentials: 'include' }),
+          fetch(adminTenantQuery('/api/admin/chat/appointments'), { credentials: 'include' }),
         );
       }
 
@@ -1151,6 +1200,9 @@ const AdminPanelContent = () => {
         utmSource: session.utmSource,
         deviceType: session.deviceType,
         browser: session.browser,
+        tenantId: session.tenantId,
+        market: session.market,
+        sourceSite: session.sourceSite,
       });
     });
 
@@ -1176,6 +1228,9 @@ const AdminPanelContent = () => {
         serviceInterest: message.session?.serviceInterest,
         firstLandingPage: message.session?.firstLandingPage,
         currentPageUrl: message.session?.currentPageUrl,
+        tenantId: message.session?.tenantId,
+        market: message.session?.market,
+        sourceSite: message.session?.sourceSite,
       });
     });
 
@@ -1447,7 +1502,10 @@ const AdminPanelContent = () => {
             </div>
             <p className="text-zinc-500">Manage your site responses and chat history</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {canViewOperations && (
+              <AdminTenantFilter value={adminTenantFilter} onChange={setAdminTenantFilter} />
+            )}
             <button 
               onClick={() => { fetchData(); fetchNotificationSummary(); }}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-200 rounded-xl text-sm font-medium hover:bg-zinc-50 transition-colors"
@@ -1813,6 +1871,7 @@ const AdminPanelContent = () => {
                                     {source}
                                   </span>
                                 ) : null}
+                                <EntitySourceBadge tenantId={res.tenantId} market={res.market} sourceSite={res.sourceSite} />
                               </div>
                             </td>
                             <td className="px-6 py-4 text-sm text-zinc-600">{res.email}</td>
@@ -1871,7 +1930,10 @@ const AdminPanelContent = () => {
                           <td className="px-6 py-4 text-sm text-zinc-500">
                             {format(new Date(lead.createdAt), 'MMM d, h:mm a')}
                           </td>
-                          <td className="px-6 py-4 text-sm font-semibold text-emerald-700">{lead.source}</td>
+                          <td className="px-6 py-4 text-sm">
+                            <div className="font-semibold text-emerald-700">{lead.source}</div>
+                            <EntitySourceBadge tenantId={lead.tenantId} market={lead.market} sourceSite={lead.sourceSite} />
+                          </td>
                           <td className="px-6 py-4 text-sm text-zinc-600 max-w-[180px] truncate">{lead.websiteUrl}</td>
                           <td className="px-6 py-4 text-sm font-bold text-zinc-900">{lead.score ?? '-'}</td>
                           <td className="px-6 py-4 text-sm font-bold text-zinc-900">{lead.name || '-'}</td>
@@ -1905,11 +1967,15 @@ const AdminPanelContent = () => {
           </Tabs.Content>
 
           <Tabs.Content value="audit-leads" className="outline-none">
-            <AdminAuditLeadsPanel globalSearch={searchTerm} />
+            <AdminAuditLeadsPanel
+              globalSearch={searchTerm}
+              tenantFilter={adminTenantFilter}
+              onTenantFilterChange={setAdminTenantFilter}
+            />
           </Tabs.Content>
 
           <Tabs.Content value="conversion" className="outline-none">
-            <AdminConversionDashboard />
+            <AdminConversionDashboard tenantId={adminTenantFilter} />
           </Tabs.Content>
 
           <Tabs.Content value="leads" className="outline-none">
@@ -1925,6 +1991,9 @@ const AdminPanelContent = () => {
                       <div className="flex flex-col">
                         <h3 className="text-lg font-bold text-zinc-900">{session.name || 'Anonymous'}</h3>
                         <p className="text-sm text-zinc-500">{session.email || 'No email provided'}</p>
+                        <div className="mt-2">
+                          <EntitySourceBadge tenantId={session.tenantId} market={session.market} sourceSite={session.sourceSite} />
+                        </div>
                           <div className="mt-2">{renderVisitorActivityBadge(session.visitorLastSeenAt)}</div>
                       </div>
                       <span className="text-[10px] font-mono text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded">
@@ -2081,6 +2150,13 @@ const AdminPanelContent = () => {
                             <p className="truncate text-xs text-zinc-500">
                               {conversation.email || `Session ${conversation.sessionId.slice(0, 8)}`}
                             </p>
+                            <div className="mt-1">
+                              <EntitySourceBadge
+                                tenantId={conversation.tenantId}
+                                market={conversation.market}
+                                sourceSite={conversation.sourceSite}
+                              />
+                            </div>
                             {(conversation.serviceInterest || conversation.firstLandingPage) && (
                               <p className="truncate text-[11px] text-emerald-700">
                                 {conversation.serviceInterest || conversation.firstLandingPage}

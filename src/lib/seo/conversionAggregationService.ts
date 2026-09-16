@@ -22,6 +22,9 @@ import type { SeoConversionType } from './conversionTaxonomies.ts';
 import { registerSeoPageAlias } from './seoPageIdentityService.ts';
 
 export type ConversionAggregationBucket = {
+  tenantId: string | null;
+  market: string | null;
+  sourceSite: string | null;
   metricDate: string;
   seoPageId: number | null;
   attributionModel: SeoAttributionModel;
@@ -65,12 +68,14 @@ export type RebuildConversionReport = {
 type BucketKey = string;
 
 function bucketKey(parts: {
+  tenantId: string | null;
   metricDate: string;
   seoPageId: number | null;
   attributionModel: SeoAttributionModel;
   channelGroup: string;
 }): BucketKey {
   return [
+    parts.tenantId ?? 'legacy',
     parts.metricDate,
     parts.seoPageId ?? 'null',
     parts.attributionModel,
@@ -79,17 +84,22 @@ function bucketKey(parts: {
 }
 
 function emptyBucket(
+  record: RawConversionEvidence,
   metricDate: string,
   seoPageId: number | null,
   attributionModel: SeoAttributionModel,
   channelGroup: string,
 ): ConversionAggregationBucket {
   return {
+    tenantId: record.tenantId,
+    market: record.market,
+    sourceSite: record.sourceSite,
     metricDate,
     seoPageId,
     attributionModel,
     channelGroup,
     bucketKeyHash: computeConversionBucketKeyHash({
+      tenantId: record.tenantId,
       seoPageId,
       attributionModel,
       channelGroup,
@@ -169,6 +179,7 @@ export function aggregateConversionEvidenceRecords(
       dedupe.add(dedupeKey);
 
       const key = bucketKey({
+        tenantId: record.tenantId,
         metricDate: record.metricDate,
         seoPageId: attribution.seoPageId,
         attributionModel: model,
@@ -178,6 +189,7 @@ export function aggregateConversionEvidenceRecords(
       const bucket =
         buckets.get(key) ??
         emptyBucket(
+          record,
           record.metricDate,
           attribution.seoPageId,
           model,
@@ -262,6 +274,9 @@ function buildDeleteWhere(
 
 function toPersistedRow(bucket: ConversionAggregationBucket) {
   return {
+    tenantId: bucket.tenantId,
+    market: bucket.market,
+    sourceSite: bucket.sourceSite,
     metricDate: new Date(`${bucket.metricDate}T00:00:00.000Z`),
     seoPageId: bucket.seoPageId,
     bucketKeyHash: bucket.bucketKeyHash,

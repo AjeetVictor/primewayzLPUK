@@ -21,6 +21,9 @@ import {
   type NormalizedDigitalSystemsReviewLead,
 } from './validateReviewLead.ts';
 import type { ReviewResultCategory } from '../../constants/digitalSystemsReview.ts';
+import type { SourceContext } from '../platform/sourceContext.ts';
+import { defaultUkSourceContext } from '../platform/sourceContext.ts';
+import { getTenantNotificationRecipient } from '../platform/notificationRouting.ts';
 
 export type SubmitDigitalSystemsReviewSuccess = {
   success: true;
@@ -59,6 +62,7 @@ async function attemptNotification(
   > & { prisma: PrismaClient },
   lead: NormalizedDigitalSystemsReviewLead,
   saved: { id: number; createdAt: Date },
+  sourceContext: SourceContext = defaultUkSourceContext('digital-systems-review'),
 ): Promise<'sent' | 'failed' | 'pending'> {
   let outcome: 'sent' | 'failed' = 'failed';
   let errorCode: string | null = 'email_send_failed';
@@ -68,7 +72,9 @@ async function attemptNotification(
     let receiver: string | null = null;
     try {
       ready = deps.isEmailReady();
-      receiver = deps.getReceiver();
+      receiver = sourceContext.tenantId === 'pw-uk'
+        ? deps.getReceiver()
+        : getTenantNotificationRecipient(sourceContext);
     } catch {
       ready = false;
       receiver = null;
@@ -135,6 +141,7 @@ async function attemptNotification(
 export async function submitDigitalSystemsReviewLead(
   prismaOrDeps: PrismaClient | SubmitDigitalSystemsReviewDeps,
   body: unknown,
+  sourceContext: SourceContext = defaultUkSourceContext('digital-systems-review'),
 ): Promise<SubmitDigitalSystemsReviewSuccess> {
   const deps: SubmitDigitalSystemsReviewDeps =
     'prisma' in (prismaOrDeps as SubmitDigitalSystemsReviewDeps)
@@ -160,7 +167,7 @@ export async function submitDigitalSystemsReviewLead(
 
   let saved;
   try {
-    saved = await saveDigitalSystemsReviewLead({ prisma: deps.prisma }, lead);
+    saved = await saveDigitalSystemsReviewLead({ prisma: deps.prisma }, lead, sourceContext);
   } catch (error) {
     if (isPrismaUniqueConstraintError(error)) {
       const raced = await findReviewLeadBySubmissionId(
@@ -184,6 +191,7 @@ export async function submitDigitalSystemsReviewLead(
     { prisma: deps.prisma, sendNotificationEmail, isEmailReady, getReceiver },
     lead,
     saved,
+    sourceContext,
   );
 
   return {

@@ -2,7 +2,7 @@ import { buildOwnedCampaignUrl } from '../../ownedCampaignUrls.ts';
 import { WEB_PRESENCE_AUDIT_CANONICAL_CAMPAIGN } from '../../utm.ts';
 import type { PrismaClient } from '@prisma/client';
 import type { SharedWebPresenceAuditReport } from '../types.ts';
-import { getInternalNotificationEmail, isEmailConfigured, sendEmail } from '../../email/sendEmail.ts';
+import { isEmailConfigured, sendEmail } from '../../email/sendEmail.ts';
 import { createSharedReport, getSharedReport } from '../share/shareReportService.ts';
 import { resolvePublicToken } from '../share/extractPublicToken.ts';
 import { assertValidAuditPublicToken } from '../leads/auditLeadRecord.ts';
@@ -15,6 +15,8 @@ import {
 } from '../leads/auditLeadRecord.ts';
 import { formatSafeUtmFieldsForEmail } from '../leads/safeUtmFields.ts';
 import { saveAuditLead } from '../leads/saveAuditLead.ts';
+import type { SourceContext } from '../../platform/sourceContext.ts';
+import { getTenantNotificationRecipient } from '../../platform/notificationRouting.ts';
 import {
   buildInternalLeadNotificationEmail,
   buildUserAuditReportEmail,
@@ -54,6 +56,7 @@ export type EmailReportResult = {
 async function resolveShareContext(
   body: EmailReportRequestBody,
   siteUrl: string,
+  sourceContext: SourceContext,
 ): Promise<{ publicToken: string; shareUrl: string }> {
   let publicToken = resolvePublicToken({
     publicToken: body.publicToken,
@@ -61,7 +64,7 @@ async function resolveShareContext(
   });
 
   if (!publicToken && body.report && typeof body.report === 'object') {
-    const created = await createSharedReport(body.report, siteUrl);
+    const created = await createSharedReport(body.report, siteUrl, sourceContext);
     publicToken = created.publicToken;
     assertValidAuditPublicToken(publicToken);
     return {
@@ -107,6 +110,7 @@ async function deliverAuditEmails(input: {
   submission: ReturnType<typeof validateAndNormalizeAuditLeadSubmission>;
   shareUrl: string;
   report: SharedWebPresenceAuditReport;
+  sourceContext: SourceContext;
 }): Promise<{ user: boolean; internal: boolean; status: EmailDeliveryStatus; message: string }> {
   if (!isEmailConfigured()) {
     return {
@@ -133,7 +137,7 @@ async function deliverAuditEmails(input: {
       subject: userEmail.subject,
       html: userEmail.html,
       text: userEmail.text,
-      replyTo: getInternalNotificationEmail() || undefined,
+      replyTo: getTenantNotificationRecipient(input.sourceContext) || undefined,
     });
     userSent = true;
   } catch (error) {
@@ -146,7 +150,7 @@ async function deliverAuditEmails(input: {
     };
   }
 
-  const internalRecipient = getInternalNotificationEmail();
+  const internalRecipient = getTenantNotificationRecipient(input.sourceContext);
   if (internalRecipient) {
     try {
       const internalEmail = buildInternalLeadNotificationEmail({
@@ -193,9 +197,10 @@ export async function emailAuditReport(
   prisma: PrismaClient,
   body: EmailReportRequestBody,
   siteUrl: string,
+  sourceContext: SourceContext,
 ): Promise<EmailReportResult> {
   const submission = validateAndNormalizeAuditLeadSubmission(body);
-  const shareContext = await resolveShareContext(body, siteUrl);
+  const shareContext = await resolveShareContext(body, siteUrl, sourceContext);
   const sharedRecord = await getSharedReport(shareContext.publicToken);
 
   if (!sharedRecord) {
@@ -208,12 +213,14 @@ export async function emailAuditReport(
   const leadResult = await saveAuditLead(prisma, {
     submission,
     context: leadContext,
+    sourceContext,
   });
 
   const emailDelivery = await deliverAuditEmails({
     submission,
     shareUrl: shareContext.shareUrl,
     report,
+    sourceContext,
   });
 
   logAuditLeadEmailDelivery(emailDelivery.status, leadResult.id);

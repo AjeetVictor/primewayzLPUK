@@ -26,6 +26,12 @@ import {
 } from './conversionTaxonomies.ts';
 import { computeConversionBucketKeyHash } from './conversionBucketKey.ts';
 
+const UK_PLATFORM_SOURCE = {
+  tenantId: 'pw-uk' as const,
+  market: 'UK' as const,
+  sourceSite: 'uk.primewayz.com',
+};
+
 type StoredConversionRow = {
   id: number;
   metricDate: Date;
@@ -390,6 +396,7 @@ test('chat followed by review lead shares chatSession journey key', async () => 
 
 test('duplicate journey references dedupe qualified lead counting', () => {
   const record: RawConversionEvidence = {
+    ...UK_PLATFORM_SOURCE,
     recordId: 'review:1',
     metricDate: '2026-07-10',
     journeyKey: 'journey:abc',
@@ -439,6 +446,7 @@ test('qualified lead mapping does not treat new review status as qualified', () 
 
 test('booking and won opportunity evidence increments counters', () => {
   const record: RawConversionEvidence = {
+    ...UK_PLATFORM_SOURCE,
     recordId: 'review:99',
     metricDate: '2026-07-15',
     journeyKey: 'journey:won-1',
@@ -510,6 +518,7 @@ test('missing landing page increments unknown attribution in rebuild dry-run', a
 test('safe summary never includes email, phone or message fields', () => {
   const records: RawConversionEvidence[] = [
     {
+      ...UK_PLATFORM_SOURCE,
       recordId: 'chat:1',
       metricDate: '2026-07-01',
       journeyKey: 'chat:1',
@@ -893,6 +902,7 @@ test('persistConversionBuckets uses scoped delete replacement', async () => {
   const buckets = aggregateConversionEvidenceRecords([
     {
       record: {
+        ...UK_PLATFORM_SOURCE,
         recordId: 'chat:1',
         metricDate: '2026-07-10',
         journeyKey: 'chat:1',
@@ -930,6 +940,7 @@ test('persistConversionBuckets pins lock acquire, DML and release to tx client',
   const buckets = aggregateConversionEvidenceRecords([
     {
       record: {
+        ...UK_PLATFORM_SOURCE,
         recordId: 'chat:2',
         metricDate: '2026-07-10',
         journeyKey: 'chat:2',
@@ -977,4 +988,83 @@ test('business error is preserved when lock release also fails', async () => {
     /insert failed/,
   );
   assert.equal(prisma._lockState.releaseCount, 1);
+});
+
+test('rebuild bucket hashes follow the same tenant-aware helper as runtime aggregation', () => {
+  const baseAttribution = {
+    landingPageUrl: 'https://uk.primewayz.com/contact',
+    seoPageId: 12,
+    channelGroup: 'organic',
+    isUnknownLanding: false,
+  } as const;
+
+  const ukEvidence: RawConversionEvidence = {
+    ...UK_PLATFORM_SOURCE,
+    recordId: 'form:1',
+    metricDate: '2026-07-10',
+    journeyKey: 'journey-uk',
+    conversionTypes: ['contact_submitted'],
+    firstTouch: { page: '/contact', source: 'google', medium: 'organic' },
+    lastTouch: { page: '/contact', source: 'google', medium: 'organic' },
+    leadQuality: 'unknown',
+    attributedValueMinor: 0,
+    currency: 'GBP',
+  };
+  const legacyEvidence: RawConversionEvidence = {
+    tenantId: null,
+    market: null,
+    sourceSite: null,
+    recordId: 'form:2',
+    metricDate: '2026-07-10',
+    journeyKey: 'journey-legacy',
+    conversionTypes: ['contact_submitted'],
+    firstTouch: { page: '/contact', source: 'google', medium: 'organic' },
+    lastTouch: { page: '/contact', source: 'google', medium: 'organic' },
+    leadQuality: 'unknown',
+    attributedValueMinor: 0,
+    currency: 'GBP',
+  };
+  const infotechEvidence: RawConversionEvidence = {
+    tenantId: 'pw-infotech',
+    market: 'IN',
+    sourceSite: 'primewayz.com',
+    recordId: 'form:3',
+    metricDate: '2026-07-10',
+    journeyKey: 'journey-in',
+    conversionTypes: ['contact_submitted'],
+    firstTouch: { page: '/contact', source: 'google', medium: 'organic' },
+    lastTouch: { page: '/contact', source: 'google', medium: 'organic' },
+    leadQuality: 'unknown',
+    attributedValueMinor: 0,
+    currency: 'GBP',
+  };
+
+  const { buckets } = aggregateConversionEvidenceRecords([
+    { record: ukEvidence, model: 'first_touch', attribution: baseAttribution },
+    { record: legacyEvidence, model: 'first_touch', attribution: baseAttribution },
+    { record: infotechEvidence, model: 'first_touch', attribution: baseAttribution },
+  ]);
+
+  assert.equal(buckets.length, 3);
+  for (const bucket of buckets) {
+    assert.equal(
+      bucket.bucketKeyHash,
+      computeConversionBucketKeyHash({
+        tenantId: bucket.tenantId,
+        seoPageId: bucket.seoPageId,
+        attributionModel: bucket.attributionModel,
+        channelGroup: bucket.channelGroup,
+      }),
+    );
+  }
+
+  const ukHash = buckets.find((bucket) => bucket.tenantId === 'pw-uk')?.bucketKeyHash;
+  const legacyHash = buckets.find((bucket) => bucket.tenantId === null)?.bucketKeyHash;
+  const infotechHash = buckets.find((bucket) => bucket.tenantId === 'pw-infotech')?.bucketKeyHash;
+  assert.ok(ukHash);
+  assert.ok(legacyHash);
+  assert.ok(infotechHash);
+  assert.notEqual(ukHash, legacyHash);
+  assert.notEqual(ukHash, infotechHash);
+  assert.notEqual(legacyHash, infotechHash);
 });

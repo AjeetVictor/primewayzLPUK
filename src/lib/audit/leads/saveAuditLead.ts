@@ -11,10 +11,13 @@ import {
   type SanitizedAuditLeadContext,
 } from './auditLeadRecord.ts';
 import { saveAuditLeadFile, type StoredAuditLeadFile } from './leadStore.ts';
+import type { SourceContext } from '../../platform/sourceContext.ts';
+import { toPersistedSourceContext } from '../../platform/sourceContext.ts';
 
 export type SaveAuditLeadInput = {
   submission: NormalizedAuditLeadSubmission;
   context: SanitizedAuditLeadContext;
+  sourceContext: SourceContext;
 };
 
 export type SaveAuditLeadResult = {
@@ -33,7 +36,7 @@ export async function saveAuditLead(
   input: SaveAuditLeadInput,
 ): Promise<SaveAuditLeadResult> {
   const details = buildAuditLeadDetails(input);
-  const { submission, context } = input;
+  const { submission, context, sourceContext } = input;
   const normalizedEmail = normalizeAuditLeadEmail(submission.email) || submission.email;
 
   const filePayload: Omit<StoredAuditLeadFile, 'id' | 'createdAt'> = {
@@ -62,6 +65,7 @@ export async function saveAuditLead(
         phone: submission.phone || null,
         message: submission.message || null,
         details: details as unknown as Prisma.InputJsonValue,
+        ...toPersistedSourceContext(sourceContext),
       },
     });
 

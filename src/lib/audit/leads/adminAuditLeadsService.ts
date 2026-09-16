@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient, ToolLead } from '@prisma/client';
+import { getTenantDisplayName } from '../../platform/tenantRegistry.ts';
 import { AUDIT_LEAD_SOURCE } from './auditLeadRecord.ts';
 
 export const AUDIT_LEAD_ADMIN_STATUSES = [
@@ -29,6 +30,12 @@ export type SafeAuditLeadListItem = {
   id: number;
   createdAt: string;
   source: string;
+  sourceContext: {
+    tenantId: string | null;
+    entity: string;
+    market: string | null;
+    sourceSite: string | null;
+  };
   name: string | null;
   email: string | null;
   phone: string | null;
@@ -155,12 +162,19 @@ function serializeAuditLead(lead: ToolLead, includeNotes = false): SafeAuditLead
     utm: readSafeUtm(rawDetails),
     cta_location: readString(rawDetails?.cta_location),
   };
+  const sourceContext = {
+    tenantId: lead.tenantId,
+    entity: getTenantDisplayName(lead.tenantId),
+    market: lead.market,
+    sourceSite: lead.sourceSite,
+  };
 
   if (includeNotes) {
     return {
       id: lead.id,
       createdAt: lead.createdAt.toISOString(),
       source: lead.source,
+      sourceContext,
       name: lead.name,
       email: lead.email,
       phone: lead.phone,
@@ -183,6 +197,7 @@ function serializeAuditLead(lead: ToolLead, includeNotes = false): SafeAuditLead
     id: lead.id,
     createdAt: lead.createdAt.toISOString(),
     source: lead.source,
+    sourceContext,
     name: lead.name,
     email: lead.email,
     phone: lead.phone,
@@ -245,6 +260,7 @@ function matchesStatus(lead: ToolLead, status: string): boolean {
 }
 
 export type ListAuditLeadsQuery = {
+  tenantId?: string;
   status?: string;
   q?: string;
   scoreBand?: string;
@@ -261,7 +277,10 @@ export async function listAdminAuditLeads(
   const offset = Math.max(Number(query.offset) || 0, 0);
 
   const leads = await prisma.toolLead.findMany({
-    where: { source: AUDIT_LEAD_SOURCE },
+    where: {
+      source: AUDIT_LEAD_SOURCE,
+      ...(query.tenantId && query.tenantId !== 'all' ? { tenantId: query.tenantId } : {}),
+    },
     orderBy: { createdAt: 'desc' },
   });
 

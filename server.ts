@@ -67,6 +67,9 @@ import {
   shouldLogRouteClassification,
 } from './src/lib/serverRouteClassification.ts';
 import type { NextFunction, Request, Response } from 'express';
+import { resolveSourceContext, SourceResolutionError, assertChatSessionTenantAccess } from './src/lib/platform/sourceResolver.ts';
+import { toPersistedSourceContext, type PrimewayzSourceChannel, type SourceContext } from './src/lib/platform/sourceContext.ts';
+import { getTenantById } from './src/lib/platform/tenantRegistry.ts';
 import type { BlogCategory, BlogPost, BreadcrumbItem } from './src/data/blog/types.ts';
 import {
   LEGACY_ROUTE_REDIRECTS,
@@ -151,6 +154,31 @@ const __dirname = path.resolve();
 const allBlogPosts = getAllBlogPosts();
 const adminCookieName = 'primewayz_admin_token';
 const siteUrl = (process.env.SITE_URL || 'https://uk.primewayz.com').replace(/\/$/, '');
+
+function resolveRequestSource(req: Request, sourceChannel: PrimewayzSourceChannel): SourceContext {
+  const rawHost = req.get('host');
+  return resolveSourceContext({
+    origin: req.get('origin'),
+    host: rawHost,
+    sourceChannel,
+    body: req.body,
+    allowLocalDevelopment: !isProd,
+    campaignId: typeof req.body?.campaignId === 'string' ? req.body.campaignId : undefined,
+  });
+}
+
+function sourceResolutionFailure(res: Response, error: unknown): Response | null {
+  if (!(error instanceof SourceResolutionError)) return null;
+  return res.status(error.message.includes('controlled by the server') ? 400 : 403).json({ error: error.message });
+}
+
+function adminTenantId(req: Request): string | undefined {
+  const requested = typeof req.query.tenantId === 'string' ? req.query.tenantId : 'pw-uk';
+  if (requested === 'all') return undefined;
+  const tenant = getTenantById(requested);
+  if (!tenant?.active) throw new SourceResolutionError('Unknown or inactive tenant filter.');
+  return tenant.tenantId;
+}
 
 function getJwtSecret() {
   return process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'dev_secret';
@@ -1787,9 +1815,14 @@ app.post('/api/admin/logout', (_req, res) => {
   return res.json({ success: true });
 });
 
-app.get('/api/admin/forms', requireAdmin, requireRole(isOperationsRole), async (_req, res) => {
-  const forms = await prisma.formResponse.findMany({ orderBy: { createdAt: 'desc' } });
-  res.json(forms);
+app.get('/api/admin/forms', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
+  try {
+    const tenantId = adminTenantId(req);
+    const forms = await prisma.formResponse.findMany({ where: tenantId ? { tenantId } : {}, orderBy: { createdAt: 'desc' } });
+    res.json(forms);
+  } catch (error) {
+    sourceResolutionFailure(res, error) ?? res.status(500).json({ error: 'Failed to load forms' });
+  }
 });
 
 app.delete('/api/admin/forms/:id', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
@@ -1799,9 +1832,14 @@ app.delete('/api/admin/forms/:id', requireAdmin, requireRole(isOperationsRole), 
   res.json({ success: true });
 });
 
-app.get('/api/admin/tool-leads', requireAdmin, requireRole(isOperationsRole), async (_req, res) => {
-  const leads = await prisma.toolLead.findMany({ orderBy: { createdAt: 'desc' } });
-  res.json(leads);
+app.get('/api/admin/tool-leads', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
+  try {
+    const tenantId = adminTenantId(req);
+    const leads = await prisma.toolLead.findMany({ where: tenantId ? { tenantId } : {}, orderBy: { createdAt: 'desc' } });
+    res.json(leads);
+  } catch (error) {
+    sourceResolutionFailure(res, error) ?? res.status(500).json({ error: 'Failed to load tool leads' });
+  }
 });
 
 app.delete('/api/admin/tool-leads/:id', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
@@ -1814,6 +1852,7 @@ app.delete('/api/admin/tool-leads/:id', requireAdmin, requireRole(isOperationsRo
 app.get('/api/admin/audit-leads', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
   try {
     const result = await listAdminAuditLeads(prisma, {
+      tenantId: adminTenantId(req) ?? 'all',
       status: typeof req.query.status === 'string' ? req.query.status : undefined,
       q: typeof req.query.q === 'string' ? req.query.q : undefined,
       scoreBand: typeof req.query.scoreBand === 'string' ? req.query.scoreBand : undefined,
@@ -1880,7 +1919,7 @@ app.get('/api/admin/conversion-dashboard', requireAdmin, requireRole(isOperation
   try {
     const preset = typeof req.query.preset === 'string' ? req.query.preset : '30d';
     const range = resolveDashboardDateRange(preset);
-    const summary = await getConversionDashboardSummary(prisma, range);
+    const summary = await getConversionDashboardSummary(prisma, range, adminTenantId(req) ?? 'all');
     res.json(summary);
   } catch (error) {
     console.error('[admin-conversion-dashboard] failed');
@@ -1891,6 +1930,7 @@ app.get('/api/admin/conversion-dashboard', requireAdmin, requireRole(isOperation
 app.get('/api/admin/review-leads', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
   try {
     const result = await listReviewLeadsAdmin(prisma, {
+      tenantId: adminTenantId(req) ?? 'all',
       status: typeof req.query.status === 'string' ? req.query.status : undefined,
       ownerId: typeof req.query.ownerId === 'string' ? Number(req.query.ownerId) : undefined,
       limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined,
@@ -1972,8 +2012,10 @@ app.post('/api/admin/pricing-content/seed-backlog', requireAdmin, requireRole(is
   }
 });
 
-app.get('/api/admin/chats', requireAdmin, requireRole(isOperationsRole), async (_req, res) => {
+app.get('/api/admin/chats', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
+  const tenantId = adminTenantId(req);
   const messages = await prisma.chatMessage.findMany({
+    where: tenantId ? { session: { tenantId } } : {},
     orderBy: { timestamp: 'desc' },
     include: {
       session: {
@@ -1984,6 +2026,9 @@ app.get('/api/admin/chats', requireAdmin, requireRole(isOperationsRole), async (
           serviceInterest: true,
           firstLandingPage: true,
           currentPageUrl: true,
+          tenantId: true,
+          market: true,
+          sourceSite: true,
         },
       },
       ...chatMessageInclude,
@@ -1992,8 +2037,10 @@ app.get('/api/admin/chats', requireAdmin, requireRole(isOperationsRole), async (
   res.json(messages);
 });
 
-app.get('/api/admin/sessions', requireAdmin, requireRole(isOperationsRole), async (_req, res) => {
+app.get('/api/admin/sessions', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
+  const tenantId = adminTenantId(req);
   const sessions = await prisma.chatSession.findMany({
+    where: tenantId ? { tenantId } : {},
     orderBy: { createdAt: 'desc' },
     include: {
       messages: {
@@ -2084,8 +2131,13 @@ app.delete('/api/admin/blog-comments/:id', requireAdmin, requireRole(isOperation
   res.json({ success: true });
 });
 
-app.get('/api/admin/chat/appointments', requireAdmin, requireRole(isOperationsRole), async (_req, res) => {
-  const appointments = await prisma.chatAppointmentRequest.findMany({ orderBy: { createdAt: 'desc' } });
+app.get('/api/admin/chat/appointments', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
+  const tenantId = adminTenantId(req);
+  const appointments = await prisma.chatAppointmentRequest.findMany({
+    where: tenantId ? { session: { tenantId } } : {},
+    orderBy: { createdAt: 'desc' },
+    include: { session: { select: { tenantId: true, market: true, sourceSite: true } } },
+  });
   res.json(appointments);
 });
 
@@ -2312,6 +2364,7 @@ registerAutopilotAdminRoutes({
 
 app.post('/api/contact', async (req, res) => {
   try {
+    const sourceContext = resolveRequestSource(req, 'contact-form');
     const { name, email, message, phone } = req.body;
     if (!name || !email || !message) {
       return res.status(400).json({ error: 'Name, email, and message are required' });
@@ -2333,11 +2386,14 @@ app.post('/api/contact', async (req, res) => {
           Object.keys(commercialContext).length > 0
             ? (commercialContext as Prisma.InputJsonObject)
             : undefined,
+        ...toPersistedSourceContext(sourceContext),
       },
     });
 
     res.status(201).json({ success: true });
   } catch (err) {
+    const sourceFailure = sourceResolutionFailure(res, err);
+    if (sourceFailure) return sourceFailure;
     console.error('Contact form error:', err);
     res.status(500).json({ error: 'Could not save contact request' });
   }
@@ -2345,6 +2401,7 @@ app.post('/api/contact', async (req, res) => {
 
 app.post('/api/digital-systems-review', async (req, res) => {
   try {
+    const sourceContext = resolveRequestSource(req, 'digital-systems-review');
     assertJsonContentType(
       typeof req.headers['content-type'] === 'string' ? req.headers['content-type'] : undefined,
     );
@@ -2372,10 +2429,12 @@ app.post('/api/digital-systems-review', async (req, res) => {
 
     assertSerializedReviewPayloadSize(body);
 
-    const result = await submitDigitalSystemsReviewLead(prisma, body);
+    const result = await submitDigitalSystemsReviewLead(prisma, body, sourceContext);
     const statusCode = result.resultCategory === 'duplicate' ? 200 : 201;
     return res.status(statusCode).json(toPublicDigitalSystemsReviewResponse(result));
   } catch (err) {
+    const sourceFailure = sourceResolutionFailure(res, err);
+    if (sourceFailure) return sourceFailure;
     if (err instanceof DigitalSystemsReviewHoneypotError) {
       return res.status(400).json({
         error: 'Unable to process this submission.',
@@ -2446,6 +2505,12 @@ function applyAuditApiCors(req: Request, res: Response): boolean {
   return true;
 }
 
+async function assertChatSessionSource(sessionId: string, sourceContext: SourceContext): Promise<void> {
+  const existing = await prisma.chatSession.findUnique({ where: { id: sessionId }, select: { tenantId: true } });
+  if (!existing) return;
+  assertChatSessionTenantAccess(existing.tenantId, sourceContext);
+}
+
 app.options('/api/v1/website-audits', (req, res) => {
   if (!applyAuditApiCors(req, res)) return res.status(403).json({ error: 'Origin is not allowed.' });
   return res.status(204).end();
@@ -2460,9 +2525,12 @@ app.post('/api/v1/website-audits', async (req, res) => {
     return res.status(429).json({ error: 'Too many audit requests. Please try again later.' });
   }
   try {
+    const sourceContext = resolveRequestSource(req, 'website-audit');
     const report = await runWebPresenceAudit(req.body);
-    return res.json({ apiVersion: '2026-09-16', provider: 'Primewayz UK', report });
+    return res.json({ apiVersion: '2026-09-16', provider: 'Primewayz UK', source: { entity: sourceContext.tenantId === 'pw-uk' ? 'Primewayz UK' : 'Primewayz Infotech', market: sourceContext.market }, report });
   } catch (error) {
+    const sourceFailure = sourceResolutionFailure(res, error);
+    if (sourceFailure) return sourceFailure;
     const message = error instanceof Error ? error.message : 'The website audit could not be completed.';
     const status = error instanceof AuditInputError ? 400 : 500;
     console.error('[audit-api] website audit failed');
@@ -2472,14 +2540,17 @@ app.post('/api/v1/website-audits', async (req, res) => {
 
 app.post('/api/tools/web-presence-audit/share', async (req, res) => {
   try {
+    const sourceContext = resolveRequestSource(req, 'website-audit');
     const { report } = req.body;
     if (!report || typeof report !== 'object') {
       return res.status(400).json({ error: 'A valid audit report is required.' });
     }
 
-    const result = await createSharedReport(report, siteUrl);
+    const result = await createSharedReport(report, siteUrl, sourceContext);
     res.status(201).json(result);
   } catch (error) {
+    const sourceFailure = sourceResolutionFailure(res, error);
+    if (sourceFailure) return sourceFailure;
     const message = error instanceof Error ? error.message : 'Could not create a shareable report.';
     const status = message.includes('required') ? 400 : 500;
     console.error('Web presence audit share error:', error);
@@ -2512,9 +2583,12 @@ app.get('/api/tools/web-presence-audit/report/:publicToken', async (req, res) =>
 
 app.post('/api/tools/web-presence-audit/email-report', async (req, res) => {
   try {
-    const result = await emailAuditReport(prisma, req.body, siteUrl);
+    const sourceContext = resolveRequestSource(req, 'website-audit');
+    const result = await emailAuditReport(prisma, req.body, siteUrl, sourceContext);
     res.status(201).json(result);
   } catch (error) {
+    const sourceFailure = sourceResolutionFailure(res, error);
+    if (sourceFailure) return sourceFailure;
     const message = error instanceof EmailReportValidationError
       ? error.message
       : 'Could not save your report request.';
@@ -2528,6 +2602,7 @@ app.post('/api/tools/web-presence-audit/email-report', async (req, res) => {
 
 app.post('/api/tools/digital-visibility-check/lead', async (req, res) => {
   try {
+    const sourceContext = resolveRequestSource(req, 'website-audit');
     const { name, email, phone, message, websiteUrl, score, businessType, location } = req.body;
     if (!name || !email || !websiteUrl) {
       return res.status(400).json({ error: 'Name, email, and website URL are required' });
@@ -2544,11 +2619,14 @@ app.post('/api/tools/digital-visibility-check/lead', async (req, res) => {
         email: String(email),
         phone: phone ? String(phone) : null,
         message: message ? String(message) : null,
+        ...toPersistedSourceContext(sourceContext),
       },
     });
 
     res.status(201).json({ success: true, lead });
   } catch (err) {
+    const sourceFailure = sourceResolutionFailure(res, err);
+    if (sourceFailure) return sourceFailure;
     console.error('Digital visibility lead error:', err);
     res.status(500).json({ error: 'Could not save your request' });
   }
@@ -2563,6 +2641,8 @@ app.post('/api/chat/session', async (req, res) => {
   if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
 
   try {
+    const sourceContext = resolveRequestSource(req, 'chat');
+    await assertChatSessionSource(sessionId, sourceContext);
     const sourceData = buildSessionSourceData(req.body);
     const session = await prisma.chatSession.upsert({
       where: { id: sessionId },
@@ -2586,11 +2666,14 @@ app.post('/api/chat/session', async (req, res) => {
         email: email || null,
         status: 'new',
         ...sourceData,
+        ...toPersistedSourceContext(sourceContext),
       },
     });
 
     return res.json(session);
   } catch (err) {
+    const sourceFailure = sourceResolutionFailure(res, err);
+    if (sourceFailure) return sourceFailure;
     if (!isDatabaseUnavailableError(err)) throw err;
     logChatDbFallback('Chat session unavailable', err);
     return res.json(offlineChatSessionStub(sessionId, { name: name || null, email: email || null }));
@@ -2602,6 +2685,8 @@ app.post('/api/chat/heartbeat', async (req, res) => {
   if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
 
   try {
+    const sourceContext = resolveRequestSource(req, 'chat');
+    await assertChatSessionSource(sessionId, sourceContext);
     const sourceData = buildSessionSourceData(req.body);
     const session = await prisma.chatSession.upsert({
       where: { id: sessionId },
@@ -2627,11 +2712,14 @@ app.post('/api/chat/heartbeat', async (req, res) => {
         visitorLastSeenAt: new Date(),
         status: 'new',
         ...sourceData,
+        ...toPersistedSourceContext(sourceContext),
       },
     });
 
     return res.json(session);
   } catch (err) {
+    const sourceFailure = sourceResolutionFailure(res, err);
+    if (sourceFailure) return sourceFailure;
     if (!isDatabaseUnavailableError(err)) throw err;
     logChatDbFallback('Chat heartbeat unavailable', err);
     return res.json(
@@ -2646,6 +2734,8 @@ app.post('/api/chat/heartbeat', async (req, res) => {
 
 app.get('/api/chat/:sessionId', async (req, res) => {
   try {
+    const sourceContext = resolveRequestSource(req, 'chat');
+    await assertChatSessionSource(req.params.sessionId, sourceContext);
     const messages = await prisma.chatMessage.findMany({
       where: { sessionId: req.params.sessionId },
       orderBy: { timestamp: 'asc' },
@@ -2657,6 +2747,8 @@ app.get('/api/chat/:sessionId', async (req, res) => {
         .filter(Boolean),
     );
   } catch (err) {
+    const sourceFailure = sourceResolutionFailure(res, err);
+    if (sourceFailure) return sourceFailure;
     if (!isDatabaseUnavailableError(err)) throw err;
     logChatDbFallback('Chat messages unavailable', err);
     return res.json([]);
@@ -2677,10 +2769,15 @@ app.post('/api/chat', async (req: AdminRequest, res) => {
       }
     }
 
+    const sourceContext = adminUser
+      ? null
+      : resolveRequestSource(req, 'chat');
+    if (sourceContext) await assertChatSessionSource(sessionId, sourceContext);
+
     await prisma.chatSession.upsert({
       where: { id: sessionId },
       update: {},
-      create: { id: sessionId, status: 'new' },
+      create: { id: sessionId, status: 'new', ...(sourceContext ? toPersistedSourceContext(sourceContext) : toPersistedSourceContext(resolveSourceContext({ host: 'uk.primewayz.com', sourceChannel: 'admin' }))) },
     });
 
     const message = await prisma.chatMessage.create({
@@ -2708,6 +2805,8 @@ app.post('/api/chat', async (req: AdminRequest, res) => {
 
     return res.status(201).json(message);
   } catch (err) {
+    const sourceFailure = sourceResolutionFailure(res, err);
+    if (sourceFailure) return sourceFailure;
     if (!isDatabaseUnavailableError(err)) throw err;
     logChatDbFallback('Chat message create unavailable', err);
     return res.status(503).json({ error: 'Chat is temporarily unavailable', unavailable: true });
@@ -2719,10 +2818,12 @@ app.post('/api/chat/respond', async (req, res) => {
   if (!sessionId || !message) return res.status(400).json({ error: 'sessionId and message are required' });
 
   try {
+    const sourceContext = resolveRequestSource(req, 'chat');
+    await assertChatSessionSource(sessionId, sourceContext);
     await prisma.chatSession.upsert({
       where: { id: sessionId },
       update: { name: userName || undefined, visitorLastSeenAt: new Date() },
-      create: { id: sessionId, name: userName || null, visitorLastSeenAt: new Date(), status: 'new' },
+      create: { id: sessionId, name: userName || null, visitorLastSeenAt: new Date(), status: 'new', ...toPersistedSourceContext(sourceContext) },
     });
 
     const userMessage = await prisma.chatMessage.create({
@@ -2760,6 +2861,8 @@ app.post('/api/chat/respond', async (req, res) => {
       availability: await getChatAvailabilityPayload(),
     });
   } catch (err) {
+    const sourceFailure = sourceResolutionFailure(res, err);
+    if (sourceFailure) return sourceFailure;
     if (!isDatabaseUnavailableError(err)) throw err;
     logChatDbFallback('Chat respond unavailable', err);
     return res.json(await offlineChatRespondPayload(String(message)));
@@ -2775,10 +2878,12 @@ app.post('/api/chat/appointments', async (req, res) => {
   if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
 
   try {
+    const sourceContext = resolveRequestSource(req, 'booking');
+    await assertChatSessionSource(sessionId, sourceContext);
     await prisma.chatSession.upsert({
       where: { id: sessionId },
       update: { name: name || undefined, email: email || undefined },
-      create: { id: sessionId, name: name || null, email: email || null },
+      create: { id: sessionId, name: name || null, email: email || null, ...toPersistedSourceContext(sourceContext) },
     });
 
     const appointment = await prisma.chatAppointmentRequest.create({
@@ -2798,6 +2903,8 @@ app.post('/api/chat/appointments', async (req, res) => {
 
     return res.status(201).json(appointment);
   } catch (err) {
+    const sourceFailure = sourceResolutionFailure(res, err);
+    if (sourceFailure) return sourceFailure;
     if (!isDatabaseUnavailableError(err)) throw err;
     logChatDbFallback('Chat appointment unavailable', err);
     return res.status(503).json({ error: 'Chat booking is temporarily unavailable', unavailable: true });

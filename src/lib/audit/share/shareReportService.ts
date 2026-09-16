@@ -2,12 +2,14 @@ import { createPublicToken } from './publicToken.server.ts';
 import { loadSharedReport, saveSharedReport } from './reportStore.ts';
 import { sanitizeSharedReport } from './sanitizeSharedReport.ts';
 import type { CreateSharedReportResult } from './types.ts';
+import type { SourceContext } from '../../platform/sourceContext.ts';
 
 export type { CreateSharedReportResult, ShareLinkState } from './types.ts';
 
 export async function createSharedReport(
   rawReport: unknown,
   siteUrl: string,
+  sourceContext?: SourceContext,
 ): Promise<CreateSharedReportResult> {
   const report = sanitizeSharedReport(rawReport);
   const publicToken = createPublicToken();
@@ -18,6 +20,7 @@ export async function createSharedReport(
     publicToken,
     createdAt,
     report,
+    sourceContext,
   });
 
   return {

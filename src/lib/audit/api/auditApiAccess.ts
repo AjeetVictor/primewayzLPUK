@@ -1,4 +1,8 @@
-const DEFAULT_ALLOWED_ORIGINS = ['https://primewayz.com', 'https://www.primewayz.com'];
+import { PRIMEWAYZ_TENANTS } from '../../platform/tenantRegistry.ts';
+
+const DEFAULT_ALLOWED_ORIGINS = PRIMEWAYZ_TENANTS
+  .filter((tenant) => tenant.active)
+  .flatMap((tenant) => [...tenant.allowedOrigins]);
 type Bucket = { count: number; resetAt: number };
 const buckets = new Map<string, Bucket>();
 

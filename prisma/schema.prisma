@@ -69,7 +69,15 @@ model FormResponse {
   phone             String? // nullable
   commercialContext Json?
   leadStatus        String?  @default("new") @db.VarChar(32)
+  tenantId          String?  @db.VarChar(32)
+  market            String?  @db.VarChar(8)
+  sourceSite        String?  @db.VarChar(191)
+  sourceOrigin      String?  @db.VarChar(255)
+  sourceChannel     String?  @db.VarChar(64)
+  campaignId        String?  @db.VarChar(191)
   createdAt         DateTime @default(now())
+
+  @@index([tenantId, createdAt])
 }
 
 // --- Tool Leads (visibility checker, etc.) ---
@@ -87,10 +95,17 @@ model ToolLead {
   message      String?  @db.Text
   /// Safe structured metadata for audit email-report leads (no raw report/crawler/debug data).
   details      Json?
+  tenantId     String?  @db.VarChar(32)
+  market       String?  @db.VarChar(8)
+  sourceSite   String?  @db.VarChar(191)
+  sourceOrigin String?  @db.VarChar(255)
+  sourceChannel String? @db.VarChar(64)
+  campaignId   String?  @db.VarChar(191)
   createdAt    DateTime @default(now())
 
   @@index([source])
   @@index([createdAt])
+  @@index([tenantId, createdAt])
 }
 
 /// Free digital systems review enquiries. Separate lifecycle from ChatSession.
@@ -112,6 +127,12 @@ model DigitalSystemsReviewLead {
   landingPage                   String?             @db.VarChar(500)
   referrer                      String?             @db.Text
   sourceLocation                String?             @db.VarChar(80)
+  tenantId                     String?             @db.VarChar(32)
+  market                       String?             @db.VarChar(8)
+  sourceSite                   String?             @db.VarChar(191)
+  sourceOrigin                 String?             @db.VarChar(255)
+  sourceChannel                String?             @db.VarChar(64)
+  campaignId                   String?             @db.VarChar(191)
   /// Opaque chat session id for journey linkage only. No FK to ChatSession.
   chatSessionId                 String?             @db.VarChar(64)
   status                        String              @default("new") @db.VarChar(32)
@@ -191,6 +212,7 @@ model DigitalSystemsReviewLead {
   @@index([journeyReference])
   @@index([validationOutcome])
   @@index([duplicateOfLeadId])
+  @@index([tenantId, createdAt])
 }
 
 model LeadNurtureRecord {
@@ -250,6 +272,12 @@ model ChatSession {
   deviceType        String?
   browser           String?
   serviceInterest   String?
+  tenantId          String?                   @db.VarChar(32)
+  market            String?                   @db.VarChar(8)
+  sourceSite        String?                   @db.VarChar(191)
+  sourceOrigin      String?                   @db.VarChar(255)
+  sourceChannel     String?                   @db.VarChar(64)
+  campaignId        String?                   @db.VarChar(191)
   closedAt          DateTime?
   closedById        Int?
   updatedAt         DateTime                 @updatedAt
@@ -260,6 +288,7 @@ model ChatSession {
 
   @@index([status])
   @@index([createdAt])
+  @@index([tenantId, createdAt])
 }
 
 model ChatMessage {
@@ -1162,6 +1191,9 @@ model SeoPageConversionDaily {
   attributedValueMinor    Int                 @default(0)
   currency                String              @default("GBP") @db.VarChar(8)
   unknownAttributionCount Int                 @default(0)
+  tenantId                 String?             @db.VarChar(32)
+  market                   String?             @db.VarChar(8)
+  sourceSite               String?             @db.VarChar(191)
   createdAt               DateTime            @default(now())
   updatedAt               DateTime            @updatedAt
 
@@ -1172,4 +1204,5 @@ model SeoPageConversionDaily {
   @@index([seoPageId, metricDate])
   @@index([channelGroup, metricDate])
   @@index([bucketKeyHash, metricDate])
+  @@index([tenantId, metricDate])
 }

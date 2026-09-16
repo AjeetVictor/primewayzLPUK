@@ -9,6 +9,7 @@ import { leadStatusFromDbValue, leadStatusToDbValue, type LeadStatus } from './s
 export async function listReviewLeadsAdmin(
   prisma: PrismaClient,
   query: {
+    tenantId?: string;
     status?: string;
     ownerId?: number;
     limit?: number;
@@ -16,6 +17,7 @@ export async function listReviewLeadsAdmin(
   } = {},
 ) {
   const where: Record<string, unknown> = {};
+  if (query.tenantId && query.tenantId !== 'all') where.tenantId = query.tenantId;
   if (query.status) where.status = query.status.toLowerCase();
   if (query.ownerId) where.leadOwnerId = query.ownerId;
 
@@ -42,6 +44,9 @@ export async function listReviewLeadsAdmin(
         slaDueAt: true,
         followUpAt: true,
         createdAt: true,
+        tenantId: true,
+        market: true,
+        sourceSite: true,
       },
     }),
   ]);

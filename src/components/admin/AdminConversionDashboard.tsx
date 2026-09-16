@@ -34,7 +34,11 @@ const PRESETS = [
   { id: '90d', label: 'Last 90 days' },
 ] as const;
 
-export function AdminConversionDashboard() {
+type AdminConversionDashboardProps = {
+  tenantId?: string;
+};
+
+export function AdminConversionDashboard({ tenantId = 'pw-uk' }: AdminConversionDashboardProps) {
   const [preset, setPreset] = useState<(typeof PRESETS)[number]['id']>('30d');
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,7 +49,7 @@ export function AdminConversionDashboard() {
     setLoading(true);
     setError(null);
 
-    fetch(apiUrl(`/api/admin/conversion-dashboard?preset=${preset}`), { credentials: 'include' })
+    fetch(apiUrl(`/api/admin/conversion-dashboard?preset=${preset}&tenantId=${encodeURIComponent(tenantId)}`), { credentials: 'include' })
       .then(async (res) => {
         if (!res.ok) throw new Error('Failed to load dashboard');
         return res.json();
@@ -63,7 +67,7 @@ export function AdminConversionDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [preset]);
+  }, [preset, tenantId]);
 
   if (loading) {
     return (

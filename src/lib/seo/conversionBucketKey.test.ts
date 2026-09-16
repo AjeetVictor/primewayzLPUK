@@ -7,7 +7,9 @@ import test from 'node:test';
 import {
   buildConversionBucketKeyInput,
   computeConversionBucketKeyHash,
+  CONVERSION_LEGACY_TENANT_SENTINEL,
   normalizeConversionChannelGroup,
+  resolveConversionBucketTenantSegment,
 } from './conversionBucketKey.ts';
 
 test('bucket key hash is deterministic', () => {
@@ -34,11 +36,68 @@ test('null seoPageId produces stable unknown sentinel key', () => {
     channelGroup: 'direct',
   });
   assert.equal(a, b);
-  assert.equal(buildConversionBucketKeyInput({
-    seoPageId: null,
+  assert.equal(
+    buildConversionBucketKeyInput({
+      seoPageId: null,
+      attributionModel: 'last_touch',
+      channelGroup: 'direct',
+    }).startsWith(`${CONVERSION_LEGACY_TENANT_SENTINEL}\0unknown\0`),
+    true,
+  );
+});
+
+test('same URL/date/channel under pw-uk and pw-infotech produce different bucket keys', () => {
+  const shared = {
+    seoPageId: 12,
+    attributionModel: 'first_touch' as const,
+    channelGroup: 'organic',
+  };
+  const uk = computeConversionBucketKeyHash({ ...shared, tenantId: 'pw-uk' });
+  const infotech = computeConversionBucketKeyHash({ ...shared, tenantId: 'pw-infotech' });
+  assert.notEqual(uk, infotech);
+});
+
+test('legacy/null tenant produces deterministic legacy bucket that does not collide with pw-uk', () => {
+  const shared = {
+    seoPageId: 12,
+    attributionModel: 'first_touch' as const,
+    channelGroup: 'organic',
+  };
+  const legacyA = computeConversionBucketKeyHash(shared);
+  const legacyB = computeConversionBucketKeyHash({ ...shared, tenantId: null });
+  const legacyC = computeConversionBucketKeyHash({ ...shared, tenantId: undefined });
+  const uk = computeConversionBucketKeyHash({ ...shared, tenantId: 'pw-uk' });
+  assert.equal(legacyA, legacyB);
+  assert.equal(legacyB, legacyC);
+  assert.equal(resolveConversionBucketTenantSegment(null), CONVERSION_LEGACY_TENANT_SENTINEL);
+  assert.notEqual(CONVERSION_LEGACY_TENANT_SENTINEL, 'pw-uk');
+  assert.notEqual(legacyA, uk);
+});
+
+test('UTM/campaign attribution remains independent of tenant bucket identity', () => {
+  // campaignId / UTM campaign are never part of the bucket hash input.
+  const base = buildConversionBucketKeyInput({
+    tenantId: 'pw-uk',
+    seoPageId: 3,
     attributionModel: 'last_touch',
-    channelGroup: 'direct',
-  }).startsWith('unknown\0'), true);
+    channelGroup: 'paid',
+  });
+  assert.equal(base.includes('campaign'), false);
+  assert.equal(base.includes('utm'), false);
+  assert.equal(
+    computeConversionBucketKeyHash({
+      tenantId: 'pw-uk',
+      seoPageId: 3,
+      attributionModel: 'last_touch',
+      channelGroup: 'paid',
+    }),
+    computeConversionBucketKeyHash({
+      tenantId: 'pw-uk',
+      seoPageId: 3,
+      attributionModel: 'last_touch',
+      channelGroup: 'Paid',
+    }),
+  );
 });
 
 test('different page, model or channel produces different bucket key', () => {

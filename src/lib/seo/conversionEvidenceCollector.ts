@@ -20,6 +20,9 @@ import {
 } from './conversionAttribution.ts';
 
 export type RawConversionEvidence = {
+  tenantId: string | null;
+  market: string | null;
+  sourceSite: string | null;
   recordId: string;
   metricDate: string;
   journeyKey: string;
@@ -44,6 +47,7 @@ export type CollectConversionEvidenceOptions = {
   dateTo: string;
   seoPageId?: number | null;
   pagePathFilter?: string | null;
+  tenantId?: string;
 };
 
 function dateRangeFilter(dateFrom: string, dateTo: string) {
@@ -80,8 +84,9 @@ export async function collectConversionEvidence(
   const createdAt = dateRangeFilter(dateFrom, dateTo);
   const records: RawConversionEvidence[] = [];
 
+  const sourceWhere = options.tenantId ? { tenantId: options.tenantId } : {};
   const chatSessions = await prisma.chatSession.findMany({
-    where: { createdAt },
+    where: { createdAt, ...sourceWhere },
     select: {
       id: true,
       createdAt: true,
@@ -93,6 +98,9 @@ export async function collectConversionEvidence(
       email: true,
       name: true,
       serviceInterest: true,
+      tenantId: true,
+      market: true,
+      sourceSite: true,
       appointments: {
         select: { id: true, status: true, createdAt: true },
       },
@@ -122,6 +130,9 @@ export async function collectConversionEvidence(
     if (session.status.toLowerCase() === 'booked_call') conversionTypes.push('booking_completed');
 
     records.push({
+      tenantId: session.tenantId,
+      market: session.market,
+      sourceSite: session.sourceSite,
       recordId: `chat:${session.id}`,
       metricDate: toMetricDateString(session.createdAt),
       journeyKey: buildJourneyDedupKey({ chatSessionId: session.id, fallbackId: session.id }),
@@ -143,11 +154,14 @@ export async function collectConversionEvidence(
   }
 
   const formResponses = await prisma.formResponse.findMany({
-    where: { createdAt },
+    where: { createdAt, ...sourceWhere },
     select: {
       id: true,
       createdAt: true,
       commercialContext: true,
+      tenantId: true,
+      market: true,
+      sourceSite: true,
     },
   });
 
@@ -164,6 +178,9 @@ export async function collectConversionEvidence(
     if (!matchesPageFilter([sourcePagePath], options.pagePathFilter)) continue;
 
     records.push({
+      tenantId: form.tenantId,
+      market: form.market,
+      sourceSite: form.sourceSite,
       recordId: `form:${form.id}`,
       metricDate: toMetricDateString(form.createdAt),
       journeyKey: buildJourneyDedupKey({ fallbackId: `form:${form.id}` }),
@@ -185,7 +202,7 @@ export async function collectConversionEvidence(
   }
 
   const reviewLeads = await prisma.digitalSystemsReviewLead.findMany({
-    where: { createdAt },
+    where: { createdAt, ...sourceWhere },
     select: {
       id: true,
       submissionId: true,
@@ -206,6 +223,9 @@ export async function collectConversionEvidence(
       wonAt: true,
       proposalSentAt: true,
       qualifiedAt: true,
+      tenantId: true,
+      market: true,
+      sourceSite: true,
     },
   });
 
@@ -230,6 +250,9 @@ export async function collectConversionEvidence(
     if (lead.qualifiedAt) conversionTypes.push('qualified_lead');
 
     records.push({
+      tenantId: lead.tenantId,
+      market: lead.market,
+      sourceSite: lead.sourceSite,
       recordId: `review:${lead.id}`,
       metricDate: toMetricDateString(lead.createdAt),
       journeyKey: buildJourneyDedupKey({
@@ -276,6 +299,8 @@ export async function collectConversionEvidence(
 /** Safe DTO for external APIs — no PII, no raw messages. */
 export function toSafeConversionEvidenceSummary(records: RawConversionEvidence[]) {
   return records.map((record) => ({
+    tenantId: record.tenantId,
+    market: record.market,
     metricDate: record.metricDate,
     conversionTypes: record.conversionTypes,
     channelFirst: record.firstTouch.medium ?? record.firstTouch.source ?? 'unknown',

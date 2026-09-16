@@ -1,6 +1,12 @@
 /**
  * Rebuild SEO conversion daily aggregates from chat, forms and review leads.
  * Dry-run by default. Never prints PII.
+ *
+ * Post shared-platform note:
+ * This is the explicit, idempotent operation that aligns SeoPageConversionDaily
+ * bucketKeyHash values with the current tenant-aware Node helper (`legacy` or
+ * tenantId prefix). The additive source-context migration does NOT rewrite hashes.
+ * Do not invoke this from application startup.
  */
 
 import dotenv from 'dotenv';

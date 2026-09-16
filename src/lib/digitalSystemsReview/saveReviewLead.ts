@@ -1,6 +1,8 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { enrichReviewLeadForPersistence } from './leadEnrichment.ts';
 import type { NormalizedDigitalSystemsReviewLead } from './validateReviewLead.ts';
+import type { SourceContext } from '../platform/sourceContext.ts';
+import { defaultUkSourceContext, toPersistedSourceContext } from '../platform/sourceContext.ts';
 
 export type ReviewLeadPersistenceDeps = {
   prisma: Pick<PrismaClient, 'digitalSystemsReviewLead'>;
@@ -19,6 +21,7 @@ export type SavedReviewLead = {
 async function toCreateData(
   deps: ReviewLeadPersistenceDeps,
   lead: NormalizedDigitalSystemsReviewLead,
+  sourceContext: SourceContext = defaultUkSourceContext('digital-systems-review'),
 ): Promise<Prisma.DigitalSystemsReviewLeadCreateInput> {
   return enrichReviewLeadForPersistence(deps.prisma, lead);
 }
@@ -30,9 +33,10 @@ async function toCreateData(
 export async function saveDigitalSystemsReviewLead(
   deps: ReviewLeadPersistenceDeps,
   lead: NormalizedDigitalSystemsReviewLead,
+  sourceContext: SourceContext = defaultUkSourceContext('digital-systems-review'),
 ): Promise<SavedReviewLead> {
   const saved = await deps.prisma.digitalSystemsReviewLead.create({
-    data: await toCreateData(deps, lead),
+    data: { ...await toCreateData(deps, lead, sourceContext), ...toPersistedSourceContext(sourceContext) },
     select: {
       id: true,
       submissionId: true,

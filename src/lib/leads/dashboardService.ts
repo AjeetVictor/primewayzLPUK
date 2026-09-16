@@ -26,9 +26,13 @@ export function resolveDashboardDateRange(preset: string, custom?: Partial<Conve
 export async function getConversionDashboardSummary(
   prisma: PrismaClient,
   range: ConversionDashboardDateRange,
+  tenantId = 'pw-uk',
 ) {
   const leads = await prisma.digitalSystemsReviewLead.findMany({
-    where: { createdAt: { gte: range.from, lte: range.to } },
+    where: {
+      createdAt: { gte: range.from, lte: range.to },
+      ...(tenantId !== 'all' ? { tenantId } : {}),
+    },
     select: {
       id: true,
       status: true,

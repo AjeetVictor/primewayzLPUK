@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { apiUrl } from '../../utils/apiUrl';
+import { AdminTenantFilter } from './AdminTenantFilter';
 import {
   AUDIT_LEAD_ADMIN_STATUSES,
   type AuditLeadAdminStatus,
@@ -19,6 +20,8 @@ import {
 
 type AdminAuditLeadsPanelProps = {
   globalSearch?: string;
+  tenantFilter?: string;
+  onTenantFilterChange?: (value: string) => void;
 };
 
 const STATUS_LABELS: Record<AuditLeadAdminStatus, string> = {
@@ -63,12 +66,19 @@ async function copyText(value: string) {
   document.body.removeChild(textarea);
 }
 
-export function AdminAuditLeadsPanel({ globalSearch = '' }: AdminAuditLeadsPanelProps) {
+export function AdminAuditLeadsPanel({
+  globalSearch = '',
+  tenantFilter: tenantFilterProp,
+  onTenantFilterChange,
+}: AdminAuditLeadsPanelProps) {
   const [items, setItems] = useState<SafeAuditLeadListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [localTenantFilter, setLocalTenantFilter] = useState<string>('pw-uk');
+  const tenantFilter = tenantFilterProp ?? localTenantFilter;
+  const setTenantFilter = onTenantFilterChange ?? setLocalTenantFilter;
   const [scoreBandFilter, setScoreBandFilter] = useState<string>('all');
   const [reminderFilter, setReminderFilter] = useState<string>('all');
   const [selectedLeadId, setSelectedLeadId] = useState<number | null>(null);
@@ -81,12 +91,13 @@ export function AdminAuditLeadsPanel({ globalSearch = '' }: AdminAuditLeadsPanel
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
     if (globalSearch.trim()) params.set('q', globalSearch.trim());
+    params.set('tenantId', tenantFilter);
     if (statusFilter !== 'all') params.set('status', statusFilter);
     if (scoreBandFilter !== 'all') params.set('scoreBand', scoreBandFilter);
     if (reminderFilter !== 'all') params.set('reminderOptIn', reminderFilter);
     params.set('limit', '50');
     return params.toString();
-  }, [globalSearch, statusFilter, scoreBandFilter, reminderFilter]);
+  }, [globalSearch, tenantFilter, statusFilter, scoreBandFilter, reminderFilter]);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -236,6 +247,7 @@ export function AdminAuditLeadsPanel({ globalSearch = '' }: AdminAuditLeadsPanel
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <AdminTenantFilter value={tenantFilter} onChange={setTenantFilter} />
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
@@ -290,6 +302,7 @@ export function AdminAuditLeadsPanel({ globalSearch = '' }: AdminAuditLeadsPanel
             <thead>
               <tr className="border-b border-zinc-100 bg-zinc-50">
                 <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Date</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Source / Entity</th>
                 <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Business</th>
                 <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Website</th>
                 <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Contact</th>
@@ -303,13 +316,13 @@ export function AdminAuditLeadsPanel({ globalSearch = '' }: AdminAuditLeadsPanel
             <tbody className="divide-y divide-zinc-50">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-zinc-400 italic">
+                  <td colSpan={10} className="px-6 py-12 text-center text-zinc-400 italic">
                     Loading audit leads...
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-zinc-400 italic">
+                  <td colSpan={10} className="px-6 py-12 text-center text-zinc-400 italic">
                     {globalSearch ? `No audit leads matching "${globalSearch}"` : 'No audit leads found.'}
                   </td>
                 </tr>
@@ -318,6 +331,10 @@ export function AdminAuditLeadsPanel({ globalSearch = '' }: AdminAuditLeadsPanel
                   <tr key={lead.id} className="hover:bg-zinc-50/50">
                     <td className="px-6 py-4 text-sm text-zinc-500">
                       {format(new Date(lead.createdAt), 'MMM d, h:mm a')}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-zinc-600">
+                      <div className="font-semibold text-zinc-900">{lead.sourceContext.entity}</div>
+                      <div className="text-xs text-zinc-500">{lead.sourceContext.market || '-'} · {lead.sourceContext.sourceSite || '-'}</div>
                     </td>
                     <td className="px-6 py-4 text-sm font-semibold text-zinc-900">
                       {lead.businessName || lead.name || '-'}

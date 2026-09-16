@@ -1,12 +1,14 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { SharedWebPresenceAuditReport } from '../types.ts';
+import type { SourceContext } from '../../platform/sourceContext.ts';
 import { isValidPublicToken } from './publicToken.ts';
 
 export type StoredSharedReport = {
   publicToken: string;
   createdAt: string;
   report: SharedWebPresenceAuditReport;
+  sourceContext?: SourceContext;
 };
 
 function reportsDirectory(): string {
