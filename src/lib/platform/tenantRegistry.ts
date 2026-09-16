@@ -1,6 +1,26 @@
 import type { PlatformBrand, PlatformTenantId, PrimewayzMarket } from './sourceContext.ts';
 import type { TenantCapabilityMap } from './tenantCapabilities.ts';
 
+/** Public Chat visitor-facing copy that must stay tenant-owned (not UK-defaulted). */
+export type TenantChatPresentation = {
+  /** Explicit service-hours label; not inferred from market/timezone at runtime. */
+  businessHours: string;
+  /** Offline bot / follow-up team identity (e.g. "Primewayz UK team"). */
+  teamLabel: string;
+};
+
+/** Neutral fallback when a tenant (or future client) has no explicit presentation config. */
+export const NEUTRAL_CHAT_BUSINESS_HOURS = 'Mon-Fri, business hours';
+
+/** Neutral team identity when tenant display metadata is unavailable. */
+export const NEUTRAL_CHAT_TEAM_LABEL = 'our team';
+
+/**
+ * Neutral IANA fallback when a tenant has no explicit defaultTimeZone.
+ * Used only when browser/request timezone is missing or invalid — not as visitor TZ.
+ */
+export const NEUTRAL_TENANT_TIMEZONE = 'UTC';
+
 export type PlatformTenantConfig = {
   tenantId: PlatformTenantId;
   brand: PlatformBrand;
@@ -11,6 +31,9 @@ export type PlatformTenantConfig = {
   allowedOrigins: readonly string[];
   notificationRecipientEnv?: string;
   capabilities: TenantCapabilityMap;
+  /** Servicing-business IANA timezone; fallback when visitor timezone is unavailable. */
+  defaultTimeZone?: string;
+  chatPresentation?: TenantChatPresentation;
 };
 
 /** Compatibility alias for existing imports. */
@@ -48,6 +71,11 @@ export const PLATFORM_TENANTS: readonly PlatformTenantConfig[] = [
     allowedOrigins: ['https://uk.primewayz.com'],
     notificationRecipientEnv: 'INTERNAL_NOTIFICATION_EMAIL',
     capabilities: FULL_PLATFORM_CAPABILITIES,
+    defaultTimeZone: 'Europe/London',
+    chatPresentation: {
+      businessHours: 'Mon-Fri, UK business hours',
+      teamLabel: 'Primewayz UK team',
+    },
   },
   {
     tenantId: 'pw-infotech',
@@ -59,6 +87,11 @@ export const PLATFORM_TENANTS: readonly PlatformTenantConfig[] = [
     allowedOrigins: ['https://primewayz.com', 'https://www.primewayz.com'],
     notificationRecipientEnv: 'PW_INFOTECH_NOTIFICATION_EMAIL',
     capabilities: FULL_PLATFORM_CAPABILITIES,
+    defaultTimeZone: 'Asia/Kolkata',
+    chatPresentation: {
+      businessHours: 'Mon-Fri, India business hours',
+      teamLabel: 'Primewayz Infotech team',
+    },
   },
   {
     tenantId: 'rrb',
@@ -75,6 +108,11 @@ export const PLATFORM_TENANTS: readonly PlatformTenantConfig[] = [
       chat: true,
       conversion: false,
       scheduling: false,
+    },
+    defaultTimeZone: 'Asia/Kolkata',
+    chatPresentation: {
+      businessHours: 'Mon-Fri, India business hours',
+      teamLabel: 'RentReadBuy team',
     },
   },
   {
@@ -132,6 +170,33 @@ export function getTenantByHost(host: string): PlatformTenantConfig | undefined 
 export function getTenantDisplayName(tenantId: string | null | undefined): string {
   if (!tenantId) return 'Legacy / unknown';
   return getTenantById(tenantId)?.displayName ?? 'Legacy / unknown';
+}
+
+/**
+ * Resolve public Chat presentation for a tenant.
+ * Unknown / future tenants without config get neutral business-hours + team labels.
+ * Registered tenants without explicit teamLabel derive "<displayName> team".
+ */
+export function resolveTenantChatPresentation(
+  tenantId: string | null | undefined,
+): Required<TenantChatPresentation> {
+  const tenant = tenantId ? getTenantById(tenantId) : undefined;
+  const configured = tenant?.chatPresentation;
+  return {
+    businessHours: configured?.businessHours ?? NEUTRAL_CHAT_BUSINESS_HOURS,
+    teamLabel:
+      configured?.teamLabel ??
+      (tenant?.displayName ? `${tenant.displayName} team` : NEUTRAL_CHAT_TEAM_LABEL),
+  };
+}
+
+/**
+ * Resolve servicing-business IANA timezone for a tenant.
+ * Explicit registry config preferred; unconfigured / unknown tenants fall back to UTC.
+ */
+export function resolveTenantTimeZone(tenantId: string | null | undefined): string {
+  const configured = tenantId ? getTenantById(tenantId)?.defaultTimeZone : undefined;
+  return configured ?? NEUTRAL_TENANT_TIMEZONE;
 }
 
 /** Live admin filters: active tenants only, plus All entities. Inactive markets stay registered but unselectable. */

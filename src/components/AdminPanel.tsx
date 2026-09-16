@@ -18,10 +18,10 @@ import { ChatConfirmDialog } from './admin/ChatConfirmDialog';
 import { sanitizeBlogHtml } from '../utils/sanitizeHtml';
 import {
   CHAT_STATUS_FILTERS,
-  QUICK_REPLY_TEMPLATES,
   formatConversationStatus,
   getMessageDisplayText,
   getStatusBadgeClass,
+  resolveQuickReplyTemplates,
   type ChatStatusFilterKey,
   type ConversationStatus,
 } from '../lib/chatTypes';
@@ -2587,7 +2587,7 @@ const AdminPanelContent = () => {
                                 <p className="text-sm font-bold">Appointment request</p>
                               </div>
                               <p className="mt-1 text-xs text-amber-700">
-                                {appointment.preferredDate || 'Date flexible'} {appointment.preferredTime || ''} · {appointment.timezone || 'Europe/London'}
+                                {appointment.preferredDate || 'Date flexible'} {appointment.preferredTime || ''} · {appointment.timezone || 'UTC'}
                               </p>
                             </div>
                             <span className="rounded-lg bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-700">
@@ -2627,13 +2627,13 @@ const AdminPanelContent = () => {
                         </div>
                       )}
                       <div className="mb-3 flex flex-wrap gap-2">
-                        {QUICK_REPLY_TEMPLATES.map((template) => (
+                        {resolveQuickReplyTemplates(selectedConversation.tenantId).map((template) => (
                           <button
-                            key={template}
+                            key={template.id}
                             type="button"
-                            onClick={() => handleAdminReply(selectedConversation.sessionId, replyingToMessageId ?? undefined, { textOverride: template, isQuickReply: true })}
+                            onClick={() => handleAdminReply(selectedConversation.sessionId, replyingToMessageId ?? undefined, { textOverride: template.text, isQuickReply: true })}
                             className="rounded-full bg-zinc-100 px-3 py-1.5 text-[11px] font-semibold text-zinc-600 hover:bg-zinc-200"
-                            title={template}
+                            title={template.text}
                           >
                             Quick reply
                           </button>

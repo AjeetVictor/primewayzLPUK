@@ -45,6 +45,7 @@ import {
 import { resolveChatBookingDestination } from '../lib/chat/resolveChatBookingDestination';
 import { trackVisitorChatEvent } from '../lib/chat/visitorChatAnalytics';
 import {
+  buildAppointmentConfirmationMessage,
   DEFAULT_CHAT_AVAILABILITY,
   isTeamAwayStatus,
   normalizeChatAvailabilityStatus,
@@ -53,6 +54,10 @@ import {
   type PendingChatAttachment,
   type VisitorChatMessage,
 } from '../lib/chat/visitorChatTypes';
+import {
+  resolveAppointmentRequestTimezone,
+  resolveBrowserTimeZone,
+} from '../lib/platform/timeZone';
 import {
   buildVisitorLauncherAriaLabel,
   formatVisitorUnreadBadge,
@@ -901,7 +906,10 @@ export const LiveChat = () => {
           ...appointmentForm,
           name: appointmentForm.name || userName,
           email: appointmentForm.email || userEmail,
-          timezone: 'Europe/London',
+          timezone: resolveAppointmentRequestTimezone(
+            resolveBrowserTimeZone(),
+            availability.tenantId,
+          ),
         }),
       });
       const data = await res.json().catch(() => null);
@@ -919,7 +927,7 @@ export const LiveChat = () => {
         ...prev,
         {
           id: createClientMessageId('appointment'),
-          text: 'Thanks, your appointment request has been received. Our team will confirm during UK business hours.',
+          text: buildAppointmentConfirmationMessage(availability.businessHours),
           sender: 'bot',
           timestamp: new Date(),
           deliveryStatus: 'sent',

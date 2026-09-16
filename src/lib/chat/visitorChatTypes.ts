@@ -30,8 +30,8 @@ export const DEFAULT_CHAT_AVAILABILITY: ChatAvailability = {
   status: 'assistant',
   title: 'Primewayz Assistant',
   subtitle: 'Automated guidance and team follow-up',
-  responseExpectation: 'The Primewayz team replies during UK business hours.',
-  businessHours: 'Mon-Fri, UK business hours',
+  responseExpectation: 'The Primewayz team replies during business hours.',
+  businessHours: 'Mon-Fri, business hours',
   canAcceptMessages: true,
   /** Fail closed until /api/chat/availability resolves tenant scheduling. */
   canBookCall: false,
@@ -44,6 +44,26 @@ export const DEFAULT_CHAT_AVAILABILITY: ChatAvailability = {
     publicBookingUrl: null,
   },
 };
+
+/** Appointment confirmation uses server-resolved availability.businessHours (never a UK client constant). */
+export function buildAppointmentConfirmationMessage(businessHours: string): string {
+  const hours = businessHours.trim() || DEFAULT_CHAT_AVAILABILITY.businessHours;
+  return `Thanks, your appointment request has been received. Our team will confirm during ${hours}.`;
+}
+
+/**
+ * Offline / auto bot reply after a visitor message.
+ * Team label + business hours must come from resolveTenantChatPresentation (never hardcoded UK).
+ */
+export function buildOfflineChatBotReply(presentation: {
+  teamLabel: string;
+  businessHours: string;
+}): string {
+  const team = presentation.teamLabel.trim() || 'our team';
+  const hours = presentation.businessHours.trim() || DEFAULT_CHAT_AVAILABILITY.businessHours;
+  const teamPhrase = team.toLowerCase() === 'our team' ? 'our team' : `the ${team}`;
+  return `Thanks for your message. We have received it and ${teamPhrase} will follow up shortly during ${hours}.`;
+}
 
 export type ChatAttachment = {
   id: number;

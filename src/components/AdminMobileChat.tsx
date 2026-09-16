@@ -6,10 +6,10 @@ import { apiUrl } from '../utils/apiUrl';
 import { PasswordInput } from './ui/PasswordInput';
 import {
   CHAT_STATUS_FILTERS,
-  QUICK_REPLY_TEMPLATES,
   formatConversationStatus,
   getMessageDisplayText,
   getStatusBadgeClass,
+  resolveQuickReplyTemplates,
   type ChatMessageRecord,
   type ChatSessionRecord,
   type ChatStatusFilterKey,
@@ -330,12 +330,13 @@ export const AdminMobileChat = () => {
 
         <div className="border-t border-zinc-200 bg-white p-4">
           <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
-            {QUICK_REPLY_TEMPLATES.slice(0, 3).map((template) => (
+            {resolveQuickReplyTemplates(selectedSession?.tenantId).slice(0, 3).map((template) => (
               <button
-                key={template}
+                key={template.id}
                 type="button"
-                onClick={() => sendReply(template, { isQuickReply: true })}
+                onClick={() => sendReply(template.text, { isQuickReply: true })}
                 className="shrink-0 rounded-full bg-zinc-100 px-3 py-1 text-[11px] font-semibold text-zinc-600"
+                title={template.text}
               >
                 Quick reply
               </button>

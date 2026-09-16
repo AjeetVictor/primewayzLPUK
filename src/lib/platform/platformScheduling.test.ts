@@ -1,11 +1,24 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import { createHmac } from 'node:crypto';
 import { buildPublicPlatformCapabilities } from './publicCapabilities.ts';
 import { resolveSourceContext, assertChatSessionTenantAccess, SourceResolutionError } from './sourceResolver.ts';
 import { getTenantCapabilities, tenantSupportsCapability } from './tenantCapabilities.ts';
 import { getTenantNotificationRecipient } from './notificationRouting.ts';
-import { getTenantDisplayName } from './tenantRegistry.ts';
+import { buildAppointmentConfirmationMessage, buildOfflineChatBotReply } from '../chat/visitorChatTypes.ts';
+import {
+  getTenantDisplayName,
+  NEUTRAL_CHAT_BUSINESS_HOURS,
+  NEUTRAL_CHAT_TEAM_LABEL,
+  NEUTRAL_TENANT_TIMEZONE,
+  resolveTenantChatPresentation,
+  resolveTenantTimeZone,
+} from './tenantRegistry.ts';
+import {
+  isValidIanaTimeZone,
+  resolveAppointmentRequestTimezone,
+} from './timeZone.ts';
 import {
   getSchedulingAvailability,
   processCalendlyWebhookEvent,
@@ -608,4 +621,203 @@ test('notification routing never falls across tenants', () => {
     PW_INFOTECH_NOTIFICATION_EMAIL: 'in@example.com',
   };
   assert.equal(getTenantNotificationRecipient(rrb, env), null);
+});
+
+test('chat availability businessHours is tenant-configured (no UK leak)', () => {
+  assert.equal(
+    resolveTenantChatPresentation('pw-uk').businessHours,
+    'Mon-Fri, UK business hours',
+  );
+  assert.equal(
+    resolveTenantChatPresentation('pw-infotech').businessHours,
+    'Mon-Fri, India business hours',
+  );
+  assert.equal(
+    resolveTenantChatPresentation('rrb').businessHours,
+    'Mon-Fri, India business hours',
+  );
+  assert.equal(
+    resolveTenantChatPresentation('pw-us').businessHours,
+    NEUTRAL_CHAT_BUSINESS_HOURS,
+  );
+  assert.equal(
+    resolveTenantChatPresentation('future-client').businessHours,
+    NEUTRAL_CHAT_BUSINESS_HOURS,
+  );
+  assert.equal(
+    resolveTenantChatPresentation(null).businessHours,
+    NEUTRAL_CHAT_BUSINESS_HOURS,
+  );
+  assert.equal(NEUTRAL_CHAT_BUSINESS_HOURS, 'Mon-Fri, business hours');
+
+  // Scheduling isolation remains intact alongside presentation.
+  assert.equal(getSchedulingAvailability({ tenantId: 'rrb' }, {}).enabled, false);
+  assert.equal(getSchedulingAvailability({ tenantId: 'rrb' }, {}).canBookFromChat, false);
+  assert.equal(getSchedulingAvailability({ tenantId: 'pw-infotech' }, {}).enabled, false);
+  assert.equal(getSchedulingAvailability({ tenantId: 'pw-uk' }, {}).enabled, true);
+});
+
+test('chat presentation teamLabel is tenant-owned (no hardcoded UK leak)', () => {
+  assert.equal(resolveTenantChatPresentation('pw-uk').teamLabel, 'Primewayz UK team');
+  assert.equal(resolveTenantChatPresentation('pw-infotech').teamLabel, 'Primewayz Infotech team');
+  assert.equal(resolveTenantChatPresentation('rrb').teamLabel, 'RentReadBuy team');
+  // Inactive / unconfigured tenants derive from displayName when registered.
+  assert.equal(resolveTenantChatPresentation('pw-us').teamLabel, 'Primewayz US team');
+  // Unknown / null → neutral "our team" (never "Primewayz UK team").
+  assert.equal(resolveTenantChatPresentation('future-client').teamLabel, NEUTRAL_CHAT_TEAM_LABEL);
+  assert.equal(resolveTenantChatPresentation(null).teamLabel, NEUTRAL_CHAT_TEAM_LABEL);
+  assert.equal(NEUTRAL_CHAT_TEAM_LABEL, 'our team');
+});
+
+test('offline chat bot reply is tenant-aware (no UK identity leak)', () => {
+  const uk = buildOfflineChatBotReply(resolveTenantChatPresentation('pw-uk'));
+  assert.equal(
+    uk,
+    'Thanks for your message. We have received it and the Primewayz UK team will follow up shortly during Mon-Fri, UK business hours.',
+  );
+  assert.match(uk, /Primewayz UK team/);
+  assert.match(uk, /UK business hours/);
+
+  const infotech = buildOfflineChatBotReply(resolveTenantChatPresentation('pw-infotech'));
+  assert.equal(
+    infotech,
+    'Thanks for your message. We have received it and the Primewayz Infotech team will follow up shortly during Mon-Fri, India business hours.',
+  );
+  assert.doesNotMatch(infotech, /Primewayz UK/);
+  assert.match(infotech, /Primewayz Infotech team/);
+  assert.match(infotech, /India business hours/);
+
+  const rrb = buildOfflineChatBotReply(resolveTenantChatPresentation('rrb'));
+  assert.equal(
+    rrb,
+    'Thanks for your message. We have received it and the RentReadBuy team will follow up shortly during Mon-Fri, India business hours.',
+  );
+  assert.doesNotMatch(rrb, /Primewayz UK/);
+  assert.match(rrb, /RentReadBuy team/);
+
+  const future = buildOfflineChatBotReply(resolveTenantChatPresentation('future-client'));
+  assert.equal(
+    future,
+    'Thanks for your message. We have received it and our team will follow up shortly during Mon-Fri, business hours.',
+  );
+  assert.doesNotMatch(future, /Primewayz UK/);
+  assert.match(future, /our team/);
+  assert.match(future, /Mon-Fri, business hours/);
+
+  const nullTenant = buildOfflineChatBotReply(resolveTenantChatPresentation(null));
+  assert.doesNotMatch(nullTenant, /Primewayz UK/);
+  assert.match(nullTenant, /our team/);
+  assert.doesNotMatch(nullTenant, /the our team/);
+});
+
+test('server offline bot reply uses tenant presentation (no constant Primewayz UK team)', () => {
+  const server = readFileSync(new URL('../../../server.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(server, /OFFLINE_CHAT_BOT_REPLY/);
+  assert.doesNotMatch(
+    server,
+    /const OFFLINE_CHAT_BOT_REPLY[\s\S]*Primewayz UK team/,
+  );
+  assert.match(server, /buildOfflineChatBotReply/);
+  assert.match(server, /offlineChatBotReplyForTenant/);
+  assert.match(server, /resolveTenantChatPresentation/);
+});
+
+test('appointment confirmation copy uses resolved tenant businessHours', () => {
+  assert.equal(
+    buildAppointmentConfirmationMessage(resolveTenantChatPresentation('pw-uk').businessHours),
+    'Thanks, your appointment request has been received. Our team will confirm during Mon-Fri, UK business hours.',
+  );
+  assert.equal(
+    buildAppointmentConfirmationMessage(
+      resolveTenantChatPresentation('pw-infotech').businessHours,
+    ),
+    'Thanks, your appointment request has been received. Our team will confirm during Mon-Fri, India business hours.',
+  );
+  assert.equal(
+    buildAppointmentConfirmationMessage(resolveTenantChatPresentation('rrb').businessHours),
+    'Thanks, your appointment request has been received. Our team will confirm during Mon-Fri, India business hours.',
+  );
+  assert.equal(
+    buildAppointmentConfirmationMessage(NEUTRAL_CHAT_BUSINESS_HOURS),
+    'Thanks, your appointment request has been received. Our team will confirm during Mon-Fri, business hours.',
+  );
+  assert.equal(
+    buildAppointmentConfirmationMessage(''),
+    'Thanks, your appointment request has been received. Our team will confirm during Mon-Fri, business hours.',
+  );
+});
+
+test('ChatAppointmentRequest Prisma timezone default is UTC (not Europe/London)', () => {
+  const schema = readFileSync(new URL('../../../prisma/schema.prisma', import.meta.url), 'utf8');
+  assert.match(schema, /model ChatAppointmentRequest[\s\S]*?timezone\s+String\?\s+@default\("UTC"\)/);
+  assert.doesNotMatch(
+    schema,
+    /model ChatAppointmentRequest[\s\S]*?timezone\s+String\?\s+@default\("Europe\/London"\)/,
+  );
+
+  const migration = readFileSync(
+    new URL(
+      '../../../prisma/migrations/20260916220000_neutral_chat_appointment_timezone_default/migration.sql',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  assert.match(migration, /DEFAULT 'UTC'/);
+  assert.doesNotMatch(migration, /UPDATE\s+`ChatAppointmentRequest`\s+SET/i);
+  assert.doesNotMatch(migration, /DROP\s+/i);
+  assert.doesNotMatch(migration, /DELETE\s+FROM/i);
+});
+
+test('tenant defaultTimeZone resolves without UK inheritance for non-UK tenants', () => {
+  assert.equal(resolveTenantTimeZone('pw-uk'), 'Europe/London');
+  assert.equal(resolveTenantTimeZone('pw-infotech'), 'Asia/Kolkata');
+  assert.equal(resolveTenantTimeZone('rrb'), 'Asia/Kolkata');
+  assert.equal(resolveTenantTimeZone('pw-us'), NEUTRAL_TENANT_TIMEZONE);
+  assert.equal(resolveTenantTimeZone('future-client'), NEUTRAL_TENANT_TIMEZONE);
+  assert.equal(resolveTenantTimeZone(null), NEUTRAL_TENANT_TIMEZONE);
+  assert.equal(NEUTRAL_TENANT_TIMEZONE, 'UTC');
+
+  // Infotech must never inherit Europe/London via timezone fallback.
+  assert.notEqual(resolveTenantTimeZone('pw-infotech'), 'Europe/London');
+  assert.notEqual(resolveTenantTimeZone('rrb'), 'Europe/London');
+  assert.notEqual(resolveTenantTimeZone('future-client'), 'Europe/London');
+});
+
+test('appointment request timezone prefers valid browser/request IANA over tenant fallback', () => {
+  assert.equal(isValidIanaTimeZone('Europe/London'), true);
+  assert.equal(isValidIanaTimeZone('Asia/Kolkata'), true);
+  assert.equal(isValidIanaTimeZone('America/New_York'), true);
+  assert.equal(isValidIanaTimeZone('Not/AZone'), false);
+  assert.equal(isValidIanaTimeZone(''), false);
+  assert.equal(isValidIanaTimeZone('   '), false);
+
+  assert.equal(
+    resolveAppointmentRequestTimezone('America/New_York', 'pw-uk'),
+    'America/New_York',
+  );
+  assert.equal(
+    resolveAppointmentRequestTimezone('Asia/Kolkata', 'pw-infotech'),
+    'Asia/Kolkata',
+  );
+  assert.equal(
+    resolveAppointmentRequestTimezone('  Europe/London  ', 'pw-infotech'),
+    'Europe/London',
+  );
+
+  // Invalid / missing candidate → tenant business fallback (not hardcoded UK).
+  assert.equal(resolveAppointmentRequestTimezone('Not/AZone', 'pw-uk'), 'Europe/London');
+  assert.equal(resolveAppointmentRequestTimezone('', 'pw-uk'), 'Europe/London');
+  assert.equal(resolveAppointmentRequestTimezone(null, 'pw-uk'), 'Europe/London');
+  assert.equal(resolveAppointmentRequestTimezone(undefined, 'pw-uk'), 'Europe/London');
+  assert.equal(resolveAppointmentRequestTimezone('bogus', 'pw-infotech'), 'Asia/Kolkata');
+  assert.equal(resolveAppointmentRequestTimezone(null, 'pw-infotech'), 'Asia/Kolkata');
+  assert.equal(resolveAppointmentRequestTimezone(undefined, 'rrb'), 'Asia/Kolkata');
+  assert.equal(resolveAppointmentRequestTimezone('invalid', 'future-client'), 'UTC');
+  assert.equal(resolveAppointmentRequestTimezone(null, null), 'UTC');
+
+  // Scheduling isolation remains intact alongside timezone resolution.
+  assert.equal(getSchedulingAvailability({ tenantId: 'rrb' }, {}).enabled, false);
+  assert.equal(getSchedulingAvailability({ tenantId: 'rrb' }, {}).canBookFromChat, false);
+  assert.equal(getSchedulingAvailability({ tenantId: 'pw-infotech' }, {}).enabled, false);
+  assert.equal(getSchedulingAvailability({ tenantId: 'pw-uk' }, {}).enabled, true);
 });

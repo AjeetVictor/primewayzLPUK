@@ -1,3 +1,8 @@
+import {
+  NEUTRAL_CHAT_TEAM_LABEL,
+  resolveTenantChatPresentation,
+} from './platform/tenantRegistry.ts';
+
 export const CONVERSATION_STATUSES = [
   'new',
   'bot_replied',
@@ -26,13 +31,68 @@ export const CHAT_STATUS_FILTERS = [
 
 export type ChatStatusFilterKey = (typeof CHAT_STATUS_FILTERS)[number]['key'];
 
-export const QUICK_REPLY_TEMPLATES = [
-  'Thanks for reaching out! A member of our UK team will respond shortly.',
-  'Could you share a bit more about your project timeline and goals?',
-  'We would love to book a discovery call. Would any of these times work for you?',
-  'We have received your details and will follow up within one UK business day.',
-  'Our monthly subscription plans start with a Foundation Sprint. Would you like an overview?',
+/** Stable semantic IDs for Admin Chat quick replies (copy resolves per session tenant). */
+export const QUICK_REPLY_TEMPLATE_IDS = [
+  'follow_up',
+  'project_details',
+  'booking',
+  'business_hours',
+  'plans_overview',
 ] as const;
+
+export type QuickReplyTemplateId = (typeof QUICK_REPLY_TEMPLATE_IDS)[number];
+
+export type QuickReplyTemplate = {
+  id: QuickReplyTemplateId;
+  text: string;
+};
+
+function formatQuickReplyTeamMember(teamLabel: string): string {
+  if (teamLabel === NEUTRAL_CHAT_TEAM_LABEL) return 'our team';
+  return `the ${teamLabel}`;
+}
+
+/**
+ * Resolve Admin Chat quick-reply copy from the conversation's ChatSession.tenantId
+ * (not the Admin filter). Unknown / null tenants get neutral wording — never UK defaults.
+ */
+export function resolveQuickReplyTemplates(
+  tenantId: string | null | undefined,
+): QuickReplyTemplate[] {
+  const { teamLabel, businessHours } = resolveTenantChatPresentation(tenantId);
+  const teamMember = formatQuickReplyTeamMember(teamLabel);
+
+  return [
+    {
+      id: 'follow_up',
+      text: `Thanks for reaching out! A member of ${teamMember} will respond shortly.`,
+    },
+    {
+      id: 'project_details',
+      text: 'Could you share a bit more about your project timeline and goals?',
+    },
+    {
+      id: 'booking',
+      text: 'We would love to book a discovery call. Would any of these times work for you?',
+    },
+    {
+      id: 'business_hours',
+      text: `We have received your details and will follow up during ${businessHours}.`,
+    },
+    {
+      id: 'plans_overview',
+      text: 'Our monthly subscription plans start with a Foundation Sprint. Would you like an overview?',
+    },
+  ];
+}
+
+/**
+ * @deprecated Prefer resolveQuickReplyTemplates(session.tenantId).
+ * Neutral fallback only — never UK-branded static copy.
+ */
+export const QUICK_REPLY_TEMPLATES = resolveQuickReplyTemplates(null).map(
+  (template) => template.text,
+);
 
 export interface ChatReplyPreview {
   id: number;
@@ -86,6 +146,10 @@ export interface ChatSessionRecord {
   browser?: string | null;
   serviceInterest?: string | null;
   closedAt?: string | null;
+  /** Owning tenant for this conversation — drives Admin quick-reply copy. */
+  tenantId?: string | null;
+  market?: string | null;
+  sourceSite?: string | null;
   createdAt: string;
   updatedAt?: string;
   messages: { text: string; timestamp: string }[];

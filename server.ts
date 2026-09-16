@@ -70,7 +70,9 @@ import type { NextFunction, Request, Response } from 'express';
 import { resolveSourceContext, SourceResolutionError, assertChatSessionTenantAccess, assertTenantCapability } from './src/lib/platform/sourceResolver.ts';
 import { toPersistedSourceContext, type PrimewayzSourceChannel, type SourceContext } from './src/lib/platform/sourceContext.ts';
 import { resolveAdminTenantFilter } from './src/lib/platform/adminTenantFilter.ts';
-import { getTenantDisplayName } from './src/lib/platform/tenantRegistry.ts';
+import { getTenantDisplayName, resolveTenantChatPresentation } from './src/lib/platform/tenantRegistry.ts';
+import { resolveAppointmentRequestTimezone } from './src/lib/platform/timeZone.ts';
+import { buildOfflineChatBotReply } from './src/lib/chat/visitorChatTypes.ts';
 import { buildPublicPlatformCapabilities } from './src/lib/platform/publicCapabilities.ts';
 import { publicPlatformApiCorsMiddleware } from './src/lib/platform/publicPlatformApiCors.ts';
 import { getAdminNotificationSummary } from './src/lib/admin/adminNotificationSummaryService.ts';
@@ -425,7 +427,7 @@ async function getChatAvailabilityPayload(source?: SourceContext) {
     title: status === 'online' ? 'We are online' : status === 'away' ? 'We are away' : status === 'offline' ? 'Chat offline' : 'AI assistant available',
     subtitle: setting?.message || (status === 'online' ? 'A team member is available now.' : 'Leave a message and we will follow up.'),
     responseExpectation: status === 'online' ? 'Usually replies shortly.' : 'We usually respond within one business day.',
-    businessHours: 'Mon-Fri, UK business hours',
+    businessHours: resolveTenantChatPresentation(source?.tenantId).businessHours,
     canAcceptMessages: status !== 'offline',
     canBookCall: scheduling.canBookFromChat,
     tenantId: source?.tenantId ?? null,
@@ -459,8 +461,9 @@ function logChatDbFallback(context: string, err: unknown) {
   console.warn(`[local-safe] ${context}:`, err instanceof Error ? err.message : err);
 }
 
-const OFFLINE_CHAT_BOT_REPLY =
-  'Thanks for your message. We have received it and the Primewayz UK team will follow up shortly.';
+function offlineChatBotReplyForTenant(tenantId: string | null | undefined): string {
+  return buildOfflineChatBotReply(resolveTenantChatPresentation(tenantId));
+}
 
 function offlineChatSessionStub(sessionId: string, extra: Record<string, unknown> = {}) {
   return {
@@ -471,7 +474,7 @@ function offlineChatSessionStub(sessionId: string, extra: Record<string, unknown
   };
 }
 
-async function offlineChatRespondPayload(userText: string) {
+async function offlineChatRespondPayload(userText: string, source?: SourceContext) {
   const now = new Date();
   return {
     userMessage: {
@@ -482,11 +485,11 @@ async function offlineChatRespondPayload(userText: string) {
     },
     botMessage: {
       id: `offline-bot-${now.getTime()}`,
-      text: OFFLINE_CHAT_BOT_REPLY,
+      text: offlineChatBotReplyForTenant(source?.tenantId),
       sender: 'bot',
       timestamp: now.toISOString(),
     },
-    availability: await getChatAvailabilityPayload(),
+    availability: await getChatAvailabilityPayload(source),
     unavailable: true,
   };
 }
@@ -2886,8 +2889,9 @@ app.post('/api/chat/respond', async (req, res) => {
   const { sessionId, message, userName, attachmentIds, replyToId } = req.body;
   if (!sessionId || !message) return res.status(400).json({ error: 'sessionId and message are required' });
 
+  let sourceContext: SourceContext | undefined;
   try {
-    const sourceContext = resolveRequestSource(req, 'chat');
+    sourceContext = resolveRequestSource(req, 'chat');
     assertTenantCapability(sourceContext, 'chat');
     await assertChatSessionSource(sessionId, sourceContext);
     await prisma.chatSession.upsert({
@@ -2916,7 +2920,7 @@ app.post('/api/chat/respond', async (req, res) => {
       data: {
         sessionId,
         sender: 'bot',
-        text: OFFLINE_CHAT_BOT_REPLY,
+        text: offlineChatBotReplyForTenant(sourceContext.tenantId),
         answered: true,
         replyToId: userMessage.id,
       },
@@ -2935,7 +2939,7 @@ app.post('/api/chat/respond', async (req, res) => {
     if (sourceFailure) return sourceFailure;
     if (!isDatabaseUnavailableError(err)) throw err;
     logChatDbFallback('Chat respond unavailable', err);
-    return res.json(await offlineChatRespondPayload(String(message)));
+    return res.json(await offlineChatRespondPayload(String(message), sourceContext));
   }
 });
 
@@ -2970,7 +2974,7 @@ app.post('/api/chat/appointments', async (req, res) => {
         phone: phone || null,
         preferredDate: preferredDate || null,
         preferredTime: preferredTime || null,
-        timezone: timezone || 'Europe/London',
+        timezone: resolveAppointmentRequestTimezone(timezone, sourceContext.tenantId),
         message: message || null,
       },
     });

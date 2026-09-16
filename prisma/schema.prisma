@@ -337,7 +337,7 @@ model ChatAppointmentRequest {
   phone         String?
   preferredDate String?
   preferredTime String?
-  timezone      String?     @default("Europe/London")
+  timezone      String?     @default("UTC")
   message       String?
   status        String      @default("pending")
   adminNote     String?

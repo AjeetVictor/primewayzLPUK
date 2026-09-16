@@ -782,6 +782,37 @@ test('61 Existing chat API URLs remain', () => {
   assert.match(liveChat, /\/api\/chat\/\$\{sessionId\}/);
 });
 
+test('61b Appointment confirmation uses availability.businessHours (no UK client constant)', () => {
+  const liveChat = read('src/components/LiveChat.tsx');
+  assert.match(liveChat, /buildAppointmentConfirmationMessage\(availability\.businessHours\)/);
+  assert.doesNotMatch(liveChat, /confirm during UK business hours/);
+  assert.doesNotMatch(liveChat, /['"]Thanks, your appointment request has been received\. Our team will confirm during UK/);
+});
+
+test('61c Appointment timezone uses browser IANA with tenant fallback (no hardcoded Europe/London)', () => {
+  const liveChat = read('src/components/LiveChat.tsx');
+  assert.match(liveChat, /resolveAppointmentRequestTimezone/);
+  assert.match(liveChat, /resolveBrowserTimeZone/);
+  assert.match(liveChat, /availability\.tenantId/);
+  assert.doesNotMatch(liveChat, /timezone:\s*['"]Europe\/London['"]/);
+  assert.doesNotMatch(
+    read('server.ts'),
+    /timezone:\s*timezone\s*\|\|\s*['"]Europe\/London['"]/,
+  );
+  assert.match(read('server.ts'), /resolveAppointmentRequestTimezone\(timezone,\s*sourceContext\.tenantId\)/);
+});
+
+test('61d Offline chat bot reply is tenant-aware (no hardcoded Primewayz UK team constant)', () => {
+  const server = read('server.ts');
+  assert.doesNotMatch(server, /const OFFLINE_CHAT_BOT_REPLY/);
+  assert.doesNotMatch(
+    server,
+    /Thanks for your message\. We have received it and the Primewayz UK team will follow up shortly\./,
+  );
+  assert.match(server, /buildOfflineChatBotReply|offlineChatBotReplyForTenant/);
+  assert.match(server, /resolveTenantChatPresentation/);
+});
+
 test('62 Existing session creation remains', () => {
   const liveChat = read('src/components/LiveChat.tsx');
   assert.match(liveChat, /chat_session_id/);
