@@ -37,11 +37,18 @@ import {
   UNANSWERED_VISITOR_MESSAGE_WHERE,
 } from '../chat/chatOperationalSemantics.ts';
 import { resolveChatPresence } from '../chat/chatPresence.ts';
+import type { ChatOperatorActionRecord } from '../chat/chatConversationService.ts';
+import { createMemoryChatConversationStore, type MemoryChatStoreHooks } from '../chat/testing/memoryChatConversationStore.ts';
+import { computeDelegatedRequestHash, OPERATOR_ACTION_SOURCE } from './wordpressChatDelegatedActions.ts';
 import { isPublicChatCorsPath } from '../chat/publicChatApiCors.ts';
 import { isPublicPlatformCorsPath } from '../platform/publicPlatformApiCors.ts';
 import { isAdminStateChangingRequest } from '../admin/adminRequestOrigin.ts';
 import { buildPublicPlatformCapabilities } from '../platform/publicCapabilities.ts';
 import { resolveSourceContext } from '../platform/sourceResolver.ts';
+
+const ACTOR = { externalUserId: 'wp-user-12', displayName: 'Asha Patel' };
+let actionCounter = 0;
+const nextActionId = () => `0b8f6c1e-2d3a-4e5f-8a9b-${String(++actionCounter).padStart(12, '0')}`;
 
 const TOKEN = 'wpint_TEST_7f3c9a1e5b2d8f604c1a9e7b3d5f2a8c';
 const PREVIOUS_TOKEN = 'wpint_PREV_0a1b2c3d4e5f60718293a4b5c6d7e8f9';
@@ -75,6 +82,7 @@ type MessageRow = {
 type Db = {
   sessions: SessionRow[];
   messages: MessageRow[];
+  operatorActions: ChatOperatorActionRecord[];
   presence: { mode: string | null; latestAdminSeenAt: Date | null };
   down: boolean;
 };
@@ -155,7 +163,7 @@ function createDb(): Db {
   messages.push(message('uk-1', 'user', 100, { text: 'UK ONLY TEXT' }));
   messages.push(message('rrb-1', 'user', 101, { text: 'RRB ONLY TEXT' }));
   messages.push(message('legacy-1', 'user', 102, { text: 'LEGACY ONLY TEXT' }));
-  return { sessions, messages, presence: { mode: 'auto', latestAdminSeenAt: new Date(NOW - 60 * 1000) }, down: false };
+  return { sessions, messages, operatorActions: [], presence: { mode: 'auto', latestAdminSeenAt: new Date(NOW - 60 * 1000) }, down: false };
 }
 
 function dbDownError(): Error {
@@ -282,6 +290,7 @@ async function startApp(options: {
   env?: NodeJS.ProcessEnv;
   registry?: readonly IntegrationDefinition[];
   clock?: { now: number };
+  writeHooks?: MemoryChatStoreHooks['before'];
 } = {}) {
   resetWordPressChatRateLimitsForTests();
   const db = options.db ?? createDb();
@@ -293,6 +302,13 @@ async function startApp(options: {
   app.use(express.json());
   app.post(WORDPRESS_CHAT_INTEGRATION_PATH, createWordPressChatIntegrationHandler({
     store: createMemoryStore(db, calls),
+    writes: createMemoryChatConversationStore(db, {
+      now: () => new Date(clock.now),
+      before: async (method, args, external) => {
+        if (db.down) throw dbDownError();
+        await options.writeHooks?.(method, args, external);
+      },
+    }),
     siteUrl: 'https://uk.primewayz.com/',
     isDatabaseUnavailableError: (err) => err instanceof Error && err.name === 'PrismaClientInitializationError',
     getClientIp: () => '203.0.113.10',
@@ -338,7 +354,8 @@ async function startApp(options: {
   return { db, calls, logs, errors, clock, call, close: () => new Promise<void>((done) => server.close(() => done())) };
 }
 
-const snapshot = (db: Db) => JSON.stringify({ sessions: db.sessions, messages: db.messages, presence: db.presence });
+const snapshot = (db: Db) =>
+  JSON.stringify({ sessions: db.sessions, messages: db.messages, operatorActions: db.operatorActions, presence: db.presence });
 
 // --- Authentication ---
 
@@ -419,12 +436,14 @@ test('rotation: the _PREVIOUS secret is accepted alongside the current secret, a
   assert.equal(parseBearerToken(`Bearer ${TOKEN} extra`), null);
 });
 
-test('registry: the WordPress integration is bound to pw-infotech with read-only scopes', () => {
+test('registry: the WordPress integration is bound to pw-infotech with read scopes plus reply / resolve / reopen only', () => {
   assert.equal(INTEGRATION_REGISTRY.length, 1);
   const [definition] = INTEGRATION_REGISTRY;
   assert.equal(definition.tenantId, 'pw-infotech');
-  assert.deepEqual([...definition.scopes].sort(), ['chat:dashboard', 'chat:diagnostics', 'chat:read']);
-  assert.ok(definition.scopes.every((scope) => !/write|reply|assign|delete|manage/.test(scope)));
+  assert.deepEqual([...definition.scopes].sort(), [
+    'chat:dashboard', 'chat:diagnostics', 'chat:read', 'chat:reopen', 'chat:reply', 'chat:resolve',
+  ]);
+  assert.ok(definition.scopes.every((scope) => !/assign|delete|manage|edit|note|spam|presence|availability|attach|appointment|tenant|user/.test(scope)));
 });
 
 test('scopes: a valid credential without the required scope returns 403 integration_forbidden', async () => {
@@ -447,21 +466,25 @@ test('scopes: a valid credential without the required scope returns 403 integrat
 test('request: tenant / source authority fields are rejected for every action', async () => {
   const app = await startApp();
   try {
+    const before = snapshot(app.db);
     for (const field of TENANT_AUTHORITY_FIELDS) {
-      for (const action of ['dashboard', 'diagnostics', 'conversation']) {
+      for (const action of ['dashboard', 'diagnostics', 'conversation', 'reply', 'resolve', 'reopen']) {
         const body: Record<string, unknown> = { action, [field]: 'pw-uk' };
-        if (action === 'conversation') body.sessionId = 'uk-1';
+        if (action !== 'dashboard' && action !== 'diagnostics') body.sessionId = 'uk-1';
+        if (['reply', 'resolve', 'reopen'].includes(action)) Object.assign(body, { clientActionId: nextActionId(), actor: ACTOR });
+        if (action === 'reply') body.text = 'hello';
         const res = await app.call({ body });
         assert.equal(res.status, 400, `${action} ${field}`);
         assert.equal(res.json.error.code, 'tenant_override_rejected');
       }
     }
+    assert.equal(snapshot(app.db), before);
   } finally {
     await app.close();
   }
 });
 
-test('request: unknown actions, write actions, extra fields and bad session ids are rejected', async () => {
+test('request: unknown actions, unsupported write actions, extra fields and bad session ids are rejected', async () => {
   const app = await startApp();
   try {
     for (const body of [
@@ -470,6 +493,11 @@ test('request: unknown actions, write actions, extra fields and bad session ids 
       { action: 'assign' },
       { action: 'delete' },
       { action: 'status-change' },
+      { action: 'availability', mode: 'online' },
+      { action: 'note', sessionId: 'inf-1', text: 'x' },
+      { action: 'spam', sessionId: 'inf-1' },
+      { action: 'edit', id: 1, text: 'x' },
+      { action: 'list' },
       { action: 'DASHBOARD' },
       { action: 'dashboard', limit: 50 },
       { action: 'diagnostics', verbose: true },
@@ -1015,4 +1043,600 @@ test('integration credential never reaches browser-facing code, public capabilit
       }
     }
   }
+});
+
+// =====================================================================================
+// Delegated writes: reply / resolve / reopen
+// =====================================================================================
+
+type WriteBody = Record<string, unknown>;
+const replyBody = (sessionId: string, text: string, extra: WriteBody = {}): WriteBody =>
+  ({ action: 'reply', sessionId, clientActionId: nextActionId(), actor: ACTOR, text, ...extra });
+const statusBody = (action: 'resolve' | 'reopen', sessionId: string, extra: WriteBody = {}): WriteBody =>
+  ({ action, sessionId, clientActionId: nextActionId(), actor: ACTOR, ...extra });
+const sessionOf = (db: Db, id: string) => db.sessions.find((s) => s.id === id)!;
+const prismaWriteError = () => Object.assign(new Error('Transaction failed'), { name: 'PrismaClientUnknownRequestError' });
+
+// --- Idempotency ---
+
+test('idempotency: first write succeeds, exact retry replays the original result without new writes', async () => {
+  const app = await startApp();
+  try {
+    const body = replyBody('inf-1', 'We can help with that.');
+    const first = await app.call({ body });
+    assert.equal(first.status, 200);
+    assert.equal(first.json.data.replayed, false);
+    assert.equal(first.json.data.changed, true);
+    const messagesAfterFirst = app.db.messages.length;
+
+    const retry = await app.call({ body: { ...body, actor: { ...ACTOR, displayName: 'Asha P.' } } });
+    assert.equal(retry.status, 200);
+    assert.equal(retry.json.data.replayed, true);
+    assert.equal(retry.json.data.changed, true);
+    assert.deepEqual(retry.json.data.message, first.json.data.message, 'same message, displayName is cosmetic');
+    assert.equal(app.db.messages.length, messagesAfterFirst, 'no second message');
+    assert.equal(app.db.operatorActions.length, 1);
+    assert.equal(app.logs.at(-1)?.replayed, true);
+
+    const resolve = statusBody('resolve', 'inf-5');
+    assert.equal((await app.call({ body: resolve })).json.data.changed, true);
+    const resolveRetry = await app.call({ body: resolve });
+    assert.equal(resolveRetry.json.data.replayed, true);
+    assert.equal(resolveRetry.json.data.changed, true, 'replay returns the original outcome, not a fresh no-op');
+    assert.equal(app.db.operatorActions.length, 2);
+  } finally {
+    await app.close();
+  }
+});
+
+test('idempotency: the same clientActionId with a different logical payload returns 409 idempotency_key_conflict', async () => {
+  const app = await startApp();
+  try {
+    const body = replyBody('inf-1', 'Original text');
+    assert.equal((await app.call({ body })).status, 200);
+    const before = snapshot(app.db);
+    for (const changed of [
+      { ...body, text: 'Different text' },
+      { ...body, sessionId: 'inf-5' },
+      { ...body, actor: { externalUserId: 'wp-user-99' } },
+      { action: 'resolve', sessionId: 'inf-1', clientActionId: body.clientActionId, actor: ACTOR },
+    ]) {
+      const res = await app.call({ body: changed });
+      assert.equal(res.status, 409, JSON.stringify(changed));
+      assert.equal(res.json.error.code, 'idempotency_key_conflict');
+    }
+    assert.equal(snapshot(app.db), before);
+  } finally {
+    await app.close();
+  }
+});
+
+test('idempotency: X-Request-ID is correlation only, never the idempotency key', async () => {
+  const app = await startApp();
+  try {
+    const headers = { 'X-Request-ID': 'wp-req-same-0001' };
+    assert.equal((await app.call({ body: replyBody('inf-1', 'one'), headers })).json.data.replayed, false);
+    assert.equal((await app.call({ body: replyBody('inf-1', 'one'), headers })).json.data.replayed, false);
+    assert.equal(app.db.operatorActions.length, 2);
+    assert.ok(app.db.operatorActions.every((a) => a.requestId === 'wp-req-same-0001'));
+  } finally {
+    await app.close();
+  }
+});
+
+test('idempotency: a failure inside the transaction leaves no action, message, answer flag or status change', async () => {
+  let fail = true;
+  const app = await startApp({
+    writeHooks: (method) => {
+      if (fail && method === 'updateOperatorAction') throw prismaWriteError();
+    },
+  });
+  try {
+    const before = snapshot(app.db);
+    const body = replyBody('inf-1', 'Will roll back');
+    const res = await app.call({ body });
+    assert.equal(res.status, 503);
+    assert.equal(res.json.error.code, 'chat_service_unavailable');
+    assert.equal(snapshot(app.db), before, 'no partial state');
+
+    fail = false;
+    const retry = await app.call({ body });
+    assert.equal(retry.status, 200);
+    assert.equal(retry.json.data.replayed, false, 'the failed attempt never claimed the key');
+    assert.equal(app.db.operatorActions.length, 1);
+  } finally {
+    await app.close();
+  }
+});
+
+test('idempotency: a key claimed concurrently by another request is replayed or rejected, never duplicated', async () => {
+  for (const sameHash of [true, false]) {
+    let injected = false;
+    const body = replyBody('inf-1', 'Concurrent');
+    const app = await startApp({
+      writeHooks: (method, _args, external) => {
+        if (method !== 'createOperatorAction' || injected) return;
+        injected = true;
+        external((state) => {
+          const messageId = Math.max(...state.messages.map((m) => m.id)) + 1;
+          state.messages.push({
+            id: messageId, sessionId: 'inf-1', sender: 'admin', text: 'Concurrent', answered: true, isInternalNote: false,
+            deletedAt: null, editedAt: null, replyToId: null, timestamp: new Date(NOW),
+          });
+          state.operatorActions.push({
+            id: 'other', integrationId: 'primewayz-wordpress', clientActionId: body.clientActionId as string,
+            requestHash: sameHash ? computeDelegatedRequestHash(body as never) : 'f'.repeat(64),
+            requestId: 'other-request', source: OPERATOR_ACTION_SOURCE, tenantId: 'pw-infotech', sessionId: 'inf-1', action: 'reply',
+            actorExternalId: ACTOR.externalUserId, actorDisplayName: null, messageId, fromStatus: 'bot_replied', toStatus: 'admin_replied',
+            changed: true, createdAt: new Date(NOW),
+          });
+        });
+      },
+    });
+    try {
+      const res = await app.call({ body });
+      if (sameHash) {
+        assert.equal(res.status, 200);
+        assert.equal(res.json.data.replayed, true);
+        assert.equal(res.json.data.message.text, 'Concurrent');
+      } else {
+        assert.equal(res.status, 409);
+        assert.equal(res.json.error.code, 'idempotency_key_conflict');
+      }
+      assert.equal(app.db.operatorActions.length, 1);
+      assert.equal(app.db.messages.filter((m) => m.text === 'Concurrent').length, 1);
+    } finally {
+      await app.close();
+    }
+  }
+});
+
+test('idempotency: simultaneous identical requests produce exactly one write', async () => {
+  const app = await startApp();
+  try {
+    const body = replyBody('inf-1', 'Double click');
+    const results = await Promise.all([app.call({ body }), app.call({ body }), app.call({ body })]);
+    assert.ok(results.every((r) => r.status === 200));
+    assert.equal(results.filter((r) => r.json.data.replayed === false).length, 1);
+    assert.equal(app.db.messages.filter((m) => m.text === 'Double click').length, 1);
+    assert.equal(app.db.operatorActions.length, 1);
+  } finally {
+    await app.close();
+  }
+});
+
+// --- Reply ---
+
+test('reply: pw-infotech reply stores a team message, answers visitors and sets admin_replied', async () => {
+  const app = await startApp();
+  try {
+    assert.equal(sessionOf(app.db, 'inf-1').status, 'bot_replied');
+    const res = await app.call({ body: replyBody('inf-1', '  We can help with that.  '), headers: { 'X-Request-ID': 'wp-reply-0001' } });
+    assert.equal(res.status, 200);
+    assert.equal(res.json.ok, true);
+    assert.equal(res.json.apiVersion, '1');
+    assert.deepEqual(res.json.tenant, { key: 'pw-infotech', market: 'IN', displayName: 'Primewayz Infotech' });
+    const { data } = res.json;
+    assert.deepEqual(Object.keys(data).sort(), ['action', 'changed', 'clientActionId', 'conversation', 'message', 'replayed']);
+    assert.equal(data.action, 'reply');
+    assert.deepEqual(Object.keys(data.message).sort(), ['actor', 'createdAt', 'deleted', 'edited', 'id', 'replyToId', 'text']);
+    assert.equal(data.message.actor, 'team');
+    assert.equal(data.message.text, 'We can help with that.');
+    assert.equal(data.message.replyToId, null);
+    assert.equal(data.conversation.sessionId, 'inf-1');
+    assert.equal(data.conversation.status, 'team_replied');
+    assert.equal(data.conversation.needsAttention, false);
+    assert.equal(data.conversation.lastActor, 'team');
+    assert.equal('messageCount' in data.conversation, false);
+
+    const stored = app.db.messages.find((m) => m.id === data.message.id)!;
+    assert.equal(stored.sender, 'admin');
+    assert.equal(stored.isInternalNote, false);
+    assert.equal(stored.answered, true);
+    assert.ok(app.db.messages.filter((m) => m.sessionId === 'inf-1' && m.sender === 'user').every((m) => m.answered));
+    assert.equal(sessionOf(app.db, 'inf-1').status, 'admin_replied');
+    assert.equal(sessionOf(app.db, 'inf-1').tenantId, 'pw-infotech', 'attribution unchanged');
+
+    const dashboard = (await app.call({ body: { action: 'dashboard' } })).json.data;
+    const row = dashboard.recentConversations.find((r: { sessionId: string }) => r.sessionId === 'inf-1');
+    assert.equal(row.needsAttention, false);
+    assert.equal(row.status, 'team_replied');
+  } finally {
+    await app.close();
+  }
+});
+
+test('reply: the operator action audit row attributes the WordPress actor without storing bodies or emails', async () => {
+  const app = await startApp();
+  try {
+    const body = replyBody('inf-1', 'Audit body text');
+    const res = await app.call({ body, headers: { 'X-Request-ID': 'wp-reply-audit-1' } });
+    assert.equal(app.db.operatorActions.length, 1);
+    const [action] = app.db.operatorActions;
+    assert.equal(action.source, 'wordpress_integration');
+    assert.equal(action.integrationId, 'primewayz-wordpress');
+    assert.equal(action.tenantId, 'pw-infotech');
+    assert.equal(action.sessionId, 'inf-1');
+    assert.equal(action.action, 'reply');
+    assert.equal(action.clientActionId, body.clientActionId);
+    assert.equal(action.requestId, 'wp-reply-audit-1');
+    assert.match(action.requestHash, /^[0-9a-f]{64}$/);
+    assert.equal(action.actorExternalId, 'wp-user-12');
+    assert.equal(action.actorDisplayName, 'Asha Patel');
+    assert.equal(action.messageId, res.json.data.message.id);
+    assert.deepEqual([action.fromStatus, action.toStatus, action.changed], ['bot_replied', 'admin_replied', true]);
+    const serialized = JSON.stringify(action);
+    assert.ok(!serialized.includes('Audit body text'));
+    assert.ok(!serialized.includes(TOKEN));
+    assert.ok(!serialized.includes('@'));
+
+    const log = app.logs.at(-1)!;
+    assert.equal(log.action, 'reply');
+    assert.equal(log.replayed, false);
+    assert.match(log.sessionRef ?? '', /^[0-9A-F]{6}$/);
+    const logText = JSON.stringify(app.logs) + app.errors.join('\n');
+    for (const forbidden of ['Audit body text', 'wp-user-12', 'Asha', String(body.clientActionId), 'inf-1', TOKEN]) {
+      assert.ok(!logText.includes(forbidden), `log leaked ${forbidden}`);
+    }
+  } finally {
+    await app.close();
+  }
+});
+
+test('reply: closed and spam conversations return 409 conversation_closed without writing', async () => {
+  const app = await startApp();
+  try {
+    sessionOf(app.db, 'inf-2').status = 'spam';
+    const before = snapshot(app.db);
+    for (const sessionId of ['inf-3', 'inf-2']) {
+      const res = await app.call({ body: replyBody(sessionId, 'Hello?') });
+      assert.equal(res.status, 409, sessionId);
+      assert.equal(res.json.error.code, 'conversation_closed');
+      assert.equal(res.json.data, undefined);
+    }
+    assert.equal(snapshot(app.db), before, 'no silent reopen, no message, no action');
+  } finally {
+    await app.close();
+  }
+});
+
+test('reply: other-tenant, legacy and unknown sessions return the same 404 as for reads, without writing', async () => {
+  const app = await startApp();
+  try {
+    const before = snapshot(app.db);
+    const bodies: string[] = [];
+    for (const [action, sessionId] of [
+      ['reply', 'uk-1'], ['reply', 'rrb-1'], ['reply', 'legacy-1'], ['reply', 'does-not-exist'],
+      ['resolve', 'uk-1'], ['resolve', 'legacy-1'], ['reopen', 'rrb-1'], ['reopen', 'does-not-exist'],
+    ]) {
+      const body = action === 'reply' ? replyBody(sessionId, 'x') : statusBody(action as 'resolve' | 'reopen', sessionId);
+      const res = await app.call({ body });
+      assert.equal(res.status, 404, `${action} ${sessionId}`);
+      assert.equal(res.json.error.code, 'conversation_not_found');
+      const { requestId: _requestId, ...rest } = res.json;
+      bodies.push(JSON.stringify(rest));
+    }
+    const read = await app.call({ body: { action: 'conversation', sessionId: 'uk-1' } });
+    const { requestId: _readRequestId, ...readRest } = read.json;
+    bodies.push(JSON.stringify(readRest));
+    assert.equal(new Set(bodies).size, 1, 'indistinguishable from missing conversations');
+    assert.equal(snapshot(app.db), before);
+  } finally {
+    await app.close();
+  }
+});
+
+test('reply: text is required, trimmed and bounded', async () => {
+  const app = await startApp();
+  try {
+    const before = snapshot(app.db);
+    for (const text of ['', '    ', 'x'.repeat(4001), 42, null, ['a']]) {
+      const res = await app.call({ body: replyBody('inf-1', text as string) });
+      assert.equal(res.status, 400, JSON.stringify(text)?.slice(0, 20));
+      assert.equal(res.json.error.code, 'invalid_request');
+    }
+    const missing = replyBody('inf-1', 'x');
+    delete missing.text;
+    assert.equal((await app.call({ body: missing })).status, 400);
+    assert.equal(snapshot(app.db), before);
+    assert.equal((await app.call({ body: replyBody('inf-1', 'x'.repeat(4000)) })).status, 200);
+  } finally {
+    await app.close();
+  }
+});
+
+test('writes: actor metadata is validated and never accepts email or role', async () => {
+  const app = await startApp();
+  try {
+    const before = snapshot(app.db);
+    for (const actor of [
+      undefined,
+      null,
+      'wp-user-12',
+      ['wp-user-12'],
+      {},
+      { displayName: 'No id' },
+      { externalUserId: '' },
+      { externalUserId: 'asha@example.com' },
+      { externalUserId: 'x'.repeat(65) },
+      { externalUserId: 'has space' },
+      { externalUserId: 12 },
+      { externalUserId: 'wp-user-12', email: 'asha@example.com' },
+      { externalUserId: 'wp-user-12', role: 'administrator' },
+      { externalUserId: 'wp-user-12', displayName: 'asha@example.com' },
+      { externalUserId: 'wp-user-12', displayName: 'x'.repeat(81) },
+      { externalUserId: 'wp-user-12', displayName: '   ' },
+      { externalUserId: 'wp-user-12', displayName: '<script>' },
+      { externalUserId: 'wp-user-12', displayName: 7 },
+    ]) {
+      for (const body of [replyBody('inf-1', 'x', { actor }), statusBody('resolve', 'inf-1', { actor })]) {
+        if (actor === undefined) delete body.actor;
+        const res = await app.call({ body });
+        assert.equal(res.status, 400, JSON.stringify(actor));
+        assert.equal(res.json.error.code, 'invalid_request');
+      }
+    }
+    assert.equal(snapshot(app.db), before);
+    const minimal = await app.call({ body: replyBody('inf-1', 'ok', { actor: { externalUserId: '12' } }) });
+    assert.equal(minimal.status, 200);
+    assert.equal(app.db.operatorActions[0].actorDisplayName, null);
+  } finally {
+    await app.close();
+  }
+});
+
+test('writes: clientActionId is required and must be a UUID or safe 36-64 character identifier', async () => {
+  const app = await startApp();
+  try {
+    for (const clientActionId of [undefined, '', 'short-id', 'x'.repeat(65), `${'a'.repeat(35)} `, `-${'a'.repeat(40)}`, 123]) {
+      const body = replyBody('inf-1', 'x', { clientActionId });
+      if (clientActionId === undefined) delete body.clientActionId;
+      const res = await app.call({ body });
+      assert.equal(res.status, 400, String(clientActionId));
+    }
+    assert.equal((await app.call({ body: replyBody('inf-1', 'x', { clientActionId: 'wp_action.2026-10-04:abcdefghijklmnopqrstu' }) })).status, 200);
+    assert.equal((await app.call({ body: statusBody('resolve', 'inf-5', { clientActionId: 'c'.repeat(64) }) })).status, 200);
+  } finally {
+    await app.close();
+  }
+});
+
+test('reply: attachments, reply quoting, internal notes and sender are rejected (text-only phase)', async () => {
+  const app = await startApp();
+  try {
+    const before = snapshot(app.db);
+    for (const extra of [{ attachmentIds: [1] }, { replyToId: 1 }, { isInternalNote: true }, { sender: 'admin' }, { attachmentIds: [] }]) {
+      const res = await app.call({ body: replyBody('inf-1', 'x', extra) });
+      assert.equal(res.status, 400, JSON.stringify(extra));
+      assert.match(res.json.error.message, /text-only/);
+    }
+    assert.equal((await app.call({ body: statusBody('resolve', 'inf-1', { text: 'closing' }) })).status, 400);
+    assert.equal((await app.call({ body: statusBody('reopen', 'inf-3', { status: 'new' }) })).status, 400);
+    assert.equal(snapshot(app.db), before);
+  } finally {
+    await app.close();
+  }
+});
+
+test('reply: simultaneous replies with different keys are both valid and append-only', async () => {
+  const app = await startApp();
+  try {
+    const [a, b] = await Promise.all([
+      app.call({ body: replyBody('inf-1', 'First operator') }),
+      app.call({ body: replyBody('inf-1', 'Second operator') }),
+    ]);
+    assert.equal(a.status, 200);
+    assert.equal(b.status, 200);
+    assert.notEqual(a.json.data.message.id, b.json.data.message.id);
+    const texts = app.db.messages.filter((m) => m.sessionId === 'inf-1' && m.sender === 'admin').map((m) => m.text).sort();
+    assert.deepEqual(texts, ['First operator', 'Second operator']);
+    assert.equal(sessionOf(app.db, 'inf-1').status, 'admin_replied');
+  } finally {
+    await app.close();
+  }
+});
+
+// --- Resolve ---
+
+test('resolve: a non-terminal conversation is closed; already closed returns 200 changed:false', async () => {
+  const app = await startApp({ clock: { now: NOW } });
+  try {
+    const res = await app.call({ body: statusBody('resolve', 'inf-1') });
+    assert.equal(res.status, 200);
+    assert.deepEqual(Object.keys(res.json.data).sort(), ['action', 'changed', 'clientActionId', 'conversation', 'replayed']);
+    assert.equal(res.json.data.changed, true);
+    assert.equal(res.json.data.conversation.status, 'closed');
+    assert.equal(res.json.data.conversation.needsAttention, false);
+    const session = sessionOf(app.db, 'inf-1') as SessionRow & { closedAt?: Date | null; closedById?: number | null };
+    assert.equal(session.status, 'closed');
+    assert.equal(session.closedAt?.toISOString(), '2026-10-04T09:00:00.000Z');
+    assert.equal(session.closedById, null, 'WordPress operators are not UK Admin users');
+    assert.deepEqual(
+      [app.db.operatorActions[0].fromStatus, app.db.operatorActions[0].toStatus, app.db.operatorActions[0].changed],
+      ['bot_replied', 'closed', true],
+    );
+
+    const again = await app.call({ body: statusBody('resolve', 'inf-1') });
+    assert.equal(again.status, 200);
+    assert.equal(again.json.data.changed, false);
+    assert.equal(again.json.data.replayed, false);
+    const alreadyClosed = await app.call({ body: statusBody('resolve', 'inf-3') });
+    assert.equal(alreadyClosed.json.data.changed, false);
+  } finally {
+    await app.close();
+  }
+});
+
+test('resolve: spam is never converted to closed', async () => {
+  const app = await startApp();
+  try {
+    sessionOf(app.db, 'inf-5').status = 'spam';
+    const res = await app.call({ body: statusBody('resolve', 'inf-5') });
+    assert.equal(res.status, 409);
+    assert.equal(res.json.error.code, 'invalid_transition');
+    assert.equal(sessionOf(app.db, 'inf-5').status, 'spam');
+    assert.equal(app.db.operatorActions.length, 0);
+  } finally {
+    await app.close();
+  }
+});
+
+// --- Reopen ---
+
+test('reopen: closed -> admin_needed; repeat is 200 changed:false; open and spam conversations are 409 invalid_transition', async () => {
+  const app = await startApp();
+  try {
+    const res = await app.call({ body: statusBody('reopen', 'inf-3') });
+    assert.equal(res.status, 200);
+    assert.equal(res.json.data.changed, true);
+    assert.equal(sessionOf(app.db, 'inf-3').status, 'admin_needed');
+    assert.equal(res.json.data.conversation.status, 'waiting_for_team', 'the unanswered visitor message is back in the queue');
+    assert.equal(res.json.data.conversation.needsAttention, true);
+    assert.deepEqual([app.db.operatorActions[0].fromStatus, app.db.operatorActions[0].toStatus], ['closed', 'admin_needed']);
+
+    const repeat = await app.call({ body: statusBody('reopen', 'inf-3') });
+    assert.equal(repeat.status, 200);
+    assert.equal(repeat.json.data.changed, false);
+
+    for (const [sessionId, status] of [['inf-2', 'admin_replied'], ['inf-1', 'bot_replied'], ['inf-5', 'spam']]) {
+      sessionOf(app.db, sessionId).status = status;
+      const blocked = await app.call({ body: statusBody('reopen', sessionId) });
+      assert.equal(blocked.status, 409, sessionId);
+      assert.equal(blocked.json.error.code, 'invalid_transition');
+      assert.equal(sessionOf(app.db, sessionId).status, status);
+    }
+    assert.equal(app.db.operatorActions.length, 2, 'rejected transitions are not recorded');
+  } finally {
+    await app.close();
+  }
+});
+
+test('reopen then reply: an explicitly reopened conversation accepts replies again', async () => {
+  const app = await startApp();
+  try {
+    assert.equal((await app.call({ body: replyBody('inf-3', 'Too early') })).status, 409);
+    assert.equal((await app.call({ body: statusBody('reopen', 'inf-3') })).status, 200);
+    const reply = await app.call({ body: replyBody('inf-3', 'Back on it') });
+    assert.equal(reply.status, 200);
+    assert.equal(sessionOf(app.db, 'inf-3').status, 'admin_replied');
+  } finally {
+    await app.close();
+  }
+});
+
+// --- Concurrency ---
+
+test('concurrency: a close committed during a reply is never overwritten by admin_replied', async () => {
+  const app = await startApp({
+    writeHooks: (method, _args, external) => {
+      if (method === 'updateSessionStatus') {
+        external((state) => { state.sessions.find((s) => s.id === 'inf-1')!.status = 'closed'; });
+      }
+    },
+  });
+  try {
+    const messages = app.db.messages.length;
+    const res = await app.call({ body: replyBody('inf-1', 'Racing a close') });
+    assert.equal(res.status, 409);
+    assert.equal(res.json.error.code, 'conversation_closed');
+    assert.equal(sessionOf(app.db, 'inf-1').status, 'closed');
+    assert.equal(app.db.messages.length, messages);
+    assert.equal(app.db.operatorActions.length, 0);
+    assert.ok(app.db.messages.some((m) => m.sessionId === 'inf-1' && m.sender === 'user' && !m.answered), 'visitor message still unanswered');
+  } finally {
+    await app.close();
+  }
+});
+
+// --- Permission boundary, rate limits, presence, regression ---
+
+test('scopes: a read-only credential cannot reply, resolve or reopen', async () => {
+  const registry: IntegrationDefinition[] = [{ ...INTEGRATION_REGISTRY[0], scopes: ['chat:dashboard', 'chat:read', 'chat:diagnostics'] }];
+  const app = await startApp({ registry });
+  try {
+    const before = snapshot(app.db);
+    for (const body of [replyBody('inf-1', 'x'), statusBody('resolve', 'inf-1'), statusBody('reopen', 'inf-3')]) {
+      const res = await app.call({ body });
+      assert.equal(res.status, 403, String(body.action));
+      assert.equal(res.json.error.code, 'integration_forbidden');
+    }
+    assert.equal(snapshot(app.db), before);
+    assert.equal((await app.call({ body: { action: 'dashboard' } })).status, 200);
+  } finally {
+    await app.close();
+  }
+});
+
+test('rate limit: write actions have their own per-integration buckets', async () => {
+  const clock = { now: NOW };
+  const app = await startApp({ clock });
+  try {
+    for (let i = 0; i < WORDPRESS_CHAT_RATE_LIMITS.reply.limit; i += 1) {
+      assert.equal((await app.call({ body: replyBody('inf-1', `r${i}`) })).status, 200);
+    }
+    const limited = await app.call({ body: replyBody('inf-1', 'too many') });
+    assert.equal(limited.status, 429);
+    assert.ok(Number(limited.headers['retry-after']) >= 1);
+    assert.equal((await app.call({ body: statusBody('resolve', 'inf-5') })).status, 200, 'resolve has a separate bucket');
+    assert.equal((await app.call({ body: { action: 'dashboard' } })).status, 200);
+  } finally {
+    await app.close();
+  }
+});
+
+test('presence stays read-only: no write action touches presence, and dashboard team data is unchanged by writes', async () => {
+  const app = await startApp();
+  try {
+    const presence = JSON.stringify(app.db.presence);
+    const team = (await app.call({ body: { action: 'dashboard' } })).json.data.team;
+    await app.call({ body: replyBody('inf-1', 'x') });
+    await app.call({ body: statusBody('resolve', 'inf-5') });
+    await app.call({ body: statusBody('reopen', 'inf-3') });
+    assert.equal(JSON.stringify(app.db.presence), presence);
+    assert.deepEqual((await app.call({ body: { action: 'dashboard' } })).json.data.team, team);
+    assert.equal((await app.call({ body: { action: 'availability', mode: 'offline' } })).status, 400);
+  } finally {
+    await app.close();
+  }
+});
+
+test('writes: database outage returns 503 database_unavailable without partial state', async () => {
+  const app = await startApp();
+  try {
+    app.db.down = true;
+    const before = snapshot(app.db);
+    const res = await app.call({ body: replyBody('inf-1', 'x') });
+    assert.equal(res.status, 503);
+    assert.equal(res.json.error.code, 'database_unavailable');
+    assert.equal(snapshot(app.db), before);
+  } finally {
+    await app.close();
+  }
+});
+
+test('regression: read action response contracts are unchanged after writes are added', async () => {
+  const app = await startApp();
+  try {
+    const dashboard = (await app.call({ body: { action: 'dashboard' } })).json.data;
+    assert.deepEqual(Object.keys(dashboard).sort(), ['attention', 'fullAdmin', 'limits', 'recentConversations', 'service', 'team']);
+    const conversation = (await app.call({ body: { action: 'conversation', sessionId: 'inf-2' } })).json.data;
+    assert.deepEqual(Object.keys(conversation).sort(), ['conversation', 'hasMore', 'messageLimit', 'messages']);
+    const diagnostics = (await app.call({ body: { action: 'diagnostics' } })).json.data;
+    assert.deepEqual(Object.keys(diagnostics).sort(), ['api', 'authentication', 'chat', 'database', 'fullAdmin', 'status', 'team', 'tenantBinding']);
+    assert.deepEqual(diagnostics.api, { status: 'ok', version: '1' });
+  } finally {
+    await app.close();
+  }
+});
+
+test('wiring: one endpoint, delegated writes use the shared conversation store and service', () => {
+  const server = read('server.ts');
+  const route = server.indexOf('app.post(WORDPRESS_CHAT_INTEGRATION_PATH, createWordPressChatIntegrationHandler({');
+  const block = server.slice(route, server.indexOf('}));', route));
+  assert.match(block, /writes: chatConversationStore,/);
+  assert.equal((server.match(/WORDPRESS_CHAT_INTEGRATION_PATH, createWordPressChatIntegrationHandler/g) ?? []).length, 1);
+  const adapter = read('src/lib/integrations/wordpressChatDelegatedActions.ts');
+  assert.match(adapter, /createTeamReply\(tx, \{[\s\S]*?isInternalNote: false,[\s\S]*?replyToId: null,[\s\S]*?terminalPolicy: 'reject'/);
+  assert.doesNotMatch(adapter, /prisma|chatMessage\.create|updateMany/);
+  assert.doesNotMatch(adapter, /adminPresence|chatPresenceSetting|chatAlert|chatAppointment/);
 });

@@ -345,6 +345,33 @@ model ChatAppointmentRequest {
   updatedAt     DateTime    @updatedAt
 }
 
+/// Delegated operator write actions (WordPress integration): idempotency claim, request
+/// correlation and human-operator attribution. Actor fields are audit context only and never
+/// grant authority. No message bodies, emails or credentials are stored here.
+/// sessionId / messageId are logical references (no FK) so chat tables stay untouched.
+model ChatOperatorAction {
+  id               String   @id @default(uuid())
+  integrationId    String   @db.VarChar(64)
+  clientActionId   String   @db.VarChar(64)
+  requestHash      String   @db.Char(64)
+  requestId        String   @db.VarChar(128)
+  source           String   @db.VarChar(64)
+  tenantId         String   @db.VarChar(32)
+  sessionId        String   @db.VarChar(191)
+  action           String   @db.VarChar(32)
+  actorExternalId  String   @db.VarChar(64)
+  actorDisplayName String?  @db.VarChar(80)
+  messageId        Int?
+  fromStatus       String?  @db.VarChar(32)
+  toStatus         String?  @db.VarChar(32)
+  changed          Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  @@unique([integrationId, clientActionId])
+  @@index([sessionId, createdAt])
+  @@index([tenantId, createdAt])
+}
+
 model ChatPresenceSetting {
   id          Int      @id @default(autoincrement())
   mode        String   @default("auto") // auto / online / away / offline

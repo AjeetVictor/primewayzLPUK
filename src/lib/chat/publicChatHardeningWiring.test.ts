@@ -50,10 +50,15 @@ test('unauthenticated sender=admin and sender=bot can no longer be posted public
 });
 
 test('authenticated admin reply behaviour and internal notes are preserved', () => {
+  const conversationService = read('src/lib/chat/chatConversationService.ts');
+  const conversationStore = read('src/lib/chat/chatConversationPrismaStore.ts');
   assert.match(adminChatRoutes, /isInternalNote: Boolean\(isInternalNote\)/);
-  assert.match(adminChatRoutes, /if \(!input\.isInternalNote\) await deps\.markVisitorMessagesAnswered\(input\.sessionId\)/);
+  assert.match(adminChatRoutes, /createTeamReply\(tx, \{[\s\S]*?isInternalNote: input\.isInternalNote,[\s\S]*?terminalPolicy: 'append_without_status_change'/);
   assert.match(adminChatRoutes, /res\.status\(201\)\.json\(message\)/);
-  assert.match(server, /markVisitorMessagesAnswered: async \(sessionId\) => \{[\s\S]*?answered: true[\s\S]*?admin_replied/);
+  assert.match(conversationService, /if \(!input\.isInternalNote\) \{\s*statusChanged = await advanceConversationStatus\(tx, session\.id, 'admin_replied'/);
+  assert.match(conversationService, /if \(!input\.isInternalNote\) await markVisitorMessagesAnswered\(tx, session\.id\)/);
+  assert.match(conversationStore, /where: \{ sessionId, sender: 'user', answered: false \},\s*data: \{ answered: true \}/);
+  assert.match(server, /createAdminChatRouteHandlers\(\{\s*store: adminChatStore,\s*conversations: chatConversationStore,/);
 });
 
 test('admin UIs still post admin replies with credentials to POST /api/chat (tenant-scoped)', () => {

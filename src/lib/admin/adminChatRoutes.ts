@@ -7,7 +7,9 @@
  * backend and database serve every tenant; tenantId is attribution, not infrastructure.
  *
  * The store intentionally exposes no ChatSession write: admin reads and replies cannot
- * change tenantId / market / sourceSite / sourceOrigin / sourceChannel.
+ * change tenantId / market / sourceSite / sourceOrigin / sourceChannel. Replies are written
+ * by the shared createTeamReply (chatConversationService), the same implementation the
+ * delegated WordPress API uses.
  */
 
 import type { Request, RequestHandler, Response } from 'express';
@@ -15,6 +17,7 @@ import { resolveAdminTenantFilter } from '../platform/adminTenantFilter.ts';
 import { SourceResolutionError } from '../platform/sourceResolver.ts';
 import { getTenantById } from '../platform/tenantRegistry.ts';
 import { assertChatSessionIdShape, isPermittedAdminChatReplySender, PublicChatRequestError } from '../chat/publicChatGuards.ts';
+import { createTeamReply, type ChatConversationStore } from '../chat/chatConversationService.ts';
 
 export class AdminChatAccessError extends Error {
   readonly status: number;
@@ -46,18 +49,16 @@ export type AdminChatStore = {
   listSessions(filter: { tenantId?: string }): Promise<unknown[]>;
   countMessagesInSession(messageId: number, sessionId: string): Promise<number>;
   countAttachmentsInSession(attachmentIds: number[], sessionId: string): Promise<number>;
-  createAdminMessage(input: AdminChatReplyInput): Promise<unknown>;
 };
 
 export type AdminChatRouteDeps = {
   store: AdminChatStore;
-  /** Marks visitor messages answered and moves the conversation to admin_replied (status only). */
-  markVisitorMessagesAnswered(sessionId: string): Promise<void>;
+  conversations: ChatConversationStore;
   isDatabaseUnavailableError(err: unknown): boolean;
   logUnavailable(context: string, err: unknown): void;
 };
 
-function requestedTenantFilter(req: Request): string | undefined {
+export function requestedTenantFilter(req: Request): string | undefined {
   return resolveAdminTenantFilter(typeof req.query.tenantId === 'string' ? req.query.tenantId : undefined);
 }
 
@@ -150,15 +151,9 @@ export async function assertAdminChatReferencesOwned(
   }
 }
 
-export function createAdminChatRouteHandlers(deps: AdminChatRouteDeps): {
-  listMessages: RequestHandler;
-  listSessions: RequestHandler;
-  sessionHistory: RequestHandler;
-  reply: RequestHandler;
-} {
-  const { store } = deps;
-
-  const fail = (res: Response, err: unknown, context: string, unavailableBody: Record<string, unknown>) => {
+/** Shared failure mapping for authenticated Admin chat handlers. */
+export function createAdminChatFailureResponder(deps: Pick<AdminChatRouteDeps, 'isDatabaseUnavailableError' | 'logUnavailable'>) {
+  return (res: Response, err: unknown, context: string, unavailableBody: Record<string, unknown>) => {
     if (err instanceof SourceResolutionError) {
       return res.status(400).json({ error: err.message, code: 'invalid_tenant_filter' });
     }
@@ -175,6 +170,16 @@ export function createAdminChatRouteHandlers(deps: AdminChatRouteDeps): {
     console.error(`[admin-chat] ${context}`, err instanceof Error ? err.message : err);
     return res.status(500).json({ error: 'Admin chat request failed' });
   };
+}
+
+export function createAdminChatRouteHandlers(deps: AdminChatRouteDeps): {
+  listMessages: RequestHandler;
+  listSessions: RequestHandler;
+  sessionHistory: RequestHandler;
+  reply: RequestHandler;
+} {
+  const { store } = deps;
+  const fail = createAdminChatFailureResponder(deps);
 
   return {
     listMessages: async (req, res) => {
@@ -207,8 +212,18 @@ export function createAdminChatRouteHandlers(deps: AdminChatRouteDeps): {
         const input = validateAdminChatReplyInput(req.body);
         await loadAuthorisedSession(store, input.sessionId, requestedTenantFilter(req));
         await assertAdminChatReferencesOwned(store, input);
-        const message = await store.createAdminMessage(input);
-        if (!input.isInternalNote) await deps.markVisitorMessagesAnswered(input.sessionId);
+        const { message } = await deps.conversations.transaction(async (tx) => {
+          const session = await tx.findSession(input.sessionId);
+          if (!session) throw new AdminChatAccessError(404, 'chat_session_not_found', 'Chat session not found.');
+          return createTeamReply(tx, {
+            session,
+            text: input.text,
+            isInternalNote: input.isInternalNote,
+            replyToId: input.replyToId,
+            attachmentIds: input.attachmentIds,
+            terminalPolicy: 'append_without_status_change',
+          });
+        });
         res.status(201).json(message);
       } catch (err) {
         fail(res, err, 'Chat message create unavailable', { error: 'Chat is temporarily unavailable', unavailable: true });

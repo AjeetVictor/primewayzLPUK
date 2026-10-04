@@ -190,7 +190,7 @@ export const AdminMobileChat = () => {
 
   const updateStatus = async (status: string) => {
     if (!selectedSessionId) return;
-    const res = await adminRequest(`/api/admin/sessions/${selectedSessionId}/status`, {
+    const res = await adminRequest(tenantQuery(`/api/admin/sessions/${selectedSessionId}/status`), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),

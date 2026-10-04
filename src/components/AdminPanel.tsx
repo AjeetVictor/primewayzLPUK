@@ -744,8 +744,9 @@ const AdminPanelContent = () => {
     });
   };
 
-  const adminTenantQuery = (path: string) =>
-    apiUrl(`${path}${path.includes('?') ? '&' : '?'}tenantId=${encodeURIComponent(adminTenantFilter)}`);
+  const adminTenantPath = (path: string) =>
+    `${path}${path.includes('?') ? '&' : '?'}tenantId=${encodeURIComponent(adminTenantFilter)}`;
+  const adminTenantQuery = (path: string) => apiUrl(adminTenantPath(path));
 
   const fetchData = async (silent = false, currentUser = user) => {
     if (!silent) setLoading(true);
@@ -1084,7 +1085,7 @@ const AdminPanelContent = () => {
 
   const updateConversationStatus = async (sessionId: string, status: ConversationStatus | string) => {
     try {
-      const res = await adminRequest(`/api/admin/sessions/${sessionId}/status`, {
+      const res = await adminRequest(adminTenantPath(`/api/admin/sessions/${sessionId}/status`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
@@ -1114,7 +1115,7 @@ const AdminPanelContent = () => {
   const saveEditedMessage = async (messageId: number) => {
     if (!editingMessageText.trim()) return;
     try {
-      const res = await adminRequest(`/api/admin/chat/messages/${messageId}`, {
+      const res = await adminRequest(adminTenantPath(`/api/admin/chat/messages/${messageId}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: editingMessageText }),
@@ -1132,7 +1133,7 @@ const AdminPanelContent = () => {
     if (pendingDeleteMessageId === null) return;
     setIsDeletingMessage(true);
     try {
-      const res = await adminRequest(`/api/admin/chat/messages/${pendingDeleteMessageId}`, { method: 'DELETE' });
+      const res = await adminRequest(adminTenantPath(`/api/admin/chat/messages/${pendingDeleteMessageId}`), { method: 'DELETE' });
       if (res.ok) fetchData();
     } catch (error) {
       console.error('Message delete failed:', error);
@@ -1173,7 +1174,7 @@ const AdminPanelContent = () => {
 
   const updateAppointment = async (id: number, status: string, adminNote?: string) => {
     try {
-      const res = await fetch(apiUrl(`/api/admin/chat/appointments/${id}`), {
+      const res = await fetch(adminTenantQuery(`/api/admin/chat/appointments/${id}`), {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -1506,7 +1507,7 @@ const AdminPanelContent = () => {
 
   const updateChatAlertStatus = async (alertId: number, status: 'reviewed' | 'resolved') => {
     try {
-      const res = await adminRequest(`/api/admin/chat-alerts/${alertId}/status`, {
+      const res = await adminRequest(adminTenantPath(`/api/admin/chat-alerts/${alertId}/status`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),

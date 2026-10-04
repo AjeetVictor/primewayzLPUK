@@ -78,7 +78,10 @@ import { publicPlatformApiCorsMiddleware } from './src/lib/platform/publicPlatfo
 import { getAdminNotificationSummary } from './src/lib/admin/adminNotificationSummaryService.ts';
 import { createAdminRequestOriginMiddleware, getAdminAllowedOrigins } from './src/lib/admin/adminRequestOrigin.ts';
 import { createAdminChatRouteHandlers, type AdminChatStore } from './src/lib/admin/adminChatRoutes.ts';
+import { createAdminChatMutationHandlers, type AdminChatMutationStore } from './src/lib/admin/adminChatMutationRoutes.ts';
 import { createPrismaOperationalChatStore } from './src/lib/admin/operationalChatPrismaStore.ts';
+import { advanceConversationStatus, type ConversationStatus } from './src/lib/chat/chatConversationService.ts';
+import { createPrismaChatConversationStore } from './src/lib/chat/chatConversationPrismaStore.ts';
 import {
   createWordPressChatIntegrationHandler,
   WORDPRESS_CHAT_INTEGRATION_PATH,
@@ -265,20 +268,6 @@ function normalizeRole(role?: string) {
   return role === 'ADMIN' ? 'admin' : role;
 }
 
-const CONVERSATION_STATUSES = [
-  'new',
-  'bot_replied',
-  'admin_needed',
-  'admin_replied',
-  'lead_qualified',
-  'follow_up_due',
-  'booked_call',
-  'closed',
-  'spam',
-] as const;
-
-const TERMINAL_CONVERSATION_STATUSES = new Set(['closed', 'spam']);
-
 const chatMessageInclude = {
   attachments: true,
   replyTo: {
@@ -292,9 +281,8 @@ const chatMessageInclude = {
   },
 };
 
-function isValidConversationStatus(status: string) {
-  return CONVERSATION_STATUSES.includes(status as (typeof CONVERSATION_STATUSES)[number]);
-}
+// Shared conversation writes (UK Admin replies, automatic status transitions, WordPress delegated actions).
+const chatConversationStore = createPrismaChatConversationStore(prisma, { messageInclude: chatMessageInclude });
 
 function formatVisitorMessage(message: {
   id: number;
@@ -335,28 +323,9 @@ function formatVisitorMessage(message: {
   };
 }
 
-async function updateConversationStatus(
-  sessionId: string,
-  status: string,
-  extra: Record<string, unknown> = {},
-) {
-  if (!isValidConversationStatus(status)) return;
-  await prisma.chatSession.update({
-    where: { id: sessionId },
-    data: {
-      status,
-      ...extra,
-    },
-  });
-}
-
-async function autoUpdateConversationStatus(sessionId: string, status: string) {
-  const session = await prisma.chatSession.findUnique({
-    where: { id: sessionId },
-    select: { status: true },
-  });
-  if (!session || TERMINAL_CONVERSATION_STATUSES.has(session.status)) return;
-  await updateConversationStatus(sessionId, status);
+/** Non-terminal automatic transition; closed / spam are never overwritten (single conditional write). */
+async function autoUpdateConversationStatus(sessionId: string, status: ConversationStatus) {
+  await advanceConversationStatus(chatConversationStore, sessionId, status);
 }
 
 async function requireAdmin(req: AdminRequest, res: Response, next: NextFunction) {
@@ -2071,32 +2040,35 @@ const adminChatStore: AdminChatStore = {
     prisma.chatMessage.count({ where: { id: messageId, sessionId } }),
   countAttachmentsInSession: (attachmentIds, sessionId) =>
     prisma.chatAttachment.count({ where: { id: { in: attachmentIds }, sessionId } }),
-  createAdminMessage: (input) =>
-    prisma.chatMessage.create({
-      data: {
-        sessionId: input.sessionId,
-        sender: input.sender,
-        text: input.text,
-        answered: true,
-        isInternalNote: input.isInternalNote,
-        replyToId: input.replyToId,
-        attachments: input.attachmentIds
-          ? { connect: input.attachmentIds.map((id) => ({ id })) }
-          : undefined,
-      },
-      include: chatMessageInclude,
-    }),
 };
 
 const adminChatHandlers = createAdminChatRouteHandlers({
   store: adminChatStore,
-  markVisitorMessagesAnswered: async (sessionId) => {
-    await prisma.chatMessage.updateMany({
-      where: { sessionId, sender: 'user', answered: false },
-      data: { answered: true },
-    });
-    await autoUpdateConversationStatus(sessionId, 'admin_replied');
-  },
+  conversations: chatConversationStore,
+  isDatabaseUnavailableError,
+  logUnavailable: logChatDbFallback,
+});
+
+const adminChatMutationStore: AdminChatMutationStore = {
+  findSessionOwnership: (sessionId) =>
+    prisma.chatSession.findUnique({ where: { id: sessionId }, select: { id: true, tenantId: true } }),
+  setSessionStatus: (sessionId, data) => prisma.chatSession.update({ where: { id: sessionId }, data }),
+  findMessage: (id) =>
+    prisma.chatMessage.findUnique({ where: { id }, select: { id: true, sessionId: true, sender: true, deletedAt: true } }),
+  editMessage: (id, text) =>
+    prisma.chatMessage.update({ where: { id }, data: { text, editedAt: new Date() }, include: chatMessageInclude }),
+  softDeleteMessage: (id, deletedBy) =>
+    prisma.chatMessage.update({ where: { id }, data: { deletedAt: new Date(), deletedBy }, include: chatMessageInclude }),
+  findAlert: (id) => prisma.chatAlert.findUnique({ where: { id }, select: { id: true, sessionId: true } }),
+  updateAlertStatus: (id, status) => prisma.chatAlert.update({ where: { id }, data: { status } }),
+  findAppointment: (id) =>
+    prisma.chatAppointmentRequest.findUnique({ where: { id }, select: { id: true, sessionId: true } }),
+  updateAppointment: (id, data) => prisma.chatAppointmentRequest.update({ where: { id }, data }),
+};
+
+// Every chat mutation checks the owning session's tenant against the Admin tenant filter first.
+const adminChatMutationHandlers = createAdminChatMutationHandlers({
+  store: adminChatMutationStore,
   isDatabaseUnavailableError,
   logUnavailable: logChatDbFallback,
 });
@@ -2108,71 +2080,11 @@ app.get('/api/admin/sessions', requireAdmin, requireRole(isOperationsRole), admi
 // Admin conversation history/refresh: tenant comes from the stored session + admin filter, not Origin.
 app.get('/api/admin/sessions/:sessionId/messages', requireAdmin, requireRole(isOperationsRole), adminChatHandlers.sessionHistory);
 
-app.patch('/api/admin/sessions/:sessionId/status', requireAdmin, requireRole(isOperationsRole), async (req: AdminRequest, res) => {
-  const { sessionId } = req.params;
-  const status = typeof req.body.status === 'string' ? req.body.status : '';
-  if (!isValidConversationStatus(status)) {
-    return res.status(400).json({ error: 'Invalid conversation status' });
-  }
+app.patch('/api/admin/sessions/:sessionId/status', requireAdmin, requireRole(isOperationsRole), adminChatMutationHandlers.updateSessionStatus);
 
-  const data: Record<string, unknown> = { status };
-  if (status === 'closed' || status === 'spam') {
-    data.closedAt = new Date();
-    data.closedById = req.adminUser!.id;
-  } else {
-    data.closedAt = null;
-    data.closedById = null;
-  }
+app.patch('/api/admin/chat/messages/:id', requireAdmin, requireRole(isOperationsRole), adminChatMutationHandlers.editMessage);
 
-  const session = await prisma.chatSession.update({
-    where: { id: sessionId },
-    data,
-  });
-  res.json(session);
-});
-
-app.patch('/api/admin/chat/messages/:id', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
-  const id = parseId(req.params.id);
-  if (!id) return res.status(400).json({ error: 'Invalid message id' });
-
-  const existing = await prisma.chatMessage.findUnique({ where: { id } });
-  if (!existing) return res.status(404).json({ error: 'Message not found' });
-  if (existing.sender !== 'admin') {
-    return res.status(400).json({ error: 'Only admin messages can be edited' });
-  }
-  if (existing.deletedAt) return res.status(400).json({ error: 'Deleted messages cannot be edited' });
-
-  const text = typeof req.body.text === 'string' ? req.body.text.trim() : '';
-  if (!text) return res.status(400).json({ error: 'Message text is required' });
-
-  const message = await prisma.chatMessage.update({
-    where: { id },
-    data: { text, editedAt: new Date() },
-    include: chatMessageInclude,
-  });
-  res.json(message);
-});
-
-app.delete('/api/admin/chat/messages/:id', requireAdmin, requireRole(isOperationsRole), async (req: AdminRequest, res) => {
-  const id = parseId(req.params.id);
-  if (!id) return res.status(400).json({ error: 'Invalid message id' });
-
-  const existing = await prisma.chatMessage.findUnique({ where: { id } });
-  if (!existing) return res.status(404).json({ error: 'Message not found' });
-  if (existing.sender !== 'admin') {
-    return res.status(400).json({ error: 'Only admin messages can be deleted' });
-  }
-
-  const message = await prisma.chatMessage.update({
-    where: { id },
-    data: {
-      deletedAt: new Date(),
-      deletedBy: req.adminUser!.id,
-    },
-    include: chatMessageInclude,
-  });
-  res.json(message);
-});
+app.delete('/api/admin/chat/messages/:id', requireAdmin, requireRole(isOperationsRole), adminChatMutationHandlers.deleteMessage);
 
 app.get('/api/admin/blog-comments', requireAdmin, requireRole(isOperationsRole), async (_req, res) => {
   const comments = await prisma.blogPostComment.findMany({ orderBy: { createdAt: 'desc' } });
@@ -2196,18 +2108,7 @@ app.get('/api/admin/chat/appointments', requireAdmin, requireRole(isOperationsRo
   res.json(appointments);
 });
 
-app.patch('/api/admin/chat/appointments/:id', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
-  const id = parseId(req.params.id);
-  if (!id) return res.status(400).json({ error: 'Invalid appointment id' });
-  const appointment = await prisma.chatAppointmentRequest.update({
-    where: { id },
-    data: {
-      status: typeof req.body.status === 'string' ? req.body.status : undefined,
-      adminNote: typeof req.body.adminNote === 'string' ? req.body.adminNote : undefined,
-    },
-  });
-  res.json(appointment);
-});
+app.patch('/api/admin/chat/appointments/:id', requireAdmin, requireRole(isOperationsRole), adminChatMutationHandlers.updateAppointment);
 
 app.get('/api/admin/blog-posts', requireAdmin, requireRole(isBlogAuthor), async (_req, res) => {
   const posts = await prisma.cmsBlogPost.findMany({ orderBy: { updatedAt: 'desc' } });
@@ -2350,13 +2251,7 @@ app.get('/api/admin/notifications/summary', requireAdmin, requireRole(isOperatio
   }
 });
 
-app.patch('/api/admin/chat-alerts/:id/status', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
-  const id = parseId(req.params.id);
-  if (!id) return res.status(400).json({ error: 'Invalid alert id' });
-  const status = typeof req.body.status === 'string' ? req.body.status : 'reviewed';
-  const alert = await prisma.chatAlert.update({ where: { id }, data: { status } });
-  res.json(alert);
-});
+app.patch('/api/admin/chat-alerts/:id/status', requireAdmin, requireRole(isOperationsRole), adminChatMutationHandlers.updateAlertStatus);
 
 app.post('/api/admin/uploads', requireAdmin, requireRole(isBlogAuthor), (_req, res) => {
   res.status(501).json({ error: 'File uploads are not configured on this server yet.' });
@@ -3014,10 +2909,12 @@ app.post('/api/chat/appointments', async (req, res) => {
   }
 });
 
-// WordPress operational chat API (server-to-server, read-only). Credential-bound to pw-infotech;
-// no admin cookie, no CORS, no tenant from the request.
+// WordPress operational chat API (server-to-server). Credential-bound to pw-infotech; reads plus
+// delegated reply / resolve / reopen through the shared conversation store. No admin cookie,
+// no CORS, no tenant from the request.
 app.post(WORDPRESS_CHAT_INTEGRATION_PATH, createWordPressChatIntegrationHandler({
   store: createPrismaOperationalChatStore(prisma),
+  writes: chatConversationStore,
   siteUrl,
   isDatabaseUnavailableError,
   getClientIp,

@@ -1,9 +1,10 @@
 /**
  * Read-only operational chat views for a single, already-authorised tenant.
  *
- * The store contract below exposes no writes: operational consumers (the WordPress
- * integration API) observe conversations but never mark messages answered, change
- * status, touch timestamps, record presence or create sessions / messages.
+ * The store contract below exposes no writes: these views never mark messages answered,
+ * change status, touch timestamps, record presence or create sessions / messages.
+ * Delegated WordPress writes (reply / resolve / reopen) go through the shared
+ * chatConversationService instead, never through this store.
  *
  * Tenant ownership of a single session reuses the Admin rule
  * (assertAdminCanAccessChatSession) with a concrete tenant filter, so legacy NULL-tenant
@@ -241,7 +242,7 @@ async function loadTenantSession(store: OperationalChatStore, tenantId: string, 
   return session;
 }
 
-function toTranscriptMessage(message: OperationalMessageRow): OperationalTranscriptMessage | null {
+export function toTranscriptMessage(message: OperationalMessageRow): OperationalTranscriptMessage | null {
   const actor = toChatActor(message.sender);
   if (!actor) return null;
   return {
@@ -292,4 +293,26 @@ export async function getOperationalConversation(
     .filter((message): message is OperationalTranscriptMessage => message !== null);
 
   return { conversation, messages, hasMore, messageLimit: TRANSCRIPT_MESSAGE_LIMIT };
+}
+
+/** Current summary of one tenant conversation (no transcript): latest message + unanswered count. */
+export async function getOperationalConversationSummary(
+  store: OperationalChatStore,
+  input: { tenantId: string; sessionId: string },
+): Promise<Omit<OperationalConversationSummary, 'messageCount'>> {
+  const { tenantId } = input;
+  const session = await loadTenantSession(store, tenantId, input.sessionId);
+  const [latest, unanswered] = await Promise.all([
+    store.listLatestTranscript({ tenantId, sessionId: session.id, take: 1 }),
+    store.countUnansweredVisitorMessages({ tenantId, sessionIds: [session.id] }),
+  ]);
+  const lastMessage = latest.find((message) => message.sessionId === session.id) ?? null;
+  const { messageCount: _messageCount, ...conversation } = summarise({
+    session,
+    lastMessage,
+    lastActivityAt: lastMessage?.timestamp ?? session.createdAt,
+    unansweredVisitorMessageCount: unanswered.get(session.id) ?? 0,
+    messageCount: 0,
+  });
+  return conversation;
 }

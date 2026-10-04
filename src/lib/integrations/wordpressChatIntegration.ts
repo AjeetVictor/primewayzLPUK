@@ -2,13 +2,16 @@
  * POST /api/integrations/wordpress/chat
  *
  * The single server-to-server operational endpoint used by the Primewayz Integration
- * WordPress plugin (PHP only, never browser JavaScript). Phase 1 is read-only:
- * dashboard, conversation and diagnostics.
+ * WordPress plugin (PHP only, never browser JavaScript).
+ * Read: dashboard, conversation, diagnostics.
+ * Delegated write: reply (text only), resolve, reopen — idempotent per clientActionId and
+ * attributed to the WordPress operator for audit (wordpressChatDelegatedActions).
  *
  * Authority comes only from the bearer credential, which maps server-side to one
- * integration, one tenant (pw-infotech) and fixed read scopes. Tenant / source fields in
+ * integration, one tenant (pw-infotech) and fixed scopes. Tenant / source fields in
  * the body are rejected, query strings are rejected, no CORS headers are emitted and
- * every response is no-store.
+ * every response is no-store. Presence is read-only; notes, edits, deletes, spam,
+ * assignment, attachments and appointments are not exposed.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -25,6 +28,7 @@ import {
 import {
   getOperationalChatDashboard,
   getOperationalConversation,
+  getOperationalConversationSummary,
   getOperationalTeamPresence,
   OperationalChatNotFoundError,
   RECENT_CONVERSATIONS_DEFAULT_LIMIT,
@@ -33,27 +37,53 @@ import {
   type OperationalTeamPresence,
 } from '../admin/operationalChatService.ts';
 import { toVisitorReference } from '../chat/chatOperationalSemantics.ts';
-import { CHAT_SESSION_ID_MAX_LENGTH } from '../chat/publicChatGuards.ts';
+import { ChatConversationConflictError, type ChatConversationStore } from '../chat/chatConversationService.ts';
+import { CHAT_SESSION_ID_MAX_LENGTH, PUBLIC_CHAT_INPUT_LIMITS } from '../chat/publicChatGuards.ts';
 import { getTenantById, type PlatformTenantConfig } from '../platform/tenantRegistry.ts';
 import { tenantSupportsCapability } from '../platform/tenantCapabilities.ts';
+import {
+  DELEGATED_CHAT_WRITE_ACTIONS,
+  DelegatedChatActionError,
+  executeDelegatedChatAction,
+  type DelegatedActor,
+  type DelegatedChatWriteAction,
+  type DelegatedChatWriteRequest,
+} from './wordpressChatDelegatedActions.ts';
 
 export const WORDPRESS_CHAT_INTEGRATION_PATH = '/api/integrations/wordpress/chat';
 export const WORDPRESS_CHAT_API_VERSION = '1';
 
-export const WORDPRESS_CHAT_ACTIONS = ['dashboard', 'conversation', 'diagnostics'] as const;
+export const WORDPRESS_CHAT_ACTIONS = ['dashboard', 'conversation', 'diagnostics', ...DELEGATED_CHAT_WRITE_ACTIONS] as const;
 export type WordPressChatAction = (typeof WORDPRESS_CHAT_ACTIONS)[number];
 
 const ACTION_SCOPES: Readonly<Record<WordPressChatAction, IntegrationScope>> = {
   dashboard: 'chat:dashboard',
   conversation: 'chat:read',
   diagnostics: 'chat:diagnostics',
+  reply: 'chat:reply',
+  resolve: 'chat:resolve',
+  reopen: 'chat:reopen',
 };
+
+const WRITE_FIELDS = ['action', 'sessionId', 'clientActionId', 'actor'] as const;
 
 const ACTION_FIELDS: Readonly<Record<WordPressChatAction, readonly string[]>> = {
   dashboard: ['action'],
   conversation: ['action', 'sessionId'],
   diagnostics: ['action'],
+  reply: [...WRITE_FIELDS, 'text'],
+  resolve: WRITE_FIELDS,
+  reopen: WRITE_FIELDS,
 };
+
+/** Admin-only reply features that delegated replies do not support in this phase. */
+const UNSUPPORTED_REPLY_FIELDS = ['attachmentIds', 'replyToId', 'isInternalNote', 'sender'] as const;
+
+export const DELEGATED_REPLY_TEXT_MAX_LENGTH = PUBLIC_CHAT_INPUT_LIMITS.message;
+export const ACTOR_DISPLAY_NAME_MAX_LENGTH = 80;
+const CLIENT_ACTION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{35,63}$/;
+const ACTOR_EXTERNAL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+const ACTOR_FIELDS = ['externalUserId', 'displayName'] as const;
 
 /** Authority / attribution fields that only the credential binding may decide. */
 export const TENANT_AUTHORITY_FIELDS = [
@@ -72,6 +102,9 @@ export type WordPressChatErrorCode =
   | 'integration_unauthorized'
   | 'integration_forbidden'
   | 'conversation_not_found'
+  | 'conversation_closed'
+  | 'invalid_transition'
+  | 'idempotency_key_conflict'
   | 'method_not_allowed'
   | 'rate_limited'
   | 'tenant_unavailable'
@@ -88,6 +121,9 @@ export const WORDPRESS_CHAT_RATE_LIMITS = {
   dashboard: { limit: 60, windowMs: MINUTE_MS },
   conversation: { limit: 120, windowMs: MINUTE_MS },
   diagnostics: { limit: 30, windowMs: MINUTE_MS },
+  reply: { limit: 30, windowMs: MINUTE_MS },
+  resolve: { limit: 30, windowMs: MINUTE_MS },
+  reopen: { limit: 30, windowMs: MINUTE_MS },
   /** Failed credential attempts per client IP. */
   invalidCredential: { limit: 30, windowMs: MINUTE_MS },
 } as const satisfies Record<string, RateLimitRule>;
@@ -137,7 +173,63 @@ function enforceRateLimit(key: string, rule: RateLimitRule, now: number): void {
 export type WordPressChatRequest =
   | { action: 'dashboard' }
   | { action: 'diagnostics' }
-  | { action: 'conversation'; sessionId: string };
+  | { action: 'conversation'; sessionId: string }
+  | DelegatedChatWriteRequest;
+
+export function isDelegatedWriteAction(action: WordPressChatAction): action is DelegatedChatWriteAction {
+  return (DELEGATED_CHAT_WRITE_ACTIONS as readonly string[]).includes(action);
+}
+
+function parseSessionId(value: unknown): string {
+  if (typeof value !== 'string' || !value.trim() || value.length > CHAT_SESSION_ID_MAX_LENGTH) {
+    throw invalidRequest('sessionId must be a non-empty string of at most 191 characters.');
+  }
+  return value;
+}
+
+function parseClientActionId(value: unknown): string {
+  if (typeof value !== 'string' || !CLIENT_ACTION_ID_PATTERN.test(value)) {
+    throw invalidRequest('clientActionId must be a UUID or a 36-64 character identifier (letters, digits, . _ : -).');
+  }
+  return value;
+}
+
+/** Audit context only: never an email, never a role, never authority. */
+function parseActor(value: unknown): DelegatedActor {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw invalidRequest('actor must be an object with externalUserId.');
+  }
+  const actor = value as Record<string, unknown>;
+  if (Object.keys(actor).some((key) => !(ACTOR_FIELDS as readonly string[]).includes(key))) {
+    throw invalidRequest('actor accepts only externalUserId and displayName.');
+  }
+  const { externalUserId, displayName } = actor;
+  if (typeof externalUserId !== 'string' || !ACTOR_EXTERNAL_ID_PATTERN.test(externalUserId)) {
+    throw invalidRequest('actor.externalUserId must be 1-64 characters (letters, digits, . _ : -).');
+  }
+  if (displayName === undefined || displayName === null) return { externalUserId, displayName: null };
+  if (typeof displayName !== 'string') throw invalidRequest('actor.displayName must be a string.');
+  const name = displayName.replace(/\s+/g, ' ').trim();
+  if (
+    !name
+    || name.length > ACTOR_DISPLAY_NAME_MAX_LENGTH
+    || name.includes('@')
+    || /[\u0000-\u001f\u007f<>]/.test(displayName.replace(/[\t\n\r]/g, ' '))
+  ) {
+    throw invalidRequest(`actor.displayName must be 1-${ACTOR_DISPLAY_NAME_MAX_LENGTH} plain characters and not an email address.`);
+  }
+  return { externalUserId, displayName: name };
+}
+
+function parseReplyText(value: unknown): string {
+  if (typeof value !== 'string') throw invalidRequest('text must be a string.');
+  const text = value.trim();
+  if (!text) throw invalidRequest('text must not be empty.');
+  if (text.length > DELEGATED_REPLY_TEXT_MAX_LENGTH) {
+    throw invalidRequest(`text must be at most ${DELEGATED_REPLY_TEXT_MAX_LENGTH} characters.`);
+  }
+  return text;
+}
 
 export function parseWordPressChatRequest(rawBody: unknown): WordPressChatRequest {
   if (!rawBody || typeof rawBody !== 'object' || Array.isArray(rawBody)) {
@@ -157,15 +249,21 @@ export function parseWordPressChatRequest(rawBody: unknown): WordPressChatReques
     throw invalidRequest('Unknown or missing action.');
   }
   const typedAction = action as WordPressChatAction;
+  if (typedAction === 'reply' && keys.some((key) => (UNSUPPORTED_REPLY_FIELDS as readonly string[]).includes(key))) {
+    throw invalidRequest('Delegated replies are text-only: attachments, reply quoting and internal notes are not supported.');
+  }
   const unexpected = keys.filter((key) => !ACTION_FIELDS[typedAction].includes(key));
   if (unexpected.length > 0) throw invalidRequest('Request contains unsupported fields.');
 
-  if (typedAction === 'conversation') {
-    const { sessionId } = body;
-    if (typeof sessionId !== 'string' || !sessionId.trim() || sessionId.length > CHAT_SESSION_ID_MAX_LENGTH) {
-      throw invalidRequest('sessionId must be a non-empty string of at most 191 characters.');
-    }
-    return { action: 'conversation', sessionId };
+  if (typedAction === 'conversation') return { action: 'conversation', sessionId: parseSessionId(body.sessionId) };
+  if (isDelegatedWriteAction(typedAction)) {
+    const base = {
+      sessionId: parseSessionId(body.sessionId),
+      clientActionId: parseClientActionId(body.clientActionId),
+      actor: parseActor(body.actor),
+    };
+    if (typedAction === 'reply') return { action: 'reply', ...base, text: parseReplyText(body.text) };
+    return { action: typedAction, ...base };
   }
   return { action: typedAction };
 }
@@ -187,10 +285,14 @@ export type WordPressChatAuditLogEntry = {
   code: WordPressChatErrorCode | null;
   durationMs: number;
   sessionRef?: string;
+  /** Delegated writes only: whether the response replayed an earlier committed action. */
+  replayed?: boolean;
 };
 
 export type WordPressChatIntegrationDeps = {
   store: OperationalChatStore;
+  /** Shared conversation write store (same implementation as the UK Admin reply path). */
+  writes: ChatConversationStore;
   siteUrl: string;
   isDatabaseUnavailableError(err: unknown): boolean;
   getClientIp(req: Request): string;
@@ -242,6 +344,9 @@ function classifyFailure(err: unknown, deps: WordPressChatIntegrationDeps): Word
   if (err instanceof WordPressChatIntegrationError) return err;
   if (err instanceof OperationalChatNotFoundError) {
     return new WordPressChatIntegrationError(404, 'conversation_not_found', 'Conversation not found.');
+  }
+  if (err instanceof ChatConversationConflictError || err instanceof DelegatedChatActionError) {
+    return new WordPressChatIntegrationError(409, err.code, err.message);
   }
   if (deps.isDatabaseUnavailableError(err)) {
     return new WordPressChatIntegrationError(503, 'database_unavailable', 'The chat database is temporarily unavailable.');
@@ -298,6 +403,36 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
     };
   }
 
+  async function runDelegatedWrite(
+    principal: IntegrationPrincipal,
+    tenant: PlatformTenantConfig,
+    requestId: string,
+    request: DelegatedChatWriteRequest,
+  ) {
+    const outcome = await executeDelegatedChatAction(deps.writes, {
+      integrationId: principal.integrationId,
+      tenantId: tenant.tenantId,
+      requestId,
+      request,
+      now: new Date(now()),
+    });
+    const conversation = await getOperationalConversationSummary(deps.store, {
+      tenantId: tenant.tenantId,
+      sessionId: request.sessionId,
+    });
+    return {
+      outcome,
+      data: {
+        action: outcome.action,
+        clientActionId: outcome.clientActionId,
+        replayed: outcome.replayed,
+        changed: outcome.changed,
+        ...(outcome.action === 'reply' ? { message: outcome.message } : {}),
+        conversation,
+      },
+    };
+  }
+
   return async (req, res) => {
     const startedAt = now();
     const requestId = resolveRequestId(req.get('x-request-id'));
@@ -306,6 +441,7 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
     let principal: IntegrationPrincipal | null = null;
     let action: WordPressChatAction | null = null;
     let sessionRef: string | undefined;
+    let replayed: boolean | undefined;
     let status = 200;
     let code: WordPressChatErrorCode | null = null;
 
@@ -330,7 +466,7 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
       enforceRateLimit(`integration|${principal.integrationId}`, WORDPRESS_CHAT_RATE_LIMITS.integration, startedAt);
       const input = parseWordPressChatRequest(req.body);
       action = input.action;
-      if (input.action === 'conversation') sessionRef = toVisitorReference(input.sessionId);
+      if ('sessionId' in input) sessionRef = toVisitorReference(input.sessionId);
       enforceRateLimit(`${input.action}|${principal.integrationId}`, WORDPRESS_CHAT_RATE_LIMITS[input.action], startedAt);
 
       if (!integrationHasScope(principal, ACTION_SCOPES[input.action])) {
@@ -340,7 +476,13 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
       let data: unknown;
       if (input.action === 'dashboard') data = await runDashboard(tenant);
       else if (input.action === 'diagnostics') data = await runDiagnostics(principal, tenant);
-      else data = await getOperationalConversation(deps.store, { tenantId: tenant.tenantId, sessionId: input.sessionId });
+      else if (input.action === 'conversation') {
+        data = await getOperationalConversation(deps.store, { tenantId: tenant.tenantId, sessionId: input.sessionId });
+      } else {
+        const write = await runDelegatedWrite(principal, tenant, requestId, input);
+        replayed = write.outcome.replayed;
+        data = write.data;
+      }
 
       res.status(200).json({
         ok: true,
@@ -368,6 +510,7 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
         code,
         durationMs: Math.max(0, now() - startedAt),
         ...(sessionRef ? { sessionRef } : {}),
+        ...(replayed !== undefined ? { replayed } : {}),
       });
     }
   };

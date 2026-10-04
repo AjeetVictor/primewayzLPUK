@@ -437,10 +437,16 @@ Visitor tenant resolution answers "which property did this visitor come from?" (
 | `GET /api/admin/sessions?tenantId=` | Conversations for the selected entity |
 | `GET /api/admin/sessions/:sessionId/messages?tenantId=` | Full history of one conversation (including internal notes); used for the Admin 3-second refresh |
 | `POST /api/chat?tenantId=` | Admin reply / internal note |
+| `PATCH /api/admin/sessions/:sessionId/status?tenantId=` | Conversation status |
+| `PATCH /api/admin/chat/messages/:id?tenantId=` / `DELETE` | Edit / soft-delete an admin message |
+| `PATCH /api/admin/chat-alerts/:id/status?tenantId=` | Chat alert status |
+| `PATCH /api/admin/chat/appointments/:id?tenantId=` | Appointment request status / note |
+
+Every mutation resolves the `ChatSession` that owns the target record (message, alert or appointment request) and applies the same tenant rule before writing; an out-of-scope record returns `403` (`tenant_scope_mismatch`) and is left untouched. The Admin UI sends its selected entity on these mutations exactly as it does on the lists.
 
 All require a valid admin session cookie and an operations role (`401` when not authenticated, `403` when the role lacks permission). Session-specific routes return `404` (`chat_session_not_found`) for unknown sessions and `403` (`tenant_scope_mismatch`) when the session is outside the selected entity. Legacy sessions without a tenant are reachable only under `all`. An unknown or inactive `tenantId` filter returns `400` (`invalid_tenant_filter`).
 
-`POST /api/chat` accepts only `sender: "admin"` (`403`, code `sender_not_allowed`, otherwise), replies only to an existing session (it never creates one), and `replyToId` / `attachmentIds` must belong to that same session (`400`). Admin viewing and replying never write the session's `tenantId`, `market`, `sourceSite`, `sourceOrigin` or `sourceChannel`; a `pw-infotech` conversation stays `pw-infotech`.
+`POST /api/chat` accepts only `sender: "admin"` (`403`, code `sender_not_allowed`, otherwise), replies only to an existing session (it never creates one), and `replyToId` / `attachmentIds` must belong to that same session (`400`). The reply is written by the shared `createTeamReply` (`src/lib/chat/chatConversationService.ts`) in one transaction, the same implementation the WordPress delegated `reply` uses; UK Admin replies to `closed` / `spam` conversations are still stored and keep the terminal status. Admin viewing and replying never write the session's `tenantId`, `market`, `sourceSite`, `sourceOrigin` or `sourceChannel`; a `pw-infotech` conversation stays `pw-infotech`.
 
 **Request-origin protection for admin writes.** `primewayz.com` and `uk.primewayz.com` are same-site, so the `SameSite=Lax` admin cookie can accompany requests started on a primewayz.com page. Every `POST` / `PUT` / `PATCH` / `DELETE` under `/api/admin/*`, plus `POST /api/chat`, must therefore originate from the Primewayz UK admin application, otherwise `403` (`admin_origin_rejected`):
 
@@ -476,8 +482,8 @@ The WordPress Admin dashboard uses a different, server-to-server path (section K
 | Path | Caller | Authority | Capabilities |
 |---|---|---|---|
 | Public visitor integration | Visitor browser on primewayz.com loading `pw-chat.js` | `Origin` resolves `pw-infotech` (J.2); no secrets | Visitor chat via `/api/platform/capabilities` and `/api/chat/*` |
-| WordPress operational integration | Primewayz Integration plugin PHP (wp-admin), server-to-server | Bearer integration credential bound to `pw-infotech` | Read-only: dashboard, conversation, diagnostics |
-| Full Primewayz UK Admin | Primewayz staff in `https://uk.primewayz.com/admin` | Admin cookie plus operations role (J.8) | Full management: replies, notes, status, presence, all tenants |
+| WordPress operational integration | Primewayz Integration plugin PHP (wp-admin), server-to-server | Bearer integration credential bound to `pw-infotech` | Read: dashboard, conversation, diagnostics. Delegated write: text reply, resolve, reopen (K.14) |
+| Full Primewayz UK Admin | Primewayz staff in `https://uk.primewayz.com/admin` | Admin cookie plus operations role (J.8) | Full management: replies, notes, edits, deletes, spam, status, alerts, appointments, presence, all tenants |
 
 ```text
 wp-admin browser
@@ -499,7 +505,7 @@ X-Request-ID: <optional, 8 to 128 chars of A-Z a-z 0-9 . _ : ->
 ```
 
 - The credential is read only from the `Authorization` header. Any query string is rejected (`400`), so the credential can never be sent in a URL.
-- Server-side registry (`src/lib/integrations/integrationRegistry.ts`): credential maps to integration `primewayz-wordpress`, tenant `pw-infotech`, scopes `chat:dashboard`, `chat:read`, `chat:diagnostics`. There are no write scopes.
+- Server-side registry (`src/lib/integrations/integrationRegistry.ts`): credential maps to integration `primewayz-wordpress`, tenant `pw-infotech`, scopes `chat:dashboard`, `chat:read`, `chat:diagnostics`, `chat:reply`, `chat:resolve`, `chat:reopen`. There are no scopes for notes, edits, deletes, spam, assignment, presence, alerts, appointments, attachments, users or other tenants.
 - Comparison is constant time (SHA-256 digests with `timingSafeEqual`). Secrets shorter than 32 characters, or unset, disable the integration; every call then returns `401` (fail closed).
 - The credential never appears in responses or logs, and it does not impersonate any Admin user.
 - No CORS headers are emitted. The endpoint is not intended for browsers; CORS is not the security boundary.
@@ -511,9 +517,12 @@ X-Request-ID: <optional, 8 to 128 chars of A-Z a-z 0-9 . _ : ->
 { "action": "dashboard" }
 { "action": "conversation", "sessionId": "<string, 1 to 191 chars>" }
 { "action": "diagnostics" }
+{ "action": "reply",   "sessionId": "...", "clientActionId": "<uuid>", "actor": { "externalUserId": "12", "displayName": "Asha Patel" }, "text": "..." }
+{ "action": "resolve", "sessionId": "...", "clientActionId": "<uuid>", "actor": { "externalUserId": "12" } }
+{ "action": "reopen",  "sessionId": "...", "clientActionId": "<uuid>", "actor": { "externalUserId": "12" } }
 ```
 
-- Unknown actions, write-style actions (`reply`, `assign`, `delete`, ...) and any extra field return `400 invalid_request`.
+- Unknown actions, unsupported write actions (`assign`, `delete`, `note`, `spam`, `availability`, ...) and any extra field return `400 invalid_request`. Write actions are specified in K.14.
 - `tenantId`, `tenant`, `tenantKey`, `market`, `sourceSite`, `sourceOrigin` and `sourceChannel` return `400 tenant_override_rejected`. The tenant comes only from the credential binding.
 
 ### K.4 Response envelope
@@ -549,6 +558,9 @@ Every response carries `Cache-Control: no-store`, `Pragma: no-cache` and `X-Requ
 | 401 | `integration_unauthorized` | Missing, malformed or unknown credential (`WWW-Authenticate: Bearer`) |
 | 403 | `integration_forbidden` | Valid credential without the scope for this action |
 | 404 | `conversation_not_found` | Unknown session, or a session owned by another tenant or legacy (indistinguishable) |
+| 409 | `conversation_closed` | `reply` to a `closed` or `spam` conversation (reopen first) |
+| 409 | `invalid_transition` | `resolve` on spam; `reopen` on anything other than `closed` / already `admin_needed` |
+| 409 | `idempotency_key_conflict` | `clientActionId` already used for a different request |
 | 405 | `method_not_allowed` | Not POST |
 | 413 | `invalid_request` | Body too large |
 | 429 | `rate_limited` | Limit exceeded; honour `Retry-After` (seconds) |
@@ -603,7 +615,7 @@ An empty tenant returns `200` with `recentConversations: []` and `attention.coun
 
 **Actors.** `user` maps to `visitor`, `bot` maps to `assistant`, `admin` maps to `team`. The assistant reply is a canned acknowledgement, not LLM output; nothing is labelled AI. Messages with any other sender are omitted.
 
-**Needs attention** (`src/lib/chat/chatOperationalSemantics.ts`, one rule for both `attention.count` and each row): the session status is not `closed` or `spam`, and the session has at least one visitor message with `answered = false`, `isInternalNote = false` and `deletedAt = null`. Visitor messages are only marked answered when a team member posts a non-internal reply in UK Admin, so the canned assistant acknowledgement and internal notes do not clear attention. `attention.count` covers every `pw-infotech` conversation, not only the 20 listed.
+**Needs attention** (`src/lib/chat/chatOperationalSemantics.ts`, one rule for both `attention.count` and each row): the session status is not `closed` or `spam`, and the session has at least one visitor message with `answered = false`, `isInternalNote = false` and `deletedAt = null`. Visitor messages are only marked answered when a team member posts a non-internal reply (UK Admin or the delegated `reply` action), so the canned assistant acknowledgement and internal notes do not clear attention. `attention.count` covers every `pw-infotech` conversation, not only the 20 listed.
 
 **Status** (one operational enum):
 
@@ -651,7 +663,7 @@ An empty tenant returns `200` with `recentConversations: []` and `attention.coun
 {
   "status": "healthy",
   "api": { "status": "ok", "version": "1" },
-  "authentication": { "valid": true, "integrationId": "primewayz-wordpress", "scopes": ["chat:dashboard", "chat:read", "chat:diagnostics"] },
+  "authentication": { "valid": true, "integrationId": "primewayz-wordpress", "scopes": ["chat:dashboard", "chat:read", "chat:diagnostics", "chat:reply", "chat:resolve", "chat:reopen"] },
   "tenantBinding": { "tenantId": "pw-infotech", "valid": true, "active": true },
   "chat": { "enabled": true, "canAcceptMessages": true },
   "team": { "presenceScope": "platform", "status": "available", "mode": "auto", "teamMemberRecentlyActive": true, "canAcceptMessages": true },
@@ -681,13 +693,16 @@ In-memory per process, keyed by integration id (not by client IP, because the Wo
 | `dashboard` | 60 per minute |
 | `conversation` | 120 per minute |
 | `diagnostics` | 30 per minute |
+| `reply` | 30 per minute |
+| `resolve` | 30 per minute |
+| `reopen` | 30 per minute |
 | Invalid credentials, per client IP | 30 per minute |
 
 A valid credential is never blocked by the invalid-credential bucket. Exceeding a limit returns `429 rate_limited` with `Retry-After`. Suggested WordPress polling: dashboard no more often than every 15 to 30 seconds while the page is visible.
 
 ### K.11 Audit logging
 
-One line per request: `[wp-chat-integration] {"requestId","integrationId","tenantId","action","status","code","durationMs","sessionRef"}`. `sessionRef` is the 6-character session hash for `conversation`. Tokens, message text, names, email and phone are never logged.
+One line per request: `[wp-chat-integration] {"requestId","integrationId","tenantId","action","status","code","durationMs","sessionRef","replayed"}`. `sessionRef` is the 6-character session hash for session actions; `replayed` is present for write actions only. Tokens, message text, actor ids, names, email and phone are never logged. The durable operator audit trail for writes is the `ChatOperatorAction` table (K.14).
 
 ### K.12 Credential configuration and rotation
 
@@ -706,7 +721,51 @@ For an emergency revocation, clear both variables and restart; every call return
 
 ### K.13 Query strategy
 
-`dashboard` runs a fixed set of queries regardless of volume: one `GROUP BY sessionId` over visible messages for the tenant (latest activity, limited to 20), one tenant-wide attention `COUNT`, then batched lookups for the selected sessions only (session details, latest message per session, unanswered-visitor counts, visible message counts), plus two `findFirst` presence reads. `conversation` runs an ownership lookup, a tenant-scoped session read, one bounded message read (101 rows) and one unanswered count. No action writes to the database.
+`dashboard` runs a fixed set of queries regardless of volume: one `GROUP BY sessionId` over visible messages for the tenant (latest activity, limited to 20), one tenant-wide attention `COUNT`, then batched lookups for the selected sessions only (session details, latest message per session, unanswered-visitor counts, visible message counts), plus two `findFirst` presence reads. `conversation` runs an ownership lookup, a tenant-scoped session read, one bounded message read (101 rows) and one unanswered count. Read actions never write to the database.
+
+### K.14 Delegated writes: `reply`, `resolve`, `reopen`
+
+WordPress operators act on `pw-infotech` conversations through the same shared service the UK Admin uses (`src/lib/chat/chatConversationService.ts`); there is no second reply implementation.
+
+**Common fields (all three actions, all required except `displayName`):**
+
+| Field | Rule |
+|---|---|
+| `sessionId` | 1 to 191 chars; must be a `pw-infotech` conversation (otherwise `404 conversation_not_found`, same body as unknown) |
+| `clientActionId` | UUID, or 36 to 64 chars of `A-Z a-z 0-9 . _ : -` starting with a letter or digit. Generate one per operator submit and reuse it on retries |
+| `actor.externalUserId` | 1 to 64 chars of `A-Z a-z 0-9 . _ : -` (no `@`); the WordPress user id |
+| `actor.displayName` | Optional, 1 to 80 plain characters, no `@`, no `<` `>` or control characters |
+
+`actor` accepts only those two keys (`email`, `role` and anything else return `400`). Actor data is audit context only: it never selects the tenant, never maps to a UK Admin user and never grants authority.
+
+**`reply`** adds `text`: string, trimmed, 1 to 4000 characters. Text only: `attachmentIds`, `replyToId`, `isInternalNote` and `sender` return `400 invalid_request`. One transaction claims the idempotency key, stores a `sender: "admin"` non-internal message, marks the conversation's unanswered visitor messages answered and moves a non-terminal conversation to `admin_replied`. A `closed` or `spam` conversation returns `409 conversation_closed` and nothing is written (no silent reopen).
+
+**`resolve`** moves any non-terminal conversation to `closed` (`closedAt` = now, `closedById` = null). Already `closed` returns `200` with `changed: false`. `spam` returns `409 invalid_transition`.
+
+**`reopen`** moves `closed` to `admin_needed` (clears `closedAt` / `closedById`) so the conversation re-enters the team attention queue. Already `admin_needed` returns `200` with `changed: false`. `spam` or any other status returns `409 invalid_transition`.
+
+**Success response** (`200`, standard envelope; `message` is present for `reply` only):
+
+```json
+{
+  "action": "reply",
+  "clientActionId": "0b8f6c1e-2d3a-4e5f-8a9b-000000000001",
+  "replayed": false,
+  "changed": true,
+  "message": { "id": 456, "actor": "team", "text": "...", "createdAt": "...", "edited": false, "deleted": false, "replyToId": null },
+  "conversation": { "sessionId": "...", "visitorLabel": "...", "intent": null, "originatingPage": "/contact", "lastMessagePreview": "...", "lastActor": "team", "lastActivityAt": "...", "status": "team_replied", "needsAttention": false }
+}
+```
+
+`conversation` is the current summary (same fields as in `conversation`, K.7) read after the write.
+
+**Idempotency.** The key is `integrationId + clientActionId` (unique in `ChatOperatorAction`), with a SHA-256 `requestHash` of the logical payload (action, sessionId, `actor.externalUserId`, reply text; `displayName` is excluded). A retry with the same payload returns the original outcome with `replayed: true` (same `message.id`, original `changed`) and writes nothing. The same key with a different payload returns `409 idempotency_key_conflict`. `X-Request-ID` is correlation only and is never the idempotency key. Rejected (4xx) or failed (5xx) actions are rolled back and not recorded, so a retry after a `5xx` is evaluated afresh. If the post-write summary read fails, the write is already committed; retrying the same `clientActionId` replays it.
+
+**Concurrency.** Inside the transaction the session row is read with `SELECT ... FOR UPDATE`, and every status write is conditional (`WHERE status NOT IN ('closed','spam')` / `WHERE status = 'closed'`), so a concurrent close can never be overwritten by `admin_replied`; the reply then returns `409 conversation_closed` with nothing written. Simultaneous replies with different keys are both stored (append-only). Simultaneous identical retries produce exactly one write.
+
+**Operator audit (`ChatOperatorAction`).** One row per committed action: `integrationId`, `clientActionId`, `requestHash`, `requestId`, `source` (`wordpress_integration`), `tenantId`, `sessionId`, `action`, `actorExternalId`, `actorDisplayName`, `messageId` (reply), `fromStatus`, `toStatus`, `changed`, `createdAt`. No message bodies, emails or credentials. The row and the message / status writes commit or roll back together.
+
+**Not exposed to WordPress** (UK Admin only): presence / availability changes (presence is platform-wide, K.6), internal notes, message edit / delete, spam / block, alert status, assignment, user management, tenant switching, cross-tenant search, attachments, appointment administration.
 
 ## Follow-up (not required for this foundation)
 

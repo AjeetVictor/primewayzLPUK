@@ -2,7 +2,7 @@
  * Server-to-server integration credentials.
  *
  * Each registered integration maps a server-side secret (environment only) to a fixed
- * integration id, a fixed tenant and a fixed set of read scopes. The tenant is never
+ * integration id, a fixed tenant and a fixed set of scopes. The tenant is never
  * taken from the request. Missing or too-short secrets disable the integration
  * (fail closed). A second "_PREVIOUS" secret may be set temporarily during rotation.
  */
@@ -10,7 +10,17 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import type { PlatformTenantId } from '../platform/sourceContext.ts';
 
-export type IntegrationScope = 'chat:dashboard' | 'chat:read' | 'chat:diagnostics';
+/**
+ * Read: chat:dashboard, chat:read, chat:diagnostics.
+ * Delegated write: chat:reply, chat:resolve, chat:reopen (text replies and close / reopen only).
+ */
+export type IntegrationScope =
+  | 'chat:dashboard'
+  | 'chat:read'
+  | 'chat:diagnostics'
+  | 'chat:reply'
+  | 'chat:resolve'
+  | 'chat:reopen';
 
 export type IntegrationDefinition = {
   integrationId: string;
@@ -33,7 +43,7 @@ export const INTEGRATION_REGISTRY: readonly IntegrationDefinition[] = [
   {
     integrationId: 'primewayz-wordpress',
     tenantId: 'pw-infotech',
-    scopes: ['chat:dashboard', 'chat:read', 'chat:diagnostics'],
+    scopes: ['chat:dashboard', 'chat:read', 'chat:diagnostics', 'chat:reply', 'chat:resolve', 'chat:reopen'],
     tokenEnv: 'WORDPRESS_CHAT_INTEGRATION_TOKEN',
     previousTokenEnv: 'WORDPRESS_CHAT_INTEGRATION_TOKEN_PREVIOUS',
   },

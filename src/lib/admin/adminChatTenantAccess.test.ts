@@ -8,9 +8,9 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import {
   assertAdminCanAccessChatSession,
   createAdminChatRouteHandlers,
-  type AdminChatReplyInput,
   type AdminChatStore,
 } from './adminChatRoutes.ts';
+import type { ChatConversationStore, ChatConversationTx } from '../chat/chatConversationService.ts';
 import { createAdminRequestOriginMiddleware, getAdminAllowedOrigins } from './adminRequestOrigin.ts';
 import { resolveSourceContext, SourceResolutionError } from '../platform/sourceResolver.ts';
 import { validateExistingOrNewChatSessionId } from '../chat/publicChatGuards.ts';
@@ -81,11 +81,27 @@ function createDb() {
     async countAttachmentsInSession() {
       return 0;
     },
-    async createAdminMessage(input: AdminChatReplyInput) {
+  };
+
+  const tx: ChatConversationTx = {
+    async findSession(sessionId) {
+      const session = sessions.get(sessionId);
+      return session ? { id: session.id, tenantId: session.tenantId, status: session.status } : null;
+    },
+    async updateSessionStatus({ sessionId, tenantId, statusIn, statusNotIn, data }) {
+      const session = sessions.get(sessionId);
+      if (!session) return 0;
+      if (tenantId !== undefined && session.tenantId !== tenantId) return 0;
+      if (statusIn && !statusIn.includes(session.status)) return 0;
+      if (statusNotIn && statusNotIn.includes(session.status)) return 0;
+      session.status = data.status;
+      return 1;
+    },
+    async createTeamMessage(input) {
       const row: MessageRow = {
         id: nextId++,
         sessionId: input.sessionId,
-        sender: input.sender,
+        sender: 'admin',
         text: input.text,
         isInternalNote: input.isInternalNote,
         answered: true,
@@ -93,19 +109,34 @@ function createDb() {
         timestamp: new Date(),
       };
       messages.push(row);
-      return row;
+      return { ...row, editedAt: null, deletedAt: null };
+    },
+    async markVisitorMessagesAnswered(sessionId) {
+      let count = 0;
+      for (const message of messages) {
+        if (message.sessionId === sessionId && message.sender === 'user' && !message.answered) {
+          message.answered = true;
+          count += 1;
+        }
+      }
+      return count;
+    },
+    async findMessage() {
+      return null;
+    },
+    async findOperatorAction() {
+      return null;
+    },
+    async createOperatorAction() {
+      throw new Error('UK Admin replies never create delegated operator actions');
+    },
+    async updateOperatorAction() {
+      throw new Error('UK Admin replies never create delegated operator actions');
     },
   };
+  const conversations: ChatConversationStore = { ...tx, transaction: (fn) => fn(tx) };
 
-  const markVisitorMessagesAnswered = async (sessionId: string) => {
-    for (const message of messages) {
-      if (message.sessionId === sessionId && message.sender === 'user') message.answered = true;
-    }
-    const session = sessions.get(sessionId);
-    if (session) session.status = 'admin_replied';
-  };
-
-  return { sessions, messages, store, markVisitorMessagesAnswered };
+  return { sessions, messages, store, conversations };
 }
 
 // --- Test app mirroring the server.ts admin chat wiring ---
@@ -133,7 +164,7 @@ async function startAdminApp() {
   const db = createDb();
   const handlers = createAdminChatRouteHandlers({
     store: db.store,
-    markVisitorMessagesAnswered: db.markVisitorMessagesAnswered,
+    conversations: db.conversations,
     isDatabaseUnavailableError: () => false,
     logUnavailable: () => undefined,
   });
@@ -294,6 +325,22 @@ test('internal notes do not mark visitor messages answered', async () => {
     assert.equal(note.status, 201);
     assert.equal(app.db.messages.find((m) => m.id === 2)!.answered, false);
     assert.equal(app.db.sessions.get(INFOTECH_SESSION)!.status, 'bot_replied');
+  } finally {
+    await app.close();
+  }
+});
+
+test('UK Admin replies to closed / spam conversations are still stored and keep the terminal status', async () => {
+  const app = await startAdminApp();
+  try {
+    for (const status of ['closed', 'spam']) {
+      app.db.sessions.get(UK_SESSION)!.status = status;
+      const reply = await app.call('POST', '/api/chat?tenantId=pw-uk', { ...ops, body: { sessionId: UK_SESSION, sender: 'admin', text: `after ${status}` } });
+      assert.equal(reply.status, 201, status);
+      assert.equal(reply.json.sender, 'admin');
+      assert.equal(app.db.sessions.get(UK_SESSION)!.status, status, 'terminal status is never overwritten by admin_replied');
+      assert.equal(app.db.messages.find((m) => m.id === 1)!.answered, true);
+    }
   } finally {
     await app.close();
   }
