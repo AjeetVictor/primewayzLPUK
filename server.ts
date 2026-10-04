@@ -78,6 +78,14 @@ import { publicPlatformApiCorsMiddleware } from './src/lib/platform/publicPlatfo
 import { getAdminNotificationSummary } from './src/lib/admin/adminNotificationSummaryService.ts';
 import { createAdminRequestOriginMiddleware, getAdminAllowedOrigins } from './src/lib/admin/adminRequestOrigin.ts';
 import { createAdminChatRouteHandlers, type AdminChatStore } from './src/lib/admin/adminChatRoutes.ts';
+import { createPrismaOperationalChatStore } from './src/lib/admin/operationalChatPrismaStore.ts';
+import {
+  createWordPressChatIntegrationHandler,
+  WORDPRESS_CHAT_INTEGRATION_PATH,
+  wordpressChatBodyErrorHandler,
+  wordpressChatMethodNotAllowed,
+} from './src/lib/integrations/wordpressChatIntegration.ts';
+import { resolveChatPresence } from './src/lib/chat/chatPresence.ts';
 import { publicChatApiCorsMiddleware } from './src/lib/chat/publicChatApiCors.ts';
 import {
   assertChatSessionIdShape,
@@ -390,12 +398,10 @@ async function getChatAvailabilityPayload(source?: SourceContext) {
     console.warn('[local-safe] Falling back to default chat availability:', err instanceof Error ? err.message : err);
   }
   const latestAdminSeenAt = latestPresence?.lastSeenAt ?? null;
-  const hasActiveAdmin = latestAdminSeenAt
-    ? Date.now() - latestAdminSeenAt.getTime() < 5 * 60 * 1000
-    : false;
-  const mode = (setting?.mode || 'auto') as 'auto' | 'online' | 'away' | 'offline';
-  const computedStatus = hasActiveAdmin ? 'online' : 'assistant';
-  const status = mode === 'auto' ? computedStatus : mode === 'online' ? 'online' : mode;
+  const { mode, hasActiveAdmin, computedStatus, status, canAcceptMessages } = resolveChatPresence({
+    mode: setting?.mode,
+    latestAdminSeenAt,
+  });
   // Admin presence endpoints may omit source — never default canBookCall true (tenant leak risk).
   const scheduling = source
     ? getSchedulingAvailability(source)
@@ -413,7 +419,7 @@ async function getChatAvailabilityPayload(source?: SourceContext) {
     subtitle: setting?.message || (status === 'online' ? 'A team member is available now.' : 'Leave a message and we will follow up.'),
     responseExpectation: status === 'online' ? 'Usually replies shortly.' : 'We usually respond within one business day.',
     businessHours: resolveTenantChatPresentation(source?.tenantId).businessHours,
-    canAcceptMessages: status !== 'offline',
+    canAcceptMessages,
     canBookCall: scheduling.canBookFromChat,
     tenantId: source?.tenantId ?? null,
     scheduling: {
@@ -3007,6 +3013,17 @@ app.post('/api/chat/appointments', async (req, res) => {
     return res.status(503).json({ error: 'Chat booking is temporarily unavailable', unavailable: true });
   }
 });
+
+// WordPress operational chat API (server-to-server, read-only). Credential-bound to pw-infotech;
+// no admin cookie, no CORS, no tenant from the request.
+app.post(WORDPRESS_CHAT_INTEGRATION_PATH, createWordPressChatIntegrationHandler({
+  store: createPrismaOperationalChatStore(prisma),
+  siteUrl,
+  isDatabaseUnavailableError,
+  getClientIp,
+}));
+app.all(WORDPRESS_CHAT_INTEGRATION_PATH, wordpressChatMethodNotAllowed);
+app.use(WORDPRESS_CHAT_INTEGRATION_PATH, wordpressChatBodyErrorHandler);
 
 app.get('/api/blog/posts', async (_req, res) => {
   res.json(await getPublicBlogPosts());

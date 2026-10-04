@@ -451,7 +451,7 @@ All require a valid admin session cookie and an operations role (`401` when not 
 
 The Admin UI calls same-origin relative URLs, and current browsers always send `Origin` on same-origin `POST` / `PATCH` / `DELETE`, so legitimate admin writes take path 1. `Host` and `X-Forwarded-Host` are never used to derive the expected origin. `GET` admin reads are unaffected (they are not exposed through CORS). Visitor `/api/chat/*` routes are governed only by public Chat CORS.
 
-### J.9 Future WordPress integration (later phase)
+### J.9 WordPress visitor widget (public path)
 
 ```text
 Primewayz.com WordPress (visitor browser)
@@ -466,7 +466,247 @@ No separate Primewayz Infotech backend, API deployment or database is involved; 
 - No API secret is embedded in the browser or the WordPress page.
 - The server derives `pw-infotech` from the `Origin` header; the widget never sends tenant fields.
 - New sessions use UUID v4 ids stored in the visitor's browser.
-- The WordPress plugin itself is a later phase and is not part of this API hardening.
+
+The WordPress Admin dashboard uses a different, server-to-server path (section K).
+
+## K. WordPress operational chat integration (server-to-server)
+
+### K.1 Three separate paths
+
+| Path | Caller | Authority | Capabilities |
+|---|---|---|---|
+| Public visitor integration | Visitor browser on primewayz.com loading `pw-chat.js` | `Origin` resolves `pw-infotech` (J.2); no secrets | Visitor chat via `/api/platform/capabilities` and `/api/chat/*` |
+| WordPress operational integration | Primewayz Integration plugin PHP (wp-admin), server-to-server | Bearer integration credential bound to `pw-infotech` | Read-only: dashboard, conversation, diagnostics |
+| Full Primewayz UK Admin | Primewayz staff in `https://uk.primewayz.com/admin` | Admin cookie plus operations role (J.8) | Full management: replies, notes, status, presence, all tenants |
+
+```text
+wp-admin browser
+    -> Primewayz Integration PHP (holds the credential)
+    -> HTTPS POST https://uk.primewayz.com/api/integrations/wordpress/chat
+    -> existing UK chat services
+    -> shared database
+```
+
+The wp-admin browser never calls the UK API for this path and never receives the credential. There is one plugin, one endpoint, one backend and one database. The plugin must not reuse the `primewayz_admin_token` cookie or Admin login credentials.
+
+### K.2 Endpoint and authentication
+
+```http
+POST /api/integrations/wordpress/chat
+Authorization: Bearer <WORDPRESS_CHAT_INTEGRATION_TOKEN>
+Content-Type: application/json
+X-Request-ID: <optional, 8 to 128 chars of A-Z a-z 0-9 . _ : ->
+```
+
+- The credential is read only from the `Authorization` header. Any query string is rejected (`400`), so the credential can never be sent in a URL.
+- Server-side registry (`src/lib/integrations/integrationRegistry.ts`): credential maps to integration `primewayz-wordpress`, tenant `pw-infotech`, scopes `chat:dashboard`, `chat:read`, `chat:diagnostics`. There are no write scopes.
+- Comparison is constant time (SHA-256 digests with `timingSafeEqual`). Secrets shorter than 32 characters, or unset, disable the integration; every call then returns `401` (fail closed).
+- The credential never appears in responses or logs, and it does not impersonate any Admin user.
+- No CORS headers are emitted. The endpoint is not intended for browsers; CORS is not the security boundary.
+- Other HTTP methods return `405` with `Allow: POST`.
+
+### K.3 Request contract
+
+```json
+{ "action": "dashboard" }
+{ "action": "conversation", "sessionId": "<string, 1 to 191 chars>" }
+{ "action": "diagnostics" }
+```
+
+- Unknown actions, write-style actions (`reply`, `assign`, `delete`, ...) and any extra field return `400 invalid_request`.
+- `tenantId`, `tenant`, `tenantKey`, `market`, `sourceSite`, `sourceOrigin` and `sourceChannel` return `400 tenant_override_rejected`. The tenant comes only from the credential binding.
+
+### K.4 Response envelope
+
+Every response carries `Cache-Control: no-store`, `Pragma: no-cache` and `X-Request-ID`. The same request id is in the body and in the server log. Timestamps are UTC ISO 8601 (`2026-10-04T08:15:00.000Z`); WordPress converts for display.
+
+```json
+{
+  "ok": true,
+  "apiVersion": "1",
+  "requestId": "...",
+  "tenant": { "key": "pw-infotech", "market": "IN", "displayName": "Primewayz Infotech" },
+  "generatedAt": "2026-10-04T09:00:00.000Z",
+  "data": {}
+}
+```
+
+```json
+{
+  "ok": false,
+  "apiVersion": "1",
+  "requestId": "...",
+  "error": { "code": "integration_unauthorized", "message": "Missing or invalid integration credential." }
+}
+```
+
+### K.5 Error codes
+
+| HTTP | Code | Meaning |
+|---|---|---|
+| 400 | `invalid_request` | Malformed JSON, unknown action, unsupported field, bad `sessionId`, query string present |
+| 400 | `tenant_override_rejected` | Body tried to supply tenant / source fields |
+| 401 | `integration_unauthorized` | Missing, malformed or unknown credential (`WWW-Authenticate: Bearer`) |
+| 403 | `integration_forbidden` | Valid credential without the scope for this action |
+| 404 | `conversation_not_found` | Unknown session, or a session owned by another tenant or legacy (indistinguishable) |
+| 405 | `method_not_allowed` | Not POST |
+| 413 | `invalid_request` | Body too large |
+| 429 | `rate_limited` | Limit exceeded; honour `Retry-After` (seconds) |
+| 503 | `tenant_unavailable` | Bound tenant inactive |
+| 503 | `database_unavailable` | Database unreachable |
+| 503 | `chat_service_unavailable` | Other data-layer failure |
+| 500 | `internal_error` | Unexpected failure (no stack traces or internals) |
+
+An empty tenant returns `200` with `recentConversations: []` and `attention.count: 0`. A failure never looks like "zero conversations".
+
+### K.6 `dashboard`
+
+```json
+{
+  "service": { "status": "healthy", "chatEnabled": true, "canAcceptMessages": true },
+  "team": {
+    "presenceScope": "platform",
+    "status": "available",
+    "mode": "auto",
+    "teamMemberRecentlyActive": true,
+    "canAcceptMessages": true
+  },
+  "attention": { "count": 2 },
+  "recentConversations": [
+    {
+      "sessionId": "...",
+      "visitorLabel": "Gaurav",
+      "intent": "website-development",
+      "originatingPage": "/services/web",
+      "lastMessagePreview": "Need a new website",
+      "lastActor": "assistant",
+      "lastActivityAt": "2026-10-04T08:00:00.000Z",
+      "status": "waiting_for_team",
+      "needsAttention": true,
+      "messageCount": 2
+    }
+  ],
+  "limits": { "recentConversations": 20, "transcriptMessages": 100 },
+  "fullAdmin": {
+    "url": "https://uk.primewayz.com/admin",
+    "mobileUrl": "https://uk.primewayz.com/admin/chat",
+    "tenantPreselected": false
+  }
+}
+```
+
+- `recentConversations`: the 20 `pw-infotech` conversations with the most recent visible (non-internal) message, newest first. Sessions with no messages (heartbeat only) are not conversations and are not listed. No transcripts.
+- `service.status`: `healthy` when the database answered, the tenant is active, the chat capability is enabled and chat can accept messages; `degraded` when the tenant's chat capability is disabled or presence mode is `offline`. If the database fails the action returns `503` instead (unavailable).
+- `fullAdmin`: the Admin UI does not support deep links to the Chats tab or a preselected entity (the entity selector defaults to Primewayz UK and only `?tab=autopilot|conversion` is read). `tenantPreselected: false` tells WordPress to instruct staff to choose "Primewayz Infotech" in the Admin selector.
+
+**Presence is platform-wide.** `ChatPresenceSetting` and `AdminPresence` have no tenant column, so `team` describes Primewayz team availability across all entities, flagged `presenceScope: "platform"`. Label it "Primewayz team availability", not "Primewayz Infotech admin online". `team.status`: `available` (an Admin heartbeat in the last 5 minutes in auto mode, or mode forced online), `not_online` (auto mode, no recent heartbeat), `away`, `offline` (modes set in UK Admin).
+
+**Actors.** `user` maps to `visitor`, `bot` maps to `assistant`, `admin` maps to `team`. The assistant reply is a canned acknowledgement, not LLM output; nothing is labelled AI. Messages with any other sender are omitted.
+
+**Needs attention** (`src/lib/chat/chatOperationalSemantics.ts`, one rule for both `attention.count` and each row): the session status is not `closed` or `spam`, and the session has at least one visitor message with `answered = false`, `isInternalNote = false` and `deletedAt = null`. Visitor messages are only marked answered when a team member posts a non-internal reply in UK Admin, so the canned assistant acknowledgement and internal notes do not clear attention. `attention.count` covers every `pw-infotech` conversation, not only the 20 listed.
+
+**Status** (one operational enum):
+
+| `status` | Rule |
+|---|---|
+| `waiting_for_team` | `needsAttention` is true |
+| `closed` | Stored status `closed` or `spam` |
+| `team_replied` | Latest visible message is from the team |
+| `assistant_replied` | Latest visible message is the assistant and nothing is waiting |
+| `open` | Anything else (for example no messages yet) |
+
+### K.7 `conversation`
+
+```json
+{
+  "conversation": {
+    "sessionId": "...",
+    "visitorLabel": "Visitor • 3FA9C2",
+    "intent": null,
+    "originatingPage": "/contact",
+    "lastMessagePreview": "...",
+    "lastActor": "team",
+    "lastActivityAt": "2026-10-04T08:15:00.000Z",
+    "status": "team_replied",
+    "needsAttention": false
+  },
+  "messages": [
+    { "id": 123, "actor": "visitor", "text": "...", "createdAt": "...", "edited": false, "deleted": false, "replyToId": null }
+  ],
+  "hasMore": false,
+  "messageLimit": 100
+}
+```
+
+- Only sessions owned by `pw-infotech` are returned; anything else is `404 conversation_not_found`.
+- Latest 100 visible messages, oldest first; `hasMore: true` when older messages exist. Full history stays in UK Admin.
+- Internal notes are never returned. A reply that quotes an internal note has `replyToId: null`.
+- Deleted messages return `text: "Message deleted"`, `deleted: true`. `edited` is true for edited, non-deleted messages.
+- Attachments are omitted in Phase 1 (no file paths or URLs).
+- `text` is the stored plain text. WordPress must escape it on output (`esc_html`).
+
+### K.8 `diagnostics`
+
+```json
+{
+  "status": "healthy",
+  "api": { "status": "ok", "version": "1" },
+  "authentication": { "valid": true, "integrationId": "primewayz-wordpress", "scopes": ["chat:dashboard", "chat:read", "chat:diagnostics"] },
+  "tenantBinding": { "tenantId": "pw-infotech", "valid": true, "active": true },
+  "chat": { "enabled": true, "canAcceptMessages": true },
+  "team": { "presenceScope": "platform", "status": "available", "mode": "auto", "teamMemberRecentlyActive": true, "canAcceptMessages": true },
+  "database": { "status": "reachable" },
+  "fullAdmin": { "url": "https://uk.primewayz.com/admin", "mobileUrl": "https://uk.primewayz.com/admin/chat", "tenantPreselected": false }
+}
+```
+
+Diagnostics returns `200` once the credential is valid, even if the database is down; then `status: "unavailable"`, `database.status: "unreachable"` and `team: null`. An invalid credential is always `401`. No hostnames, connection strings, environment variables, file paths or stack traces are returned.
+
+### K.9 PII rules
+
+Never returned by any action: visitor email, phone, IP address, user agent / browser, device, referrer, UTM values, query strings of landing pages, internal notes, internal database ids other than message ids, tenant attribution fields, attachment paths.
+
+- `visitorLabel`: the visitor's name, unless empty or containing `@`; otherwise `Visitor • ` plus a 6-character hash of the session id (not reversible).
+- `originatingPage`: path only (first landing page, else current page).
+- `lastMessagePreview`: plain text, single line, at most 200 characters, `Message deleted` for deleted messages.
+- `sessionId` is returned so WordPress can request the transcript; WordPress should not display it in full.
+
+### K.10 Rate limits
+
+In-memory per process, keyed by integration id (not by client IP, because the WordPress server IP is shared):
+
+| Bucket | Limit |
+|---|---|
+| All authenticated calls of the integration | 240 per minute |
+| `dashboard` | 60 per minute |
+| `conversation` | 120 per minute |
+| `diagnostics` | 30 per minute |
+| Invalid credentials, per client IP | 30 per minute |
+
+A valid credential is never blocked by the invalid-credential bucket. Exceeding a limit returns `429 rate_limited` with `Retry-After`. Suggested WordPress polling: dashboard no more often than every 15 to 30 seconds while the page is visible.
+
+### K.11 Audit logging
+
+One line per request: `[wp-chat-integration] {"requestId","integrationId","tenantId","action","status","code","durationMs","sessionRef"}`. `sessionRef` is the 6-character session hash for `conversation`. Tokens, message text, names, email and phone are never logged.
+
+### K.12 Credential configuration and rotation
+
+The credential lives in the UK backend environment (`WORDPRESS_CHAT_INTEGRATION_TOKEN`) and in WordPress server-side configuration only (for example a `wp-config.php` constant or an option never printed to the page). It must never be rendered into HTML, localized scripts or REST responses in WordPress.
+
+Rotation:
+
+1. Generate a new secret (at least 32 characters), for example `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`.
+2. On the UK backend, move the current value to `WORDPRESS_CHAT_INTEGRATION_TOKEN_PREVIOUS` and set the new value as `WORDPRESS_CHAT_INTEGRATION_TOKEN`. Both are accepted during the overlap.
+3. Restart the UK Node process.
+4. Update the WordPress server-side configuration to the new secret.
+5. Call `diagnostics` from WordPress and confirm `authentication.valid: true`.
+6. Remove `WORDPRESS_CHAT_INTEGRATION_TOKEN_PREVIOUS` and restart again. The old secret now returns `401`.
+
+For an emergency revocation, clear both variables and restart; every call returns `401` until a new secret is configured.
+
+### K.13 Query strategy
+
+`dashboard` runs a fixed set of queries regardless of volume: one `GROUP BY sessionId` over visible messages for the tenant (latest activity, limited to 20), one tenant-wide attention `COUNT`, then batched lookups for the selected sessions only (session details, latest message per session, unanswered-visitor counts, visible message counts), plus two `findFirst` presence reads. `conversation` runs an ownership lookup, a tenant-scoped session read, one bounded message read (101 rows) and one unanswered count. No action writes to the database.
 
 ## Follow-up (not required for this foundation)
 
