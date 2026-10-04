@@ -10,6 +10,7 @@ import { assertChatSessionTenantAccess } from '../platform/sourceResolver.ts';
 import { isLocalTestIp } from '../digitalSystemsReview/rateLimit.ts';
 import { CHAT_SESSION_ID_INVALID_CODE, isStrongChatSessionId } from './chatSessionId.ts';
 import { PUBLIC_CHAT_INPUT_LIMITS } from './publicChatInputLimits.ts';
+import { deriveVisitorClientContext, normalizeVisitorId, normalizeVisitorPhone } from './visitorIntelligence.ts';
 
 export { PUBLIC_CHAT_INPUT_LIMITS };
 
@@ -343,6 +344,42 @@ export function buildPublicChatSessionSourceData(rawBody: unknown) {
     deviceType: pick('deviceType'),
     browser: pick('browser'),
     serviceInterest: pick('serviceInterest'),
+  };
+}
+
+export type PublicChatVisitorTelemetry = {
+  visitorId?: string;
+  phone?: string;
+  deviceType?: string;
+  browser?: string;
+  operatingSystem?: string;
+};
+
+/**
+ * Visitor telemetry persisted alongside session / heartbeat writes.
+ * - phone: only when the visitor typed it into the named contact field; malformed is rejected.
+ * - visitorId: optional browser-generated UUID v4; anything else is ignored.
+ * - device / browser / OS: normalised labels from the request User-Agent header, which is
+ *   itself never stored. Location, tenant and source authority are never read from the body.
+ */
+export function buildPublicChatVisitorTelemetry(
+  rawBody: unknown,
+  input: { userAgent: string | undefined; phoneField: 'phone' | 'userPhone' },
+): PublicChatVisitorTelemetry {
+  const body = asBody(rawBody);
+  const rawPhone = optionalBoundedString(body, input.phoneField, PUBLIC_CHAT_INPUT_LIMITS.phone);
+  let phone: string | undefined;
+  if (rawPhone !== undefined && rawPhone.trim()) {
+    phone = normalizeVisitorPhone(rawPhone) ?? undefined;
+    if (!phone) throw invalidInput(input.phoneField, `${input.phoneField} is not a valid phone number.`);
+  }
+  const client = deriveVisitorClientContext(input.userAgent);
+  return {
+    visitorId: normalizeVisitorId(body.visitorId) ?? undefined,
+    phone,
+    deviceType: client.deviceType ?? undefined,
+    browser: client.browser ?? undefined,
+    operatingSystem: client.operatingSystem ?? undefined,
   };
 }
 

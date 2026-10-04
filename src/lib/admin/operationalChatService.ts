@@ -28,6 +28,14 @@ import {
   type ChatActor,
   type OperationalConversationStatus,
 } from '../chat/chatOperationalSemantics.ts';
+import {
+  buildOperationalVisitorIntelligence,
+  resolveVisitorPresence,
+  type OperationalVisitor,
+  type OperationalVisitorSession,
+  type VisitorPresence,
+  type VisitorProfileRow,
+} from '../chat/visitorIntelligence.ts';
 import { getMessageDisplayText } from '../chatTypes.ts';
 
 export const RECENT_CONVERSATIONS_DEFAULT_LIMIT = 20;
@@ -42,6 +50,7 @@ export type OperationalSessionRow = {
   serviceInterest: string | null;
   firstLandingPage: string | null;
   currentPageUrl: string | null;
+  visitorLastSeenAt: Date | null;
   createdAt: Date;
 };
 
@@ -75,6 +84,15 @@ export type OperationalChatStore = {
   countSessionsNeedingAttention(tenantId: string): Promise<number>;
   /** Newest-first visible messages of one session, at most `take`. */
   listLatestTranscript(input: { tenantId: string; sessionId: string; take: number }): Promise<OperationalMessageRow[]>;
+  /** Allow-listed visitor columns of one tenant session (never raw IP / User-Agent / UTM / referrer). */
+  findVisitorProfile(input: { tenantId: string; sessionId: string }): Promise<VisitorProfileRow | null>;
+  /** Whether the same tenant has a session for this visitorId created before `createdBefore`. */
+  hasEarlierVisitorSession(input: {
+    tenantId: string;
+    visitorId: string;
+    sessionId: string;
+    createdBefore: Date;
+  }): Promise<boolean>;
 };
 
 export class OperationalChatNotFoundError extends Error {
@@ -184,6 +202,12 @@ export function clampRecentConversationLimit(limit: number | undefined): number 
   return Math.min(limit, RECENT_CONVERSATIONS_MAX_LIMIT);
 }
 
+/** Dashboard row: the summary plus lightweight presence only (no contact, device or location). */
+export type OperationalDashboardConversation = OperationalConversationSummary & {
+  visitorPresence: VisitorPresence;
+  lastSeenAt: string | null;
+};
+
 /**
  * Bounded dashboard aggregation: one activity GROUP BY, then batched lookups for the
  * selected sessions (details, latest message, unanswered counts, message counts) and one
@@ -191,9 +215,10 @@ export function clampRecentConversationLimit(limit: number | undefined): number 
  */
 export async function getOperationalChatDashboard(
   store: OperationalChatStore,
-  input: { tenantId: string; limit?: number },
-): Promise<{ attention: { count: number }; recentConversations: OperationalConversationSummary[] }> {
+  input: { tenantId: string; limit?: number; now?: number },
+): Promise<{ attention: { count: number }; recentConversations: OperationalDashboardConversation[] }> {
   const { tenantId } = input;
+  const now = input.now ?? Date.now();
   const limit = clampRecentConversationLimit(input.limit);
 
   const [activity, attentionCount] = await Promise.all([
@@ -214,16 +239,20 @@ export async function getOperationalChatDashboard(
   const sessionById = new Map(sessions.filter((session) => session.tenantId === tenantId).map((session) => [session.id, session]));
   const latestBySession = newestPerSession(latestMessages.filter((message) => sessionById.has(message.sessionId)));
 
-  const recentConversations = bounded.flatMap((entry) => {
+  const recentConversations = bounded.flatMap((entry): OperationalDashboardConversation[] => {
     const session = sessionById.get(entry.sessionId);
     if (!session) return [];
-    return [summarise({
-      session,
-      lastMessage: latestBySession.get(entry.sessionId) ?? null,
-      lastActivityAt: entry.lastActivityAt,
-      unansweredVisitorMessageCount: unanswered.get(entry.sessionId) ?? 0,
-      messageCount: messageCounts.get(entry.sessionId) ?? 0,
-    })];
+    return [{
+      ...summarise({
+        session,
+        lastMessage: latestBySession.get(entry.sessionId) ?? null,
+        lastActivityAt: entry.lastActivityAt,
+        unansweredVisitorMessageCount: unanswered.get(entry.sessionId) ?? 0,
+        messageCount: messageCounts.get(entry.sessionId) ?? 0,
+      }),
+      visitorPresence: resolveVisitorPresence(session.visitorLastSeenAt, now),
+      lastSeenAt: session.visitorLastSeenAt ? session.visitorLastSeenAt.toISOString() : null,
+    }];
   });
   recentConversations.sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt));
 
@@ -256,35 +285,56 @@ export function toTranscriptMessage(message: OperationalMessageRow): Operational
   };
 }
 
-/** Read-only, bounded transcript of one conversation owned by the tenant. */
+/**
+ * Read-only, bounded transcript of one conversation owned by the tenant, plus the
+ * tenant-scoped visitor / session context. At most one extra lookup (earlier session
+ * for the same visitorId) runs, and only when a stable visitorId exists.
+ */
 export async function getOperationalConversation(
   store: OperationalChatStore,
-  input: { tenantId: string; sessionId: string },
+  input: { tenantId: string; sessionId: string; now?: number },
 ): Promise<{
   conversation: Omit<OperationalConversationSummary, 'messageCount'>;
+  visitor: OperationalVisitor;
+  session: OperationalVisitorSession;
   messages: OperationalTranscriptMessage[];
   hasMore: boolean;
   messageLimit: number;
 }> {
   const { tenantId } = input;
+  const now = input.now ?? Date.now();
   const session = await loadTenantSession(store, tenantId, input.sessionId);
 
-  const [newestFirst, unanswered] = await Promise.all([
+  const [newestFirst, unanswered, profile] = await Promise.all([
     store.listLatestTranscript({ tenantId, sessionId: session.id, take: TRANSCRIPT_MESSAGE_LIMIT + 1 }),
     store.countUnansweredVisitorMessages({ tenantId, sessionIds: [session.id] }),
+    store.findVisitorProfile({ tenantId, sessionId: session.id }),
   ]);
+  if (!profile || profile.id !== session.id || profile.tenantId !== tenantId) throw new OperationalChatNotFoundError();
+
   const ownMessages = newestFirst.filter((message) => message.sessionId === session.id);
   const hasMore = ownMessages.length > TRANSCRIPT_MESSAGE_LIMIT;
   const visible = ownMessages.slice(0, TRANSCRIPT_MESSAGE_LIMIT);
   const lastMessage = visible[0] ?? null;
+  const lastActivityAt = lastMessage?.timestamp ?? session.createdAt;
 
   const { messageCount: _messageCount, ...conversation } = summarise({
     session,
     lastMessage,
-    lastActivityAt: lastMessage?.timestamp ?? session.createdAt,
+    lastActivityAt,
     unansweredVisitorMessageCount: unanswered.get(session.id) ?? 0,
     messageCount: visible.length,
   });
+
+  const returning = profile.visitorId
+    ? await store.hasEarlierVisitorSession({
+      tenantId,
+      visitorId: profile.visitorId,
+      sessionId: session.id,
+      createdBefore: profile.createdAt,
+    })
+    : null;
+  const intelligence = buildOperationalVisitorIntelligence({ profile, lastActivityAt, returning, now });
 
   const messages = visible
     .slice()
@@ -292,7 +342,14 @@ export async function getOperationalConversation(
     .map(toTranscriptMessage)
     .filter((message): message is OperationalTranscriptMessage => message !== null);
 
-  return { conversation, messages, hasMore, messageLimit: TRANSCRIPT_MESSAGE_LIMIT };
+  return {
+    conversation,
+    visitor: intelligence.visitor,
+    session: intelligence.session,
+    messages,
+    hasMore,
+    messageLimit: TRANSCRIPT_MESSAGE_LIMIT,
+  };
 }
 
 /** Current summary of one tenant conversation (no transcript): latest message + unanswered count. */

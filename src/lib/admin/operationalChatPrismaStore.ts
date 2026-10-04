@@ -18,6 +18,28 @@ const sessionSelect = {
   serviceInterest: true,
   firstLandingPage: true,
   currentPageUrl: true,
+  visitorLastSeenAt: true,
+  createdAt: true,
+} as const;
+
+/** Allow-list: never select referrer, UTM, source authority or any raw client context. */
+const visitorProfileSelect = {
+  id: true,
+  tenantId: true,
+  name: true,
+  email: true,
+  phone: true,
+  visitorId: true,
+  visitorLastSeenAt: true,
+  visitStartedAt: true,
+  firstLandingPage: true,
+  currentPageUrl: true,
+  deviceType: true,
+  browser: true,
+  operatingSystem: true,
+  country: true,
+  region: true,
+  city: true,
   createdAt: true,
 } as const;
 
@@ -146,6 +168,17 @@ export function createPrismaOperationalChatStore(prisma: PrismaClient): Operatio
         select: messageSelect,
       });
       return rows.map(toMessageRow);
+    },
+
+    findVisitorProfile: ({ tenantId, sessionId }) =>
+      prisma.chatSession.findFirst({ where: { id: sessionId, tenantId }, select: visitorProfileSelect }),
+
+    async hasEarlierVisitorSession({ tenantId, visitorId, sessionId, createdBefore }) {
+      const earlier = await prisma.chatSession.findFirst({
+        where: { tenantId, visitorId, id: { not: sessionId }, createdAt: { lt: createdBefore } },
+        select: { id: true },
+      });
+      return earlier !== null;
     },
   };
 }

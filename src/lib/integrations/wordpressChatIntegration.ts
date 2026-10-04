@@ -390,7 +390,7 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
     const chatEnabled = tenantSupportsCapability(tenant.tenantId, 'chat');
     const [team, dashboard] = await Promise.all([
       getOperationalTeamPresence(deps.store, now()),
-      getOperationalChatDashboard(deps.store, { tenantId: tenant.tenantId, limit: RECENT_CONVERSATIONS_DEFAULT_LIMIT }),
+      getOperationalChatDashboard(deps.store, { tenantId: tenant.tenantId, limit: RECENT_CONVERSATIONS_DEFAULT_LIMIT, now: now() }),
     ]);
     const canAcceptMessages = chatEnabled && team.canAcceptMessages;
     return {
@@ -477,7 +477,7 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
       if (input.action === 'dashboard') data = await runDashboard(tenant);
       else if (input.action === 'diagnostics') data = await runDiagnostics(principal, tenant);
       else if (input.action === 'conversation') {
-        data = await getOperationalConversation(deps.store, { tenantId: tenant.tenantId, sessionId: input.sessionId });
+        data = await getOperationalConversation(deps.store, { tenantId: tenant.tenantId, sessionId: input.sessionId, now: now() });
       } else {
         const write = await runDelegatedWrite(principal, tenant, requestId, input);
         replayed = write.outcome.replayed;

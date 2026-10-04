@@ -37,6 +37,16 @@ import {
   UNANSWERED_VISITOR_MESSAGE_WHERE,
 } from '../chat/chatOperationalSemantics.ts';
 import { resolveChatPresence } from '../chat/chatPresence.ts';
+import {
+  deriveVisitorClientContext,
+  normalizeVisitorBrowser,
+  normalizeVisitorDeviceType,
+  normalizeVisitorId,
+  normalizeVisitorPhone,
+  resolveVisitorPresence,
+  VISITOR_IDLE_WINDOW_MS,
+  VISITOR_ONLINE_WINDOW_MS,
+} from '../chat/visitorIntelligence.ts';
 import type { ChatOperatorActionRecord } from '../chat/chatConversationService.ts';
 import { createMemoryChatConversationStore, type MemoryChatStoreHooks } from '../chat/testing/memoryChatConversationStore.ts';
 import { computeDelegatedRequestHash, OPERATOR_ACTION_SOURCE } from './wordpressChatDelegatedActions.ts';
@@ -59,12 +69,23 @@ const NOW = Date.parse('2026-10-04T09:00:00.000Z');
 
 type SessionRow = OperationalSessionRow & {
   email: string | null;
+  phone: string | null;
   market: string | null;
   sourceSite: string | null;
   sourceOrigin: string | null;
   sourceChannel: string | null;
+  campaignId: string | null;
+  referrer: string | null;
+  utmSource: string | null;
+  utmCampaign: string | null;
+  deviceType: string | null;
   browser: string | null;
-  visitorLastSeenAt: Date | null;
+  operatingSystem: string | null;
+  country: string | null;
+  region: string | null;
+  city: string | null;
+  visitorId: string | null;
+  visitStartedAt: Date | null;
   updatedAt: Date;
 };
 type MessageRow = {
@@ -104,7 +125,19 @@ function session(id: string, tenantId: string | null, extra: Partial<SessionRow>
     sourceSite: tenantId === 'pw-infotech' ? 'primewayz.com' : null,
     sourceOrigin: tenantId === 'pw-infotech' ? 'https://primewayz.com' : null,
     sourceChannel: tenantId ? 'chat' : null,
+    campaignId: tenantId ? 'SECRET-CAMPAIGN-ID' : null,
+    referrer: 'https://secret-referrer.example/landing?gclid=SECRET-GCLID',
+    utmSource: 'secret-utm-source',
+    utmCampaign: 'secret-utm-campaign',
+    phone: null,
+    deviceType: null,
     browser: 'Mozilla/5.0 SECRET-UA',
+    operatingSystem: null,
+    country: null,
+    region: null,
+    city: null,
+    visitorId: null,
+    visitStartedAt: null,
     visitorLastSeenAt: at(1),
     updatedAt: at(1),
     ...extra,
@@ -199,6 +232,7 @@ function createMemoryStore(db: Db, calls: string[] = []): OperationalChatStore {
     serviceInterest: s.serviceInterest,
     firstLandingPage: s.firstLandingPage,
     currentPageUrl: s.currentPageUrl,
+    visitorLastSeenAt: s.visitorLastSeenAt,
     createdAt: s.createdAt,
   });
   const isUnanswered = (m: MessageRow) =>
@@ -269,6 +303,38 @@ function createMemoryStore(db: Db, calls: string[] = []): OperationalChatStore {
         .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime() || b.id - a.id)
         .slice(0, take)
         .map(toRow);
+    },
+    async findVisitorProfile({ tenantId, sessionId }) {
+      guard('findVisitorProfile');
+      const s = db.sessions.find((row) => row.id === sessionId && row.tenantId === tenantId);
+      if (!s) return null;
+      return {
+        id: s.id,
+        tenantId: s.tenantId,
+        name: s.name,
+        email: s.email,
+        phone: s.phone,
+        visitorId: s.visitorId,
+        visitorLastSeenAt: s.visitorLastSeenAt,
+        visitStartedAt: s.visitStartedAt,
+        firstLandingPage: s.firstLandingPage,
+        currentPageUrl: s.currentPageUrl,
+        deviceType: s.deviceType,
+        browser: s.browser,
+        operatingSystem: s.operatingSystem,
+        country: s.country,
+        region: s.region,
+        city: s.city,
+        createdAt: s.createdAt,
+      };
+    },
+    async hasEarlierVisitorSession({ tenantId, visitorId, sessionId, createdBefore }) {
+      guard('hasEarlierVisitorSession');
+      return db.sessions.some((s) =>
+        s.tenantId === tenantId
+        && s.visitorId === visitorId
+        && s.id !== sessionId
+        && s.createdAt.getTime() < createdBefore.getTime());
     },
   };
 }
@@ -555,8 +621,8 @@ test('dashboard: only pw-infotech conversations, newest first, no transcripts', 
     assert.ok(!res.text.includes('UK ONLY TEXT') && !res.text.includes('RRB ONLY TEXT') && !res.text.includes('LEGACY ONLY TEXT'));
     assert.ok(rows.every((r: Record<string, unknown>) => !('messages' in r)));
     assert.deepEqual(Object.keys(rows[0]).sort(), [
-      'intent', 'lastActivityAt', 'lastActor', 'lastMessagePreview', 'messageCount', 'needsAttention',
-      'originatingPage', 'sessionId', 'status', 'visitorLabel',
+      'intent', 'lastActivityAt', 'lastActor', 'lastMessagePreview', 'lastSeenAt', 'messageCount', 'needsAttention',
+      'originatingPage', 'sessionId', 'status', 'visitorLabel', 'visitorPresence',
     ]);
   } finally {
     await app.close();
@@ -710,7 +776,8 @@ test('conversation: returns the pw-infotech transcript without internal notes', 
     assert.equal(hasMore, false);
     assert.equal(messageLimit, 100);
     assert.ok(!res.text.includes('SECRET INTERNAL NOTE'));
-    assert.ok(!res.text.includes('anon@example.com'));
+    assert.equal(res.json.data.visitor.email, 'anon@example.com', 'explicitly supplied email is exposed only via visitor');
+    assert.ok(!JSON.stringify({ conversation, messages }).includes('anon@example.com'));
     assert.deepEqual(messages.map((m: { actor: string }) => m.actor), ['team', 'visitor', 'team']);
     const quoting = messages.find((m: { text: string }) => m.text === 'Quoting note');
     assert.equal(quoting.replyToId, null, 'replies to internal notes do not reveal the note id');
@@ -1620,7 +1687,7 @@ test('regression: read action response contracts are unchanged after writes are 
     const dashboard = (await app.call({ body: { action: 'dashboard' } })).json.data;
     assert.deepEqual(Object.keys(dashboard).sort(), ['attention', 'fullAdmin', 'limits', 'recentConversations', 'service', 'team']);
     const conversation = (await app.call({ body: { action: 'conversation', sessionId: 'inf-2' } })).json.data;
-    assert.deepEqual(Object.keys(conversation).sort(), ['conversation', 'hasMore', 'messageLimit', 'messages']);
+    assert.deepEqual(Object.keys(conversation).sort(), ['conversation', 'hasMore', 'messageLimit', 'messages', 'session', 'visitor']);
     const diagnostics = (await app.call({ body: { action: 'diagnostics' } })).json.data;
     assert.deepEqual(Object.keys(diagnostics).sort(), ['api', 'authentication', 'chat', 'database', 'fullAdmin', 'status', 'team', 'tenantBinding']);
     assert.deepEqual(diagnostics.api, { status: 'ok', version: '1' });
@@ -1639,4 +1706,333 @@ test('wiring: one endpoint, delegated writes use the shared conversation store a
   assert.match(adapter, /createTeamReply\(tx, \{[\s\S]*?isInternalNote: false,[\s\S]*?replyToId: null,[\s\S]*?terminalPolicy: 'reject'/);
   assert.doesNotMatch(adapter, /prisma|chatMessage\.create|updateMany/);
   assert.doesNotMatch(adapter, /adminPresence|chatPresenceSetting|chatAlert|chatAppointment/);
+});
+
+// --- Visitor intelligence (P27 presence & session context, P28 identity & contact) ---
+
+const VISITOR_A = '3f2b8c1a-9d4e-4f6a-8b7c-1d2e3f4a5b6c';
+const VISITOR_B = '7a6b5c4d-3e2f-4a1b-9c8d-7e6f5a4b3c2d';
+const CHROME_WINDOWS_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36';
+const SAFARI_IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+
+function visitorDb(): Db {
+  const db = createDb();
+  db.sessions.push(session('inf-vi', 'pw-infotech', {
+    name: '  Meera   Shah ',
+    email: 'meera@example.com',
+    phone: '+44 20 7946 0958',
+    status: 'admin_needed',
+    serviceInterest: 'crm-support',
+    firstLandingPage: 'https://primewayz.com/services/crm?utm_source=SECRET-LANDING-UTM&gclid=SECRET-GCLID#pricing',
+    currentPageUrl: 'https://primewayz.com/contact?ref=SECRET-QUERY#form',
+    deviceType: 'desktop',
+    browser: 'Chrome',
+    operatingSystem: 'Windows',
+    country: 'United Kingdom',
+    region: 'England',
+    city: 'London',
+    visitorId: VISITOR_A,
+    createdAt: new Date(NOW - 20 * 60 * 1000),
+    visitStartedAt: new Date(NOW - 15 * 60 * 1000),
+    visitorLastSeenAt: new Date(NOW - 30 * 1000),
+  }));
+  db.messages.push(message('inf-vi', 'user', 990, { text: 'Need CRM help' }));
+  return db;
+}
+
+test('visitor presence: null, online, idle and offline boundaries with an injected clock', () => {
+  const now = NOW;
+  assert.equal(VISITOR_ONLINE_WINDOW_MS, 75_000);
+  assert.equal(VISITOR_IDLE_WINDOW_MS, 300_000);
+  assert.equal(resolveVisitorPresence(null, now), 'unknown');
+  assert.equal(resolveVisitorPresence(undefined, now), 'unknown');
+  assert.equal(resolveVisitorPresence(new Date('not a date'), now), 'unknown');
+  assert.equal(resolveVisitorPresence(new Date(now), now), 'online');
+  assert.equal(resolveVisitorPresence(new Date(now + 5_000), now), 'online', 'small clock skew stays online');
+  assert.equal(resolveVisitorPresence(new Date(now - 75_000), now), 'online', '75 seconds is still online');
+  assert.equal(resolveVisitorPresence(new Date(now - 75_001), now), 'idle');
+  assert.equal(resolveVisitorPresence(new Date(now - 300_000), now), 'idle', '5 minutes is still idle');
+  assert.equal(resolveVisitorPresence(new Date(now - 300_001), now), 'offline');
+  assert.equal(resolveVisitorPresence(new Date(now - 86_400_000).toISOString(), now), 'offline');
+});
+
+test('visitor normalisation: phone, visitorId, device / browser labels and User-Agent derivation', () => {
+  assert.equal(normalizeVisitorPhone(' +44 20  7946 0958 '), '+44 20 7946 0958');
+  assert.equal(normalizeVisitorPhone('(020) 7946-0958'), '(020) 7946-0958');
+  for (const bad of ['', '12345', 'call me', '+44 20 7946 0958 ext <script>', '1'.repeat(16), 'x'.repeat(40), 42, null]) {
+    assert.equal(normalizeVisitorPhone(bad), null, String(bad));
+  }
+  assert.equal(normalizeVisitorId(VISITOR_A.toUpperCase()), VISITOR_A);
+  for (const bad of ['visitor-1', 'gaurav@example.com', '3f2b8c1a-9d4e-1f6a-8b7c-1d2e3f4a5b6c', 123, null]) {
+    assert.equal(normalizeVisitorId(bad), null, String(bad));
+  }
+  assert.equal(normalizeVisitorDeviceType('Mobile'), 'mobile');
+  assert.equal(normalizeVisitorDeviceType('unknown'), null);
+  assert.equal(normalizeVisitorBrowser('chrome'), 'Chrome');
+  assert.equal(normalizeVisitorBrowser('Mozilla/5.0 SECRET-UA'), null, 'raw User-Agent strings never pass as a browser label');
+  assert.deepEqual(deriveVisitorClientContext(CHROME_WINDOWS_UA), { deviceType: 'desktop', browser: 'Chrome', operatingSystem: 'Windows' });
+  assert.deepEqual(deriveVisitorClientContext(SAFARI_IPHONE_UA), { deviceType: 'mobile', browser: 'Safari', operatingSystem: 'iOS' });
+  assert.deepEqual(
+    deriveVisitorClientContext('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36'),
+    { deviceType: 'mobile', browser: 'Chrome', operatingSystem: 'Android' },
+  );
+  assert.equal(deriveVisitorClientContext('Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15').operatingSystem, 'macOS');
+  assert.equal(deriveVisitorClientContext('Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) Chrome/129.0').operatingSystem, 'ChromeOS');
+  assert.deepEqual(deriveVisitorClientContext(undefined), { deviceType: null, browser: null, operatingSystem: null });
+  assert.deepEqual(deriveVisitorClientContext('curl/8.4.0'), { deviceType: null, browser: null, operatingSystem: null }, 'nothing is invented');
+});
+
+test('conversation: visitor and session objects map the stored, tenant-owned context', async () => {
+  const app = await startApp({ db: visitorDb() });
+  try {
+    const res = await app.call({ body: { action: 'conversation', sessionId: 'inf-vi' } });
+    assert.equal(res.status, 200);
+    assert.equal(res.json.apiVersion, '1');
+    const { conversation, visitor, session: visit } = res.json.data;
+    assert.deepEqual(visitor, {
+      presence: 'online',
+      lastSeenAt: new Date(NOW - 30 * 1000).toISOString(),
+      firstSeenAt: new Date(NOW - 20 * 60 * 1000).toISOString(),
+      returning: false,
+      name: 'Meera Shah',
+      email: 'meera@example.com',
+      phone: '+44 20 7946 0958',
+    });
+    assert.deepEqual(visit, {
+      startedAt: new Date(NOW - 15 * 60 * 1000).toISOString(),
+      currentPage: '/contact',
+      originatingPage: '/services/crm',
+      lastActivityAt: conversation.lastActivityAt,
+      device: 'desktop',
+      browser: 'Chrome',
+      operatingSystem: 'Windows',
+      location: { city: 'London', region: 'England', country: 'United Kingdom', approximate: true },
+    });
+    assert.equal(conversation.originatingPage, '/services/crm', 'existing conversation fields are unchanged');
+    assert.equal(conversation.intent, 'crm-support');
+  } finally {
+    await app.close();
+  }
+});
+
+test('conversation: missing visitor data is null, never fabricated', async () => {
+  const db = createDb();
+  db.sessions.push(session('inf-bare', 'pw-infotech', { visitorLastSeenAt: null, browser: null, name: 'someone@example.com' }));
+  const app = await startApp({ db });
+  try {
+    const bare = (await app.call({ body: { action: 'conversation', sessionId: 'inf-bare' } })).json.data;
+    assert.deepEqual(bare.visitor, {
+      presence: 'unknown',
+      lastSeenAt: null,
+      firstSeenAt: at(0).toISOString(),
+      returning: null,
+      name: null,
+      email: null,
+      phone: null,
+    });
+    assert.deepEqual(bare.session, {
+      startedAt: at(0).toISOString(),
+      currentPage: null,
+      originatingPage: null,
+      lastActivityAt: at(0).toISOString(),
+      device: null,
+      browser: null,
+      operatingSystem: null,
+      location: { city: null, region: null, country: null, approximate: true },
+    });
+
+    const legacy = (await app.call({ body: { action: 'conversation', sessionId: 'inf-2' } })).json.data;
+    assert.equal(legacy.visitor.presence, 'offline');
+    assert.equal(legacy.visitor.returning, null, 'no stable visitorId means returning is unknown, not false');
+    assert.equal(legacy.session.browser, null, 'a stored raw User-Agent is not echoed as a browser');
+  } finally {
+    await app.close();
+  }
+});
+
+test('conversation: presence follows the service clock, not stored state', async () => {
+  const clock = { now: NOW };
+  const app = await startApp({ db: visitorDb(), clock });
+  try {
+    const presence = async () => (await app.call({ body: { action: 'conversation', sessionId: 'inf-vi' } })).json.data.visitor.presence;
+    assert.equal(await presence(), 'online');
+    clock.now = NOW + 2 * 60 * 1000;
+    assert.equal(await presence(), 'idle');
+    clock.now = NOW + 10 * 60 * 1000;
+    assert.equal(await presence(), 'offline');
+    assert.ok(app.db.sessions.every((s) => !('presence' in s)), 'presence is never persisted');
+  } finally {
+    await app.close();
+  }
+});
+
+test('conversation: returning is tenant-scoped and based only on an earlier session with the same visitorId', async () => {
+  const db = visitorDb();
+  db.sessions.push(
+    session('uk-earlier', 'pw-uk', { visitorId: VISITOR_A, createdAt: new Date(NOW - 5 * 86_400_000), name: 'UK SAME VISITOR' }),
+    session('inf-later', 'pw-infotech', { visitorId: VISITOR_A, createdAt: new Date(NOW - 60 * 1000) }),
+    session('inf-same-name', 'pw-infotech', { name: 'Meera Shah', email: 'meera@example.com', createdAt: new Date(NOW - 3 * 86_400_000) }),
+  );
+  const app = await startApp({ db });
+  try {
+    const first = (await app.call({ body: { action: 'conversation', sessionId: 'inf-vi' } }));
+    assert.equal(first.json.data.visitor.returning, false, 'other-tenant, later and same-name/email sessions do not count');
+    assert.ok(!first.text.includes('UK SAME VISITOR'));
+
+    const later = (await app.call({ body: { action: 'conversation', sessionId: 'inf-later' } })).json.data;
+    assert.equal(later.visitor.returning, true);
+
+    db.sessions.push(session('inf-earlier', 'pw-infotech', { visitorId: VISITOR_A, createdAt: new Date(NOW - 86_400_000) }));
+    assert.equal((await app.call({ body: { action: 'conversation', sessionId: 'inf-vi' } })).json.data.visitor.returning, true);
+
+    db.sessions.push(session('inf-other', 'pw-infotech', { visitorId: VISITOR_B, createdAt: new Date(NOW - 60 * 1000) }));
+    assert.equal((await app.call({ body: { action: 'conversation', sessionId: 'inf-other' } })).json.data.visitor.returning, false);
+  } finally {
+    await app.close();
+  }
+});
+
+test('privacy: visitor intelligence never exposes IP, User-Agent, referrer, UTM, authority or identity keys', async () => {
+  const db = visitorDb();
+  const vi = db.sessions.find((s) => s.id === 'inf-vi')!;
+  vi.browser = 'Chrome';
+  const app = await startApp({ db });
+  try {
+    const res = await app.call({
+      body: { action: 'conversation', sessionId: 'inf-vi' },
+      headers: { 'User-Agent': CHROME_WINDOWS_UA, 'X-Forwarded-For': '198.51.100.77' },
+    });
+    assert.equal(res.status, 200);
+    for (const forbidden of [
+      '203.0.113.10', '198.51.100.77', 'SECRET-UA', 'Mozilla/5.0', 'AppleWebKit', 'secret-referrer', 'SECRET-GCLID',
+      'SECRET-LANDING-UTM', 'SECRET-QUERY', 'secret-utm', 'utm_', 'SECRET-CAMPAIGN-ID', 'sourceOrigin', 'sourceSite',
+      'sourceChannel', '"tenantId"', 'campaignId', VISITOR_A, 'visitorId', 'userAgent', 'ipAddress', 'referrer',
+      'SECRET INTERNAL NOTE',
+    ]) {
+      assert.ok(!res.text.includes(forbidden), `conversation leaked ${forbidden}`);
+    }
+    const { visitor, session: visit } = res.json.data;
+    assert.deepEqual(Object.keys(visitor).sort(), ['email', 'firstSeenAt', 'lastSeenAt', 'name', 'phone', 'presence', 'returning']);
+    assert.deepEqual(Object.keys(visit).sort(), [
+      'browser', 'currentPage', 'device', 'lastActivityAt', 'location', 'operatingSystem', 'originatingPage', 'startedAt',
+    ]);
+    assert.deepEqual(Object.keys(visit.location).sort(), ['approximate', 'city', 'country', 'region']);
+    assert.ok(!/latitude|longitude|"lat"|"lng"|postcode|postal/i.test(res.text), 'no exact geolocation');
+  } finally {
+    await app.close();
+  }
+});
+
+test('tenant isolation: other-tenant visitor sessions stay unreachable and indistinguishable', async () => {
+  const db = visitorDb();
+  db.sessions.push(session('uk-vi', 'pw-uk', {
+    visitorId: VISITOR_A,
+    email: 'uk-visitor@example.com',
+    phone: '+44 7700 900123',
+    city: 'Manchester',
+    visitorLastSeenAt: new Date(NOW - 10 * 1000),
+  }));
+  const app = await startApp({ db });
+  try {
+    const own = await app.call({ body: { action: 'conversation', sessionId: 'inf-vi' } });
+    assert.equal(own.status, 200);
+    for (const leaked of ['uk-visitor@example.com', '+44 7700 900123', 'Manchester']) assert.ok(!own.text.includes(leaked));
+
+    const bodies: string[] = [];
+    for (const sessionId of ['uk-vi', 'uk-1', 'does-not-exist']) {
+      const res = await app.call({ body: { action: 'conversation', sessionId } });
+      assert.equal(res.status, 404, sessionId);
+      assert.equal(res.json.error.code, 'conversation_not_found');
+      assert.equal(res.json.data, undefined);
+      assert.ok(!res.text.includes('uk-visitor@example.com') && !res.text.includes('Manchester'));
+      const { requestId: _requestId, ...rest } = res.json;
+      bodies.push(JSON.stringify(rest));
+    }
+    assert.equal(new Set(bodies).size, 1);
+  } finally {
+    await app.close();
+  }
+});
+
+test('query behaviour: conversation fetch stays bounded with visitor intelligence', async () => {
+  const db = visitorDb();
+  for (let i = 0; i < 130; i += 1) db.messages.push(message('inf-vi', i % 2 ? 'bot' : 'user', 300 + i));
+  for (let i = 0; i < 25; i += 1) db.sessions.push(session(`inf-history-${i}`, 'pw-infotech', { visitorId: VISITOR_A, createdAt: new Date(NOW - (i + 2) * 86_400_000) }));
+  const app = await startApp({ db });
+  try {
+    app.calls.length = 0;
+    const withIdentity = (await app.call({ body: { action: 'conversation', sessionId: 'inf-vi' } })).json.data;
+    assert.equal(withIdentity.visitor.returning, true);
+    assert.equal(withIdentity.messages.length, 100);
+    assert.deepEqual([...app.calls].sort(), [
+      'countUnansweredVisitorMessages', 'findSession', 'findSessionOwnership', 'findVisitorProfile',
+      'hasEarlierVisitorSession', 'listLatestTranscript',
+    ]);
+
+    app.calls.length = 0;
+    await app.call({ body: { action: 'conversation', sessionId: 'inf-2' } });
+    assert.equal(app.calls.length, 5, `queries: ${app.calls.join(', ')}`);
+    assert.ok(!app.calls.includes('hasEarlierVisitorSession'), 'no identity lookup without a visitorId');
+
+    app.calls.length = 0;
+    await app.call({ body: { action: 'conversation', sessionId: 'uk-1' } });
+    assert.ok(!app.calls.includes('findVisitorProfile'), 'other-tenant sessions are rejected before any visitor read');
+  } finally {
+    await app.close();
+  }
+});
+
+test('dashboard: rows gain only lightweight presence, with no extra queries', async () => {
+  const app = await startApp({ db: visitorDb() });
+  try {
+    app.calls.length = 0;
+    const res = await app.call({ body: { action: 'dashboard' } });
+    const byId = Object.fromEntries(res.json.data.recentConversations.map((r: { sessionId: string }) => [r.sessionId, r]));
+    assert.equal(byId['inf-vi'].visitorPresence, 'online');
+    assert.equal(byId['inf-vi'].lastSeenAt, new Date(NOW - 30 * 1000).toISOString());
+    assert.equal(byId['inf-1'].visitorPresence, 'offline');
+    for (const forbidden of ['meera@example.com', '+44 20', 'London', 'Windows', '"device"', '"location"', '"returning"']) {
+      assert.ok(!res.text.includes(forbidden), `dashboard leaked ${forbidden}`);
+    }
+    assert.ok(!app.calls.includes('findVisitorProfile') && !app.calls.includes('hasEarlierVisitorSession'));
+    assert.equal(app.calls.length, 7);
+  } finally {
+    await app.close();
+  }
+});
+
+test('writes: reply / resolve / reopen responses keep their contract without visitor intelligence', async () => {
+  const app = await startApp({ db: visitorDb() });
+  try {
+    const reply = await app.call({ body: replyBody('inf-vi', 'Happy to help') });
+    assert.equal(reply.status, 200);
+    assert.deepEqual(Object.keys(reply.json.data).sort(), ['action', 'changed', 'clientActionId', 'conversation', 'message', 'replayed']);
+    assert.ok(!('visitor' in reply.json.data.conversation) && !('visitorPresence' in reply.json.data.conversation));
+    assert.ok(!reply.text.includes('meera@example.com'));
+  } finally {
+    await app.close();
+  }
+});
+
+test('wiring: public session / heartbeat persist normalised telemetry; location and authority never come from the body', () => {
+  const server = read('server.ts');
+  const sessionRoute = server.slice(server.indexOf("app.post('/api/chat/session'"), server.indexOf("app.post('/api/chat/heartbeat'"));
+  const heartbeatRoute = server.slice(server.indexOf("app.post('/api/chat/heartbeat'"), server.indexOf("app.get('/api/chat/:sessionId'"));
+  const appointmentRoute = server.slice(server.indexOf("app.post('/api/chat/appointments'"), server.indexOf('app.post(WORDPRESS_CHAT_INTEGRATION_PATH'));
+  for (const [name, route, phoneField] of [['session', sessionRoute, 'phone'], ['heartbeat', heartbeatRoute, 'userPhone']] as const) {
+    assert.match(route, new RegExp(`buildPublicChatVisitorTelemetry\\(req\\.body, \\{ userAgent: req\\.get\\('user-agent'\\), phoneField: '${phoneField}' \\}\\)`), name);
+    assert.match(route, /operatingSystem: telemetry\.operatingSystem/, name);
+    assert.match(route, /visitorId: telemetry\.visitorId/, name);
+    assert.match(route, /visitStartedAt: new Date\(\)/, name);
+    assert.match(route, /\.\.\.toPersistedSourceContext\(sourceContext\)/, name);
+    assert.doesNotMatch(route, /\b(country|region|city|tenantId|market|sourceSite|sourceOrigin|sourceChannel)\s*:/, `${name} writes no client location or authority`);
+    assert.equal((route.match(/user-agent|userAgent/gi) ?? []).length, 2, `${name} reads the User-Agent only to derive labels`);
+  }
+  assert.match(heartbeatRoute, /visitorLastSeenAt: new Date\(\)/);
+  assert.match(appointmentRoute, /const contactPhone = normalizeVisitorPhone\(phone\);/);
+  assert.match(appointmentRoute, /phone: contactPhone \?\? undefined/);
+  const schema = read('prisma/schema.prisma');
+  const chatSession = schema.slice(schema.indexOf('model ChatSession {'), schema.indexOf('model ChatMessage {'));
+  assert.doesNotMatch(chatSession, /userAgent|ipAddress|latitude|longitude|presence\s/i, 'no raw UA, IP, exact location or stored presence');
+  assert.match(chatSession, /@@index\(\[tenantId, visitorId\]\)/);
 });

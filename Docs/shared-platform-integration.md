@@ -314,6 +314,18 @@ Request:
 
 Response: same shape as heartbeat. Visitor name, email and attribution are stored but not echoed back.
 
+**Visitor telemetry on `session` / `heartbeat` (optional, additive).**
+
+| Field | Endpoint | Rule |
+|---|---|---|
+| `phone` | `session` | Only when the visitor typed it into a contact field. Trimmed; `+`, digits, spaces, `()`, `-`, `.`; 6 to 15 digits; at most 32 characters. Anything else is `400 invalid_input` (field `phone`). Empty is ignored. |
+| `userPhone` | `heartbeat` | Same rule (field `userPhone`). |
+| `visitorId` | both | Optional browser-generated UUID v4, stored lower-case and used only for tenant-scoped returning-visitor detection. Any other value is ignored. Never returned to any client. |
+
+The server also derives normalised `deviceType` (`desktop` / `mobile` / `tablet`), `browser` (`Chrome`, `Edge`, `Safari`, `Firefox`, `Opera`, `Samsung Internet`) and `operatingSystem` (`Windows`, `macOS`, `iOS`, `Android`, `Linux`, `ChromeOS`) from the request `User-Agent` header. Client-sent `deviceType` / `browser` still take precedence; the server values only fill gaps. The raw header is never stored. Unrecognised agents leave the fields unset. `visitStartedAt` is set when the session is created. Location (`country` / `region` / `city`), `tenantId`, `market`, `sourceSite`, `sourceOrigin` and `sourceChannel` are never read from the body.
+
+`POST /api/chat/appointments` copies the visitor-entered `phone` onto the chat session when it passes the same phone rule (the appointment request keeps its own copy as before).
+
 **`GET /api/chat/:sessionId`**
 
 Returns the visitor-visible message history (internal admin notes are excluded). An unknown UUID v4 returns `[]`.
@@ -595,7 +607,9 @@ An empty tenant returns `200` with `recentConversations: []` and `attention.coun
       "lastActivityAt": "2026-10-04T08:00:00.000Z",
       "status": "waiting_for_team",
       "needsAttention": true,
-      "messageCount": 2
+      "messageCount": 2,
+      "visitorPresence": "offline",
+      "lastSeenAt": "2026-10-04T08:01:00.000Z"
     }
   ],
   "limits": { "recentConversations": 20, "transcriptMessages": 100 },
@@ -607,7 +621,7 @@ An empty tenant returns `200` with `recentConversations: []` and `attention.coun
 }
 ```
 
-- `recentConversations`: the 20 `pw-infotech` conversations with the most recent visible (non-internal) message, newest first. Sessions with no messages (heartbeat only) are not conversations and are not listed. No transcripts.
+- `recentConversations`: the 20 `pw-infotech` conversations with the most recent visible (non-internal) message, newest first. Sessions with no messages (heartbeat only) are not conversations and are not listed. No transcripts. Each row carries only lightweight visitor presence (`visitorPresence`, `lastSeenAt`, see K.7); contact details, device and location are loaded by `conversation` only.
 - `service.status`: `healthy` when the database answered, the tenant is active, the chat capability is enabled and chat can accept messages; `degraded` when the tenant's chat capability is disabled or presence mode is `offline`. If the database fails the action returns `503` instead (unavailable).
 - `fullAdmin`: the Admin UI does not support deep links to the Chats tab or a preselected entity (the entity selector defaults to Primewayz UK and only `?tab=autopilot|conversion` is read). `tenantPreselected: false` tells WordPress to instruct staff to choose "Primewayz Infotech" in the Admin selector.
 
@@ -642,6 +656,25 @@ An empty tenant returns `200` with `recentConversations: []` and `attention.coun
     "status": "team_replied",
     "needsAttention": false
   },
+  "visitor": {
+    "presence": "online",
+    "lastSeenAt": "2026-10-04T08:15:30.000Z",
+    "firstSeenAt": "2026-10-04T07:58:00.000Z",
+    "returning": null,
+    "name": "Meera Shah",
+    "email": "meera@example.com",
+    "phone": null
+  },
+  "session": {
+    "startedAt": "2026-10-04T07:58:00.000Z",
+    "currentPage": "/contact",
+    "originatingPage": "/services/crm",
+    "lastActivityAt": "2026-10-04T08:15:00.000Z",
+    "device": "desktop",
+    "browser": "Chrome",
+    "operatingSystem": "Windows",
+    "location": { "city": null, "region": null, "country": null, "approximate": true }
+  },
   "messages": [
     { "id": 123, "actor": "visitor", "text": "...", "createdAt": "...", "edited": false, "deleted": false, "replyToId": null }
   ],
@@ -650,12 +683,29 @@ An empty tenant returns `200` with `recentConversations: []` and `attention.coun
 }
 ```
 
-- Only sessions owned by `pw-infotech` are returned; anything else is `404 conversation_not_found`.
+- Only sessions owned by `pw-infotech` are returned; anything else is `404 conversation_not_found`. `visitor` and `session` are read under the same ownership check; another tenant's visitor data is never read or returned.
+- `conversation`, `messages`, `hasMore` and `messageLimit` are unchanged; `visitor` and `session` are additive (API version stays `"1"`). Unknown values are `null`, never invented, so WordPress can show "Not reported" / "Not provided".
 - Latest 100 visible messages, oldest first; `hasMore: true` when older messages exist. Full history stays in UK Admin.
 - Internal notes are never returned. A reply that quotes an internal note has `replyToId: null`.
 - Deleted messages return `text: "Message deleted"`, `deleted: true`. `edited` is true for edited, non-deleted messages.
 - Attachments are omitted in Phase 1 (no file paths or URLs).
 - `text` is the stored plain text. WordPress must escape it on output (`esc_html`).
+
+**Visitor intelligence** (`src/lib/chat/visitorIntelligence.ts`, derived server-side; WordPress must not recompute it):
+
+| Field | Source |
+|---|---|
+| `visitor.presence` | From `visitorLastSeenAt` (updated by the 30-second widget heartbeat and visitor messages) at request time: `null` gives `unknown`; age up to 75 seconds `online`; over 75 seconds up to 5 minutes `idle`; over 5 minutes `offline`. Never stored. |
+| `visitor.lastSeenAt` | `visitorLastSeenAt` |
+| `visitor.firstSeenAt` | Session `createdAt` |
+| `visitor.returning` | `true` when this tenant has an earlier session (older `createdAt`) with the same stable `visitorId`; `false` when it has none; `null` when the session has no `visitorId`. Never derived from name or email, never across tenants. |
+| `visitor.name` | Visitor-supplied name; `null` when empty or containing `@` |
+| `visitor.email` / `visitor.phone` | Only values the visitor explicitly supplied in this session |
+| `session.startedAt` | `visitStartedAt`, else `createdAt` |
+| `session.currentPage` / `session.originatingPage` | Path only of `currentPageUrl` / `firstLandingPage` (no query string or fragment) |
+| `session.lastActivityAt` | Same value as `conversation.lastActivityAt` |
+| `session.device` / `browser` / `operatingSystem` | Fixed labels only (J.4); any other stored value (for example a raw user agent) returns `null` |
+| `session.location` | Approximate, service-provider-derived city / region / country; `approximate` is always `true`. IP geolocation is not enabled in this release, so all three are `null`. Browser GPS is never used. |
 
 ### K.8 `diagnostics`
 
@@ -676,7 +726,9 @@ Diagnostics returns `200` once the credential is valid, even if the database is 
 
 ### K.9 PII rules
 
-Never returned by any action: visitor email, phone, IP address, user agent / browser, device, referrer, UTM values, query strings of landing pages, internal notes, internal database ids other than message ids, tenant attribution fields, attachment paths.
+Never returned by any action: IP address, raw user agent, exact geolocation, `visitorId`, referrer, UTM values, query strings of landing pages, internal notes, internal database ids other than message ids, tenant attribution fields, authentication / session secrets, attachment paths.
+
+Returned only by `conversation` (in `visitor` / `session`, K.7): the visitor's explicitly supplied email and phone, normalised device / browser / OS labels and approximate location. `dashboard`, write responses and audit logs never include them.
 
 - `visitorLabel`: the visitor's name, unless empty or containing `@`; otherwise `Visitor • ` plus a 6-character hash of the session id (not reversible).
 - `originatingPage`: path only (first landing page, else current page).
@@ -721,7 +773,7 @@ For an emergency revocation, clear both variables and restart; every call return
 
 ### K.13 Query strategy
 
-`dashboard` runs a fixed set of queries regardless of volume: one `GROUP BY sessionId` over visible messages for the tenant (latest activity, limited to 20), one tenant-wide attention `COUNT`, then batched lookups for the selected sessions only (session details, latest message per session, unanswered-visitor counts, visible message counts), plus two `findFirst` presence reads. `conversation` runs an ownership lookup, a tenant-scoped session read, one bounded message read (101 rows) and one unanswered count. Read actions never write to the database.
+`dashboard` runs a fixed set of queries regardless of volume: one `GROUP BY sessionId` over visible messages for the tenant (latest activity, limited to 20), one tenant-wide attention `COUNT`, then batched lookups for the selected sessions only (session details, latest message per session, unanswered-visitor counts, visible message counts), plus two `findFirst` presence reads. `conversation` runs an ownership lookup, a tenant-scoped session read, then in parallel one bounded message read (101 rows), one unanswered count and one tenant-scoped visitor profile read (allow-listed columns), plus one indexed `(tenantId, visitorId)` earlier-session lookup only when the session has a `visitorId`. Read actions never write to the database.
 
 ### K.14 Delegated writes: `reply`, `resolve`, `reopen`
 

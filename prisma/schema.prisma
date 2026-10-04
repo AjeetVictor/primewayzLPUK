@@ -278,6 +278,13 @@ model ChatSession {
   sourceOrigin      String?                   @db.VarChar(255)
   sourceChannel     String?                   @db.VarChar(64)
   campaignId        String?                   @db.VarChar(191)
+  phone             String?                   @db.VarChar(32)
+  operatingSystem   String?                   @db.VarChar(80)
+  country           String?                   @db.VarChar(80)
+  region            String?                   @db.VarChar(120)
+  city              String?                   @db.VarChar(120)
+  visitorId         String?                   @db.VarChar(64)
+  visitStartedAt    DateTime?
   closedAt          DateTime?
   closedById        Int?
   updatedAt         DateTime                 @updatedAt
@@ -289,6 +296,7 @@ model ChatSession {
   @@index([status])
   @@index([createdAt])
   @@index([tenantId, createdAt])
+  @@index([tenantId, visitorId])
 }
 
 model ChatMessage {

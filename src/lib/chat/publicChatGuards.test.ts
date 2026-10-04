@@ -5,6 +5,7 @@ import { toPersistedSourceContext } from '../platform/sourceContext.ts';
 import {
   assertPublicChatReferencesOwned,
   buildPublicChatSessionSourceData,
+  buildPublicChatVisitorTelemetry,
   enforcePublicChatRateLimit,
   isPermittedAdminChatReplySender,
   isPublicChatClientIpAttributable,
@@ -479,4 +480,50 @@ test('unknown origins cannot resolve a chat tenant', () => {
     () => resolveSourceContext({ origin: 'https://evil.example', sourceChannel: 'chat' }),
     SourceResolutionError,
   );
+});
+
+// --- Visitor telemetry ---
+
+const WINDOWS_CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36';
+
+test('visitor telemetry: User-Agent becomes normalised labels only; the header itself is never returned', () => {
+  const telemetry = buildPublicChatVisitorTelemetry({ sessionId: STRONG_ID }, { userAgent: WINDOWS_CHROME_UA, phoneField: 'phone' });
+  assert.deepEqual(telemetry, { visitorId: undefined, phone: undefined, deviceType: 'desktop', browser: 'Chrome', operatingSystem: 'Windows' });
+  assert.ok(!JSON.stringify(telemetry).includes('Mozilla'));
+  assert.deepEqual(
+    buildPublicChatVisitorTelemetry({}, { userAgent: undefined, phoneField: 'userPhone' }),
+    { visitorId: undefined, phone: undefined, deviceType: undefined, browser: undefined, operatingSystem: undefined },
+    'unknown client context is left unset, not invented',
+  );
+});
+
+test('visitor telemetry: explicit phone is normalised; malformed phone is rejected; empty is ignored', () => {
+  const opts = { userAgent: undefined, phoneField: 'phone' } as const;
+  assert.equal(buildPublicChatVisitorTelemetry({ phone: ' +44 20  7946 0958 ' }, opts).phone, '+44 20 7946 0958');
+  assert.equal(buildPublicChatVisitorTelemetry({ phone: '' }, opts).phone, undefined);
+  assert.equal(buildPublicChatVisitorTelemetry({ phone: '   ' }, opts).phone, undefined);
+  expectGuardError(() => buildPublicChatVisitorTelemetry({ phone: 'call me maybe' }, opts), 400, 'invalid_input');
+  expectGuardError(() => buildPublicChatVisitorTelemetry({ phone: 42 }, opts), 400, 'invalid_input');
+  expectGuardError(() => buildPublicChatVisitorTelemetry({ phone: '1'.repeat(41) }, opts), 400, 'invalid_input');
+  assert.equal(
+    buildPublicChatVisitorTelemetry({ phone: '+44 20 7946 0958' }, { userAgent: undefined, phoneField: 'userPhone' }).phone,
+    undefined,
+    'heartbeat only reads its own userPhone field',
+  );
+  assert.equal(buildPublicChatVisitorTelemetry({ userPhone: '020 7946 0958' }, { userAgent: undefined, phoneField: 'userPhone' }).phone, '020 7946 0958');
+});
+
+test('visitor telemetry: visitorId must be a UUID v4; location and authority fields are never read from the body', () => {
+  const opts = { userAgent: undefined, phoneField: 'phone' } as const;
+  assert.equal(buildPublicChatVisitorTelemetry({ visitorId: STRONG_ID.toUpperCase() }, opts).visitorId, STRONG_ID);
+  for (const visitorId of ['visitor-1', 'someone@example.com', 123, null, 'x'.repeat(64)]) {
+    assert.equal(buildPublicChatVisitorTelemetry({ visitorId }, opts).visitorId, undefined, String(visitorId));
+  }
+  const telemetry = buildPublicChatVisitorTelemetry({
+    country: 'Spoofland', region: 'Fake', city: 'Nowhere', tenantId: 'pw-uk', market: 'UK',
+    sourceSite: 'evil.example', sourceOrigin: 'https://evil.example', sourceChannel: 'admin',
+    operatingSystem: 'TempleOS', deviceType: 'mainframe', browser: 'Mozilla/5.0 RAW',
+  }, opts);
+  assert.deepEqual(Object.keys(telemetry).sort(), ['browser', 'deviceType', 'operatingSystem', 'phone', 'visitorId']);
+  assert.ok(!JSON.stringify(telemetry).match(/Spoofland|Fake|Nowhere|pw-uk|evil|admin|TempleOS|mainframe|RAW/));
 });

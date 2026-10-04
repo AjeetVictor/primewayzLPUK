@@ -90,10 +90,12 @@ import {
 } from './src/lib/integrations/wordpressChatIntegration.ts';
 import { resolveChatPresence } from './src/lib/chat/chatPresence.ts';
 import { publicChatApiCorsMiddleware } from './src/lib/chat/publicChatApiCors.ts';
+import { normalizeVisitorPhone } from './src/lib/chat/visitorIntelligence.ts';
 import {
   assertChatSessionIdShape,
   assertPublicChatReferencesOwned,
   buildPublicChatSessionSourceData,
+  buildPublicChatVisitorTelemetry,
   enforcePublicChatRateLimit,
   PublicChatRequestError,
   toPublicChatSessionResponse,
@@ -2671,6 +2673,7 @@ app.post('/api/chat/session', async (req, res) => {
     assertTenantCapability(sourceContext, 'chat');
     enforceChatRateLimit(req, 'session', sourceContext, sessionId);
     const { name, email } = validateChatSessionInput(req.body);
+    const telemetry = buildPublicChatVisitorTelemetry(req.body, { userAgent: req.get('user-agent'), phoneField: 'phone' });
     await assertChatSessionSource(sessionId, sourceContext);
     const sourceData = buildPublicChatSessionSourceData(req.body);
     const session = await prisma.chatSession.upsert({
@@ -2678,14 +2681,17 @@ app.post('/api/chat/session', async (req, res) => {
       update: {
         name: name || undefined,
         email: email || undefined,
+        phone: telemetry.phone,
         currentPageUrl: sourceData.currentPageUrl,
         referrer: sourceData.referrer,
         utmSource: sourceData.utmSource,
         utmMedium: sourceData.utmMedium,
         utmCampaign: sourceData.utmCampaign,
         utmContent: sourceData.utmContent,
-        deviceType: sourceData.deviceType,
-        browser: sourceData.browser,
+        deviceType: sourceData.deviceType ?? telemetry.deviceType,
+        browser: sourceData.browser ?? telemetry.browser,
+        operatingSystem: telemetry.operatingSystem,
+        visitorId: telemetry.visitorId,
         serviceInterest: sourceData.serviceInterest,
         firstLandingPage: sourceData.firstLandingPage,
       },
@@ -2693,8 +2699,14 @@ app.post('/api/chat/session', async (req, res) => {
         id: sessionId,
         name: name || null,
         email: email || null,
+        phone: telemetry.phone ?? null,
         status: 'new',
         ...sourceData,
+        deviceType: sourceData.deviceType ?? telemetry.deviceType,
+        browser: sourceData.browser ?? telemetry.browser,
+        operatingSystem: telemetry.operatingSystem ?? null,
+        visitorId: telemetry.visitorId ?? null,
+        visitStartedAt: new Date(),
         ...toPersistedSourceContext(sourceContext),
       },
     });
@@ -2720,6 +2732,7 @@ app.post('/api/chat/heartbeat', async (req, res) => {
     assertTenantCapability(sourceContext, 'chat');
     enforceChatRateLimit(req, 'heartbeat', sourceContext, sessionId);
     const { userName, userEmail } = validateChatHeartbeatInput(req.body);
+    const telemetry = buildPublicChatVisitorTelemetry(req.body, { userAgent: req.get('user-agent'), phoneField: 'userPhone' });
     await assertChatSessionSource(sessionId, sourceContext);
     const sourceData = buildPublicChatSessionSourceData(req.body);
     const session = await prisma.chatSession.upsert({
@@ -2728,14 +2741,17 @@ app.post('/api/chat/heartbeat', async (req, res) => {
         visitorLastSeenAt: new Date(),
         name: userName || undefined,
         email: userEmail || undefined,
+        phone: telemetry.phone,
         currentPageUrl: sourceData.currentPageUrl,
         referrer: sourceData.referrer,
         utmSource: sourceData.utmSource,
         utmMedium: sourceData.utmMedium,
         utmCampaign: sourceData.utmCampaign,
         utmContent: sourceData.utmContent,
-        deviceType: sourceData.deviceType,
-        browser: sourceData.browser,
+        deviceType: sourceData.deviceType ?? telemetry.deviceType,
+        browser: sourceData.browser ?? telemetry.browser,
+        operatingSystem: telemetry.operatingSystem,
+        visitorId: telemetry.visitorId,
         serviceInterest: sourceData.serviceInterest,
         firstLandingPage: sourceData.firstLandingPage,
       },
@@ -2743,9 +2759,15 @@ app.post('/api/chat/heartbeat', async (req, res) => {
         id: sessionId,
         name: userName || null,
         email: userEmail || null,
+        phone: telemetry.phone ?? null,
         visitorLastSeenAt: new Date(),
         status: 'new',
         ...sourceData,
+        deviceType: sourceData.deviceType ?? telemetry.deviceType,
+        browser: sourceData.browser ?? telemetry.browser,
+        operatingSystem: telemetry.operatingSystem ?? null,
+        visitorId: telemetry.visitorId ?? null,
+        visitStartedAt: new Date(),
         ...toPersistedSourceContext(sourceContext),
       },
     });
@@ -2876,10 +2898,11 @@ app.post('/api/chat/appointments', async (req, res) => {
     const { name, email, phone, preferredDate, preferredTime, timezone, message } =
       validateChatAppointmentInput(req.body);
     await assertChatSessionSource(sessionId, sourceContext);
+    const contactPhone = normalizeVisitorPhone(phone);
     await prisma.chatSession.upsert({
       where: { id: sessionId },
-      update: { name: name || undefined, email: email || undefined },
-      create: { id: sessionId, name: name || null, email: email || null, ...toPersistedSourceContext(sourceContext) },
+      update: { name: name || undefined, email: email || undefined, phone: contactPhone ?? undefined },
+      create: { id: sessionId, name: name || null, email: email || null, phone: contactPhone, ...toPersistedSourceContext(sourceContext) },
     });
 
     const appointment = await prisma.chatAppointmentRequest.create({
