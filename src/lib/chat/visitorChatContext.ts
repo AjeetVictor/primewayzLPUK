@@ -5,15 +5,19 @@
 
 import type { VisitorChatIntentKey } from './visitorChatIntents.ts';
 
-export type VisitorChatRouteContext = {
+export type VisitorChatRouteContext<TIntent extends string = VisitorChatIntentKey> = {
   key: string;
   match: (pathname: string) => boolean;
   eyebrow?: string;
   greeting: string;
   supportingText: string;
-  suggestedIntent?: VisitorChatIntentKey;
+  suggestedIntent?: TIntent;
   suggestedQuestion?: string;
 };
+
+export function normalizeVisitorChatPathname(pathname: string): string {
+  return normalizePathname(pathname);
+}
 
 function normalizePathname(pathname: string): string {
   if (!pathname) return '/';
@@ -135,15 +139,60 @@ export const VISITOR_CHAT_ROUTE_CONTEXTS: readonly VisitorChatRouteContext[] = [
   },
 ];
 
+/** First matching context wins; `fallback` is returned when nothing matches. */
+export function matchVisitorChatRouteContext<T extends { match: (pathname: string) => boolean }>(
+  pathname: string,
+  contexts: readonly T[],
+  fallback: T,
+): T {
+  const normalized = normalizePathname(pathname);
+  for (const context of contexts) {
+    if (context === fallback) continue;
+    if (context.match(normalized)) return context;
+  }
+  return fallback;
+}
+
 export function resolveVisitorChatRouteContext(
   pathname: string,
 ): VisitorChatRouteContext {
-  const normalized = normalizePathname(pathname);
-  for (const context of VISITOR_CHAT_ROUTE_CONTEXTS) {
-    if (context.key === 'generic') continue;
-    if (context.match(normalized)) return context;
-  }
-  return VISITOR_CHAT_ROUTE_CONTEXTS[VISITOR_CHAT_ROUTE_CONTEXTS.length - 1]!;
+  return matchVisitorChatRouteContext(
+    pathname,
+    VISITOR_CHAT_ROUTE_CONTEXTS,
+    VISITOR_CHAT_ROUTE_CONTEXTS[VISITOR_CHAT_ROUTE_CONTEXTS.length - 1]!,
+  );
+}
+
+/** JSON-safe route context supplied by an embedding site (no functions). */
+export type VisitorChatRouteContextConfig = {
+  key: string;
+  paths?: readonly string[];
+  pathPrefixes?: readonly string[];
+  greeting: string;
+  supportingText?: string;
+  suggestedIntent?: string;
+};
+
+export function buildVisitorChatRouteContexts(
+  configs: readonly VisitorChatRouteContextConfig[],
+): VisitorChatRouteContext<string>[] {
+  return configs.map((config) => {
+    const paths = (config.paths ?? []).map(normalizePathname);
+    const prefixes = (config.pathPrefixes ?? []).map(normalizePathname);
+    return {
+      key: config.key,
+      greeting: config.greeting,
+      supportingText: config.supportingText ?? '',
+      suggestedIntent: config.suggestedIntent,
+      match: (pathname: string) => {
+        const path = normalizePathname(pathname);
+        return (
+          paths.includes(path)
+          || prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
+        );
+      },
+    };
+  });
 }
 
 export function isWebsiteSupportJourneyPath(pathname: string): boolean {

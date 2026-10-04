@@ -67,7 +67,7 @@ import {
   shouldLogRouteClassification,
 } from './src/lib/serverRouteClassification.ts';
 import type { NextFunction, Request, Response } from 'express';
-import { resolveSourceContext, SourceResolutionError, assertChatSessionTenantAccess, assertTenantCapability } from './src/lib/platform/sourceResolver.ts';
+import { resolveSourceContext, SourceResolutionError, assertTenantCapability } from './src/lib/platform/sourceResolver.ts';
 import { toPersistedSourceContext, type PrimewayzSourceChannel, type SourceContext } from './src/lib/platform/sourceContext.ts';
 import { resolveAdminTenantFilter } from './src/lib/platform/adminTenantFilter.ts';
 import { getTenantDisplayName, resolveTenantChatPresentation } from './src/lib/platform/tenantRegistry.ts';
@@ -76,7 +76,24 @@ import { buildOfflineChatBotReply } from './src/lib/chat/visitorChatTypes.ts';
 import { buildPublicPlatformCapabilities } from './src/lib/platform/publicCapabilities.ts';
 import { publicPlatformApiCorsMiddleware } from './src/lib/platform/publicPlatformApiCors.ts';
 import { getAdminNotificationSummary } from './src/lib/admin/adminNotificationSummaryService.ts';
+import { createAdminRequestOriginMiddleware, getAdminAllowedOrigins } from './src/lib/admin/adminRequestOrigin.ts';
+import { createAdminChatRouteHandlers, type AdminChatStore } from './src/lib/admin/adminChatRoutes.ts';
 import { publicChatApiCorsMiddleware } from './src/lib/chat/publicChatApiCors.ts';
+import {
+  assertChatSessionIdShape,
+  assertPublicChatReferencesOwned,
+  buildPublicChatSessionSourceData,
+  enforcePublicChatRateLimit,
+  PublicChatRequestError,
+  toPublicChatSessionResponse,
+  validateChatAppointmentInput,
+  validateChatHeartbeatInput,
+  validateChatRespondInput,
+  validateChatSessionInput,
+  validateExistingOrNewChatSessionId,
+  type PublicChatRateLimitCategory,
+  type PublicChatReferenceStore,
+} from './src/lib/chat/publicChatGuards.ts';
 import {
   getSchedulingAvailability,
   processCalendlyWebhookEvent,
@@ -310,38 +327,6 @@ function formatVisitorMessage(message: {
   };
 }
 
-function buildSessionSourceData(body: Record<string, unknown>) {
-  const pickString = (key: string) =>
-    typeof body[key] === 'string' && body[key] ? (body[key] as string) : undefined;
-
-  return {
-    firstLandingPage: pickString('firstLandingPage'),
-    currentPageUrl: pickString('currentPageUrl'),
-    referrer: pickString('referrer'),
-    utmSource: pickString('utmSource'),
-    utmMedium: pickString('utmMedium'),
-    utmCampaign: pickString('utmCampaign'),
-    utmContent: pickString('utmContent'),
-    deviceType: pickString('deviceType'),
-    browser: pickString('browser'),
-    serviceInterest: pickString('serviceInterest'),
-  };
-}
-
-async function getAdminUserFromRequest(req: AdminRequest) {
-  try {
-    const token = req.cookies?.[adminCookieName];
-    if (!token) return null;
-    const decoded = jwt.verify(token, getJwtSecret()) as { email?: string };
-    if (!decoded.email) return null;
-    const user = await prisma.user.findUnique({ where: { email: decoded.email } });
-    if (!user || !isOperationsRole(user.role)) return null;
-    return user;
-  } catch {
-    return null;
-  }
-}
-
 async function updateConversationStatus(
   sessionId: string,
   status: string,
@@ -463,15 +448,6 @@ function logChatDbFallback(context: string, err: unknown) {
 
 function offlineChatBotReplyForTenant(tenantId: string | null | undefined): string {
   return buildOfflineChatBotReply(resolveTenantChatPresentation(tenantId));
-}
-
-function offlineChatSessionStub(sessionId: string, extra: Record<string, unknown> = {}) {
-  return {
-    id: sessionId,
-    status: 'new',
-    unavailable: true,
-    ...extra,
-  };
 }
 
 async function offlineChatRespondPayload(userText: string, source?: SourceContext) {
@@ -1766,6 +1742,7 @@ async function sendSsrPage(req: Request, res: Response, indexHtml: string, rende
 // --- Middleware ---
 app.use(cookieParser());
 // Honour TRUST_PROXY when explicitly configured (e.g. reverse proxy in production).
+// Public chat / review / audit rate limits key on req.ip, so behind Apache this must be 1.
 if (process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true') {
   app.set('trust proxy', 1);
 }
@@ -1781,6 +1758,12 @@ app.use(
   }),
 );
 app.use(express.urlencoded({ extended: true }));
+// Admin writes (and the POST /api/chat admin reply) must come from the UK admin app itself;
+// SameSite=Lax alone does not stop same-site primewayz.com pages from sending the cookie.
+app.use(createAdminRequestOriginMiddleware({
+  allowedOrigins: getAdminAllowedOrigins({ siteUrl }),
+  allowLocalDevelopment: !isProd,
+}));
 
 // --- API routes: keep these above static files and frontend catch-all ---
 app.post('/api/admin/login', async (req, res) => {
@@ -2034,46 +2017,90 @@ app.post('/api/admin/pricing-content/seed-backlog', requireAdmin, requireRole(is
   }
 });
 
-app.get('/api/admin/chats', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
-  const tenantId = adminTenantId(req);
-  const messages = await prisma.chatMessage.findMany({
-    where: tenantId ? { session: { tenantId } } : {},
-    orderBy: { timestamp: 'desc' },
-    include: {
-      session: {
-        select: {
-          name: true,
-          email: true,
-          status: true,
-          serviceInterest: true,
-          firstLandingPage: true,
-          currentPageUrl: true,
-          tenantId: true,
-          market: true,
-          sourceSite: true,
+const adminChatMessageInclude = {
+  session: {
+    select: {
+      name: true,
+      email: true,
+      status: true,
+      serviceInterest: true,
+      firstLandingPage: true,
+      currentPageUrl: true,
+      tenantId: true,
+      market: true,
+      sourceSite: true,
+    },
+  },
+  ...chatMessageInclude,
+};
+
+const adminChatStore: AdminChatStore = {
+  findSessionOwnership: (sessionId) =>
+    prisma.chatSession.findUnique({ where: { id: sessionId }, select: { id: true, tenantId: true } }),
+  listMessages: ({ tenantId }) =>
+    prisma.chatMessage.findMany({
+      where: tenantId ? { session: { tenantId } } : {},
+      orderBy: { timestamp: 'desc' },
+      include: adminChatMessageInclude,
+    }),
+  listSessionMessages: (sessionId) =>
+    prisma.chatMessage.findMany({
+      where: { sessionId },
+      orderBy: { timestamp: 'asc' },
+      include: adminChatMessageInclude,
+    }),
+  listSessions: ({ tenantId }) =>
+    prisma.chatSession.findMany({
+      where: tenantId ? { tenantId } : {},
+      orderBy: { createdAt: 'desc' },
+      include: {
+        messages: {
+          orderBy: { timestamp: 'desc' },
+          take: 1,
+          select: { text: true, timestamp: true, sender: true },
         },
       },
-      ...chatMessageInclude,
-    },
-  });
-  res.json(messages);
+    }),
+  countMessagesInSession: (messageId, sessionId) =>
+    prisma.chatMessage.count({ where: { id: messageId, sessionId } }),
+  countAttachmentsInSession: (attachmentIds, sessionId) =>
+    prisma.chatAttachment.count({ where: { id: { in: attachmentIds }, sessionId } }),
+  createAdminMessage: (input) =>
+    prisma.chatMessage.create({
+      data: {
+        sessionId: input.sessionId,
+        sender: input.sender,
+        text: input.text,
+        answered: true,
+        isInternalNote: input.isInternalNote,
+        replyToId: input.replyToId,
+        attachments: input.attachmentIds
+          ? { connect: input.attachmentIds.map((id) => ({ id })) }
+          : undefined,
+      },
+      include: chatMessageInclude,
+    }),
+};
+
+const adminChatHandlers = createAdminChatRouteHandlers({
+  store: adminChatStore,
+  markVisitorMessagesAnswered: async (sessionId) => {
+    await prisma.chatMessage.updateMany({
+      where: { sessionId, sender: 'user', answered: false },
+      data: { answered: true },
+    });
+    await autoUpdateConversationStatus(sessionId, 'admin_replied');
+  },
+  isDatabaseUnavailableError,
+  logUnavailable: logChatDbFallback,
 });
 
-app.get('/api/admin/sessions', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
-  const tenantId = adminTenantId(req);
-  const sessions = await prisma.chatSession.findMany({
-    where: tenantId ? { tenantId } : {},
-    orderBy: { createdAt: 'desc' },
-    include: {
-      messages: {
-        orderBy: { timestamp: 'desc' },
-        take: 1,
-        select: { text: true, timestamp: true, sender: true },
-      },
-    },
-  });
-  res.json(sessions);
-});
+app.get('/api/admin/chats', requireAdmin, requireRole(isOperationsRole), adminChatHandlers.listMessages);
+
+app.get('/api/admin/sessions', requireAdmin, requireRole(isOperationsRole), adminChatHandlers.listSessions);
+
+// Admin conversation history/refresh: tenant comes from the stored session + admin filter, not Origin.
+app.get('/api/admin/sessions/:sessionId/messages', requireAdmin, requireRole(isOperationsRole), adminChatHandlers.sessionHistory);
 
 app.patch('/api/admin/sessions/:sessionId/status', requireAdmin, requireRole(isOperationsRole), async (req: AdminRequest, res) => {
   const { sessionId } = req.params;
@@ -2485,10 +2512,39 @@ function applyAuditApiCors(req: Request, res: Response): boolean {
   return true;
 }
 
-async function assertChatSessionSource(sessionId: string, sourceContext: SourceContext): Promise<void> {
-  const existing = await prisma.chatSession.findUnique({ where: { id: sessionId }, select: { tenantId: true } });
-  if (!existing) return;
-  assertChatSessionTenantAccess(existing.tenantId, sourceContext);
+async function assertChatSessionSource(sessionId: unknown, sourceContext: SourceContext): Promise<string> {
+  const candidate = assertChatSessionIdShape(sessionId);
+  const existing = await prisma.chatSession.findUnique({ where: { id: candidate }, select: { tenantId: true } });
+  return validateExistingOrNewChatSessionId({
+    sessionId: candidate,
+    existingSession: existing,
+    source: sourceContext,
+  }).sessionId;
+}
+
+const publicChatReferenceStore: PublicChatReferenceStore = {
+  chatAttachment: { count: (args) => prisma.chatAttachment.count(args) },
+  chatMessage: { count: (args) => prisma.chatMessage.count(args) },
+};
+
+function enforceChatRateLimit(
+  req: Request,
+  category: PublicChatRateLimitCategory,
+  sourceContext: SourceContext,
+  sessionId?: unknown,
+): void {
+  enforcePublicChatRateLimit({
+    category,
+    tenantId: sourceContext.tenantId,
+    clientIp: getClientIp(req),
+    sessionId,
+  });
+}
+
+function publicChatGuardFailure(res: Response, error: unknown): Response | null {
+  if (!(error instanceof PublicChatRequestError)) return null;
+  if (error.retryAfterSeconds) res.setHeader('Retry-After', String(error.retryAfterSeconds));
+  return res.status(error.status).json(error.toResponseBody());
 }
 
 app.options('/api/v1/website-audits', (req, res) => {
@@ -2696,21 +2752,26 @@ app.get('/api/chat/availability', async (req, res) => {
   try {
     const sourceContext = resolveRequestSource(req, 'chat');
     assertTenantCapability(sourceContext, 'chat');
+    enforceChatRateLimit(req, 'read', sourceContext);
     res.json(await getChatAvailabilityPayload(sourceContext));
   } catch (error) {
-    return sourceResolutionFailure(res, error) ?? res.status(500).json({ error: 'Failed to load chat availability' });
+    return sourceResolutionFailure(res, error)
+      ?? publicChatGuardFailure(res, error)
+      ?? res.status(500).json({ error: 'Failed to load chat availability' });
   }
 });
 
 app.post('/api/chat/session', async (req, res) => {
-  const { sessionId, name, email } = req.body;
+  const { sessionId } = req.body;
   if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
 
   try {
     const sourceContext = resolveRequestSource(req, 'chat');
     assertTenantCapability(sourceContext, 'chat');
+    enforceChatRateLimit(req, 'session', sourceContext, sessionId);
+    const { name, email } = validateChatSessionInput(req.body);
     await assertChatSessionSource(sessionId, sourceContext);
-    const sourceData = buildSessionSourceData(req.body);
+    const sourceData = buildPublicChatSessionSourceData(req.body);
     const session = await prisma.chatSession.upsert({
       where: { id: sessionId },
       update: {
@@ -2737,25 +2798,29 @@ app.post('/api/chat/session', async (req, res) => {
       },
     });
 
-    return res.json(session);
+    return res.json(toPublicChatSessionResponse(session));
   } catch (err) {
     const sourceFailure = sourceResolutionFailure(res, err);
     if (sourceFailure) return sourceFailure;
+    const guardFailure = publicChatGuardFailure(res, err);
+    if (guardFailure) return guardFailure;
     if (!isDatabaseUnavailableError(err)) throw err;
     logChatDbFallback('Chat session unavailable', err);
-    return res.json(offlineChatSessionStub(sessionId, { name: name || null, email: email || null }));
+    return res.json(toPublicChatSessionResponse({ id: sessionId, status: 'new' }, { unavailable: true }));
   }
 });
 
 app.post('/api/chat/heartbeat', async (req, res) => {
-  const { sessionId, userName, userEmail } = req.body;
+  const { sessionId } = req.body;
   if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
 
   try {
     const sourceContext = resolveRequestSource(req, 'chat');
     assertTenantCapability(sourceContext, 'chat');
+    enforceChatRateLimit(req, 'heartbeat', sourceContext, sessionId);
+    const { userName, userEmail } = validateChatHeartbeatInput(req.body);
     await assertChatSessionSource(sessionId, sourceContext);
-    const sourceData = buildSessionSourceData(req.body);
+    const sourceData = buildPublicChatSessionSourceData(req.body);
     const session = await prisma.chatSession.upsert({
       where: { id: sessionId },
       update: {
@@ -2784,19 +2849,15 @@ app.post('/api/chat/heartbeat', async (req, res) => {
       },
     });
 
-    return res.json(session);
+    return res.json(toPublicChatSessionResponse(session));
   } catch (err) {
     const sourceFailure = sourceResolutionFailure(res, err);
     if (sourceFailure) return sourceFailure;
+    const guardFailure = publicChatGuardFailure(res, err);
+    if (guardFailure) return guardFailure;
     if (!isDatabaseUnavailableError(err)) throw err;
     logChatDbFallback('Chat heartbeat unavailable', err);
-    return res.json(
-      offlineChatSessionStub(sessionId, {
-        name: userName || null,
-        email: userEmail || null,
-        visitorLastSeenAt: new Date().toISOString(),
-      }),
-    );
+    return res.json(toPublicChatSessionResponse({ id: sessionId, status: 'new' }, { unavailable: true }));
   }
 });
 
@@ -2804,6 +2865,7 @@ app.get('/api/chat/:sessionId', async (req, res) => {
   try {
     const sourceContext = resolveRequestSource(req, 'chat');
     assertTenantCapability(sourceContext, 'chat');
+    enforceChatRateLimit(req, 'read', sourceContext, req.params.sessionId);
     await assertChatSessionSource(req.params.sessionId, sourceContext);
     const messages = await prisma.chatMessage.findMany({
       where: { sessionId: req.params.sessionId },
@@ -2818,82 +2880,30 @@ app.get('/api/chat/:sessionId', async (req, res) => {
   } catch (err) {
     const sourceFailure = sourceResolutionFailure(res, err);
     if (sourceFailure) return sourceFailure;
+    const guardFailure = publicChatGuardFailure(res, err);
+    if (guardFailure) return guardFailure;
     if (!isDatabaseUnavailableError(err)) throw err;
     logChatDbFallback('Chat messages unavailable', err);
     return res.json([]);
   }
 });
 
-app.post('/api/chat', async (req: AdminRequest, res) => {
-  const { sessionId, sender, text, replyToId, attachmentIds, isInternalNote } = req.body;
-  if (!sessionId || !sender) return res.status(400).json({ error: 'sessionId and sender are required' });
-
-  try {
-    const wantsInternalNote = Boolean(isInternalNote);
-    let adminUser: { id: number } | null = null;
-    if (wantsInternalNote || sender === 'admin') {
-      adminUser = await getAdminUserFromRequest(req);
-      if (wantsInternalNote && !adminUser) {
-        return res.status(401).json({ error: 'Admin authentication required for internal notes' });
-      }
-    }
-
-    const sourceContext = adminUser
-      ? null
-      : resolveRequestSource(req, 'chat');
-    if (sourceContext) {
-      assertTenantCapability(sourceContext, 'chat');
-      await assertChatSessionSource(sessionId, sourceContext);
-    }
-
-    await prisma.chatSession.upsert({
-      where: { id: sessionId },
-      update: {},
-      create: { id: sessionId, status: 'new', ...(sourceContext ? toPersistedSourceContext(sourceContext) : toPersistedSourceContext(resolveSourceContext({ host: 'uk.primewayz.com', sourceChannel: 'admin' }))) },
-    });
-
-    const message = await prisma.chatMessage.create({
-      data: {
-        sessionId,
-        sender,
-        text: text || 'Shared an attachment',
-        answered: sender === 'admin' || sender === 'bot',
-        isInternalNote: wantsInternalNote,
-        replyToId: replyToId || null,
-        attachments: Array.isArray(attachmentIds)
-          ? { connect: attachmentIds.map((id: number) => ({ id })) }
-          : undefined,
-      },
-      include: chatMessageInclude,
-    });
-
-    if (sender === 'admin' && !wantsInternalNote) {
-      await prisma.chatMessage.updateMany({
-        where: { sessionId, sender: 'user', answered: false },
-        data: { answered: true },
-      });
-      await autoUpdateConversationStatus(sessionId, 'admin_replied');
-    }
-
-    return res.status(201).json(message);
-  } catch (err) {
-    const sourceFailure = sourceResolutionFailure(res, err);
-    if (sourceFailure) return sourceFailure;
-    if (!isDatabaseUnavailableError(err)) throw err;
-    logChatDbFallback('Chat message create unavailable', err);
-    return res.status(503).json({ error: 'Chat is temporarily unavailable', unavailable: true });
-  }
-});
+// Admin reply endpoint (AdminPanel / AdminMobileChat). Visitors post via /api/chat/respond.
+// Replies only to an existing session the admin may access; session attribution is never written.
+app.post('/api/chat', requireAdmin, requireRole(isOperationsRole), adminChatHandlers.reply);
 
 app.post('/api/chat/respond', async (req, res) => {
-  const { sessionId, message, userName, attachmentIds, replyToId } = req.body;
+  const { sessionId, message } = req.body;
   if (!sessionId || !message) return res.status(400).json({ error: 'sessionId and message are required' });
 
   let sourceContext: SourceContext | undefined;
   try {
     sourceContext = resolveRequestSource(req, 'chat');
     assertTenantCapability(sourceContext, 'chat');
+    enforceChatRateLimit(req, 'message', sourceContext, sessionId);
+    const { userName, attachmentIds, replyToId } = validateChatRespondInput(req.body);
     await assertChatSessionSource(sessionId, sourceContext);
+    await assertPublicChatReferencesOwned(publicChatReferenceStore, sessionId, { attachmentIds, replyToId });
     await prisma.chatSession.upsert({
       where: { id: sessionId },
       update: { name: userName || undefined, visitorLastSeenAt: new Date() },
@@ -2906,9 +2916,9 @@ app.post('/api/chat/respond', async (req, res) => {
         sender: 'user',
         text: message,
         answered: false,
-        replyToId: replyToId || null,
-        attachments: Array.isArray(attachmentIds)
-          ? { connect: attachmentIds.map((id: number) => ({ id })) }
+        replyToId,
+        attachments: attachmentIds
+          ? { connect: attachmentIds.map((id) => ({ id })) }
           : undefined,
       },
       include: chatMessageInclude,
@@ -2937,6 +2947,8 @@ app.post('/api/chat/respond', async (req, res) => {
   } catch (err) {
     const sourceFailure = sourceResolutionFailure(res, err);
     if (sourceFailure) return sourceFailure;
+    const guardFailure = publicChatGuardFailure(res, err);
+    if (guardFailure) return guardFailure;
     if (!isDatabaseUnavailableError(err)) throw err;
     logChatDbFallback('Chat respond unavailable', err);
     return res.json(await offlineChatRespondPayload(String(message), sourceContext));
@@ -2948,7 +2960,7 @@ app.post('/api/chat/uploads', (_req, res) => {
 });
 
 app.post('/api/chat/appointments', async (req, res) => {
-  const { sessionId, name, email, phone, preferredDate, preferredTime, timezone, message } = req.body;
+  const { sessionId } = req.body;
   if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
 
   try {
@@ -2959,6 +2971,9 @@ app.post('/api/chat/appointments', async (req, res) => {
     if (!scheduling.canBookFromChat) {
       return res.status(403).json({ error: 'Scheduling is not available for this tenant.' });
     }
+    enforceChatRateLimit(req, 'appointment', sourceContext, sessionId);
+    const { name, email, phone, preferredDate, preferredTime, timezone, message } =
+      validateChatAppointmentInput(req.body);
     await assertChatSessionSource(sessionId, sourceContext);
     await prisma.chatSession.upsert({
       where: { id: sessionId },
@@ -2985,6 +3000,8 @@ app.post('/api/chat/appointments', async (req, res) => {
   } catch (err) {
     const sourceFailure = sourceResolutionFailure(res, err);
     if (sourceFailure) return sourceFailure;
+    const guardFailure = publicChatGuardFailure(res, err);
+    if (guardFailure) return guardFailure;
     if (!isDatabaseUnavailableError(err)) throw err;
     logChatDbFallback('Chat appointment unavailable', err);
     return res.status(503).json({ error: 'Chat booking is temporarily unavailable', unavailable: true });

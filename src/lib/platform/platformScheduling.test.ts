@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { createHmac } from 'node:crypto';
 import { buildPublicPlatformCapabilities } from './publicCapabilities.ts';
+import { applyPublicPlatformApiCors, isPublicPlatformOriginAllowed } from './publicPlatformApiCors.ts';
 import { resolveSourceContext, assertChatSessionTenantAccess, SourceResolutionError } from './sourceResolver.ts';
 import { getTenantCapabilities, tenantSupportsCapability } from './tenantCapabilities.ts';
 import { getTenantNotificationRecipient } from './notificationRouting.ts';
@@ -167,6 +168,48 @@ test('public capabilities DTO never exposes secrets', () => {
   assert.equal(serialized.includes('CALENDLY_WEBHOOK'), false);
   assert.equal(serialized.includes('secret'), false);
   assert.equal(serialized.includes('token'), false);
+});
+
+test('public capabilities advertise chat for Primewayz Infotech origins; UK unchanged; unknown rejected', () => {
+  for (const origin of ['https://primewayz.com', 'https://www.primewayz.com']) {
+    const source = resolveSourceContext({ origin, sourceChannel: 'other' });
+    assert.equal(source.sourceSite, 'primewayz.com');
+    const dto = buildPublicPlatformCapabilities(source, {});
+    assert.deepEqual(dto.tenant, {
+      key: 'pw-infotech',
+      displayName: 'Primewayz Infotech',
+      market: 'IN',
+      brand: 'Primewayz',
+    });
+    assert.equal(dto.capabilities.chat, true);
+    assert.equal(dto.scheduling.enabled, false);
+    assert.equal(dto.scheduling.publicBookingUrl, null);
+    assert.equal(getSchedulingAvailability(source, {}).canBookFromChat, false);
+
+    const headers: Record<string, string> = {};
+    const allowed = applyPublicPlatformApiCors(
+      { get: (name: string) => (name.toLowerCase() === 'origin' ? origin : undefined) } as never,
+      { setHeader: (name: string, value: string) => (headers[name] = value) },
+    );
+    assert.equal(allowed, true);
+    assert.equal(headers['Access-Control-Allow-Origin'], origin);
+  }
+
+  const ukDto = buildPublicPlatformCapabilities(
+    resolveSourceContext({ origin: 'https://uk.primewayz.com', sourceChannel: 'other' }),
+    {},
+  );
+  assert.equal(ukDto.tenant.key, 'pw-uk');
+  assert.equal(ukDto.tenant.market, 'UK');
+  assert.equal(ukDto.capabilities.chat, true);
+  assert.equal(ukDto.scheduling.enabled, true);
+
+  assert.throws(
+    () => resolveSourceContext({ origin: 'https://evil.example', sourceChannel: 'other' }),
+    SourceResolutionError,
+  );
+  assert.equal(isPublicPlatformOriginAllowed('https://evil.example'), false);
+  assert.equal(isPublicPlatformOriginAllowed('https://primewayz.com.evil.example'), false);
 });
 
 test('scheduling availability is tenant-owned and provider-neutral', () => {

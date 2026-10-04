@@ -15,6 +15,8 @@ import {
   type ChatStatusFilterKey,
 } from '../lib/chatTypes';
 import { QuotedMessagePreview } from './chat/QuotedMessagePreview';
+import { AdminTenantFilter } from './admin/AdminTenantFilter';
+import { getTenantDisplayName } from '../lib/platform/tenantRegistry';
 import { trackAdminChatReply, trackChatLeadConverted } from '../lib/analytics';
 
 interface CurrentUser {
@@ -43,6 +45,10 @@ export const AdminMobileChat = () => {
   const [unreadBySession, setUnreadBySession] = useState<Record<string, number>>({});
   const [replyingToMessageId, setReplyingToMessageId] = useState<number | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [tenantFilter, setTenantFilter] = useState('pw-uk');
+
+  const tenantQuery = (path: string) =>
+    `${path}${path.includes('?') ? '&' : '?'}tenantId=${encodeURIComponent(tenantFilter)}`;
 
   const checkAuth = async () => {
     try {
@@ -63,8 +69,8 @@ export const AdminMobileChat = () => {
 
   const fetchSessions = async () => {
     const [sessionsRes, messagesRes] = await Promise.all([
-      adminRequest('/api/admin/sessions'),
-      adminRequest('/api/admin/chats'),
+      adminRequest(tenantQuery('/api/admin/sessions')),
+      adminRequest(tenantQuery('/api/admin/chats')),
     ]);
     if (sessionsRes.status === 401 || messagesRes.status === 401) {
       setIsAuthenticated(false);
@@ -96,7 +102,7 @@ export const AdminMobileChat = () => {
     fetchSessions();
     const interval = setInterval(fetchSessions, 5000);
     return () => clearInterval(interval);
-  }, [isAuthenticated, selectedSessionId]);
+  }, [isAuthenticated, selectedSessionId, tenantFilter]);
 
   useEffect(() => {
     if (!selectedSessionId) return;
@@ -156,7 +162,7 @@ export const AdminMobileChat = () => {
     if (!selectedSessionId || !text.trim()) return;
     setIsSending(true);
     try {
-      const res = await fetch(apiUrl('/api/chat'), {
+      const res = await fetch(apiUrl(tenantQuery('/api/chat')), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -379,6 +385,14 @@ export const AdminMobileChat = () => {
             <LogOut className="h-5 w-5 text-zinc-500" />
           </button>
         </div>
+        <AdminTenantFilter
+          value={tenantFilter}
+          onChange={(value) => {
+            setTenantFilter(value);
+            setSelectedSessionId(null);
+          }}
+          className="mt-3 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm text-zinc-700"
+        />
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
           {CHAT_STATUS_FILTERS.map((filter) => (
             <button
@@ -410,6 +424,7 @@ export const AdminMobileChat = () => {
                 <div className="min-w-0">
                   <p className="truncate font-bold text-zinc-900">{session.name || session.email || 'Anonymous visitor'}</p>
                   <p className="truncate text-xs text-zinc-500">
+                    {tenantFilter === 'all' && `${getTenantDisplayName(session.tenantId)} · `}
                     {session.serviceInterest || session.firstLandingPage || session.currentPageUrl || 'No page source'}
                   </p>
                   <p className="mt-2 line-clamp-2 text-sm text-zinc-600">{session.messages[0]?.text || 'No messages yet'}</p>

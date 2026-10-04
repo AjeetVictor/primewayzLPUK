@@ -87,6 +87,11 @@ import {
 } from '../lib/chat/visitorChatMessageReconcile';
 import { resolveVisitorChatPollIntervalMs } from '../lib/chat/visitorChatPolling';
 import {
+  generateChatSessionId,
+  shouldReplaceRejectedChatSessionId,
+} from '../lib/chat/chatSessionId';
+import { PUBLIC_CHAT_INPUT_LIMITS } from '../lib/chat/publicChatInputLimits';
+import {
   isVisitorChatLocalValidationHost,
   reconcileVisitorPollState,
 } from '../lib/chat/visitorChatPollReconcile';
@@ -176,13 +181,48 @@ export const LiveChat = () => {
     null,
   );
 
-  const [sessionId] = useState(() => {
+  const [sessionId, setSessionId] = useState(() => {
     const saved = localStorage.getItem('chat_session_id');
     if (saved) return saved;
-    const newId = Math.random().toString(36).substring(7);
+    const newId = generateChatSessionId();
     localStorage.setItem('chat_session_id', newId);
     return newId;
   });
+  const sessionIdRef = useRef(sessionId);
+  sessionIdRef.current = sessionId;
+
+  // Legacy short ids keep working while the server still knows them. Only an
+  // unknown weak id (400 session_id_invalid) is replaced, once, with a strong id.
+  const replaceRejectedSessionId = async (
+    rejectedSessionId: string,
+    res: Response,
+  ): Promise<string | null> => {
+    if (res.status !== 400) return null;
+    const body = await res.clone().json().catch(() => null);
+    if (!shouldReplaceRejectedChatSessionId(rejectedSessionId, res.status, body)) return null;
+    if (sessionIdRef.current !== rejectedSessionId) return sessionIdRef.current;
+    const nextSessionId = generateChatSessionId();
+    localStorage.setItem('chat_session_id', nextSessionId);
+    sessionIdRef.current = nextSessionId;
+    setSessionId(nextSessionId);
+    return nextSessionId;
+  };
+
+  const postVisitorChat = async (
+    path: string,
+    buildBody: (activeSessionId: string) => Record<string, unknown>,
+  ): Promise<Response> => {
+    const send = (activeSessionId: string) =>
+      fetch(apiUrl(path), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildBody(activeSessionId)),
+      });
+    const firstSessionId = sessionIdRef.current;
+    const res = await send(firstSessionId);
+    const replacementSessionId = await replaceRejectedSessionId(firstSessionId, res);
+    return replacementSessionId ? send(replacementSessionId) : res;
+  };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -261,16 +301,12 @@ export const LiveChat = () => {
 
     const sendVisitorHeartbeat = async () => {
       try {
-        await fetch(apiUrl('/api/chat/heartbeat'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId,
-            userName,
-            userEmail,
-            ...getChatSourcePayload(),
-          }),
-        });
+        await postVisitorChat('/api/chat/heartbeat', (activeSessionId) => ({
+          sessionId: activeSessionId,
+          userName,
+          userEmail,
+          ...getChatSourcePayload(),
+        }));
       } catch (error) {
         if (!cancelled) {
           console.warn('Chat heartbeat failed', error);
@@ -299,6 +335,10 @@ export const LiveChat = () => {
     const fetchHistory = async () => {
       try {
         const res = await fetch(apiUrl(`/api/chat/${sessionId}`));
+        if (await replaceRejectedSessionId(sessionId, res)) {
+          setHistoryLoaded(true);
+          return;
+        }
         if (res.ok) {
           const history = await res.json();
           if (!Array.isArray(history)) {
@@ -391,6 +431,7 @@ export const LiveChat = () => {
       try {
         const res = await fetch(apiUrl(`/api/chat/${sessionId}`));
         if (!res.ok) {
+          if (await replaceRejectedSessionId(sessionId, res)) return;
           pollConsecutiveFailuresRef.current += 1;
           if (pollConsecutiveFailuresRef.current >= 3) {
             setServiceDegraded(true);
@@ -741,16 +782,12 @@ export const LiveChat = () => {
     setContactSaveError('');
 
     try {
-      const res = await fetch(apiUrl('/api/chat/session'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId,
-          name: userName,
-          email: userEmail,
-          ...getChatSourcePayload(),
-        }),
-      });
+      const res = await postVisitorChat('/api/chat/session', (activeSessionId) => ({
+        sessionId: activeSessionId,
+        name: userName,
+        email: userEmail,
+        ...getChatSourcePayload(),
+      }));
       if (!res.ok) {
         setContactSaveStatus('failed');
         setContactSaveError('Could not save your contact details. Please try again.');
@@ -898,20 +935,16 @@ export const LiveChat = () => {
     setAppointmentError('');
 
     try {
-      const res = await fetch(apiUrl('/api/chat/appointments'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId,
-          ...appointmentForm,
-          name: appointmentForm.name || userName,
-          email: appointmentForm.email || userEmail,
-          timezone: resolveAppointmentRequestTimezone(
-            resolveBrowserTimeZone(),
-            availability.tenantId,
-          ),
-        }),
-      });
+      const res = await postVisitorChat('/api/chat/appointments', (activeSessionId) => ({
+        sessionId: activeSessionId,
+        ...appointmentForm,
+        name: appointmentForm.name || userName,
+        email: appointmentForm.email || userEmail,
+        timezone: resolveAppointmentRequestTimezone(
+          resolveBrowserTimeZone(),
+          availability.tenantId,
+        ),
+      }));
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         setAppointmentError(data?.error || 'Could not send appointment request.');
@@ -986,16 +1019,12 @@ export const LiveChat = () => {
     }
 
     try {
-      const res = await fetch(apiUrl('/api/chat/respond'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId,
-          message: userMessage.text,
-          userName: userName || undefined,
-          attachmentIds,
-        }),
-      });
+      const res = await postVisitorChat('/api/chat/respond', (activeSessionId) => ({
+        sessionId: activeSessionId,
+        message: userMessage.text,
+        userName: userName || undefined,
+        attachmentIds,
+      }));
       if (!res.ok) throw new Error('Backend chat request failed');
       const payload = await res.json();
 
@@ -1447,6 +1476,7 @@ export const LiveChat = () => {
                     name="name"
                     autoComplete="name"
                     placeholder="Your name"
+                    maxLength={PUBLIC_CHAT_INPUT_LIMITS.name}
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
                     className="w-full rounded-lg border border-brand-border px-3 py-2.5 text-sm outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
@@ -1462,6 +1492,7 @@ export const LiveChat = () => {
                     name="email"
                     autoComplete="email"
                     placeholder="Work email"
+                    maxLength={PUBLIC_CHAT_INPUT_LIMITS.email}
                     value={userEmail}
                     onChange={(e) => setUserEmail(e.target.value)}
                     className="w-full rounded-lg border border-brand-border px-3 py-2.5 text-sm outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
@@ -1553,6 +1584,7 @@ export const LiveChat = () => {
                       id="chat-appointment-name"
                       name="name"
                       autoComplete="name"
+                      maxLength={PUBLIC_CHAT_INPUT_LIMITS.name}
                       value={appointmentForm.name}
                       onChange={(e) =>
                         setAppointmentForm((prev) => ({ ...prev, name: e.target.value }))
@@ -1568,6 +1600,7 @@ export const LiveChat = () => {
                       name="email"
                       type="email"
                       autoComplete="email"
+                      maxLength={PUBLIC_CHAT_INPUT_LIMITS.email}
                       value={appointmentForm.email}
                       onChange={(e) =>
                         setAppointmentForm((prev) => ({ ...prev, email: e.target.value }))
@@ -1583,6 +1616,7 @@ export const LiveChat = () => {
                       name="tel"
                       type="tel"
                       autoComplete="tel"
+                      maxLength={PUBLIC_CHAT_INPUT_LIMITS.phone}
                       value={appointmentForm.phone}
                       onChange={(e) =>
                         setAppointmentForm((prev) => ({ ...prev, phone: e.target.value }))
@@ -1631,6 +1665,7 @@ export const LiveChat = () => {
                       setAppointmentForm((prev) => ({ ...prev, message: e.target.value }))
                     }
                     placeholder="What would you like to discuss?"
+                    maxLength={PUBLIC_CHAT_INPUT_LIMITS.appointmentMessage}
                     rows={2}
                     className="w-full resize-none rounded-lg border border-brand-border px-3 py-2 text-xs outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40"
                   />
@@ -1705,6 +1740,7 @@ export const LiveChat = () => {
                   onPaste={handlePaste}
                   placeholder="Type your message…"
                   aria-label="Chat message"
+                  maxLength={PUBLIC_CHAT_INPUT_LIMITS.message}
                   className="max-h-[96px] min-h-[44px] flex-1 resize-none rounded-xl border border-brand-border bg-brand-surface px-3 py-2.5 text-sm outline-none transition-[height] duration-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/40 max-[479px]:max-h-[88px] max-[479px]:min-h-[44px] max-[479px]:px-2.5 max-[479px]:py-2"
                 />
                 <button

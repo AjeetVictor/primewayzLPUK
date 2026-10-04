@@ -1043,7 +1043,7 @@ const AdminPanelContent = () => {
     const internalNote = options?.isInternalNote ?? isInternalNoteMode;
     if (!outgoingText.trim() && adminReplyAttachments.length === 0) return;
     try {
-      const res = await fetch(apiUrl('/api/chat'), {
+      const res = await fetch(adminTenantQuery('/api/chat'), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -1360,18 +1360,19 @@ const AdminPanelContent = () => {
 
     const refreshSelectedConversation = async () => {
       try {
-        const response = await fetch(apiUrl(`/api/chat/${selectedConversationId}`));
+        const response = await fetch(
+          adminTenantQuery(`/api/admin/sessions/${encodeURIComponent(selectedConversationId)}/messages`),
+          { credentials: 'include' },
+        );
+        if (response.status === 401) {
+          setIsAuthenticated(false);
+          return;
+        }
         if (!response.ok) return;
         const sessionMessages = await response.json() as ChatMessage[];
         setChatMessages((prev) => [
           ...prev.filter((message) => message.sessionId !== selectedConversationId),
-          ...sessionMessages.map((message) => ({
-            ...message,
-            session: {
-              name: selectedConversation?.name || null,
-              email: selectedConversation?.email || null,
-            },
-          })),
+          ...sessionMessages,
         ]);
       } catch (error) {
         console.error('Failed to refresh selected chat:', error);
@@ -1380,7 +1381,7 @@ const AdminPanelContent = () => {
 
     const interval = setInterval(refreshSelectedConversation, 3000);
     return () => clearInterval(interval);
-  }, [activeTab, isAuthenticated, selectedConversation?.email, selectedConversation?.name, selectedConversationId]);
+  }, [activeTab, isAuthenticated, adminTenantFilter, selectedConversationId]);
 
   const filteredLeads = chatSessions.filter(session => 
     (session.name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||

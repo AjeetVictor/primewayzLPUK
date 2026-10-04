@@ -8,8 +8,8 @@ import type { Request, Response } from 'express';
 import { getTenantByOrigin, PRIMEWAYZ_TENANTS } from '../platform/tenantRegistry.ts';
 import { tenantSupportsCapability } from '../platform/tenantCapabilities.ts';
 
+/** Excludes POST /api/chat: that is the authenticated, same-origin admin reply endpoint. */
 const PUBLIC_CHAT_EXACT_PATHS = new Set([
-  '/api/chat',
   '/api/chat/availability',
   '/api/chat/session',
   '/api/chat/heartbeat',
@@ -53,6 +53,7 @@ export function applyPublicChatApiCors(req: Pick<Request, 'get'>, res: CorsHeade
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Expose-Headers', 'Retry-After');
   res.setHeader('Access-Control-Max-Age', '86400');
   return true;
 }

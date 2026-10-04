@@ -209,7 +209,6 @@ test('requests without Origin continue without ACAO', () => {
 
 test('visitor Chat paths are covered for CORS', () => {
   for (const path of [
-    '/api/chat',
     '/api/chat/availability',
     '/api/chat/session',
     '/api/chat/heartbeat',
@@ -220,4 +219,25 @@ test('visitor Chat paths are covered for CORS', () => {
   ]) {
     assert.equal(isPublicChatCorsPath(path), true, path);
   }
+});
+
+test('admin reply endpoint POST /api/chat is not exposed through public Chat CORS', () => {
+  assert.equal(isPublicChatCorsPath('/api/chat'), false);
+  assert.equal(isPublicChatCorsPath('/api/chat/'), false);
+
+  const req = mockReq({ method: 'OPTIONS', path: '/api/chat', origin: 'https://primewayz.com' });
+  const res = mockRes();
+  let nextCalled = false;
+  publicChatApiCorsMiddleware(req as never, res as never, () => {
+    nextCalled = true;
+  });
+  assert.equal(nextCalled, true);
+  assert.equal(res.headers.has('Access-Control-Allow-Origin'), false);
+});
+
+test('public Chat CORS exposes Retry-After for rate-limited cross-origin clients', () => {
+  const req = mockReq({ method: 'POST', path: '/api/chat/respond', origin: 'https://www.primewayz.com' });
+  const res = mockRes();
+  assert.equal(applyPublicChatApiCors(req as never, res), true);
+  assert.equal(res.headers.get('Access-Control-Expose-Headers'), 'Retry-After');
 });
