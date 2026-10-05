@@ -8,6 +8,7 @@ import {
   ATTENTION_EXCLUDED_STATUSES,
   UNANSWERED_VISITOR_MESSAGE_WHERE,
 } from '../chat/chatOperationalSemantics.ts';
+import { readTenantChatPresence } from '../chat/tenantChatPresenceStore.ts';
 import type { OperationalChatStore, OperationalMessageRow } from './operationalChatService.ts';
 
 const sessionSelect = {
@@ -87,12 +88,9 @@ export function createPrismaOperationalChatStore(prisma: PrismaClient): Operatio
       await prisma.$queryRaw`SELECT 1`;
     },
 
-    async readTeamPresence() {
-      const [setting, latestPresence] = await Promise.all([
-        prisma.chatPresenceSetting.findFirst({ orderBy: { updatedAt: 'desc' }, select: { mode: true } }),
-        prisma.adminPresence.findFirst({ orderBy: { lastSeenAt: 'desc' }, select: { lastSeenAt: true } }),
-      ]);
-      return { mode: setting?.mode ?? null, latestAdminSeenAt: latestPresence?.lastSeenAt ?? null };
+    async readTeamPresence(tenantId) {
+      const { setting, latestAdminSeenAt } = await readTenantChatPresence(prisma, tenantId);
+      return { mode: setting?.mode ?? null, latestAdminSeenAt };
     },
 
     async listRecentActivity({ tenantId, limit }) {

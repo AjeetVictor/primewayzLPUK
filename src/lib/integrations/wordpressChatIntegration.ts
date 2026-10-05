@@ -368,7 +368,7 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
     let team: OperationalTeamPresence | null = null;
     try {
       await deps.store.checkDatabase();
-      team = await getOperationalTeamPresence(deps.store, now());
+      team = await getOperationalTeamPresence(deps.store, tenant.tenantId, now());
     } catch (err) {
       if (!deps.isDatabaseUnavailableError(err) && !(err instanceof Error && err.name.startsWith('PrismaClient'))) throw err;
       databaseReachable = false;
@@ -389,7 +389,7 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
   async function runDashboard(tenant: PlatformTenantConfig) {
     const chatEnabled = tenantSupportsCapability(tenant.tenantId, 'chat');
     const [team, dashboard] = await Promise.all([
-      getOperationalTeamPresence(deps.store, now()),
+      getOperationalTeamPresence(deps.store, tenant.tenantId, now()),
       getOperationalChatDashboard(deps.store, { tenantId: tenant.tenantId, limit: RECENT_CONVERSATIONS_DEFAULT_LIMIT, now: now() }),
     ]);
     const canAcceptMessages = chatEnabled && team.canAcceptMessages;

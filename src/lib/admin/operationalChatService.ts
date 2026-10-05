@@ -71,7 +71,8 @@ export type OperationalSessionActivity = { sessionId: string; lastActivityAt: Da
 
 export type OperationalChatStore = {
   checkDatabase(): Promise<void>;
-  readTeamPresence(): Promise<{ mode: string | null; latestAdminSeenAt: Date | null }>;
+  /** Latest presence rows of exactly this tenant; null/null when it has none (no cross-tenant fallback). */
+  readTeamPresence(tenantId: string): Promise<{ mode: string | null; latestAdminSeenAt: Date | null }>;
   /** Sessions of the tenant ordered by latest visible message, newest first. */
   listRecentActivity(input: { tenantId: string; limit: number }): Promise<OperationalSessionActivity[]>;
   findSessions(input: { tenantId: string; sessionIds: string[] }): Promise<OperationalSessionRow[]>;
@@ -119,9 +120,10 @@ const PRESENCE_STATUS_LABELS = {
 
 export async function getOperationalTeamPresence(
   store: OperationalChatStore,
+  tenantId: string,
   now: number = Date.now(),
 ): Promise<OperationalTeamPresence> {
-  const raw = await store.readTeamPresence();
+  const raw = await store.readTeamPresence(tenantId);
   const presence = resolveChatPresence({ mode: raw.mode, latestAdminSeenAt: raw.latestAdminSeenAt, now });
   return {
     presenceScope: CHAT_PRESENCE_SCOPE,

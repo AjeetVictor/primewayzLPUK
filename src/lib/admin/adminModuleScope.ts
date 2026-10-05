@@ -1,8 +1,8 @@
 /**
  * Admin module scope model for the shared multi-tenant platform.
  *
- * - tenant: filtered by Admin entity selector (forms, audit leads, conversion, chat)
- * - platform: always available; never filtered by entity (user management, chat presence)
+ * - tenant: filtered by Admin entity selector (forms, audit leads, conversion, chat, chat presence)
+ * - platform: always available; never filtered by entity (user management)
  * - pw-uk: Primewayz UK application/content modules (Autopilot, Blog CMS, Blog Comments)
  *
  * Tenant operational modules combine MODULE SCOPE + TENANT CAPABILITY.
@@ -75,8 +75,8 @@ export const PLATFORM_USER_MANAGEMENT_TITLE = 'Platform User Management';
 export const PLATFORM_USER_MANAGEMENT_NOTE =
   'These users administer the shared Primewayz platform and are not associated with the selected business entity.';
 
-export const GLOBAL_CHAT_PRESENCE_NOTE =
-  'Global presence — one team services all Primewayz entities.';
+export const TENANT_CHAT_PRESENCE_NOTE =
+  'Team presence is managed independently for each entity.';
 
 export const SCHEDULING_CONFIG_INACTIVE_NOTE =
   'Scheduling capability is enabled; provider configuration is not active yet.';

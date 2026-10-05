@@ -91,6 +91,12 @@ import {
   wordpressChatMethodNotAllowed,
 } from './src/lib/integrations/wordpressChatIntegration.ts';
 import { resolveChatPresence } from './src/lib/chat/chatPresence.ts';
+import {
+  readOptionalTenantChatPresence,
+  recordTenantAdminHeartbeat,
+  recordTenantChatPresenceSetting,
+  type TenantChatPresenceState,
+} from './src/lib/chat/tenantChatPresenceStore.ts';
 import { publicChatApiCorsMiddleware } from './src/lib/chat/publicChatApiCors.ts';
 import { normalizeVisitorPhone } from './src/lib/chat/visitorIntelligence.ts';
 import {
@@ -359,18 +365,19 @@ function requireRole(canAccess: (role?: string) => boolean) {
   };
 }
 
-async function getChatAvailabilityPayload(source?: SourceContext) {
-  let setting = null;
-  let latestPresence = null;
+/**
+ * Presence is tenant-scoped: public callers use the server-resolved source tenant; Admin callers
+ * pass the concrete tenant from the Admin selector. No tenant → no presence lookup (defaults apply).
+ */
+async function getChatAvailabilityPayload(source?: SourceContext, adminPresenceTenantId?: string) {
+  const presenceTenantId = source?.tenantId ?? adminPresenceTenantId ?? null;
+  let setting: TenantChatPresenceState['setting'] = null;
+  let latestAdminSeenAt: Date | null = null;
   try {
-    [setting, latestPresence] = await Promise.all([
-      prisma.chatPresenceSetting.findFirst({ orderBy: { updatedAt: 'desc' } }),
-      prisma.adminPresence.findFirst({ orderBy: { lastSeenAt: 'desc' } }),
-    ]);
+    ({ setting, latestAdminSeenAt } = await readOptionalTenantChatPresence(prisma, presenceTenantId));
   } catch (err) {
     console.warn('[local-safe] Falling back to default chat availability:', err instanceof Error ? err.message : err);
   }
-  const latestAdminSeenAt = latestPresence?.lastSeenAt ?? null;
   const { mode, hasActiveAdmin, computedStatus, status, canAcceptMessages } = resolveChatPresence({
     mode: setting?.mode,
     latestAdminSeenAt,
@@ -391,10 +398,10 @@ async function getChatAvailabilityPayload(source?: SourceContext) {
     title: status === 'online' ? 'We are online' : status === 'away' ? 'We are away' : status === 'offline' ? 'Chat offline' : 'AI assistant available',
     subtitle: setting?.message || (status === 'online' ? 'A team member is available now.' : 'Leave a message and we will follow up.'),
     responseExpectation: status === 'online' ? 'Usually replies shortly.' : 'We usually respond within one business day.',
-    businessHours: resolveTenantChatPresentation(source?.tenantId).businessHours,
+    businessHours: resolveTenantChatPresentation(presenceTenantId).businessHours,
     canAcceptMessages,
     canBookCall: scheduling.canBookFromChat,
-    tenantId: source?.tenantId ?? null,
+    tenantId: presenceTenantId,
     scheduling: {
       enabled: scheduling.enabled,
       provider: scheduling.provider,
@@ -2220,28 +2227,45 @@ app.delete('/api/admin/users/:id', requireAdmin, requireRole(isSuperAdmin), asyn
   res.json({ success: true });
 });
 
-app.get('/api/admin/chat/availability', requireAdmin, requireRole(isOperationsRole), async (_req, res) => {
-  res.json(await getChatAvailabilityPayload());
+/** Team presence is per entity: "All entities" is not a presence target and is rejected. */
+function resolveAdminPresenceTenantId(req: Request, res: Response): string | null {
+  let tenantId: string | undefined;
+  try {
+    tenantId = adminTenantId(req);
+  } catch (error) {
+    if (sourceResolutionFailure(res, error)) return null;
+    throw error;
+  }
+  if (!tenantId) {
+    res.status(400).json({ error: 'Team presence is managed independently for each entity. Select a specific entity.' });
+    return null;
+  }
+  return tenantId;
+}
+
+app.get('/api/admin/chat/availability', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
+  const tenantId = resolveAdminPresenceTenantId(req, res);
+  if (!tenantId) return;
+  res.json(await getChatAvailabilityPayload(undefined, tenantId));
 });
 
 app.patch('/api/admin/chat/availability', requireAdmin, requireRole(isOperationsRole), async (req: AdminRequest, res) => {
+  const tenantId = resolveAdminPresenceTenantId(req, res);
+  if (!tenantId) return;
   const mode = ['auto', 'online', 'away', 'offline'].includes(req.body.mode) ? req.body.mode : 'auto';
-  await prisma.chatPresenceSetting.create({
-    data: {
-      mode,
-      message: typeof req.body.message === 'string' ? req.body.message : null,
-      updatedById: req.adminUser!.id,
-    },
+  await recordTenantChatPresenceSetting(prisma, {
+    tenantId,
+    mode,
+    message: typeof req.body.message === 'string' ? req.body.message : null,
+    updatedById: req.adminUser!.id,
   });
-  res.json(await getChatAvailabilityPayload());
+  res.json(await getChatAvailabilityPayload(undefined, tenantId));
 });
 
 app.post('/api/admin/presence/heartbeat', requireAdmin, requireRole(isOperationsRole), async (req: AdminRequest, res) => {
-  await prisma.adminPresence.upsert({
-    where: { userId: req.adminUser!.id },
-    update: { lastSeenAt: new Date() },
-    create: { userId: req.adminUser!.id, lastSeenAt: new Date() },
-  });
+  const tenantId = resolveAdminPresenceTenantId(req, res);
+  if (!tenantId) return;
+  await recordTenantAdminHeartbeat(prisma, { tenantId, userId: req.adminUser!.id });
   res.json({ success: true });
 });
 

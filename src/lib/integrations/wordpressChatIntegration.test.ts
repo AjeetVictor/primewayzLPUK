@@ -36,7 +36,7 @@ import {
   toVisitorLabel,
   UNANSWERED_VISITOR_MESSAGE_WHERE,
 } from '../chat/chatOperationalSemantics.ts';
-import { resolveChatPresence } from '../chat/chatPresence.ts';
+import { CHAT_PRESENCE_SCOPE, resolveChatPresence } from '../chat/chatPresence.ts';
 import {
   deriveVisitorClientContext,
   normalizeVisitorBrowser,
@@ -104,7 +104,9 @@ type Db = {
   sessions: SessionRow[];
   messages: MessageRow[];
   operatorActions: ChatOperatorActionRecord[];
-  presence: { mode: string | null; latestAdminSeenAt: Date | null };
+  /** Latest presence state per tenant; a missing tenant has no presence rows. */
+  presence: Record<string, { mode: string | null; latestAdminSeenAt: Date | null }>;
+  presenceReads: string[];
   down: boolean;
 };
 
@@ -196,7 +198,14 @@ function createDb(): Db {
   messages.push(message('uk-1', 'user', 100, { text: 'UK ONLY TEXT' }));
   messages.push(message('rrb-1', 'user', 101, { text: 'RRB ONLY TEXT' }));
   messages.push(message('legacy-1', 'user', 102, { text: 'LEGACY ONLY TEXT' }));
-  return { sessions, messages, operatorActions: [], presence: { mode: 'auto', latestAdminSeenAt: new Date(NOW - 60 * 1000) }, down: false };
+  return {
+    sessions,
+    messages,
+    operatorActions: [],
+    presence: { 'pw-infotech': { mode: 'auto', latestAdminSeenAt: new Date(NOW - 60 * 1000) } },
+    presenceReads: [],
+    down: false,
+  };
 }
 
 function dbDownError(): Error {
@@ -248,7 +257,11 @@ function createMemoryStore(db: Db, calls: string[] = []): OperationalChatStore {
 
   return {
     async checkDatabase() { guard('checkDatabase'); },
-    async readTeamPresence() { guard('readTeamPresence'); return { ...db.presence }; },
+    async readTeamPresence(tenantId) {
+      guard('readTeamPresence');
+      db.presenceReads.push(tenantId);
+      return db.presence[tenantId] ? { ...db.presence[tenantId] } : { mode: null, latestAdminSeenAt: null };
+    },
     async listRecentActivity({ tenantId, limit }) {
       guard('listRecentActivity');
       const latest = new Map<string, Date>();
@@ -884,23 +897,23 @@ test('diagnostics: database failure is reported as unavailable, distinct from an
 
 // --- Presence ---
 
-test('presence: team availability is explicitly platform-wide, never tenant-specific', async () => {
+test('presence: team availability is tenant-scoped and read for the credential-bound pw-infotech tenant', async () => {
   const app = await startApp();
   try {
     const { data } = (await app.call({ body: { action: 'dashboard' } })).json;
     assert.deepEqual(data.team, {
-      presenceScope: 'platform',
+      presenceScope: 'tenant',
       status: 'available',
       mode: 'auto',
       teamMemberRecentlyActive: true,
       canAcceptMessages: true,
     });
-    assert.ok(!JSON.stringify(data.team).includes('pw-infotech'));
-    app.db.presence = { mode: 'auto', latestAdminSeenAt: new Date(NOW - 10 * 60 * 1000) };
+    assert.deepEqual(app.db.presenceReads, ['pw-infotech']);
+    app.db.presence['pw-infotech'] = { mode: 'auto', latestAdminSeenAt: new Date(NOW - 10 * 60 * 1000) };
     const idle = (await app.call({ body: { action: 'dashboard' } })).json.data;
     assert.equal(idle.team.status, 'not_online');
     assert.equal(idle.service.status, 'healthy', 'no team online still accepts messages');
-    app.db.presence = { mode: 'offline', latestAdminSeenAt: new Date(NOW) };
+    app.db.presence['pw-infotech'] = { mode: 'offline', latestAdminSeenAt: new Date(NOW) };
     const offline = (await app.call({ body: { action: 'dashboard' } })).json.data;
     assert.equal(offline.team.status, 'offline');
     assert.equal(offline.service.canAcceptMessages, false);
@@ -910,7 +923,50 @@ test('presence: team availability is explicitly platform-wide, never tenant-spec
   }
 });
 
+test('presence: a recent pw-uk heartbeat never makes the WordPress (pw-infotech) team available', async () => {
+  const app = await startApp();
+  try {
+    app.db.presence = {
+      'pw-uk': { mode: 'online', latestAdminSeenAt: new Date(NOW - 30 * 1000) },
+      rrb: { mode: 'online', latestAdminSeenAt: new Date(NOW - 30 * 1000) },
+    };
+    const before = (await app.call({ body: { action: 'dashboard' } })).json.data;
+    assert.equal(before.team.presenceScope, 'tenant');
+    assert.equal(before.team.status, 'not_online', 'pw-infotech has no rows: defaults apply, no fallback to pw-uk');
+    assert.equal(before.team.mode, 'auto');
+    assert.equal(before.team.teamMemberRecentlyActive, false);
+    const diagnosticsBefore = (await app.call({ body: { action: 'diagnostics' } })).json.data;
+    assert.equal(diagnosticsBefore.team.presenceScope, 'tenant');
+    assert.equal(diagnosticsBefore.team.teamMemberRecentlyActive, false);
+
+    app.db.presence['pw-infotech'] = { mode: 'auto', latestAdminSeenAt: new Date(NOW - 30 * 1000) };
+    const after = (await app.call({ body: { action: 'dashboard' } })).json.data;
+    assert.equal(after.team.status, 'available');
+    assert.equal(after.team.teamMemberRecentlyActive, true);
+    const diagnosticsAfter = (await app.call({ body: { action: 'diagnostics' } })).json.data;
+    assert.equal(diagnosticsAfter.team.status, 'available');
+
+    assert.ok(app.db.presenceReads.length > 0);
+    assert.ok(app.db.presenceReads.every((tenantId) => tenantId === 'pw-infotech'), 'only pw-infotech presence is read');
+  } finally {
+    await app.close();
+  }
+});
+
+test('presence: a tenantId in the WordPress body cannot redirect presence to another tenant', async () => {
+  const app = await startApp();
+  try {
+    app.db.presence = { 'pw-uk': { mode: 'online', latestAdminSeenAt: new Date(NOW) } };
+    const res = await app.call({ body: { action: 'dashboard', tenantId: 'pw-uk' } });
+    assert.equal(res.status, 400);
+    assert.ok(!app.db.presenceReads.includes('pw-uk'));
+  } finally {
+    await app.close();
+  }
+});
+
 test('presence helper preserves the existing availability semantics', () => {
+  assert.equal(CHAT_PRESENCE_SCOPE, 'tenant');
   const recent = new Date(NOW - 60 * 1000);
   const stale = new Date(NOW - 6 * 60 * 1000);
   assert.deepEqual(resolveChatPresence({ mode: null, latestAdminSeenAt: recent, now: NOW }), {

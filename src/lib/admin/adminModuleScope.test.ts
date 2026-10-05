@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  GLOBAL_CHAT_PRESENCE_NOTE,
   PLATFORM_USER_MANAGEMENT_NOTE,
   PLATFORM_USER_MANAGEMENT_TITLE,
   PLATFORM_WIDE_BADGE,
@@ -17,6 +16,7 @@ import {
   resolveUkModuleAvailability,
   shouldLeaveCapabilityDisabledAdminTab,
   shouldLeaveUkOnlyAdminTab,
+  TENANT_CHAT_PRESENCE_NOTE,
 } from './adminModuleScope.ts';
 import {
   AUTOPILOT_ALL_ENTITIES_SCOPE_NOTE,
@@ -113,11 +113,9 @@ test('RentReadBuy tenant-scoped modules follow capability flags', () => {
   assert.equal(isTenantScopedModuleAvailable('rrb'), true);
 });
 
-test('global Chat presence copy remains platform-wide', () => {
-  assert.equal(
-    GLOBAL_CHAT_PRESENCE_NOTE,
-    'Global presence — one team services all Primewayz entities.',
-  );
+test('Chat presence copy is tenant-scoped, never global or platform-wide', () => {
+  assert.equal(TENANT_CHAT_PRESENCE_NOTE, 'Team presence is managed independently for each entity.');
+  assert.doesNotMatch(TENANT_CHAT_PRESENCE_NOTE, /global|platform|all Primewayz entities/i);
   assert.equal(doesPlatformModuleUseTenantFilter(), false);
 });
 

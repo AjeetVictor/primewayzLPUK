@@ -288,6 +288,8 @@ Returns the capabilities response shown in section D.
 }
 ```
 
+Team presence (`status`, `mode`, `hasActiveAdmin`, `latestAdminSeenAt`, `customMessage`) is **tenant-scoped**. The tenant is derived on the server from `Origin` / `Host` only; a `tenantId` in the query or body is never accepted. Only that tenant's latest `ChatPresenceSetting` and `AdminPresence` rows are read. A tenant with no presence rows uses the defaults (`auto`, no active admin, so `assistant`) and never falls back to another tenant's state.
+
 **`POST /api/chat/heartbeat`**
 
 Request:
@@ -495,7 +497,7 @@ The WordPress Admin dashboard uses a different, server-to-server path (section K
 |---|---|---|---|
 | Public visitor integration | Visitor browser on primewayz.com loading `pw-chat.js` | `Origin` resolves `pw-infotech` (J.2); no secrets | Visitor chat via `/api/platform/capabilities` and `/api/chat/*` |
 | WordPress operational integration | Primewayz Integration plugin PHP (wp-admin), server-to-server | Bearer integration credential bound to `pw-infotech` | Read: dashboard, conversation, diagnostics. Delegated write: text reply, resolve, reopen (K.14) |
-| Full Primewayz UK Admin | Primewayz staff in `https://uk.primewayz.com/admin` | Admin cookie plus operations role (J.8) | Full management: replies, notes, edits, deletes, spam, status, alerts, appointments, presence, all tenants |
+| Full Primewayz UK Admin | Primewayz staff in `https://uk.primewayz.com/admin` | Admin cookie plus operations role (J.8) | Full management: replies, notes, edits, deletes, spam, status, alerts, appointments, all tenants. Presence: API supports tenant-scoped presence for `pw-uk`, `pw-infotech` and `rrb`, but the AdminPanel UI does not yet forward the selected `tenantId`, so it only manages `pw-uk` presence (no cross-tenant presence management in the UI yet) |
 
 ```text
 wp-admin browser
@@ -589,7 +591,7 @@ An empty tenant returns `200` with `recentConversations: []` and `attention.coun
 {
   "service": { "status": "healthy", "chatEnabled": true, "canAcceptMessages": true },
   "team": {
-    "presenceScope": "platform",
+    "presenceScope": "tenant",
     "status": "available",
     "mode": "auto",
     "teamMemberRecentlyActive": true,
@@ -625,7 +627,13 @@ An empty tenant returns `200` with `recentConversations: []` and `attention.coun
 - `service.status`: `healthy` when the database answered, the tenant is active, the chat capability is enabled and chat can accept messages; `degraded` when the tenant's chat capability is disabled or presence mode is `offline`. If the database fails the action returns `503` instead (unavailable).
 - `fullAdmin`: the Admin UI does not support deep links to the Chats tab or a preselected entity (the entity selector defaults to Primewayz UK and only `?tab=autopilot|conversion` is read). `tenantPreselected: false` tells WordPress to instruct staff to choose "Primewayz Infotech" in the Admin selector.
 
-**Presence is platform-wide.** `ChatPresenceSetting` and `AdminPresence` have no tenant column, so `team` describes Primewayz team availability across all entities, flagged `presenceScope: "platform"`. Label it "Primewayz team availability", not "Primewayz Infotech admin online". `team.status`: `available` (an Admin heartbeat in the last 5 minutes in auto mode, or mode forced online), `not_online` (auto mode, no recent heartbeat), `away`, `offline` (modes set in UK Admin).
+**Presence is tenant-scoped.** `ChatPresenceSetting` and `AdminPresence` rows carry a `tenantId`, and `team` (flagged `presenceScope: "tenant"`) describes the Primewayz Infotech team only, because the integration credential is bound to `pw-infotech`. A `tenantId` in the request body is rejected (K.3), so WordPress cannot read another entity's presence. Heartbeats and mode changes for Primewayz UK (`pw-uk`) or RentReadBuy (`rrb`) never affect this value, and when `pw-infotech` has no presence rows the defaults apply (`auto`, no recent heartbeat, `not_online`); there is no cross-tenant fallback. `team.status`: `available` (a `pw-infotech` Admin heartbeat in the last 5 minutes in auto mode, or mode forced online), `not_online` (auto mode, no recent heartbeat), `away`, `offline` (the `pw-infotech` presence mode, set through the tenant-scoped Admin presence API below).
+
+**Admin presence routes (backend/API).** `GET` / `PATCH /api/admin/chat/availability?tenantId=<tenant>` and `POST /api/admin/presence/heartbeat?tenantId=<tenant>` accept a concrete tenant through the existing Admin tenant filter (`?tenantId=`, default `pw-uk` when omitted). Reads and writes are isolated to that tenant only; `tenantId=all` ("All entities") is rejected with `400` because presence is never aggregated. The same Admin user keeps an independent heartbeat row per tenant (unique on `tenantId` + `userId`).
+
+**Current Admin UI behaviour.** The existing AdminPanel presence controls and Admin heartbeat do not yet forward the selected entity's `tenantId` to these routes, so they resolve to the default `pw-uk` tenant regardless of the entity selector. Presence managed from the current UI is therefore Primewayz UK only. `pw-infotech` and `rrb` presence can be managed through the tenant-aware backend API, and will be manageable from the Admin UI once it is wired to forward the selected tenant; that frontend wiring is outside the current backend-only phase. Until then, `pw-infotech` has no Admin UI heartbeat or mode changes, so WordPress `team.status` reflects the `pw-infotech` defaults unless the API is called directly.
+
+**Migration.** Presence rows that existed before tenant scoping (migration `20261005120000_tenant_scoped_chat_presence`) were assigned to `pw-uk` only. They were not copied to `pw-infotech` or `rrb`, which start with no presence rows.
 
 **Actors.** `user` maps to `visitor`, `bot` maps to `assistant`, `admin` maps to `team`. The assistant reply is a canned acknowledgement, not LLM output; nothing is labelled AI. Messages with any other sender are omitted.
 
@@ -716,7 +724,7 @@ An empty tenant returns `200` with `recentConversations: []` and `attention.coun
   "authentication": { "valid": true, "integrationId": "primewayz-wordpress", "scopes": ["chat:dashboard", "chat:read", "chat:diagnostics", "chat:reply", "chat:resolve", "chat:reopen"] },
   "tenantBinding": { "tenantId": "pw-infotech", "valid": true, "active": true },
   "chat": { "enabled": true, "canAcceptMessages": true },
-  "team": { "presenceScope": "platform", "status": "available", "mode": "auto", "teamMemberRecentlyActive": true, "canAcceptMessages": true },
+  "team": { "presenceScope": "tenant", "status": "available", "mode": "auto", "teamMemberRecentlyActive": true, "canAcceptMessages": true },
   "database": { "status": "reachable" },
   "fullAdmin": { "url": "https://uk.primewayz.com/admin", "mobileUrl": "https://uk.primewayz.com/admin/chat", "tenantPreselected": false }
 }
@@ -773,7 +781,7 @@ For an emergency revocation, clear both variables and restart; every call return
 
 ### K.13 Query strategy
 
-`dashboard` runs a fixed set of queries regardless of volume: one `GROUP BY sessionId` over visible messages for the tenant (latest activity, limited to 20), one tenant-wide attention `COUNT`, then batched lookups for the selected sessions only (session details, latest message per session, unanswered-visitor counts, visible message counts), plus two `findFirst` presence reads. `conversation` runs an ownership lookup, a tenant-scoped session read, then in parallel one bounded message read (101 rows), one unanswered count and one tenant-scoped visitor profile read (allow-listed columns), plus one indexed `(tenantId, visitorId)` earlier-session lookup only when the session has a `visitorId`. Read actions never write to the database.
+`dashboard` runs a fixed set of queries regardless of volume: one `GROUP BY sessionId` over visible messages for the tenant (latest activity, limited to 20), one tenant-wide attention `COUNT`, then batched lookups for the selected sessions only (session details, latest message per session, unanswered-visitor counts, visible message counts), plus two tenant-scoped `findFirst` presence reads (indexed on `(tenantId, updatedAt)` and `(tenantId, lastSeenAt)`). `conversation` runs an ownership lookup, a tenant-scoped session read, then in parallel one bounded message read (101 rows), one unanswered count and one tenant-scoped visitor profile read (allow-listed columns), plus one indexed `(tenantId, visitorId)` earlier-session lookup only when the session has a `visitorId`. Read actions never write to the database.
 
 ### K.14 Delegated writes: `reply`, `resolve`, `reopen`
 
@@ -817,7 +825,7 @@ WordPress operators act on `pw-infotech` conversations through the same shared s
 
 **Operator audit (`ChatOperatorAction`).** One row per committed action: `integrationId`, `clientActionId`, `requestHash`, `requestId`, `source` (`wordpress_integration`), `tenantId`, `sessionId`, `action`, `actorExternalId`, `actorDisplayName`, `messageId` (reply), `fromStatus`, `toStatus`, `changed`, `createdAt`. No message bodies, emails or credentials. The row and the message / status writes commit or roll back together.
 
-**Not exposed to WordPress** (UK Admin only): presence / availability changes (presence is platform-wide, K.6), internal notes, message edit / delete, spam / block, alert status, assignment, user management, tenant switching, cross-tenant search, attachments, appointment administration.
+**Not exposed to WordPress** (UK Admin only): presence / availability changes (presence is tenant-scoped and read-only for WordPress, K.6), internal notes, message edit / delete, spam / block, alert status, assignment, user management, tenant switching, cross-tenant search, attachments, appointment administration.
 
 ## Follow-up (not required for this foundation)
 

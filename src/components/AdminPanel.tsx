@@ -29,7 +29,7 @@ import { QuotedMessagePreview } from './chat/QuotedMessagePreview';
 import { trackAdminChatReply, trackChatLeadConverted } from '../lib/analytics';
 import { canShowAutopilotTab } from '../lib/autopilot/adminAutopilotCapabilities';
 import {
-  GLOBAL_CHAT_PRESENCE_NOTE,
+  TENANT_CHAT_PRESENCE_NOTE,
   PLATFORM_USER_MANAGEMENT_NOTE,
   PLATFORM_USER_MANAGEMENT_TITLE,
   getPlatformUserManagementAvailability,
@@ -1617,7 +1617,7 @@ const AdminPanelContent = () => {
                 )}
               </p>
               <p className="mt-1 text-[11px] text-zinc-400">
-                {GLOBAL_CHAT_PRESENCE_NOTE}
+                {TENANT_CHAT_PRESENCE_NOTE}
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

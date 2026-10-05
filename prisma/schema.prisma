@@ -380,21 +380,30 @@ model ChatOperatorAction {
   @@index([tenantId, createdAt])
 }
 
+// Team presence is tenant-scoped. A new row is written on every availability change,
+// so tenantId is intentionally not unique; readers take the latest row per tenant.
 model ChatPresenceSetting {
   id          Int      @id @default(autoincrement())
+  tenantId    String   @db.VarChar(32)
   mode        String   @default("auto") // auto / online / away / offline
   message     String?
   updatedById Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([tenantId, updatedAt])
 }
 
 model AdminPresence {
   id         Int      @id @default(autoincrement())
-  userId     Int      @unique
+  tenantId   String   @db.VarChar(32)
+  userId     Int
   lastSeenAt DateTime
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@unique([tenantId, userId])
+  @@index([tenantId, lastSeenAt])
 }
 
 // --- Users ---

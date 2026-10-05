@@ -1,9 +1,10 @@
 /**
  * Chat team presence resolution.
  *
- * Presence is PLATFORM-WIDE: ChatPresenceSetting and AdminPresence have no tenant column,
- * so one Admin heartbeat or mode switch applies to every tenant. Callers must not present
- * the result as tenant-specific availability.
+ * Presence is TENANT-SCOPED: ChatPresenceSetting and AdminPresence rows carry a tenantId, and
+ * callers must resolve presence from the rows of one concrete, already-authorised tenant only.
+ * A tenant without rows resolves from defaults (auto, no active admin) — it never inherits
+ * another tenant's latest state.
  */
 
 export const ADMIN_PRESENCE_ACTIVE_WINDOW_MS = 5 * 60 * 1000;
@@ -11,7 +12,7 @@ export const ADMIN_PRESENCE_ACTIVE_WINDOW_MS = 5 * 60 * 1000;
 export type ChatPresenceMode = 'auto' | 'online' | 'away' | 'offline';
 export type ChatPresenceStatus = 'online' | 'assistant' | 'away' | 'offline';
 
-export const CHAT_PRESENCE_SCOPE = 'platform' as const;
+export const CHAT_PRESENCE_SCOPE = 'tenant' as const;
 
 export type ResolvedChatPresence = {
   mode: ChatPresenceMode;
