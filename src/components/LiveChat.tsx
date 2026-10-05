@@ -88,6 +88,7 @@ import {
 import { resolveVisitorChatPollIntervalMs } from '../lib/chat/visitorChatPolling';
 import {
   generateChatSessionId,
+  isStrongChatSessionId,
   shouldReplaceRejectedChatSessionId,
 } from '../lib/chat/chatSessionId';
 import { PUBLIC_CHAT_INPUT_LIMITS } from '../lib/chat/publicChatInputLimits';
@@ -180,6 +181,19 @@ export const LiveChat = () => {
   const [mobileSheetStyle, setMobileSheetStyle] = useState<MobileSheetViewportStyle | null>(
     null,
   );
+
+  const [visitorId] = useState(() => {
+    const storageKey = 'primewayz_chat_visitor_id';
+    const saved = localStorage.getItem(storageKey);
+
+    if (saved && isStrongChatSessionId(saved)) {
+      return saved.toLowerCase();
+    }
+
+    const nextVisitorId = generateChatSessionId();
+    localStorage.setItem(storageKey, nextVisitorId);
+    return nextVisitorId;
+  });
 
   const [sessionId, setSessionId] = useState(() => {
     const saved = localStorage.getItem('chat_session_id');
@@ -303,6 +317,7 @@ export const LiveChat = () => {
       try {
         await postVisitorChat('/api/chat/heartbeat', (activeSessionId) => ({
           sessionId: activeSessionId,
+          visitorId,
           userName,
           userEmail,
           ...getChatSourcePayload(),
@@ -784,6 +799,7 @@ export const LiveChat = () => {
     try {
       const res = await postVisitorChat('/api/chat/session', (activeSessionId) => ({
         sessionId: activeSessionId,
+        visitorId,
         name: userName,
         email: userEmail,
         ...getChatSourcePayload(),

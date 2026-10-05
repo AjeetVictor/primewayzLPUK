@@ -2023,12 +2023,25 @@ test('wiring: public session / heartbeat persist normalised telemetry; location 
     assert.match(route, new RegExp(`buildPublicChatVisitorTelemetry\\(req\\.body, \\{ userAgent: req\\.get\\('user-agent'\\), phoneField: '${phoneField}' \\}\\)`), name);
     assert.match(route, /operatingSystem: telemetry\.operatingSystem/, name);
     assert.match(route, /visitorId: telemetry\.visitorId/, name);
-    assert.match(route, /visitStartedAt: new Date\(\)/, name);
+    assert.match(route, /resolveVisitStartedAt\(/, `${name} derives visit lifecycle server-side`);
+    assert.match(route, /\bvisitStartedAt,/, `${name} persists derived visit start`);
+    assert.match(
+      route,
+      /resolveApproximateVisitorLocation\(getClientIp\(req\)\)/,
+      `${name} derives approximate location server-side`,
+    );
+    assert.match(route, /city: approximateLocation\?\.city/, name);
+    assert.match(route, /region: approximateLocation\?\.region/, name);
+    assert.match(route, /country: approximateLocation\?\.country/, name);
     assert.match(route, /\.\.\.toPersistedSourceContext\(sourceContext\)/, name);
-    assert.doesNotMatch(route, /\b(country|region|city|tenantId|market|sourceSite|sourceOrigin|sourceChannel)\s*:/, `${name} writes no client location or authority`);
+    assert.doesNotMatch(
+      route,
+      /req\.body\.(country|region|city|tenantId|market|sourceSite|sourceOrigin|sourceChannel)/,
+      `${name} never trusts client location or authority`,
+    );
     assert.equal((route.match(/user-agent|userAgent/gi) ?? []).length, 2, `${name} reads the User-Agent only to derive labels`);
   }
-  assert.match(heartbeatRoute, /visitorLastSeenAt: new Date\(\)/);
+  assert.match(heartbeatRoute, /visitorLastSeenAt: now/);
   assert.match(appointmentRoute, /const contactPhone = normalizeVisitorPhone\(phone\);/);
   assert.match(appointmentRoute, /phone: contactPhone \?\? undefined/);
   const schema = read('prisma/schema.prisma');

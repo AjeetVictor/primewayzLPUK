@@ -1,3 +1,5 @@
+import { resolveApproximateVisitorLocation } from './src/lib/chat/visitorGeo.ts';
+import { resolveVisitStartedAt } from './src/lib/chat/visitorIntelligence.ts';
 import express from 'express';
 import path from 'path';
 import fs from 'fs/promises';
@@ -2675,6 +2677,20 @@ app.post('/api/chat/session', async (req, res) => {
     const { name, email } = validateChatSessionInput(req.body);
     const telemetry = buildPublicChatVisitorTelemetry(req.body, { userAgent: req.get('user-agent'), phoneField: 'phone' });
     await assertChatSessionSource(sessionId, sourceContext);
+    const now = new Date();
+    const existingVisit = await prisma.chatSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        visitorLastSeenAt: true,
+        visitStartedAt: true,
+      },
+    });
+    const visitStartedAt = resolveVisitStartedAt({
+      previousVisitStartedAt: existingVisit?.visitStartedAt ?? null,
+      previousLastSeenAt: existingVisit?.visitorLastSeenAt ?? null,
+      now,
+    });
+    const approximateLocation = resolveApproximateVisitorLocation(getClientIp(req));
     const sourceData = buildPublicChatSessionSourceData(req.body);
     const session = await prisma.chatSession.upsert({
       where: { id: sessionId },
@@ -2692,6 +2708,10 @@ app.post('/api/chat/session', async (req, res) => {
         browser: sourceData.browser ?? telemetry.browser,
         operatingSystem: telemetry.operatingSystem,
         visitorId: telemetry.visitorId,
+        visitStartedAt,
+        city: approximateLocation?.city ?? undefined,
+        region: approximateLocation?.region ?? undefined,
+        country: approximateLocation?.country ?? undefined,
         serviceInterest: sourceData.serviceInterest,
         firstLandingPage: sourceData.firstLandingPage,
       },
@@ -2706,7 +2726,10 @@ app.post('/api/chat/session', async (req, res) => {
         browser: sourceData.browser ?? telemetry.browser,
         operatingSystem: telemetry.operatingSystem ?? null,
         visitorId: telemetry.visitorId ?? null,
-        visitStartedAt: new Date(),
+        visitStartedAt,
+        city: approximateLocation?.city ?? null,
+        region: approximateLocation?.region ?? null,
+        country: approximateLocation?.country ?? null,
         ...toPersistedSourceContext(sourceContext),
       },
     });
@@ -2734,11 +2757,25 @@ app.post('/api/chat/heartbeat', async (req, res) => {
     const { userName, userEmail } = validateChatHeartbeatInput(req.body);
     const telemetry = buildPublicChatVisitorTelemetry(req.body, { userAgent: req.get('user-agent'), phoneField: 'userPhone' });
     await assertChatSessionSource(sessionId, sourceContext);
+    const now = new Date();
+    const existingVisit = await prisma.chatSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        visitorLastSeenAt: true,
+        visitStartedAt: true,
+      },
+    });
+    const visitStartedAt = resolveVisitStartedAt({
+      previousVisitStartedAt: existingVisit?.visitStartedAt ?? null,
+      previousLastSeenAt: existingVisit?.visitorLastSeenAt ?? null,
+      now,
+    });
+    const approximateLocation = resolveApproximateVisitorLocation(getClientIp(req));
     const sourceData = buildPublicChatSessionSourceData(req.body);
     const session = await prisma.chatSession.upsert({
       where: { id: sessionId },
       update: {
-        visitorLastSeenAt: new Date(),
+        visitorLastSeenAt: now,
         name: userName || undefined,
         email: userEmail || undefined,
         phone: telemetry.phone,
@@ -2752,6 +2789,10 @@ app.post('/api/chat/heartbeat', async (req, res) => {
         browser: sourceData.browser ?? telemetry.browser,
         operatingSystem: telemetry.operatingSystem,
         visitorId: telemetry.visitorId,
+        visitStartedAt,
+        city: approximateLocation?.city ?? undefined,
+        region: approximateLocation?.region ?? undefined,
+        country: approximateLocation?.country ?? undefined,
         serviceInterest: sourceData.serviceInterest,
         firstLandingPage: sourceData.firstLandingPage,
       },
@@ -2760,14 +2801,17 @@ app.post('/api/chat/heartbeat', async (req, res) => {
         name: userName || null,
         email: userEmail || null,
         phone: telemetry.phone ?? null,
-        visitorLastSeenAt: new Date(),
+        visitorLastSeenAt: now,
         status: 'new',
         ...sourceData,
         deviceType: sourceData.deviceType ?? telemetry.deviceType,
         browser: sourceData.browser ?? telemetry.browser,
         operatingSystem: telemetry.operatingSystem ?? null,
         visitorId: telemetry.visitorId ?? null,
-        visitStartedAt: new Date(),
+        visitStartedAt,
+        city: approximateLocation?.city ?? null,
+        region: approximateLocation?.region ?? null,
+        country: approximateLocation?.country ?? null,
         ...toPersistedSourceContext(sourceContext),
       },
     });

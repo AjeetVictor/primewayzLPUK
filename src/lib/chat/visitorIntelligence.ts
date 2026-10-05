@@ -13,6 +13,33 @@ import { isStrongChatSessionId } from './chatSessionId.ts';
 export const VISITOR_ONLINE_WINDOW_MS = 75 * 1000;
 export const VISITOR_IDLE_WINDOW_MS = 5 * 60 * 1000;
 
+/**
+ * A website visit is considered continuous until the visitor has been absent
+ * for more than 30 minutes. This does not create a new chat conversation.
+ */
+export const VISITOR_VISIT_INACTIVITY_MS = 30 * 60 * 1000;
+
+export function resolveVisitStartedAt(input: {
+  previousVisitStartedAt: Date | string | null | undefined;
+  previousLastSeenAt: Date | string | null | undefined;
+  now?: Date;
+}): Date {
+  const now = input.now ?? new Date();
+  const previousStart = toValidDate(input.previousVisitStartedAt);
+  const previousSeen = toValidDate(input.previousLastSeenAt);
+
+  if (!previousStart) return now;
+  if (!previousSeen) return previousStart;
+
+  const inactivityMs = now.getTime() - previousSeen.getTime();
+
+  if (inactivityMs > VISITOR_VISIT_INACTIVITY_MS) {
+    return now;
+  }
+
+  return previousStart;
+}
+
 export type VisitorPresence = 'online' | 'idle' | 'offline' | 'unknown';
 
 function toValidDate(value: Date | string | null | undefined): Date | null {
