@@ -32,6 +32,12 @@ export type PwChatIntentConfig = { key: string; label: string };
 
 export type PwChatPageContext = { greeting: string; supportingText: string };
 
+/** Host floating controls the launcher must clear, and a minimum bottom offset. */
+export type PwChatLauncherConfig = {
+  collisionSelectors: string[];
+  bottomOffsetPx: number | null;
+};
+
 export type PwChatEmbedConfig = {
   apiBaseUrl: string;
   siteKey: string;
@@ -43,6 +49,7 @@ export type PwChatEmbedConfig = {
   pageContext: PwChatPageContext | null;
   contexts: VisitorChatRouteContextConfig[];
   intents: PwChatIntentConfig[];
+  launcher: PwChatLauncherConfig;
 };
 
 const KEY_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/i;
@@ -50,6 +57,8 @@ const STORAGE_KEY_PATTERN = /^[A-Za-z0-9_.:-]{1,100}$/;
 const MAX_INTENTS = 6;
 const MAX_CONTEXTS = 30;
 const MAX_CONTEXT_PATHS = 20;
+const MAX_COLLISION_SELECTORS = 8;
+const MAX_BOTTOM_OFFSET_PX = 240;
 
 type Json = Record<string, unknown>;
 
@@ -145,7 +154,25 @@ function parseContexts(value: unknown): VisitorChatRouteContextConfig[] {
   return contexts;
 }
 
-function parseIntents(value: unknown): PwChatIntentConfig[] {
+/** Selectors are only ever passed to querySelectorAll, which rejects invalid syntax safely. */
+export function parseLauncherConfig(value: unknown): PwChatLauncherConfig {
+  const launcher: PwChatLauncherConfig = { collisionSelectors: [], bottomOffsetPx: null };
+  if (!isPlainObject(value)) return launcher;
+  if (Array.isArray(value.collisionSelectors)) {
+    for (const item of value.collisionSelectors) {
+      if (launcher.collisionSelectors.length >= MAX_COLLISION_SELECTORS) break;
+      const selector = boundedString(item, 200);
+      if (selector && !launcher.collisionSelectors.includes(selector)) launcher.collisionSelectors.push(selector);
+    }
+  }
+  const offset = value.bottomOffsetPx;
+  if (typeof offset === 'number' && Number.isFinite(offset) && offset >= 0) {
+    launcher.bottomOffsetPx = Math.min(MAX_BOTTOM_OFFSET_PX, Math.round(offset));
+  }
+  return launcher;
+}
+
+export function parseIntentList(value: unknown): PwChatIntentConfig[] {
   if (!Array.isArray(value)) return [];
   const intents: PwChatIntentConfig[] = [];
   for (const item of value) {
@@ -182,7 +209,8 @@ export function parsePwChatConfig(raw: unknown): PwChatEmbedConfig | null {
     storageKeys: parseStorageKeys(raw.storageKeys),
     pageContext: parsePageContext(raw.pageContext),
     contexts: parseContexts(raw.contexts),
-    intents: parseIntents(raw.intents),
+    intents: parseIntentList(raw.intents),
+    launcher: parseLauncherConfig(raw.launcher),
   };
 }
 

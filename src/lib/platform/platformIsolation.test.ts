@@ -121,7 +121,7 @@ test('RRB notification never falls back to UK or Infotech recipients', () => {
 test('admin filter options expose only active tenants plus all', () => {
   assert.deepEqual(
     ADMIN_TENANT_FILTER_OPTIONS.map((option) => option.value),
-    ['pw-uk', 'pw-infotech', 'rrb', 'all'],
+    ['pw-uk', 'pw-infotech', 'rrb', 'rrb-silver-campaign', 'all'],
   );
 });
 

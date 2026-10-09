@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
 import { Window as HappyDomWindow } from 'happy-dom';
 import { isStrongChatSessionId } from '../../lib/chat/chatSessionId.ts';
+import { RRB_SILVER_APPROVED_ANSWERS, RRB_SILVER_CHAT_WIDGET } from '../../lib/chat/tenantContent/rrbSilverCampaign.ts';
 import { VISITOR_CHAT_HUMAN_JOINED_NOTICE } from '../../lib/chat/visitorChatIdentity.ts';
 import { VISITOR_CHAT_PROHIBITED_ANALYTICS_KEYS } from '../../lib/chat/visitorChatAnalyticsCore.ts';
 import { PW_CHAT_EMBED_ANALYTICS_EVENTS } from './analytics.ts';
@@ -190,7 +191,7 @@ test('boot: script loaded twice creates exactly one widget', async () => {
   assert.equal(win.document.querySelectorAll('#pw-chat-root').length, 1);
   assert.equal(backend.calls.filter((c) => c.path === '/api/platform/capabilities').length, 1);
   const api = (win as unknown as { PrimewayzChat: { version: string; open: unknown; close: unknown } }).PrimewayzChat;
-  assert.deepEqual(Object.keys(api).sort(), ['close', 'open', 'version']);
+  assert.deepEqual(Object.keys(api).sort(), ['close', 'open', 'registerObstacle', 'version']);
 });
 
 test('boot: requests go to the configured UK API with credentials omit and no-store', async () => {
@@ -700,4 +701,323 @@ test('restore: panel open state persists across pages on desktop only', async ()
   const b = await boot(mobile);
   assert.equal(q(b.handle!, '.pw-chat-panel')!.hidden, true);
   assert.equal(mobile.document.body.style.position, '');
+});
+
+// --- Tenant branding: RentReadBuy Silver campaign (rrb-silver-campaign) ---
+
+const SILVER_CONFIG = {
+  apiBaseUrl: API,
+  siteKey: 'rentreadbuy-silver',
+  siteName: 'RentReadBuy Silver Membership',
+  pageUrl: 'https://silver-preview.example.test/',
+  pageType: 'silver_membership_landing',
+  isFrontPage: true,
+  storageKeys: {
+    sessionId: 'rrb_silver_chat_session_id',
+    visitorName: 'rrb_silver_chat_visitor_name',
+    visitorEmail: 'rrb_silver_chat_visitor_email',
+    panelOpen: 'rrb_silver_chat_panel_open',
+    openTracked: 'rrb_silver_chat_open_tracked',
+    firstLanding: 'rrb_silver_chat_first_landing',
+  },
+  pageContext: {
+    greeting: 'Questions about Silver Membership?',
+    supportingText: 'Ask about Silver: ₹899 for 3 months, with up to 2 physical books at a time.',
+  },
+  intents: RRB_SILVER_CHAT_WIDGET.intents.map(({ key, label }) => ({ key, label })),
+};
+
+function silverWindow(options: { width?: number; storage?: Record<string, string> } = {}) {
+  return createWindow({ config: SILVER_CONFIG, url: 'https://silver-preview.example.test/', ...options });
+}
+
+function silverBackend(routes: Parameters<typeof createBackend>[0] = {}) {
+  return createBackend({
+    'GET /api/platform/capabilities': () => ({
+      status: 200,
+      body: { tenant: { key: 'rrb-silver-campaign' }, capabilities: { chat: true, scheduling: false }, chatWidget: RRB_SILVER_CHAT_WIDGET },
+    }),
+    'GET /api/chat/availability': () => ({ status: 200, body: availability({ tenantId: 'rrb-silver-campaign', businessHours: 'Mon-Fri, India business hours' }) }),
+    ...routes,
+  });
+}
+
+/** Every visible string and accessible label in the widget, excluding the stylesheet. */
+function visitorFacingText(handle: PwChatWidgetHandle): string {
+  const root = q(handle, '.pw-chat-root')!;
+  const parts = [root.textContent ?? ''];
+  for (const node of Array.from(root.querySelectorAll('*'))) {
+    for (const name of ['aria-label', 'placeholder', 'title', 'alt']) {
+      const value = node.getAttribute(name);
+      if (value) parts.push(value);
+    }
+  }
+  return parts.join(' | ');
+}
+
+test('branding: campaign tenant renders RentReadBuy title, greeting, intents and palette with no Primewayz text', async () => {
+  const win = silverWindow();
+  const { handle } = await boot(win, silverBackend());
+  assert.ok(handle);
+  handle.open();
+  await flush();
+  assert.equal(q(handle, '.pw-chat-title')!.textContent, 'RentReadBuy Reading Assistant');
+  assert.equal(q(handle, '.pw-chat-intro-greeting')!.textContent, 'Questions about Silver Membership?');
+  assert.match(q(handle, '.pw-chat-intro-text')!.textContent ?? '', /₹899 for 3 months/);
+  assert.deepEqual(
+    Array.from(handle.shadow.querySelectorAll('.pw-chat-intent')).map((n) => n.textContent),
+    RRB_SILVER_CHAT_WIDGET.intents.map((intent) => intent.label),
+  );
+  assert.equal(q(handle, '.pw-chat-lead-title')!.textContent, 'Leave your details so the RentReadBuy team can follow up.');
+  assert.match(q(handle, '.pw-chat-launcher')!.getAttribute('aria-label') ?? '', /^Open RentReadBuy Reading Assistant\./);
+  const root = q(handle, '.pw-chat-root')!;
+  assert.equal(root.style.getPropertyValue('--pw-chat-launcher-bg'), '#037b80');
+  assert.equal(root.style.getPropertyValue('--pw-chat-header-bg'), '#02666a');
+  assert.equal(root.style.getPropertyValue('--pw-chat-accent'), '#f08a6c');
+  assert.doesNotMatch(visitorFacingText(handle), /primewayz/i);
+});
+
+test('branding: tenant intents are used when the host config sends none', async () => {
+  const win = createWindow({ config: { ...SILVER_CONFIG, intents: [] }, url: 'https://silver-preview.example.test/' });
+  const { handle } = await boot(win, silverBackend());
+  handle!.open();
+  await flush();
+  assert.equal(handle!.shadow.querySelectorAll('.pw-chat-intent').length, 6);
+});
+
+test('branding: a branded tenant does not render on a host with a different siteKey', async () => {
+  const win = createWindow({ config: { ...SILVER_CONFIG, siteKey: 'primewayz-infotech' } });
+  const { handle, backend } = await boot(win, silverBackend());
+  assert.equal(handle, null);
+  assert.equal(win.document.getElementById('pw-chat-root'), null);
+  assert.deepEqual(backend.calls.map((c) => c.path), ['/api/platform/capabilities']);
+});
+
+test('branding: malformed theme values from the server are ignored, never injected', async () => {
+  const win = silverWindow();
+  const backend = silverBackend({
+    'GET /api/platform/capabilities': () => ({
+      status: 200,
+      body: {
+        capabilities: { chat: true },
+        chatWidget: { ...RRB_SILVER_CHAT_WIDGET, theme: { action: 'red; background: url(https://evil.test)', accent: '#f08a6c' } },
+      },
+    }),
+  });
+  const { handle } = await boot(win, backend);
+  const root = q(handle!, '.pw-chat-root')!;
+  assert.equal(root.style.getPropertyValue('--pw-chat-action'), '');
+  assert.equal(root.style.getPropertyValue('--pw-chat-accent'), '#f08a6c');
+});
+
+test('branding: bot, team, waiting status and joined notice use RentReadBuy names', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  const win = silverWindow({ storage: { rrb_silver_chat_visitor_email: 'reader@example.com', rrb_silver_chat_visitor_name: 'Asha' } });
+  let history: unknown[] = [];
+  const backend = silverBackend({ history: () => ({ status: 200, body: history }) });
+  const { handle } = await boot(win, backend);
+  handle!.open();
+  await flush();
+  await sendText(handle!, 'Do you deliver to Pune?');
+  const labels = () => Array.from(handle!.shadow.querySelectorAll('.pw-chat-msg-label')).map((n) => n.textContent);
+  assert.deepEqual(labels(), ['You', 'RentReadBuy Reading Assistant']);
+  history = [
+    { id: 102, text: 'Do you deliver to Pune?', sender: 'user', timestamp: new Date().toISOString() },
+    { id: 103, text: 'Thanks', sender: 'bot', timestamp: new Date().toISOString() },
+    { id: 104, text: 'Hi Asha, yes we do.', sender: 'admin', timestamp: new Date().toISOString() },
+  ];
+  await advance(5000);
+  assert.deepEqual(labels(), ['You', 'RentReadBuy Reading Assistant', 'RentReadBuy team']);
+  assert.equal(q(handle!, '.pw-chat-title')!.textContent, 'RentReadBuy team');
+  assert.match(visitorFacingText(handle!), /A RentReadBuy team member has joined the conversation\./);
+  assert.doesNotMatch(visitorFacingText(handle!), /primewayz/i);
+  handle!.destroy();
+});
+
+test('branding: unavailable availability falls back to RentReadBuy wording, not Primewayz', async () => {
+  const win = silverWindow();
+  const backend = silverBackend({ 'GET /api/chat/availability': () => ({ status: 500, body: null }) });
+  const { handle } = await boot(win, backend);
+  handle!.open();
+  await flush();
+  assert.doesNotMatch(visitorFacingText(handle!), /primewayz/i);
+});
+
+// --- Intents and approved answers ---
+
+test('intents: an unedited intent question sends its intentKey; edited text and free text do not', async () => {
+  const win = silverWindow();
+  const { handle, backend } = await boot(win, silverBackend());
+  handle!.open();
+  await flush();
+  const intentButtons = () => Array.from(handle!.shadow.querySelectorAll<HTMLButtonElement>('.pw-chat-intent'));
+  intentButtons()[1]!.click();
+  const textarea = q<HTMLTextAreaElement>(handle!, '.pw-chat-textarea')!;
+  assert.equal(textarea.value, 'What is included in ₹899?');
+  q<HTMLFormElement>(handle!, '.pw-chat-composer')!.dispatchEvent(new win.Event('submit', { cancelable: true }));
+  await flush();
+  const [first] = posts(backend.calls, '/api/chat/respond');
+  assert.deepEqual(first!.body, { sessionId: first!.body!.sessionId, message: 'What is included in ₹899?', intentKey: 'silver_price_inclusions' });
+
+  await sendText(handle!, 'What is included in ₹899? And delivery to Kochi?');
+  const second = posts(backend.calls, '/api/chat/respond')[1]!;
+  assert.equal('intentKey' in second.body!, false, 'edited text is a free-text question');
+  for (const call of posts(backend.calls, '/api/chat/respond')) {
+    for (const key of PW_CHAT_FORBIDDEN_PAYLOAD_KEYS) assert.equal(key in call.body!, false, key);
+  }
+});
+
+test('intents: the approved answer from the server is rendered as the assistant reply', async () => {
+  const answer = RRB_SILVER_APPROVED_ANSWERS.silver_book_limits;
+  const win = silverWindow();
+  const backend = silverBackend({
+    'POST /api/chat/respond': (call) => ({
+      status: 200,
+      body: {
+        userMessage: { id: 201, text: call.body?.message, sender: 'user', timestamp: new Date().toISOString() },
+        botMessage: { id: 202, text: answer, sender: 'bot', timestamp: new Date().toISOString() },
+        availability: availability({ tenantId: 'rrb-silver-campaign' }),
+      },
+    }),
+  });
+  const { handle } = await boot(win, backend);
+  handle!.open();
+  await flush();
+  Array.from(handle!.shadow.querySelectorAll<HTMLButtonElement>('.pw-chat-intent'))[2]!.click();
+  q<HTMLFormElement>(handle!, '.pw-chat-composer')!.dispatchEvent(new win.Event('submit', { cancelable: true }));
+  await flush();
+  const botTexts = Array.from(handle!.shadow.querySelectorAll('.pw-chat-msg--bot .pw-chat-msg-text')).map((n) => n.textContent);
+  assert.deepEqual(botTexts, [answer]);
+});
+
+// --- Session restoration ---
+
+test('restore: campaign storage keys restore the session and never read the Primewayz keys', async () => {
+  const win = silverWindow({ storage: { rrb_silver_chat_session_id: STRONG_ID, primewayz_chat_session_id: '11111111-1111-4111-8111-111111111111' } });
+  const backend = silverBackend({
+    history: () => ({ status: 200, body: [{ id: 1, text: 'Earlier answer', sender: 'bot', timestamp: new Date().toISOString() }] }),
+  });
+  const { handle } = await boot(win, backend);
+  assert.ok(handle);
+  assert.deepEqual(historyCalls(backend.calls).map((c) => c.path), [`/api/chat/${STRONG_ID}`]);
+  handle.open();
+  await flush();
+  assert.equal(win.localStorage.getItem('rrb_silver_chat_session_id'), STRONG_ID);
+  assert.equal(win.localStorage.getItem('primewayz_chat_session_id'), '11111111-1111-4111-8111-111111111111');
+  const heartbeat = posts(backend.calls, '/api/chat/heartbeat')[0]!;
+  assert.equal(heartbeat.body!.sessionId, STRONG_ID);
+});
+
+test('restore: a session rejected by the tenant (403) stops traffic without rotating the stored id', async () => {
+  const win = silverWindow({ storage: { rrb_silver_chat_session_id: STRONG_ID } });
+  const backend = silverBackend({ history: () => ({ status: 403, body: { error: 'This record belongs to a different platform entity.' } }) });
+  const { handle } = await boot(win, backend);
+  handle!.open();
+  await flush();
+  assert.equal(win.localStorage.getItem('rrb_silver_chat_session_id'), STRONG_ID);
+  assert.equal(posts(backend.calls, '/api/chat/heartbeat').length, 0);
+});
+
+// --- Launcher collision ---
+
+function placeAt(el: Element, rect: { top: number; bottom: number; left: number; right: number }) {
+  (el as HTMLElement).getBoundingClientRect = () => ({ ...rect, width: rect.right - rect.left, height: rect.bottom - rect.top, x: rect.left, y: rect.top, toJSON: () => ({}) }) as DOMRect;
+}
+
+test('layout: tenant collision selectors lift the launcher above the campaign hero pause control (both labels)', async () => {
+  for (const label of ['Pause scenery animation', 'Play scenery animation']) {
+    const win = silverWindow();
+    const pause = win.document.createElement('button');
+    pause.setAttribute('aria-label', label);
+    placeAt(pause, { top: 740, bottom: 784, left: 1218, right: 1262 });
+    win.document.body.appendChild(pause);
+    const { handle } = await boot(win, silverBackend());
+    assert.equal(q(handle!, '.pw-chat-root')!.style.getPropertyValue('--pw-chat-bottom'), '72px', label);
+    assert.equal(pause.getAttribute('style'), null, 'host control is never modified');
+    handle!.destroy();
+  }
+});
+
+test('layout: the pause control does not affect Primewayz tenants (selectors are tenant-scoped)', async () => {
+  const win = createWindow();
+  const pause = win.document.createElement('button');
+  pause.setAttribute('aria-label', 'Pause scenery animation');
+  placeAt(pause, { top: 740, bottom: 784, left: 1218, right: 1262 });
+  win.document.body.appendChild(pause);
+  const { handle } = await boot(win);
+  assert.equal(q(handle!, '.pw-chat-root')!.style.getPropertyValue('--pw-chat-bottom'), '18px');
+});
+
+test('layout: hosts can mark a control with data-pw-chat-avoid or configure a safe bottom offset', async () => {
+  const marked = createWindow();
+  const control = marked.document.createElement('div');
+  control.setAttribute('data-pw-chat-avoid', '');
+  placeAt(control, { top: 700, bottom: 790, left: 1200, right: 1270 });
+  marked.document.body.appendChild(control);
+  const a = await boot(marked);
+  assert.equal(q(a.handle!, '.pw-chat-root')!.style.getPropertyValue('--pw-chat-bottom'), '112px');
+
+  const offset = createWindow({ config: { apiBaseUrl: API, siteKey: 'primewayz-infotech', launcher: { bottomOffsetPx: 96 } } });
+  const b = await boot(offset);
+  assert.equal(q(b.handle!, '.pw-chat-root')!.style.getPropertyValue('--pw-chat-bottom'), '96px');
+
+  const clamped = createWindow({ config: { apiBaseUrl: API, siteKey: 'primewayz-infotech', launcher: { bottomOffsetPx: 5000, collisionSelectors: ['::not-a-selector('] } } });
+  const c = await boot(clamped);
+  assert.equal(q(c.handle!, '.pw-chat-root')!.style.getPropertyValue('--pw-chat-bottom'), '240px');
+});
+
+test('layout: PrimewayzChat.registerObstacle works before and after boot and can be undone', async () => {
+  const win = silverWindow();
+  const early = win.document.createElement('div');
+  placeAt(early, { top: 740, bottom: 784, left: 1218, right: 1262 });
+  win.document.body.appendChild(early);
+  const api = () => (win as unknown as { PrimewayzChat: { registerObstacle: (el: Element) => () => void } }).PrimewayzChat;
+  const backend = silverBackend();
+  const pending = installPrimewayzChat(win, { fetchImpl: backend.fetchImpl, timers: nodeTimers, analyticsSink: () => {} });
+  const unregister = api().registerObstacle(early);
+  const handle = await pending;
+  if (handle) liveHandles.push(handle);
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  const bottom = () => q(handle!, '.pw-chat-root')!.style.getPropertyValue('--pw-chat-bottom');
+  assert.equal(bottom(), '72px');
+  unregister();
+  await flush();
+  handle!.registerObstacle(win.document.body.appendChild(win.document.createElement('span')));
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  assert.equal(bottom(), '18px');
+});
+
+// --- Mobile ---
+
+test('mobile: branded campaign widget opens as a full-screen sheet and restores scrolling on close', async () => {
+  const win = silverWindow({ width: 390 });
+  const { handle } = await boot(win, silverBackend());
+  handle!.open();
+  await flush();
+  assert.equal(win.document.body.style.position, 'fixed');
+  assert.equal(q(handle!, '.pw-chat-launcher')!.hidden, true);
+  assert.equal(q(handle!, '.pw-chat-title')!.textContent, 'RentReadBuy Reading Assistant');
+  assert.match(handle!.shadow.querySelector('style')!.textContent ?? '', /@media \(max-width: 767px\)[\s\S]*inset: 0; width: 100vw; height: 100dvh/);
+  handle!.close();
+  assert.equal(win.document.body.style.position, '');
+  assert.equal(q(handle!, '.pw-chat-launcher')!.hidden, false);
+});
+
+test('mobile: the panel does not auto-reopen on a phone even when the campaign panel-open flag is set', async () => {
+  const win = silverWindow({ width: 390 });
+  win.sessionStorage.setItem('rrb_silver_chat_panel_open', 'true');
+  const { handle } = await boot(win, silverBackend());
+  assert.equal(q(handle!, '.pw-chat-panel')!.hidden, true);
+});
+
+test('branding: tenants without chatWidget keep the existing Primewayz widget unchanged', async () => {
+  const win = createWindow();
+  const { handle, backend } = await boot(win);
+  handle!.open();
+  await flush();
+  assert.equal(q(handle!, '.pw-chat-title')!.textContent, 'Primewayz Assistant');
+  assert.match(visitorFacingText(handle!), /Primewayz/);
+  assert.equal(q(handle!, '.pw-chat-root')!.getAttribute('style')?.includes('--pw-chat-launcher-bg') ?? false, false);
+  await sendText(handle!, 'Hello');
+  assert.equal('intentKey' in posts(backend.calls, '/api/chat/respond')[0]!.body!, false);
 });

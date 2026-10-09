@@ -1,5 +1,15 @@
 import type { PlatformBrand, PlatformTenantId, PrimewayzMarket } from './sourceContext.ts';
 import type { TenantCapabilityMap } from './tenantCapabilities.ts';
+import type {
+  TenantChatApprovedAnswers,
+  TenantChatWidgetConfig,
+  TenantQuickReplyProfile,
+} from '../chat/tenantChatWidget.ts';
+import {
+  RRB_SILVER_APPROVED_ANSWERS,
+  RRB_SILVER_CHAT_WIDGET,
+  RRB_SILVER_OFFLINE_ACKNOWLEDGEMENT,
+} from '../chat/tenantContent/rrbSilverCampaign.ts';
 
 /** Public Chat visitor-facing copy that must stay tenant-owned (not UK-defaulted). */
 export type TenantChatPresentation = {
@@ -7,6 +17,8 @@ export type TenantChatPresentation = {
   businessHours: string;
   /** Offline bot / follow-up team identity (e.g. "Primewayz UK team"). */
   teamLabel: string;
+  /** Replaces the generic offline bot reply; `{businessHours}` is substituted. */
+  offlineAcknowledgement?: string;
 };
 
 /** Neutral fallback when a tenant (or future client) has no explicit presentation config. */
@@ -29,11 +41,21 @@ export type PlatformTenantConfig = {
   displayName: string;
   active: boolean;
   allowedOrigins: readonly string[];
+  /**
+   * Env var holding extra comma-separated origins (preview / test hosts). Read per request so
+   * an origin is registered or withdrawn by configuration, never by an assumed hostname.
+   */
+  allowedOriginsEnv?: string;
+  /** Resolve only from a registered browser Origin; never from a no-Origin Host header. */
+  browserOriginOnly?: boolean;
   notificationRecipientEnv?: string;
   capabilities: TenantCapabilityMap;
   /** Servicing-business IANA timezone; fallback when visitor timezone is unavailable. */
   defaultTimeZone?: string;
   chatPresentation?: TenantChatPresentation;
+  chatWidget?: TenantChatWidgetConfig;
+  chatApprovedAnswers?: TenantChatApprovedAnswers;
+  quickReplyProfile?: TenantQuickReplyProfile;
 };
 
 /** Compatibility alias for existing imports. */
@@ -116,6 +138,36 @@ export const PLATFORM_TENANTS: readonly PlatformTenantConfig[] = [
     },
   },
   {
+    // Silver Membership campaign page. Separate from `rrb` so sessions, leads, operators and
+    // notifications never mix. No origin is hardcoded until RentReadBuy approves the hostname.
+    tenantId: 'rrb-silver-campaign',
+    brand: 'RentReadBuy',
+    market: 'IN',
+    sourceSite: 'rentreadbuy-silver',
+    displayName: 'RentReadBuy Silver Membership',
+    active: true,
+    allowedOrigins: [],
+    allowedOriginsEnv: 'RRB_SILVER_CAMPAIGN_ALLOWED_ORIGINS',
+    browserOriginOnly: true,
+    notificationRecipientEnv: 'RRB_SILVER_CAMPAIGN_NOTIFICATION_EMAIL',
+    capabilities: {
+      audit: false,
+      forms: false,
+      chat: true,
+      conversion: false,
+      scheduling: false,
+    },
+    defaultTimeZone: 'Asia/Kolkata',
+    chatPresentation: {
+      businessHours: 'Mon-Fri, India business hours',
+      teamLabel: 'RentReadBuy team',
+      offlineAcknowledgement: RRB_SILVER_OFFLINE_ACKNOWLEDGEMENT,
+    },
+    chatWidget: RRB_SILVER_CHAT_WIDGET,
+    chatApprovedAnswers: RRB_SILVER_APPROVED_ANSWERS,
+    quickReplyProfile: 'reading_membership',
+  },
+  {
     tenantId: 'pw-us',
     brand: 'Primewayz',
     market: 'US',
@@ -154,14 +206,65 @@ export function getTenantById(id: string): PlatformTenantConfig | undefined {
   return PLATFORM_TENANTS.find((tenant) => tenant.tenantId === id);
 }
 
-export function getTenantByOrigin(origin: string): PlatformTenantConfig | undefined {
-  return PLATFORM_TENANTS.find((tenant) => tenant.active && tenant.allowedOrigins.includes(origin));
+/**
+ * Exact origins only: https, or http://localhost / http://127.0.0.1 outside production.
+ * No wildcards, paths, credentials, or origins already hardcoded for another tenant.
+ */
+export function parseTenantOriginList(
+  raw: string | undefined,
+  options: { allowLocalHttp: boolean; reservedOrigins?: readonly string[] },
+): string[] {
+  if (!raw) return [];
+  const origins: string[] = [];
+  for (const entry of raw.split(',')) {
+    const candidate = entry.trim().replace(/\/$/, '');
+    if (!candidate || candidate.includes('*')) continue;
+    let url: URL;
+    try {
+      url = new URL(candidate);
+    } catch {
+      continue;
+    }
+    if (url.origin !== candidate) continue;
+    const localHttp = url.protocol === 'http:'
+      && (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
+    if (url.protocol !== 'https:' && !(localHttp && options.allowLocalHttp)) continue;
+    if (options.reservedOrigins?.includes(candidate)) continue;
+    if (!origins.includes(candidate)) origins.push(candidate);
+  }
+  return origins;
+}
+
+/** Hardcoded origins plus any configured through the tenant's `allowedOriginsEnv`. */
+export function getTenantAllowedOrigins(
+  tenant: PlatformTenantConfig,
+  env: NodeJS.ProcessEnv = process.env,
+): readonly string[] {
+  if (!tenant.allowedOriginsEnv) return tenant.allowedOrigins;
+  const reservedOrigins = PLATFORM_TENANTS
+    .filter((other) => other.tenantId !== tenant.tenantId)
+    .flatMap((other) => [...other.allowedOrigins]);
+  const configured = parseTenantOriginList(env[tenant.allowedOriginsEnv], {
+    allowLocalHttp: env.NODE_ENV !== 'production',
+    reservedOrigins,
+  });
+  return [...new Set([...tenant.allowedOrigins, ...configured])];
+}
+
+export function getTenantByOrigin(
+  origin: string,
+  env: NodeJS.ProcessEnv = process.env,
+): PlatformTenantConfig | undefined {
+  return PLATFORM_TENANTS.find(
+    (tenant) => tenant.active && getTenantAllowedOrigins(tenant, env).includes(origin),
+  );
 }
 
 export function getTenantByHost(host: string): PlatformTenantConfig | undefined {
   return PLATFORM_TENANTS.find(
     (tenant) =>
       tenant.active &&
+      !tenant.browserOriginOnly &&
       (tenant.sourceSite === host ||
         tenant.allowedOrigins.some((origin) => new URL(origin).hostname === host)),
   );
@@ -179,7 +282,7 @@ export function getTenantDisplayName(tenantId: string | null | undefined): strin
  */
 export function resolveTenantChatPresentation(
   tenantId: string | null | undefined,
-): Required<TenantChatPresentation> {
+): Omit<Required<TenantChatPresentation>, 'offlineAcknowledgement'> & { offlineAcknowledgement: string | null } {
   const tenant = tenantId ? getTenantById(tenantId) : undefined;
   const configured = tenant?.chatPresentation;
   return {
@@ -187,7 +290,19 @@ export function resolveTenantChatPresentation(
     teamLabel:
       configured?.teamLabel ??
       (tenant?.displayName ? `${tenant.displayName} team` : NEUTRAL_CHAT_TEAM_LABEL),
+    offlineAcknowledgement: configured?.offlineAcknowledgement ?? null,
   };
+}
+
+/** Approved answer for an intent, from the tenant's own config only. */
+export function resolveTenantApprovedAnswer(
+  tenantId: string | null | undefined,
+  intentKey: string | null | undefined,
+): string | null {
+  if (!tenantId || !intentKey) return null;
+  const answers = getTenantById(tenantId)?.chatApprovedAnswers;
+  if (!answers || !Object.prototype.hasOwnProperty.call(answers, intentKey)) return null;
+  return answers[intentKey] ?? null;
 }
 
 /**

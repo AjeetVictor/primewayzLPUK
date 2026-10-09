@@ -9,7 +9,8 @@ export type PlatformTenantId =
   | 'pw-us'
   | 'pw-uae'
   | 'pw-mx'
-  | 'rrb';
+  | 'rrb'
+  | 'rrb-silver-campaign';
 
 /** Compatibility alias — prefer PlatformTenantId for new code. */
 export type PrimewayzTenantId = PlatformTenantId;

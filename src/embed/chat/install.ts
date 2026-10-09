@@ -15,6 +15,8 @@ export type PrimewayzChatPublicApi = Readonly<{
   version: string;
   open: () => void;
   close: () => void;
+  /** Keeps the launcher clear of a host floating control. Returns an unregister function. */
+  registerObstacle: (element: Element) => () => void;
 }>;
 
 export type InstallOverrides = {
@@ -40,6 +42,8 @@ export function installPrimewayzChat(
 
   let handle: PwChatWidgetHandle | null = null;
   let pendingOpen = false;
+  // Registrations made before boot completes; each maps to its live unregister, once known.
+  const pendingObstacles = new Map<Element, (() => void) | null>();
 
   const publicApi: PrimewayzChatPublicApi = Object.freeze({
     version: PW_CHAT_EMBED_VERSION,
@@ -50,6 +54,15 @@ export function installPrimewayzChat(
     close: () => {
       pendingOpen = false;
       handle?.close();
+    },
+    registerObstacle: (element: Element) => {
+      if (!element || typeof element.getBoundingClientRect !== 'function') return () => {};
+      if (handle) return handle.registerObstacle(element);
+      pendingObstacles.set(element, null);
+      return () => {
+        pendingObstacles.get(element)?.();
+        pendingObstacles.delete(element);
+      };
     },
   });
   try {
@@ -75,6 +88,11 @@ export function installPrimewayzChat(
         timers: overrides.timers,
         randomSource: overrides.randomSource,
       });
+      if (handle) {
+        for (const element of pendingObstacles.keys()) {
+          pendingObstacles.set(element, handle.registerObstacle(element));
+        }
+      }
       if (handle && pendingOpen) handle.open();
       return handle;
     } catch {
