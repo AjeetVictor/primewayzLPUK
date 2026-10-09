@@ -82,7 +82,8 @@ import {
 import type { NextFunction, Request, Response } from 'express';
 import { resolveSourceContext, SourceResolutionError, assertTenantCapability } from './src/lib/platform/sourceResolver.ts';
 import { toPersistedSourceContext, type PrimewayzSourceChannel, type SourceContext } from './src/lib/platform/sourceContext.ts';
-import { resolveAdminTenantFilter } from './src/lib/platform/adminTenantFilter.ts';
+import { resolveAuthorizedAdminTenantFilter, AdminTenantAccessError, assertAdminTenantAccess, validateTenantGrants, type AdminTenantPrincipal } from './src/lib/admin/adminTenantAccess.ts';
+import { accessSnapshot, runSerializableAccessTransaction } from './src/lib/admin/adminAccessMutation.ts';
 import { getTenantDisplayName, resolveTenantChatPresentation } from './src/lib/platform/tenantRegistry.ts';
 import { resolveAppointmentRequestTimezone } from './src/lib/platform/timeZone.ts';
 import { buildOfflineChatBotReply } from './src/lib/chat/visitorChatTypes.ts';
@@ -233,7 +234,11 @@ function sourceResolutionFailure(res: Response, error: unknown): Response | null
 }
 
 function adminTenantId(req: Request): string | undefined {
-  return resolveAdminTenantFilter(typeof req.query.tenantId === 'string' ? req.query.tenantId : undefined);
+  const adminUser = (req as AdminRequest).adminUser;
+  return resolveAuthorizedAdminTenantFilter(
+    typeof req.query.tenantId === 'string' ? req.query.tenantId : undefined,
+    adminUser,
+  );
 }
 
 function getJwtSecret() {
@@ -262,6 +267,8 @@ type AdminRequest = Request & {
     id: number;
     email: string;
     role: string;
+    isPlatformOwner: boolean;
+    tenantIds: string[];
   };
 };
 
@@ -349,7 +356,7 @@ async function autoUpdateConversationStatus(sessionId: string, status: Conversat
   await advanceConversationStatus(chatConversationStore, sessionId, status);
 }
 
-async function requireAdmin(req: AdminRequest, res: Response, next: NextFunction) {
+async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   try {
     const token = req.cookies?.[adminCookieName];
     if (!token) return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -357,10 +364,19 @@ async function requireAdmin(req: AdminRequest, res: Response, next: NextFunction
     const decoded = jwt.verify(token, getJwtSecret()) as { email?: string };
     if (!decoded.email) return res.status(401).json({ success: false, error: 'Invalid session' });
 
-    const user = await prisma.user.findUnique({ where: { email: decoded.email } });
+    const user = await prisma.user.findUnique({
+      where: { email: decoded.email },
+      include: { tenantGrants: { select: { tenantId: true } } },
+    });
     if (!user) return res.status(401).json({ success: false, error: 'Invalid session' });
 
-    req.adminUser = { id: user.id, email: user.email, role: normalizeRole(user.role) };
+    (req as AdminRequest).adminUser = {
+      id: user.id,
+      email: user.email,
+      role: normalizeRole(user.role),
+      isPlatformOwner: user.isPlatformOwner,
+      tenantIds: user.tenantGrants.map((grant) => grant.tenantId),
+    };
     return next();
   } catch {
     return res.status(401).json({ success: false, error: 'Invalid session' });
@@ -368,12 +384,19 @@ async function requireAdmin(req: AdminRequest, res: Response, next: NextFunction
 }
 
 function requireRole(canAccess: (role?: string) => boolean) {
-  return (req: AdminRequest, res: Response, next: NextFunction) => {
-    if (!canAccess(req.adminUser?.role)) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!canAccess((req as AdminRequest).adminUser?.role)) {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
     return next();
   };
+}
+
+function requirePlatformOwner(req: Request, res: Response, next: NextFunction) {
+  if (!(req as AdminRequest).adminUser?.isPlatformOwner) {
+    return res.status(403).json({ success: false, error: 'Platform Host/Owner access required' });
+  }
+  return next();
 }
 
 /**
@@ -467,13 +490,29 @@ async function offlineChatRespondPayload(userText: string, source?: SourceContex
   };
 }
 
-function publicUser(user: { id: number; email: string; role: string; createdAt?: Date }) {
+function publicUser(user: {
+  id: number;
+  email: string;
+  role: string;
+  createdAt?: Date;
+  isPlatformOwner?: boolean;
+  tenantGrants?: Array<{ tenantId: string }>;
+}) {
   return {
     id: user.id,
     email: user.email,
     role: normalizeRole(user.role),
+    isPlatformOwner: user.isPlatformOwner === true,
+    tenantIds: user.tenantGrants?.map((grant) => grant.tenantId) ?? [],
     ...(user.createdAt ? { createdAt: user.createdAt } : {}),
   };
+}
+
+function adminTenantAccessFailure(res: Response, error: unknown): Response | null {
+  if (error instanceof AdminTenantAccessError) {
+    return res.status(error.status).json({ error: error.message, code: error.code });
+  }
+  return sourceResolutionFailure(res, error);
 }
 
 function stripHtml(value: string) {
@@ -1769,7 +1808,10 @@ app.post('/api/admin/login', async (req, res) => {
     if (!email || !password)
       return res.status(400).json({ success: false, error: 'Email and password required' });
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { tenantGrants: { select: { tenantId: true } } },
+    });
     if (!user || !bcrypt.compareSync(password, user.password))
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
 
@@ -1799,7 +1841,10 @@ app.get('/api/admin/check-auth', async (req, res) => {
     const decoded = jwt.verify(token, getJwtSecret()) as { id?: number; email?: string; role?: string };
     if (!decoded.email) return res.status(401).json({ success: false, authenticated: false, error: 'Invalid session' });
 
-    const user = await prisma.user.findUnique({ where: { email: decoded.email } });
+    const user = await prisma.user.findUnique({
+      where: { email: decoded.email },
+      include: { tenantGrants: { select: { tenantId: true } } },
+    });
     if (!user) return res.status(401).json({ success: false, authenticated: false, error: 'Invalid session' });
 
     return res.json({
@@ -1823,13 +1868,25 @@ app.get('/api/admin/forms', requireAdmin, requireRole(isOperationsRole), async (
     const forms = await prisma.formResponse.findMany({ where: tenantId ? { tenantId } : {}, orderBy: { createdAt: 'desc' } });
     res.json(forms);
   } catch (error) {
-    sourceResolutionFailure(res, error) ?? res.status(500).json({ error: 'Failed to load forms' });
+    adminTenantAccessFailure(res, error) ?? res.status(500).json({ error: 'Failed to load forms' });
   }
 });
 
 app.delete('/api/admin/forms/:id', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid form id' });
+  const record = await prisma.formResponse.findUnique({ where: { id }, select: { tenantId: true } });
+  if (!record) return res.status(404).json({ error: 'Form response not found' });
+  try {
+    const adminUser = (req as AdminRequest).adminUser;
+    const tenantId = adminTenantId(req);
+    if (tenantId && record.tenantId !== tenantId) {
+      return res.status(403).json({ error: 'This record is outside the selected platform entity.' });
+    }
+    assertAdminTenantAccess(record.tenantId, adminUser);
+  } catch (error) {
+    return adminTenantAccessFailure(res, error) ?? res.status(500).json({ error: 'Failed to delete form response' });
+  }
   await prisma.formResponse.delete({ where: { id } });
   res.json({ success: true });
 });
@@ -1840,13 +1897,25 @@ app.get('/api/admin/tool-leads', requireAdmin, requireRole(isOperationsRole), as
     const leads = await prisma.toolLead.findMany({ where: tenantId ? { tenantId } : {}, orderBy: { createdAt: 'desc' } });
     res.json(leads);
   } catch (error) {
-    sourceResolutionFailure(res, error) ?? res.status(500).json({ error: 'Failed to load tool leads' });
+    adminTenantAccessFailure(res, error) ?? res.status(500).json({ error: 'Failed to load tool leads' });
   }
 });
 
 app.delete('/api/admin/tool-leads/:id', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid tool lead id' });
+  const record = await prisma.toolLead.findUnique({ where: { id }, select: { tenantId: true } });
+  if (!record) return res.status(404).json({ error: 'Tool lead not found' });
+  try {
+    const adminUser = (req as AdminRequest).adminUser;
+    const tenantId = adminTenantId(req);
+    if (tenantId && record.tenantId !== tenantId) {
+      return res.status(403).json({ error: 'This record is outside the selected platform entity.' });
+    }
+    assertAdminTenantAccess(record.tenantId, adminUser);
+  } catch (error) {
+    return adminTenantAccessFailure(res, error) ?? res.status(500).json({ error: 'Failed to delete tool lead' });
+  }
   await prisma.toolLead.delete({ where: { id } });
   res.json({ success: true });
 });
@@ -1864,6 +1933,7 @@ app.get('/api/admin/audit-leads', requireAdmin, requireRole(isOperationsRole), a
     });
     res.json(result);
   } catch (error) {
+    if (adminTenantAccessFailure(res, error)) return;
     console.error('[admin-audit-leads] list failed');
     res.status(500).json({ error: 'Failed to load audit leads' });
   }
@@ -1874,11 +1944,12 @@ app.get('/api/admin/audit-leads/:id', requireAdmin, requireRole(isOperationsRole
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: 'Invalid audit lead id' });
 
-    const lead = await getAdminAuditLeadById(prisma, id);
+    const lead = await getAdminAuditLeadById(prisma, id, adminTenantId(req) ?? 'all');
     if (!lead) return res.status(404).json({ error: 'Audit lead not found' });
 
     res.json(lead);
   } catch (error) {
+    if (adminTenantAccessFailure(res, error)) return;
     console.error('[admin-audit-leads] detail failed');
     res.status(500).json({ error: 'Failed to load audit lead' });
   }
@@ -1892,11 +1963,12 @@ app.patch('/api/admin/audit-leads/:id/status', requireAdmin, requireRole(isOpera
     const status = validateAuditLeadAdminStatus(req.body?.status);
     if (!status) return res.status(400).json({ error: 'Invalid status' });
 
-    const lead = await updateAdminAuditLeadStatus(prisma, id, status);
+    const lead = await updateAdminAuditLeadStatus(prisma, id, status, adminTenantId(req) ?? 'all');
     if (!lead) return res.status(404).json({ error: 'Audit lead not found' });
 
     res.json(lead);
   } catch (error) {
+    if (adminTenantAccessFailure(res, error)) return;
     console.error('[admin-audit-leads] status update failed');
     res.status(500).json({ error: 'Failed to update audit lead status' });
   }
@@ -1907,11 +1979,12 @@ app.post('/api/admin/audit-leads/:id/notes', requireAdmin, requireRole(isOperati
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: 'Invalid audit lead id' });
 
-    const lead = await addAdminAuditLeadNote(prisma, id, req.body?.note);
+    const lead = await addAdminAuditLeadNote(prisma, id, req.body?.note, adminTenantId(req) ?? 'all');
     if (!lead) return res.status(400).json({ error: 'Invalid note or audit lead not found' });
 
     res.json(lead);
   } catch (error) {
+    if (adminTenantAccessFailure(res, error)) return;
     console.error('[admin-audit-leads] note create failed');
     res.status(500).json({ error: 'Failed to add audit lead note' });
   }
@@ -1924,6 +1997,7 @@ app.get('/api/admin/conversion-dashboard', requireAdmin, requireRole(isOperation
     const summary = await getConversionDashboardSummary(prisma, range, adminTenantId(req) ?? 'all');
     res.json(summary);
   } catch (error) {
+    if (adminTenantAccessFailure(res, error)) return;
     console.error('[admin-conversion-dashboard] failed');
     res.status(500).json({ error: 'Failed to load conversion dashboard' });
   }
@@ -1940,6 +2014,7 @@ app.get('/api/admin/review-leads', requireAdmin, requireRole(isOperationsRole), 
     });
     res.json(result);
   } catch (error) {
+    if (adminTenantAccessFailure(res, error)) return;
     console.error('[admin-review-leads] list failed');
     res.status(500).json({ error: 'Failed to load review leads' });
   }
@@ -1963,10 +2038,11 @@ app.patch('/api/admin/review-leads/:id/status', requireAdmin, requireRole(isOper
       proposalSentAt: req.body?.proposalSentAt ? new Date(req.body.proposalSentAt) : null,
       proposalValueMinor: typeof req.body?.proposalValueMinor === 'number' ? req.body.proposalValueMinor : null,
       firstContactedAt: req.body?.firstContactedAt ? new Date(req.body.firstContactedAt) : null,
-    });
+    }, adminTenantId(req) ?? 'all');
     if (!updated) return res.status(404).json({ error: 'Review lead not found' });
     res.json(updated);
   } catch (error) {
+    if (adminTenantAccessFailure(res, error)) return;
     const message = error instanceof Error ? error.message : 'Transition failed';
     res.status(400).json({ error: message });
   }
@@ -1978,10 +2054,11 @@ app.patch('/api/admin/review-leads/:id/owner', requireAdmin, requireRole(isOpera
     const ownerId = parseId(String(req.body?.ownerId ?? ''));
     if (!id || !ownerId) return res.status(400).json({ error: 'Invalid id or owner' });
 
-    const updated = await assignReviewLeadOwner(prisma, id, ownerId, req.adminUser?.id);
+    const updated = await assignReviewLeadOwner(prisma, id, ownerId, req.adminUser?.id, adminTenantId(req) ?? 'all');
     if (!updated) return res.status(404).json({ error: 'Review lead not found' });
     res.json(updated);
   } catch (error) {
+    if (adminTenantAccessFailure(res, error)) return;
     const message = error instanceof Error ? error.message : 'Assignment failed';
     res.status(400).json({ error: message });
   }
@@ -2108,12 +2185,12 @@ app.patch('/api/admin/chat/messages/:id', requireAdmin, requireRole(isOperations
 
 app.delete('/api/admin/chat/messages/:id', requireAdmin, requireRole(isOperationsRole), adminChatMutationHandlers.deleteMessage);
 
-app.get('/api/admin/blog-comments', requireAdmin, requireRole(isOperationsRole), async (_req, res) => {
+app.get('/api/admin/blog-comments', requireAdmin, requireRole(isOperationsRole), requirePlatformOwner, async (_req, res) => {
   const comments = await prisma.blogPostComment.findMany({ orderBy: { createdAt: 'desc' } });
   res.json(comments);
 });
 
-app.delete('/api/admin/blog-comments/:id', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
+app.delete('/api/admin/blog-comments/:id', requireAdmin, requireRole(isOperationsRole), requirePlatformOwner, async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid comment id' });
   await prisma.blogPostComment.delete({ where: { id } });
@@ -2121,23 +2198,27 @@ app.delete('/api/admin/blog-comments/:id', requireAdmin, requireRole(isOperation
 });
 
 app.get('/api/admin/chat/appointments', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
-  const tenantId = adminTenantId(req);
-  const appointments = await prisma.chatAppointmentRequest.findMany({
-    where: tenantId ? { session: { tenantId } } : {},
-    orderBy: { createdAt: 'desc' },
-    include: { session: { select: { tenantId: true, market: true, sourceSite: true } } },
-  });
-  res.json(appointments);
+  try {
+    const tenantId = adminTenantId(req);
+    const appointments = await prisma.chatAppointmentRequest.findMany({
+      where: tenantId ? { session: { tenantId } } : {},
+      orderBy: { createdAt: 'desc' },
+      include: { session: { select: { tenantId: true, market: true, sourceSite: true } } },
+    });
+    res.json(appointments);
+  } catch (error) {
+    adminTenantAccessFailure(res, error) ?? res.status(500).json({ error: 'Failed to load appointments' });
+  }
 });
 
 app.patch('/api/admin/chat/appointments/:id', requireAdmin, requireRole(isOperationsRole), adminChatMutationHandlers.updateAppointment);
 
-app.get('/api/admin/blog-posts', requireAdmin, requireRole(isBlogAuthor), async (_req, res) => {
+app.get('/api/admin/blog-posts', requireAdmin, requireRole(isBlogAuthor), requirePlatformOwner, async (_req, res) => {
   const posts = await prisma.cmsBlogPost.findMany({ orderBy: { updatedAt: 'desc' } });
   res.json(posts.map((post) => ({ ...post, tags: toTagArray(post.tags) })));
 });
 
-app.post('/api/admin/blog-posts', requireAdmin, requireRole(isBlogAuthor), async (req: AdminRequest, res) => {
+app.post('/api/admin/blog-posts', requireAdmin, requireRole(isBlogAuthor), requirePlatformOwner, async (req: AdminRequest, res) => {
   const data = req.body;
   if (!data.title || !data.slug) return res.status(400).json({ error: 'Title and slug are required' });
   const post = await prisma.cmsBlogPost.create({
@@ -2165,7 +2246,7 @@ app.post('/api/admin/blog-posts', requireAdmin, requireRole(isBlogAuthor), async
   res.status(201).json({ ...post, tags: toTagArray(post.tags) });
 });
 
-app.patch('/api/admin/blog-posts/:id', requireAdmin, requireRole(isBlogAuthor), async (req: AdminRequest, res) => {
+app.patch('/api/admin/blog-posts/:id', requireAdmin, requireRole(isBlogAuthor), requirePlatformOwner, async (req: AdminRequest, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid blog post id' });
   const data = req.body;
@@ -2195,7 +2276,7 @@ app.patch('/api/admin/blog-posts/:id', requireAdmin, requireRole(isBlogAuthor), 
   res.json({ ...post, tags: toTagArray(post.tags) });
 });
 
-app.delete('/api/admin/blog-posts/:id', requireAdmin, requireRole(isBlogAuthor), async (req: AdminRequest, res) => {
+app.delete('/api/admin/blog-posts/:id', requireAdmin, requireRole(isBlogAuthor), requirePlatformOwner, async (req: AdminRequest, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid blog post id' });
   await prisma.cmsBlogPost.update({
@@ -2205,37 +2286,140 @@ app.delete('/api/admin/blog-posts/:id', requireAdmin, requireRole(isBlogAuthor),
   res.json({ success: true });
 });
 
-app.get('/api/admin/users', requireAdmin, requireRole(isSuperAdmin), async (_req, res) => {
-  const users = await prisma.user.findMany({ orderBy: { createdAt: 'desc' } });
+app.get('/api/admin/users', requireAdmin, requirePlatformOwner, async (_req, res) => {
+  const users = await prisma.user.findMany({
+    orderBy: { createdAt: 'desc' },
+    include: { tenantGrants: { select: { tenantId: true } } },
+  });
   res.json(users.map(publicUser));
 });
 
-app.post('/api/admin/users', requireAdmin, requireRole(isSuperAdmin), async (req, res) => {
+app.post('/api/admin/users', requireAdmin, requirePlatformOwner, async (req: AdminRequest, res) => {
   const { email, password, role } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
-  const user = await prisma.user.create({
-    data: {
-      email,
-      password: bcrypt.hashSync(password, 12),
-      role: normalizeRole(role),
-    },
+  let tenantIds: string[] = [];
+  try {
+    if (req.body.tenantIds !== undefined) tenantIds = validateTenantGrants(req.body.tenantIds);
+  } catch (error) {
+    return adminTenantAccessFailure(res, error);
+  }
+  const user = await prisma.$transaction(async (tx) => {
+    const created = await tx.user.create({
+      data: {
+        email,
+        password: bcrypt.hashSync(password, 12),
+        role: normalizeRole(role),
+        isPlatformOwner: req.body.isPlatformOwner === true,
+        tenantGrants: { create: tenantIds.map((tenantId) => ({ tenantId })) },
+      },
+      include: { tenantGrants: { select: { tenantId: true } } },
+    });
+    await tx.adminAccessAuditLog.create({
+      data: {
+        actorUserId: req.adminUser!.id,
+        targetUserId: created.id,
+        action: 'user_created',
+        details: accessSnapshot(created),
+      },
+    });
+    return created;
   });
   res.status(201).json(publicUser(user));
 });
 
-app.patch('/api/admin/users/:id', requireAdmin, requireRole(isSuperAdmin), async (req, res) => {
+app.patch('/api/admin/users/:id', requireAdmin, requirePlatformOwner, async (req: AdminRequest, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid user id' });
-  const user = await prisma.user.update({ where: { id }, data: { role: normalizeRole(req.body.role) } });
-  res.json(publicUser(user));
+  if (req.body.isPlatformOwner !== undefined && typeof req.body.isPlatformOwner !== 'boolean') {
+    return res.status(400).json({ error: 'isPlatformOwner must be a boolean' });
+  }
+  const accessUpdate = req.body.tenantIds !== undefined || req.body.isPlatformOwner !== undefined;
+  let tenantIds: string[] | undefined;
+  try {
+    if (req.body.tenantIds !== undefined) tenantIds = validateTenantGrants(req.body.tenantIds);
+  } catch (error) {
+    return adminTenantAccessFailure(res, error);
+  }
+  if (accessUpdate && !req.adminUser!.isPlatformOwner) {
+    return res.status(403).json({ error: 'Platform Host/Owner access required' });
+  }
+  if (id === req.adminUser!.id && req.body.isPlatformOwner === false) {
+    return res.status(400).json({ error: 'You cannot remove your own platform administrator access' });
+  }
+  const update = await runSerializableAccessTransaction(prisma, async (tx) => {
+    const previous = await tx.user.findUnique({
+      where: { id },
+      include: { tenantGrants: { select: { tenantId: true } } },
+    });
+    if (!previous) return null;
+    const nextOwner = req.body.isPlatformOwner === undefined ? previous.isPlatformOwner : req.body.isPlatformOwner === true;
+    if (previous.isPlatformOwner && !nextOwner && await tx.user.count({ where: { isPlatformOwner: true } }) <= 1) {
+      return 'last_owner' as const;
+    }
+    const updated = await tx.user.update({
+      where: { id },
+      data: {
+        role: req.body.role === undefined ? undefined : normalizeRole(req.body.role),
+        isPlatformOwner: req.body.isPlatformOwner === undefined ? undefined : nextOwner,
+        tenantGrants: tenantIds === undefined
+          ? undefined
+          : { deleteMany: {}, create: tenantIds.map((tenantId) => ({ tenantId })) },
+      },
+      include: { tenantGrants: { select: { tenantId: true } } },
+    });
+    await tx.adminAccessAuditLog.create({
+      data: {
+        actorUserId: req.adminUser!.id,
+        targetUserId: id,
+        action: 'user_access_updated',
+        details: {
+          before: accessSnapshot(previous),
+          after: accessSnapshot(updated),
+        },
+      },
+    });
+    return updated;
+  });
+  if (!update) return res.status(404).json({ error: 'User not found' });
+  if (update === 'last_owner') return res.status(400).json({ error: 'At least one platform Host/Owner must remain' });
+  res.json(publicUser(update));
 });
 
-app.delete('/api/admin/users/:id', requireAdmin, requireRole(isSuperAdmin), async (req: AdminRequest, res) => {
+app.delete('/api/admin/users/:id', requireAdmin, requirePlatformOwner, async (req: AdminRequest, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid user id' });
   if (id === req.adminUser!.id) return res.status(400).json({ error: 'You cannot delete your own account' });
-  await prisma.user.delete({ where: { id } });
+  const result = await runSerializableAccessTransaction(prisma, async (tx) => {
+    const target = await tx.user.findUnique({
+      where: { id },
+      include: { tenantGrants: { select: { tenantId: true } } },
+    });
+    if (!target) return 'missing' as const;
+    if (target.isPlatformOwner && await tx.user.count({ where: { isPlatformOwner: true } }) <= 1) {
+      return 'last_owner' as const;
+    }
+    await tx.adminAccessAuditLog.create({
+      data: {
+        actorUserId: req.adminUser!.id,
+        targetUserId: target.id,
+        action: 'user_deleted',
+        details: accessSnapshot(target),
+      },
+    });
+    await tx.user.delete({ where: { id } });
+    return 'deleted' as const;
+  });
+  if (result === 'missing') return res.status(404).json({ error: 'User not found' });
+  if (result === 'last_owner') return res.status(400).json({ error: 'At least one platform Host/Owner must remain' });
   res.json({ success: true });
+});
+
+app.get('/api/admin/access-audit', requireAdmin, requirePlatformOwner, async (_req, res) => {
+  const entries = await prisma.adminAccessAuditLog.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 100,
+  });
+  res.json(entries);
 });
 
 /** Team presence is per entity: "All entities" is not a presence target and is rejected. */
@@ -2244,7 +2428,7 @@ function resolveAdminPresenceTenantId(req: Request, res: Response): string | nul
   try {
     tenantId = adminTenantId(req);
   } catch (error) {
-    if (sourceResolutionFailure(res, error)) return null;
+    if (adminTenantAccessFailure(res, error)) return null;
     throw error;
   }
   if (!tenantId) {
@@ -2286,7 +2470,7 @@ app.get('/api/admin/notifications/summary', requireAdmin, requireRole(isOperatio
     const summary = await getAdminNotificationSummary(prisma, { tenantId });
     res.json(summary);
   } catch (error) {
-    sourceResolutionFailure(res, error) ?? res.status(500).json({ error: 'Failed to load notification summary' });
+    adminTenantAccessFailure(res, error) ?? res.status(500).json({ error: 'Failed to load notification summary' });
   }
 });
 

@@ -22,6 +22,8 @@ type AdminAuditLeadsPanelProps = {
   globalSearch?: string;
   tenantFilter?: string;
   onTenantFilterChange?: (value: string) => void;
+  tenantIds?: readonly string[];
+  isPlatformOwner?: boolean;
 };
 
 const STATUS_LABELS: Record<AuditLeadAdminStatus, string> = {
@@ -70,6 +72,8 @@ export function AdminAuditLeadsPanel({
   globalSearch = '',
   tenantFilter: tenantFilterProp,
   onTenantFilterChange,
+  tenantIds,
+  isPlatformOwner = true,
 }: AdminAuditLeadsPanelProps) {
   const [items, setItems] = useState<SafeAuditLeadListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -247,7 +251,12 @@ export function AdminAuditLeadsPanel({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <AdminTenantFilter value={tenantFilter} onChange={setTenantFilter} />
+          <AdminTenantFilter
+            value={tenantFilter}
+            onChange={setTenantFilter}
+            tenantIds={tenantIds}
+            isPlatformOwner={isPlatformOwner}
+          />
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}

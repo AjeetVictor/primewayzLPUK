@@ -12,7 +12,7 @@ import { RichBlogEditor } from './admin/RichBlogEditor';
 import { AdminAuditLeadsPanel } from './admin/AdminAuditLeadsPanel';
 import { AdminConversionDashboard } from './admin/AdminConversionDashboard';
 import { AdminTenantFilter } from './admin/AdminTenantFilter';
-import { getTenantDisplayName } from '../lib/platform/tenantRegistry';
+import { ADMIN_TENANT_FILTER_OPTIONS, getTenantDisplayName } from '../lib/platform/tenantRegistry';
 import { AutopilotPanel } from './admin/autopilot/AutopilotPanel';
 import { ChatConfirmDialog } from './admin/ChatConfirmDialog';
 import { sanitizeBlogHtml } from '../utils/sanitizeHtml';
@@ -49,6 +49,15 @@ interface FormResponse {
   tenantId?: string | null;
   market?: string | null;
   sourceSite?: string | null;
+  createdAt: string;
+}
+
+interface AdminAccessAuditEntry {
+  id: number;
+  actorUserId: number;
+  targetUserId: number;
+  action: string;
+  details: unknown;
   createdAt: string;
 }
 
@@ -233,6 +242,8 @@ interface User {
   id: number;
   email: string;
   role: string;
+  isPlatformOwner: boolean;
+  tenantIds: string[];
   createdAt: string;
 }
 
@@ -240,6 +251,8 @@ interface CurrentUser {
   id: number;
   email: string;
   role: string;
+  isPlatformOwner: boolean;
+  tenantIds: string[];
 }
 
 interface CmsBlogPost {
@@ -510,6 +523,7 @@ const AdminPanelContent = () => {
   const [blogComments, setBlogComments] = useState<BlogPostComment[]>([]);
   const [cmsBlogPosts, setCmsBlogPosts] = useState<CmsBlogPost[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [accessAudit, setAccessAudit] = useState<AdminAccessAuditEntry[]>([]);
   const [blogForm, setBlogForm] = useState<BlogFormState>(emptyBlogForm);
   const [blogError, setBlogError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -566,6 +580,9 @@ const AdminPanelContent = () => {
       setIsAuthenticated(data.authenticated);
       if (data.authenticated) {
         setUser(data.user);
+        setAdminTenantFilter(
+          data.user?.isPlatformOwner ? 'pw-uk' : data.user?.tenantIds?.[0] ?? '',
+        );
         setActiveTab(getDefaultAdminTab(data.user?.role));
         fetchData(false, data.user);
         fetchChatAvailability();
@@ -759,18 +776,21 @@ const AdminPanelContent = () => {
           fetch(adminTenantQuery('/api/admin/tool-leads'), { credentials: 'include' }),
           fetch(adminTenantQuery('/api/admin/chats'), { credentials: 'include' }),
           fetch(adminTenantQuery('/api/admin/sessions'), { credentials: 'include' }),
-          fetch(apiUrl('/api/admin/blog-comments'), { credentials: 'include' }),
-          fetch(adminTenantQuery('/api/admin/chat/appointments'), { credentials: 'include' }),
         );
+        if (currentUser?.isPlatformOwner) {
+          endpoints.push(fetch(apiUrl('/api/admin/blog-comments'), { credentials: 'include' }));
+        }
+        endpoints.push(fetch(adminTenantQuery('/api/admin/chat/appointments'), { credentials: 'include' }));
       }
 
-      if (isBlogAuthor(currentUser?.role)) {
+      if (isBlogAuthor(currentUser?.role) && currentUser?.isPlatformOwner) {
         endpoints.push(fetch(apiUrl('/api/admin/blog-posts'), { credentials: 'include' }));
       }
 
-      // Only fetch users if Super Admin
-      if (isSuperAdmin(currentUser?.role)) {
+      // User access administration is reserved for explicitly provisioned Host/Owners.
+      if (currentUser?.isPlatformOwner) {
         endpoints.push(fetch(apiUrl('/api/admin/users'), { credentials: 'include' }));
+        endpoints.push(fetch(apiUrl('/api/admin/access-audit'), { credentials: 'include' }));
       }
 
       const results = await Promise.all(endpoints);
@@ -792,17 +812,21 @@ const AdminPanelContent = () => {
         resultIndex += 1;
         if (results[resultIndex]?.ok) setChatSessions(await results[resultIndex].json());
         resultIndex += 1;
-        if (results[resultIndex]?.ok) setBlogComments(await results[resultIndex].json());
-        resultIndex += 1;
+        if (currentUser?.isPlatformOwner) {
+          if (results[resultIndex]?.ok) setBlogComments(await results[resultIndex].json());
+          resultIndex += 1;
+        }
         if (results[resultIndex]?.ok) setChatAppointments(await results[resultIndex].json());
         resultIndex += 1;
       }
-      if (isBlogAuthor(currentUser?.role)) {
+      if (isBlogAuthor(currentUser?.role) && currentUser?.isPlatformOwner) {
         if (results[resultIndex]?.ok) setCmsBlogPosts(await results[resultIndex].json());
         resultIndex += 1;
       }
-      if (isSuperAdmin(currentUser?.role)) {
+      if (currentUser?.isPlatformOwner) {
         if (results[resultIndex]?.ok) setUsers(await results[resultIndex].json());
+        resultIndex += 1;
+        if (results[resultIndex]?.ok) setAccessAudit(await results[resultIndex].json());
       }
     } catch (error) {
       console.error('Failed to fetch admin data:', error);
@@ -944,6 +968,30 @@ const AdminPanelContent = () => {
       }
     } catch (error) {
       console.error('Update role failed:', error);
+    }
+  };
+
+  const updateUserTenantAccess = async (
+    target: User,
+    changes: { tenantIds?: string[]; isPlatformOwner?: boolean },
+  ) => {
+    try {
+      const res = await fetch(apiUrl(`/api/admin/users/${target.id}`), {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(changes),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showToast({ type: 'error', message: data.error || 'Failed to update tenant access.' });
+        return;
+      }
+      const updated = await res.json() as User;
+      setUsers((previous) => previous.map((item) => item.id === updated.id ? updated : item));
+    } catch (error) {
+      console.error('Update tenant access failed:', error);
+      showToast({ type: 'error', message: 'Failed to update tenant access.' });
     }
   };
 
@@ -1466,7 +1514,8 @@ const AdminPanelContent = () => {
     );
   }
 
-  const canViewOperations = isOperationsRole(user?.role);
+  const hasTenantAccess = Boolean(user?.isPlatformOwner || user?.tenantIds?.length);
+  const canViewOperations = isOperationsRole(user?.role) && hasTenantAccess;
   const autopilotScope = resolveUkModuleAvailability('autopilot', adminTenantFilter);
   const blogCmsScope = resolveUkModuleAvailability('blogCms', adminTenantFilter);
   const blogCommentsScope = resolveUkModuleAvailability('blogComments', adminTenantFilter);
@@ -1478,16 +1527,16 @@ const AdminPanelContent = () => {
   const chatHistoryScope = resolveTenantCapabilityModuleAvailability('chatHistory', adminTenantFilter);
   const schedulingScope = resolveTenantCapabilityModuleAvailability('scheduling', adminTenantFilter);
   const canViewAutopilot = canShowAutopilotTab(user?.role) && autopilotScope.available;
-  const canViewBlogCms = isBlogAuthor(user?.role) && blogCmsScope.available;
-  const canViewBlogComments = canViewOperations && blogCommentsScope.available;
+  const canViewBlogCms = Boolean(user?.isPlatformOwner) && isBlogAuthor(user?.role) && blogCmsScope.available;
+  const canViewBlogComments = Boolean(user?.isPlatformOwner) && canViewOperations && blogCommentsScope.available;
   const canViewForms = canViewOperations && formsScope.available;
   const canViewAuditLeads = canViewOperations && auditLeadsScope.available;
   const canViewConversion = canViewOperations && conversionScope.available;
   const canViewChatLeads = canViewOperations && chatLeadsScope.available;
   const canViewChatHistory = canViewOperations && chatHistoryScope.available;
   const showAutopilotUnavailable = canShowAutopilotTab(user?.role) && !autopilotScope.available;
-  const showBlogCmsUnavailable = isBlogAuthor(user?.role) && !blogCmsScope.available;
-  const showBlogCommentsUnavailable = canViewOperations && !blogCommentsScope.available;
+  const showBlogCmsUnavailable = Boolean(user?.isPlatformOwner) && isBlogAuthor(user?.role) && !blogCmsScope.available;
+  const showBlogCommentsUnavailable = Boolean(user?.isPlatformOwner) && canViewOperations && !blogCommentsScope.available;
   const showFormsUnavailable = canViewOperations && !formsScope.available;
   const showAuditLeadsUnavailable = canViewOperations && !auditLeadsScope.available;
   const showConversionUnavailable = canViewOperations && !conversionScope.available;
@@ -1565,7 +1614,12 @@ const AdminPanelContent = () => {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {canViewOperations && (
-              <AdminTenantFilter value={adminTenantFilter} onChange={setAdminTenantFilter} />
+              <AdminTenantFilter
+                value={adminTenantFilter}
+                onChange={setAdminTenantFilter}
+                tenantIds={user?.tenantIds}
+                isPlatformOwner={user?.isPlatformOwner}
+              />
             )}
             <button 
               onClick={() => { fetchData(); fetchNotificationSummary(); }}
@@ -1984,7 +2038,7 @@ const AdminPanelContent = () => {
                 {blogCommentsScope.unavailableLabel}
               </span>
             )}
-            {isSuperAdmin(user?.role) && userManagementScope.available && (
+            {user?.isPlatformOwner && userManagementScope.available && (
               <Tabs.Trigger 
                 value="users"
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
@@ -2132,6 +2186,23 @@ const AdminPanelContent = () => {
                 </table>
               </div>
             </div>
+            <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <h3 className="text-sm font-bold text-zinc-900">Recent access changes</h3>
+              <p className="mt-1 text-xs text-zinc-500">Latest 100 Host/Owner access and account administration events.</p>
+              <div className="mt-4 max-h-80 overflow-auto divide-y divide-zinc-100">
+                {accessAudit.map((entry) => (
+                  <div key={entry.id} className="py-3 text-xs text-zinc-600">
+                    <div className="flex flex-wrap justify-between gap-2">
+                      <span className="font-semibold text-zinc-800">{entry.action}</span>
+                      <time dateTime={entry.createdAt}>{format(new Date(entry.createdAt), 'MMM d, yyyy HH:mm')}</time>
+                    </div>
+                    <p className="mt-1">Actor #{entry.actorUserId} · Target #{entry.targetUserId}</p>
+                    <pre className="mt-1 whitespace-pre-wrap break-words text-[10px] text-zinc-500">{JSON.stringify(entry.details)}</pre>
+                  </div>
+                ))}
+                {accessAudit.length === 0 && <p className="py-3 text-xs text-zinc-500">No access changes recorded.</p>}
+              </div>
+            </div>
           </Tabs.Content>
           )}
 
@@ -2141,6 +2212,8 @@ const AdminPanelContent = () => {
               globalSearch={searchTerm}
               tenantFilter={adminTenantFilter}
               onTenantFilterChange={setAdminTenantFilter}
+              tenantIds={user?.tenantIds}
+              isPlatformOwner={user?.isPlatformOwner}
             />
           </Tabs.Content>
           )}
@@ -3037,7 +3110,7 @@ const AdminPanelContent = () => {
           </Tabs.Content>
           )}
 
-          {isSuperAdmin(user?.role) && userManagementScope.available && (
+          {user?.isPlatformOwner && userManagementScope.available && (
             <Tabs.Content value="users" className="outline-none space-y-8">
               <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
                 <p className="text-sm font-bold text-zinc-900">{PLATFORM_USER_MANAGEMENT_TITLE}</p>
@@ -3107,6 +3180,8 @@ const AdminPanelContent = () => {
                       <tr className="bg-zinc-50 border-bottom border-zinc-100">
                         <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">User</th>
                         <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Role</th>
+                        <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Tenant access</th>
+                        <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Platform-wide</th>
                         <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Joined</th>
                         <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400 text-right">Actions</th>
                       </tr>
@@ -3126,7 +3201,7 @@ const AdminPanelContent = () => {
                             <select 
                               value={u.role}
                               onChange={(e) => updateUserRole(u.id, e.target.value)}
-                              disabled={u.email === user.email}
+                              disabled={!user?.isPlatformOwner || u.email === user.email}
                               className="text-sm border-none bg-transparent focus:ring-0 font-medium text-zinc-600 cursor-pointer disabled:cursor-not-allowed"
                             >
                               <option value="super_admin">Super Admin</option>
@@ -3136,6 +3211,32 @@ const AdminPanelContent = () => {
                               <option value="editor">Legacy Editor</option>
                               <option value="viewer">Viewer</option>
                             </select>
+                          </td>
+                          <td className="px-6 py-4">
+                            <select
+                              multiple
+                              aria-label={`Tenant access for ${u.email}`}
+                              value={u.tenantIds}
+                              disabled={!user?.isPlatformOwner}
+                              onChange={(event) => updateUserTenantAccess(u, {
+                                tenantIds: Array.from(event.currentTarget.selectedOptions, (option) => option.value),
+                              })}
+                              className="min-w-40 rounded-lg border border-zinc-200 bg-white p-2 text-xs disabled:opacity-60"
+                            >
+                              {ADMIN_TENANT_FILTER_OPTIONS.filter((option) => option.value !== 'all').map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-6 py-4">
+                            <input
+                              type="checkbox"
+                              aria-label={`Platform-wide administrator for ${u.email}`}
+                              checked={u.isPlatformOwner}
+                              disabled={!user?.isPlatformOwner || u.id === user.id}
+                              onChange={(event) => updateUserTenantAccess(u, { isPlatformOwner: event.target.checked })}
+                              className="h-4 w-4 rounded border-zinc-300 text-emerald-600"
+                            />
                           </td>
                           <td className="px-6 py-4 text-sm text-zinc-500">
                             {format(new Date(u.createdAt), 'MMM d, yyyy')}

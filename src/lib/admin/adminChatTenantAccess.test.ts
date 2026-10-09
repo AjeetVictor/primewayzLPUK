@@ -144,12 +144,25 @@ function createDb() {
 const OPS_COOKIE = 'primewayz_admin_token=ops';
 const BLOG_COOKIE = 'primewayz_admin_token=blog';
 
-type TestAdminRequest = Request & { adminUser?: { role: string } };
+type TestAdminRequest = Request & {
+  adminUser?: {
+    id: number;
+    email: string;
+    role: string;
+    isPlatformOwner: boolean;
+    tenantIds: string[];
+  };
+};
 
 function fakeRequireAdmin(req: TestAdminRequest, res: Response, next: NextFunction) {
   const cookie = req.get('cookie') ?? '';
-  if (cookie.includes('primewayz_admin_token=ops')) req.adminUser = { role: 'editor' };
-  else if (cookie.includes('primewayz_admin_token=blog')) req.adminUser = { role: 'blog_author' };
+  if (cookie.includes('primewayz_admin_token=ops')) {
+    req.adminUser = { id: 1, email: 'platform@example.com', role: 'editor', isPlatformOwner: true, tenantIds: [] };
+  } else if (cookie.includes('primewayz_admin_token=tenant')) {
+    req.adminUser = { id: 2, email: 'tenant@example.com', role: 'editor', isPlatformOwner: false, tenantIds: ['pw-infotech'] };
+  } else if (cookie.includes('primewayz_admin_token=unassigned')) {
+    req.adminUser = { id: 3, email: 'unassigned@example.com', role: 'editor', isPlatformOwner: false, tenantIds: [] };
+  } else if (cookie.includes('primewayz_admin_token=blog')) req.adminUser = { id: 4, email: 'blog@example.com', role: 'blog_author', isPlatformOwner: false, tenantIds: [] };
   else return res.status(401).json({ success: false, error: 'Not authenticated' });
   return next();
 }
@@ -206,6 +219,8 @@ async function startAdminApp() {
 
 const UK_ADMIN_ORIGIN = 'https://uk.primewayz.com';
 const ops = { cookie: OPS_COOKIE, origin: UK_ADMIN_ORIGIN };
+const tenantOps = { cookie: 'primewayz_admin_token=tenant', origin: UK_ADMIN_ORIGIN };
+const unassignedOps = { cookie: 'primewayz_admin_token=unassigned', origin: UK_ADMIN_ORIGIN };
 
 // --- Public visitor isolation (unchanged by this task) ---
 
@@ -229,13 +244,20 @@ test('public visitor from primewayz.com can only access pw-infotech sessions', (
 
 test('admin session access is decided by stored tenant + selected filter, not request source', () => {
   const infotech = { id: INFOTECH_SESSION, tenantId: 'pw-infotech' };
-  assert.equal(assertAdminCanAccessChatSession(infotech, 'pw-infotech'), infotech);
-  assert.equal(assertAdminCanAccessChatSession(infotech, undefined), infotech, 'All entities');
+  const platform = { id: 9, role: 'admin', isPlatformOwner: true, tenantIds: [] };
+  assert.equal(assertAdminCanAccessChatSession(infotech, 'pw-infotech', platform), infotech);
+  assert.equal(assertAdminCanAccessChatSession(infotech, undefined, platform), infotech, 'All entities');
+  assert.equal(assertAdminCanAccessChatSession(infotech, 'pw-infotech', {
+    id: 10, role: 'editor', isPlatformOwner: false, tenantIds: ['pw-infotech'],
+  }), infotech, 'assigned tenant operator');
   assert.throws(() => assertAdminCanAccessChatSession(infotech, 'pw-uk'), { status: 403, code: 'tenant_scope_mismatch' });
   assert.throws(() => assertAdminCanAccessChatSession(null, undefined), { status: 404 });
   assert.throws(() => assertAdminCanAccessChatSession({ id: 'x', tenantId: 'pw-us' }, undefined), { status: 403, code: 'tenant_not_permitted' });
   assert.throws(() => assertAdminCanAccessChatSession({ id: LEGACY_SESSION, tenantId: null }, 'pw-uk'), { status: 403 });
-  assert.ok(assertAdminCanAccessChatSession({ id: LEGACY_SESSION, tenantId: null }, undefined));
+  assert.throws(
+    () => assertAdminCanAccessChatSession({ id: LEGACY_SESSION, tenantId: null }, undefined),
+    { status: 403, code: 'platform_owner_required' },
+  );
 });
 
 // --- Authenticated admin over HTTP ---
@@ -256,6 +278,32 @@ test('authorised admin lists pw-uk and pw-infotech conversations through the ten
     await app.close();
   }
 });
+
+test('tenant operators are limited to assigned tenants and cannot use all or select another tenant', async () => {
+      const app = await startAdminApp();
+      try {
+        const defaultScope = await app.call('GET', '/api/admin/sessions', tenantOps);
+        assert.deepEqual(defaultScope.json.map((session: SessionRow) => session.id), [INFOTECH_SESSION]);
+
+        for (const path of [
+          '/api/admin/sessions?tenantId=pw-uk',
+          '/api/admin/chats?tenantId=all',
+          `/api/admin/sessions/${UK_SESSION}/messages?tenantId=all`,
+          `/api/admin/sessions/${UK_SESSION}/messages?tenantId=pw-uk`,
+          `/api/chat?tenantId=all`,
+        ]) {
+          const method = path.startsWith('/api/chat?') ? 'POST' : 'GET';
+          const body = method === 'POST'
+            ? { sessionId: UK_SESSION, sender: 'admin', text: 'unauthorized' }
+            : undefined;
+          assert.equal((await app.call(method, path, { ...tenantOps, body })).status, 403, path);
+        }
+        assert.equal((await app.call('GET', '/api/admin/sessions', unassignedOps)).status, 403);
+      } finally {
+        await app.close();
+      }
+});
+
 
 test('authorised admin opens and refreshes pw-uk and pw-infotech history from the UK admin origin', async () => {
   const app = await startAdminApp();
@@ -431,7 +479,7 @@ test('server mounts the admin history route behind admin auth and the operations
 test('admin chat code never resolves tenant from the request source', () => {
   const adminRoutes = read('src/lib/admin/adminChatRoutes.ts');
   assert.doesNotMatch(adminRoutes, /resolveSourceContext|resolveRequestSource/);
-  assert.match(adminRoutes, /resolveAdminTenantFilter\(/);
+  assert.match(adminRoutes, /requestedTenantFilter\(/);
   const storeStart = server.indexOf('const adminChatStore: AdminChatStore = {');
   const storeEnd = server.indexOf('const adminChatHandlers = createAdminChatRouteHandlers(');
   const storeSource = server.slice(storeStart, storeEnd);

@@ -413,9 +413,11 @@ model User {
   email                  String    @unique
   password               String
   role                   String    @default("viewer")
+  isPlatformOwner        Boolean   @default(false)
   resetPasswordTokenHash String?
   resetPasswordExpiresAt DateTime?
   createdAt              DateTime  @default(now())
+  tenantGrants           UserTenantGrant[]
 
   // Article Autopilot relations (SetNull — preserve Autopilot rows if admin is removed)
   autopilotTopicsAssigned             AutopilotTopic[]              @relation("AutopilotTopicAssignedTo")
@@ -438,6 +440,30 @@ model User {
   gscOAuthStates                      GscOAuthState[]               @relation("GscOAuthStateUser")
   gscSyncRunsRequested                GscSyncRun[]                  @relation("GscSyncRunRequestedBy")
   ga4SyncRunsRequested                Ga4SyncRun[]                  @relation("Ga4SyncRunRequestedBy")
+
+  @@index([isPlatformOwner])
+}
+
+model UserTenantGrant {
+  userId    Int
+  tenantId  String   @db.VarChar(32)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, tenantId])
+  @@index([tenantId, userId])
+}
+
+model AdminAccessAuditLog {
+  id          Int      @id @default(autoincrement())
+  actorUserId Int
+  targetUserId Int
+  action      String   @db.VarChar(64)
+  details     Json
+  createdAt   DateTime @default(now())
+
+  @@index([targetUserId, createdAt])
+  @@index([actorUserId, createdAt])
 }
 
 // --- CMS / Blog ---

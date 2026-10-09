@@ -59,8 +59,11 @@ export async function transitionReviewLeadStatus(
   id: number,
   toStatus: LeadStatus,
   context: LeadTransitionContext,
+  tenantId: string | 'all' = 'all',
 ) {
-  const lead = await prisma.digitalSystemsReviewLead.findUnique({ where: { id } });
+  const lead = await prisma.digitalSystemsReviewLead.findFirst({
+    where: { id, ...(tenantId === 'all' ? {} : { tenantId }) },
+  });
   if (!lead) return null;
 
   const fromStatus = leadStatusFromDbValue(lead.status);
@@ -118,10 +121,11 @@ export async function assignReviewLeadOwner(
   id: number,
   ownerId: number,
   actorId?: number,
+  tenantId: string | 'all' = 'all',
 ) {
   return transitionReviewLeadStatus(prisma, id, 'ASSIGNED', {
     ownerId,
     actorId: actorId ?? null,
     note: 'Owner assigned',
-  });
+  }, tenantId);
 }

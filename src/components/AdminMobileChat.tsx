@@ -23,6 +23,8 @@ interface CurrentUser {
   id: number;
   email: string;
   role: string;
+  isPlatformOwner: boolean;
+  tenantIds: string[];
 }
 
 const adminRequest = (path: string, init: RequestInit = {}) =>
@@ -57,7 +59,9 @@ export const AdminMobileChat = () => {
       setIsAuthenticated(data.authenticated);
       if (data.authenticated) {
         setUser(data.user);
-        if (!isOperationsRole(data.user?.role)) {
+        const tenantIds = data.user?.tenantIds ?? [];
+        setTenantFilter(data.user?.isPlatformOwner ? 'pw-uk' : tenantIds[0] ?? '');
+        if (!isOperationsRole(data.user?.role) || (!data.user?.isPlatformOwner && tenantIds.length === 0)) {
           setLoginError('Your account does not have chat access.');
           setIsAuthenticated(false);
         }
@@ -387,6 +391,8 @@ export const AdminMobileChat = () => {
         </div>
         <AdminTenantFilter
           value={tenantFilter}
+          tenantIds={user?.tenantIds}
+          isPlatformOwner={user?.isPlatformOwner}
           onChange={(value) => {
             setTenantFilter(value);
             setSelectedSessionId(null);
