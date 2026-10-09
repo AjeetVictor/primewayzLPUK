@@ -85,10 +85,14 @@ export const SuccessStoriesPage = () => (
 
                   <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
                     <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">
-                      Key outcome
+                      Delivery highlight
                     </p>
                     <p className="mt-1 text-sm leading-6 text-emerald-900">{story.keyOutcome}</p>
                   </div>
+
+                  <p className="mt-4 text-xs leading-5 text-slate-500">
+                    {story.evidence.visualProvenance.disclosure}
+                  </p>
                 </div>
               </article>
             );

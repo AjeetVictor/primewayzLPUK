@@ -106,6 +106,8 @@ test('CRM proof uses wholesale story', () => {
   const source = readRepoFile('src', 'components', 'CrmIntegrationSupportUkPage.tsx');
   assert.match(source, /id="crm-authority-proof"/);
   assert.match(source, /storySlugs=\{\['wholesale-order-management-platform'\]\}/);
+  assert.match(source, /evidenceFor="crm-automation"/);
+  assert.match(source, /adjacent experience for CRM automation/i);
 });
 
 test('software proof uses approved stories only', () => {
@@ -114,6 +116,8 @@ test('software proof uses approved stories only', () => {
   assert.match(source, /rentreadbuy-book-rental-platform/);
   assert.match(source, /wholesale-order-management-platform/);
   assert.match(source, /restaurant-self-ordering-platform/);
+  assert.match(source, /evidenceFor="software-development-subscription"/);
+  assert.match(source, /do not claim that a customer purchased the current subscription plans/i);
   for (const retiredSlug of RETIRED_ILLUSTRATIVE_STORY_SLUGS) {
     assert.equal(source.includes(retiredSlug), false);
   }
@@ -229,10 +233,11 @@ test('public proof labels use restrained wording', () => {
 
   assert.match(successStoriesPage, /Delivery experience/);
   assert.match(proofSection, /Delivery highlight/);
-  assert.match(storyDetail, /Delivery outcomes/);
+  assert.match(successStoriesPage, /Delivery highlight/);
+  assert.match(storyDetail, /Observable delivery outputs/);
   assert.match(
     storyDetail,
-    /Qualitative outcomes we can state publicly without relying on unsupported performance metrics\./,
+    /Qualitative implementation outputs we can state publicly without relying on unsupported performance metrics\./,
   );
 
   for (const source of [successStoriesPage, proofSection, storyDetail]) {

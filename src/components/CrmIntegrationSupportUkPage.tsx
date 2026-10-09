@@ -448,8 +448,9 @@ export function CrmIntegrationSupportUkPage() {
         id="crm-authority-proof"
         eyebrow="Relevant delivery experience"
         heading="Working with connected customer, order and operational workflows"
-        introduction="Our experience supporting an established wholesale platform includes understanding and improving the relationships between catalogue, inventory, warehouse, customer and order processes."
+        introduction="The wholesale story directly evidences connected operational workflows. It is adjacent experience for CRM automation: it does not claim a CRM platform, lead-routing implementation or CRM performance result."
         storySlugs={['wholesale-order-management-platform']}
+        evidenceFor="crm-automation"
         ctaLabel="Read the delivery story"
       />
 

@@ -18,6 +18,7 @@ import {
 } from '../data/successStories';
 import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
 import { WholesaleOrderManagementCaseStudyPage } from './successStories/WholesaleOrderManagementCaseStudyPage';
+import { EvidenceDisclosure } from './successStories/EvidenceDisclosure';
 
 const iconByKey: Record<SuccessStoryIconKey, typeof Layers> = {
   layers: Layers,
@@ -150,6 +151,9 @@ export const AuthorityStoryDetailPage = () => {
               <div className="border-t border-slate-200 bg-white px-5 py-4">
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Category</p>
                 <p className="mt-1 text-sm font-semibold text-slate-800">{story.category}</p>
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  {story.evidence.visualProvenance.disclosure}
+                </p>
               </div>
             </motion.div>
           </div>
@@ -176,10 +180,10 @@ export const AuthorityStoryDetailPage = () => {
           <div>
             <div className="mb-6 flex items-center gap-3">
               <Wrench className="h-6 w-6 text-[#0057C8]" />
-              <h2 className="text-2xl font-black tracking-tight text-[#000A2D]">Primewayz responsibility</h2>
+              <h2 className="text-2xl font-black tracking-tight text-[#000A2D]">Implementation facts</h2>
             </div>
             <ul className="space-y-4">
-              {story.responsibility.map((item) => (
+              {story.implementationFacts.map((item) => (
                 <li key={item} className="flex gap-3 text-base leading-7 text-slate-600">
                   <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-emerald-600" />
                   {item}
@@ -230,9 +234,9 @@ export const AuthorityStoryDetailPage = () => {
 
       <section className="border-y border-slate-100 bg-[#000A2D] px-6 py-20 text-white lg:px-8">
         <div className="mx-auto max-w-[1200px]">
-          <h2 className="text-2xl font-black tracking-tight">Delivery outcomes</h2>
+          <h2 className="text-2xl font-black tracking-tight">Observable delivery outputs</h2>
           <p className="mt-3 max-w-3xl text-base leading-7 text-slate-300">
-            Qualitative outcomes we can state publicly without relying on unsupported performance metrics.
+            Qualitative implementation outputs we can state publicly without relying on unsupported performance metrics.
           </p>
           <ul className="mt-10 grid gap-4 md:grid-cols-2">
             {story.outcomes.map((item) => (
@@ -248,9 +252,11 @@ export const AuthorityStoryDetailPage = () => {
         </div>
       </section>
 
+      <EvidenceDisclosure evidence={story.evidence} />
+
       <section className="px-6 py-20 lg:px-8">
         <div className="mx-auto max-w-[1200px]">
-          <h2 className="text-2xl font-black tracking-tight text-[#000A2D]">Technologies and technical scope</h2>
+          <h2 className="text-2xl font-black tracking-tight text-[#000A2D]">Technical and delivery scope</h2>
           <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
             Technical areas involved in the delivery. Specific tooling is included only where it supports clarity
             of scope, not as a technology claim for its own sake.

@@ -105,7 +105,7 @@ const relatedLinks = [
   {
     title: 'Wholesale order-management platform story',
     href: getSuccessStoryPath('wholesale-order-management-platform'),
-    text: 'See how structured workflow and order-management support can improve operational visibility across complex business processes.',
+    text: 'Adjacent workflow experience showing how connected catalogue, inventory, warehouse, customer and order processes were understood and supported. This is not presented as CRM implementation evidence.',
     anchor: 'Read the related success story',
   },
 ];
@@ -153,7 +153,7 @@ export const ProfessionalServicesCrmSupportUkPage = () => (
                 to={getSuccessStoryPath('wholesale-order-management-platform')}
                 className="inline-flex min-h-[48px] items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-sm font-bold text-white transition hover:border-white/40 hover:bg-white/10"
               >
-                View workflow platform example
+                View adjacent workflow example
               </Link>
             </div>
           </div>

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import {
   getPublishedSuccessStoryBySlug,
   getSuccessStoryPath,
+  getStoryServiceRelevance,
+  type EvidenceServiceCategory,
   type SuccessStory,
 } from '../../data/successStories';
 import { successStoryIconByKey } from '../../data/successStoryIcons';
@@ -18,6 +20,7 @@ export type AuthorityProofSectionProps = {
   ctaLabel?: string;
   id?: string;
   className?: string;
+  evidenceFor?: EvidenceServiceCategory;
 };
 
 /** Resolve only published public stories; unknown or unpublished slugs are omitted. */
@@ -57,6 +60,7 @@ export function AuthorityProofSection({
   ctaLabel = 'Read the delivery story',
   id,
   className = '',
+  evidenceFor,
 }: AuthorityProofSectionProps) {
   const stories = resolveAuthorityProofStories(storySlugs);
   if (stories.length === 0) return null;
@@ -87,6 +91,9 @@ export function AuthorityProofSection({
             const Icon = successStoryIconByKey[story.iconKey];
             const styles = accentStyles[story.accentColor];
             const href = getSuccessStoryPath(story.slug);
+            const evidenceContext = evidenceFor
+              ? getStoryServiceRelevance(story, evidenceFor)
+              : undefined;
 
             return (
               <article
@@ -113,6 +120,19 @@ export function AuthorityProofSection({
 
                 <h3 className="mt-4 text-xl font-bold tracking-tight text-slate-950">{story.shortTitle}</h3>
                 <p className="mt-3 flex-1 text-sm leading-7 text-slate-600">{story.summary}</p>
+
+                {evidenceContext ? (
+                  <div className="mt-5 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                      {evidenceContext.relevance === 'direct'
+                        ? 'Direct implementation evidence'
+                        : 'Adjacent delivery experience'}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                      {evidenceContext.rationale}
+                    </p>
+                  </div>
+                ) : null}
 
                 <div className="mt-5 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
                   <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">

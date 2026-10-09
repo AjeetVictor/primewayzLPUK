@@ -10,6 +10,36 @@ export type SuccessStoryIconKey = 'layers' | 'book-open' | 'smartphone';
 
 export type SuccessStoryAccentColor = 'emerald' | 'indigo' | 'amber';
 
+export type EvidenceRelevance = 'direct' | 'adjacent';
+
+export type EvidenceServiceCategory =
+  | 'systems-integration-workflow-automation'
+  | 'crm-automation'
+  | 'maintenance-product-engineering'
+  | 'software-development-subscription'
+  | 'custom-software-development'
+  | 'ecommerce-operational-platforms'
+  | 'website-visibility-conversion'
+  | 'remote-it-team-extension';
+
+export type EvidenceVisualProvenance = {
+  kind: 'illustration' | 'actual-screenshot';
+  disclosure: string;
+};
+
+export type EvidenceServiceRelevance = {
+  service: EvidenceServiceCategory;
+  relevance: EvidenceRelevance;
+  rationale: string;
+};
+
+export type SuccessStoryEvidence = {
+  basis: string;
+  limitations: readonly string[];
+  visualProvenance: EvidenceVisualProvenance;
+  serviceRelevance: readonly EvidenceServiceRelevance[];
+};
+
 export interface SuccessStory {
   slug: string;
   title: string;
@@ -22,7 +52,7 @@ export interface SuccessStory {
   homepageSummary: string;
   keyOutcome: string;
   problem: readonly string[];
-  responsibility: readonly string[];
+  implementationFacts: readonly string[];
   solution: readonly string[];
   deliveryDecisions: readonly string[];
   outcomes: readonly string[];
@@ -43,6 +73,7 @@ export interface SuccessStory {
   iconKey: SuccessStoryIconKey;
   accentColor: SuccessStoryAccentColor;
   publicationStatus: SuccessStoryPublicationStatus;
+  evidence: SuccessStoryEvidence;
 }
 
 export const SUCCESS_STORIES_BASE_PATH = '/success-stories';
@@ -93,7 +124,7 @@ const successStories: readonly SuccessStory[] = [
       'The business required continuity while improving an established application rather than replacing it.',
       'Dependable technical ownership and controlled enhancement were needed as delivery contributors changed.',
     ],
-    responsibility: [
+    implementationFacts: [
       'Ongoing software-development contribution to a long-running platform.',
       'Understanding inherited workflows and existing application behaviour.',
       'Supporting catalogue and SKU-related processes.',
@@ -139,6 +170,56 @@ const successStories: readonly SuccessStory[] = [
       'Remote IT team extension',
       'CRM and workflow automation',
     ],
+    evidence: {
+      basis:
+        'Anonymised client delivery described from Primewayz delivery records and the implementation scope approved for public disclosure.',
+      limitations: [
+        'This story does not identify the client, proprietary business rules, confidential screenshots or commercial measures.',
+        'It does not evidence a named CRM platform, lead-routing result, support SLA, uptime level or current subscription-plan purchase.',
+        'All outcomes are qualitative delivery observations rather than independently audited performance results.',
+      ],
+      visualProvenance: {
+        kind: 'illustration',
+        disclosure: 'Purpose-built explanatory illustrations; not client application screenshots.',
+      },
+      serviceRelevance: [
+        {
+          service: 'systems-integration-workflow-automation',
+          relevance: 'direct',
+          rationale: 'Direct evidence of connected catalogue, inventory, warehouse, customer and order workflows.',
+        },
+        {
+          service: 'crm-automation',
+          relevance: 'adjacent',
+          rationale: 'Adjacent operational-workflow experience only; no CRM product or CRM automation result is claimed.',
+        },
+        {
+          service: 'maintenance-product-engineering',
+          relevance: 'direct',
+          rationale: 'Direct evidence of controlled enhancement, release support and continuity for an inherited platform.',
+        },
+        {
+          service: 'software-development-subscription',
+          relevance: 'adjacent',
+          rationale: 'Relevant recurring engineering experience, not evidence that the current subscription plans were purchased.',
+        },
+        {
+          service: 'custom-software-development',
+          relevance: 'adjacent',
+          rationale: 'Relevant inherited-application engineering rather than a new custom build.',
+        },
+        {
+          service: 'ecommerce-operational-platforms',
+          relevance: 'direct',
+          rationale: 'Direct evidence of a wholesale operational platform and its connected commerce workflows.',
+        },
+        {
+          service: 'remote-it-team-extension',
+          relevance: 'adjacent',
+          rationale: 'Evidence of contributor continuity and knowledge transfer, not a claim about a current staffing engagement.',
+        },
+      ],
+    },
     reviewServiceArea: 'Managed Application & Website Support',
     ctaLabel: 'Discuss platform continuity support',
     ctaHref: '/contact-us#book-call',
@@ -171,7 +252,7 @@ const successStories: readonly SuccessStory[] = [
       'Rental, purchase, condition, pricing and membership rules must work together reliably.',
       'The platform requires continuous technical, content and operational improvement.',
     ],
-    responsibility: [
+    implementationFacts: [
       'Product and workflow definition for rental and commerce journeys.',
       'Rental and purchase customer journeys.',
       'Membership, cart and checkout flows.',
@@ -216,6 +297,51 @@ const successStories: readonly SuccessStory[] = [
       'Website visibility and conversion support',
       'Managed application and website support',
     ],
+    evidence: {
+      basis:
+        'Primewayz-owned product evidence based on implemented rental, purchase, membership, catalogue and commerce capabilities.',
+      limitations: [
+        'This story does not claim conversion, revenue, search-ranking, retention or usage improvements.',
+        'It does not identify named analytics, payment, logistics or other third-party vendors.',
+        'The story demonstrates engineering work but does not evidence purchase of a current Primewayz subscription plan.',
+      ],
+      visualProvenance: {
+        kind: 'illustration',
+        disclosure: 'Abstract product-engineering illustration; not a product-interface screenshot.',
+      },
+      serviceRelevance: [
+        {
+          service: 'systems-integration-workflow-automation',
+          relevance: 'adjacent',
+          rationale: 'Connected product workflows are shown, but no specific external system integration is claimed.',
+        },
+        {
+          service: 'maintenance-product-engineering',
+          relevance: 'direct',
+          rationale: 'Direct owned-product evidence of ongoing technical and operational iteration.',
+        },
+        {
+          service: 'software-development-subscription',
+          relevance: 'adjacent',
+          rationale: 'Relevant ongoing product-engineering experience, not evidence of a current subscription purchase.',
+        },
+        {
+          service: 'custom-software-development',
+          relevance: 'direct',
+          rationale: 'Direct evidence of product and commerce platform design and implementation.',
+        },
+        {
+          service: 'ecommerce-operational-platforms',
+          relevance: 'direct',
+          rationale: 'Direct evidence of rental, purchase, membership, catalogue and checkout journeys.',
+        },
+        {
+          service: 'website-visibility-conversion',
+          relevance: 'direct',
+          rationale: 'Direct owned-product evidence of catalogue discovery, technical SEO, analytics and campaign-page work.',
+        },
+      ],
+    },
     reviewServiceArea: 'Software & Product Engineering',
     ctaLabel: 'Discuss product and platform engineering',
     ctaHref: '/contact-us#book-call',
@@ -249,7 +375,7 @@ const successStories: readonly SuccessStory[] = [
       'Different customers may require multilingual interaction throughout the experience.',
       'Restaurant teams need administrable menu and reporting foundations.',
     ],
-    responsibility: [
+    implementationFacts: [
       'Touch-screen ordering user experience design and implementation.',
       'Menu browsing and product customisation flows.',
       'Multilingual experience design and delivery.',
@@ -276,7 +402,7 @@ const successStories: readonly SuccessStory[] = [
       'A structured self-service ordering journey.',
       'Connected browsing, selection and payment interactions.',
       'A reusable foundation for menu administration and operational reporting.',
-      'A simpler customer-facing ordering experience.',
+      'A customer-facing ordering experience designed for touch interaction and visual menu clarity.',
     ],
     technologies: [
       'Touch-screen customer experience design',
@@ -295,6 +421,46 @@ const successStories: readonly SuccessStory[] = [
       'CRM and workflow automation',
       'Website visibility and conversion support',
     ],
+    evidence: {
+      basis:
+        'Anonymised client delivery based on Primewayz design, implementation and integration responsibilities.',
+      limitations: [
+        'This story does not identify the client, payment provider or confidential implementation details.',
+        'It does not claim adoption, transaction, revenue, speed or customer-satisfaction improvements.',
+        'Menu administration and reporting are described as foundations and planning, not quantified operational outcomes.',
+      ],
+      visualProvenance: {
+        kind: 'illustration',
+        disclosure: 'Abstract customer-experience illustration; not a client interface screenshot.',
+      },
+      serviceRelevance: [
+        {
+          service: 'systems-integration-workflow-automation',
+          relevance: 'direct',
+          rationale: 'Direct evidence of connecting menu, ordering, customisation and payment interactions.',
+        },
+        {
+          service: 'software-development-subscription',
+          relevance: 'adjacent',
+          rationale: 'Relevant software-delivery experience, not evidence of a current subscription purchase.',
+        },
+        {
+          service: 'custom-software-development',
+          relevance: 'direct',
+          rationale: 'Direct evidence of a customer-facing software product design and build.',
+        },
+        {
+          service: 'ecommerce-operational-platforms',
+          relevance: 'direct',
+          rationale: 'Direct evidence of a digital ordering and payment journey.',
+        },
+        {
+          service: 'website-visibility-conversion',
+          relevance: 'adjacent',
+          rationale: 'Relevant customer-journey experience, without search or conversion-performance evidence.',
+        },
+      ],
+    },
     reviewServiceArea: 'Software & Product Engineering',
     ctaLabel: 'Discuss a customer-facing product build',
     ctaHref: '/contact-us#book-call',
@@ -327,6 +493,13 @@ export function getPublishedSuccessStoryBySlug(slug: string): SuccessStory | und
 
 export function getSuccessStoryPath(slug: string): string {
   return `${SUCCESS_STORIES_BASE_PATH}/${slug}`;
+}
+
+export function getStoryServiceRelevance(
+  story: SuccessStory,
+  service: EvidenceServiceCategory,
+): EvidenceServiceRelevance | undefined {
+  return story.evidence.serviceRelevance.find((entry) => entry.service === service);
 }
 
 export function getSuccessStorySeoEntries(): Record<string, { title: string; description: string; image: string }> {

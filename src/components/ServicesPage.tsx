@@ -17,7 +17,11 @@ import { TrackedLink } from './common/TrackedLink';
 import { SelfAuditCta } from './SelfAuditCta';
 import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
 import { CANONICAL_ROUTES } from '../constants/canonicalRoutes';
-import { getSuccessStoryPath } from '../data/successStories';
+import {
+  getPublishedSuccessStoryBySlug,
+  getSuccessStoryPath,
+  getStoryServiceRelevance,
+} from '../data/successStories';
 
 const serviceCards = [
   {
@@ -33,7 +37,8 @@ const serviceCards = [
       'Trust signals and conversion tracking',
     ],
     proofLabel: 'RentReadBuy platform story',
-    proofHref: getSuccessStoryPath('rentreadbuy-book-rental-platform'),
+    proofStorySlug: 'rentreadbuy-book-rental-platform',
+    proofService: 'website-visibility-conversion' as const,
   },
   {
     title: 'CRM & Workflow Automation',
@@ -48,7 +53,8 @@ const serviceCards = [
       'Reporting and operational visibility',
     ],
     proofLabel: 'Wholesale platform continuity story',
-    proofHref: getSuccessStoryPath('wholesale-order-management-platform'),
+    proofStorySlug: 'wholesale-order-management-platform',
+    proofService: 'crm-automation' as const,
   },
   {
     title: 'Custom AI Agents & Workflow Automation',
@@ -63,6 +69,9 @@ const serviceCards = [
       'AI workflow automation with human oversight',
     ],
     isNew: true,
+    proofLabel: undefined,
+    proofStorySlug: undefined,
+    proofService: undefined,
   },
   {
     title: 'Software & Product Engineering',
@@ -77,7 +86,8 @@ const serviceCards = [
       'Structured monthly engineering capacity',
     ],
     proofLabel: 'Restaurant self-ordering story',
-    proofHref: getSuccessStoryPath('restaurant-self-ordering-platform'),
+    proofStorySlug: 'restaurant-self-ordering-platform',
+    proofService: 'custom-software-development' as const,
   },
   {
     title: 'Managed Application & Website Support',
@@ -85,14 +95,15 @@ const serviceCards = [
     icon: LifeBuoy,
     anchor: 'Managed application and website support for UK SMEs',
     description:
-      'Maintain the reliability, security and performance of existing websites and applications through monitoring, fixes, updates and controlled ongoing improvements.',
+      'Support stable websites and applications through agreed planned checks, fixes, updates and controlled minor improvements within finite capacity.',
     bestFor: [
-      'Monitoring, fixes and security updates',
+      'Planned checks, fixes and security updates',
       'Platform and dependency maintenance',
       'Controlled minor improvements',
     ],
     proofLabel: 'Wholesale managed-support story',
-    proofHref: getSuccessStoryPath('wholesale-order-management-platform'),
+    proofStorySlug: 'wholesale-order-management-platform',
+    proofService: 'maintenance-product-engineering' as const,
   },
   {
     title: 'Remote IT Team Extension',
@@ -107,7 +118,8 @@ const serviceCards = [
       'Delivery continuity with clear ownership',
     ],
     proofLabel: 'Long-term delivery continuity story',
-    proofHref: getSuccessStoryPath('wholesale-order-management-platform'),
+    proofStorySlug: 'wholesale-order-management-platform',
+    proofService: 'remote-it-team-extension' as const,
     isNew: true,
   },
 ];
@@ -305,6 +317,14 @@ export const ServicesPage = () => (
 
         <div className="mt-10 grid gap-6 lg:grid-cols-3">
           {serviceCards.map((service) => {
+            const proofStory = service.proofStorySlug
+              ? getPublishedSuccessStoryBySlug(service.proofStorySlug)
+              : undefined;
+            const proofContext = proofStory && service.proofService
+              ? getStoryServiceRelevance(proofStory, service.proofService)
+              : undefined;
+            const proofHref = proofStory ? getSuccessStoryPath(proofStory.slug) : undefined;
+
             const Icon = service.icon;
 
             return (
@@ -343,18 +363,26 @@ export const ServicesPage = () => (
                   </div>
                 </Link>
 
-                {service.proofHref && service.proofLabel ? (
+                {proofHref && service.proofLabel ? (
                   <div className="mt-5 border-t border-slate-200 pt-4">
                     <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
                       Related delivery story
                     </p>
                     <Link
-                      to={service.proofHref}
+                      to={proofHref}
                       className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-slate-800 transition hover:text-emerald-700"
                     >
                       {service.proofLabel}
                       <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
+                    {proofContext ? (
+                      <p className="mt-2 text-xs leading-5 text-slate-500">
+                        {proofContext.relevance === 'direct'
+                          ? 'Direct implementation evidence. '
+                          : 'Adjacent delivery experience. '}
+                        {proofContext.rationale}
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
               </article>

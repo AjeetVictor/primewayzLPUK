@@ -33,7 +33,7 @@ function collectStoryTextValues(story: (typeof allSuccessStories)[number]): stri
     story.homepageSummary,
     story.keyOutcome,
     ...story.problem,
-    ...story.responsibility,
+    ...story.implementationFacts,
     ...story.solution,
     ...story.deliveryDecisions,
     ...story.outcomes,
@@ -45,6 +45,14 @@ function collectStoryTextValues(story: (typeof allSuccessStories)[number]): stri
     story.ogImage,
     story.image,
     story.imageAlt,
+    story.evidence.basis,
+    ...story.evidence.limitations,
+    story.evidence.visualProvenance.disclosure,
+    ...story.evidence.serviceRelevance.flatMap((entry) => [
+      entry.service,
+      entry.relevance,
+      entry.rationale,
+    ]),
   ];
 }
 
@@ -155,6 +163,48 @@ test('published stories have confidentiality and relationship labels', () => {
     assert.ok(story.confidentiality.trim().length > 0, `Missing confidentiality for ${story.slug}`);
     assert.ok(story.relationshipType.trim().length > 0, `Missing relationshipType for ${story.slug}`);
     assert.equal(story.confidentiality, story.relationshipType);
+  }
+});
+
+test('published stories expose complete evidence governance metadata', () => {
+  for (const story of getPublishedSuccessStories()) {
+    assert.ok(story.evidence.basis.trim().length > 20, `Missing evidence basis for ${story.slug}`);
+    assert.ok(story.evidence.limitations.length > 0, `Missing limitations for ${story.slug}`);
+    assert.equal(story.evidence.visualProvenance.kind, 'illustration');
+    assert.match(story.evidence.visualProvenance.disclosure, /not .*screenshot/i);
+    assert.ok(story.evidence.serviceRelevance.length > 0, `Missing service relevance for ${story.slug}`);
+    assert.ok(
+      story.evidence.serviceRelevance.every((entry) =>
+        entry.relevance === 'direct' || entry.relevance === 'adjacent'),
+    );
+    assert.equal(
+      new Set(story.evidence.serviceRelevance.map((entry) => entry.service)).size,
+      story.evidence.serviceRelevance.length,
+      `Duplicate service evidence category for ${story.slug}`,
+    );
+  }
+});
+
+test('evidence classifications preserve CRM, AI and subscription boundaries', () => {
+  const wholesale = getPublishedSuccessStoryBySlug('wholesale-order-management-platform');
+  assert.ok(wholesale);
+  assert.equal(
+    wholesale!.evidence.serviceRelevance.find((entry) => entry.service === 'systems-integration-workflow-automation')?.relevance,
+    'direct',
+  );
+  assert.equal(
+    wholesale!.evidence.serviceRelevance.find((entry) => entry.service === 'crm-automation')?.relevance,
+    'adjacent',
+  );
+
+  for (const story of getPublishedSuccessStories()) {
+    const serialized = JSON.stringify(story.evidence);
+    assert.doesNotMatch(serialized, /AI agent|agentic|\bRAG\b|\bLLM\b/i);
+    const subscription = story.evidence.serviceRelevance.find(
+      (entry) => entry.service === 'software-development-subscription',
+    );
+    if (subscription) assert.equal(subscription.relevance, 'adjacent');
+    assert.doesNotMatch(serialized, /guaranteed uptime|24\/7|response-time SLA/i);
   }
 });
 

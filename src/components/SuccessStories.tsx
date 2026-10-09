@@ -106,10 +106,10 @@ export const SuccessStories = () => {
                 </p>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   <span className="font-semibold text-brand-navy">Primewayz contribution: </span>
-                  {story.responsibility[0]}
+                  {story.implementationFacts[0]}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  <span className="font-semibold text-brand-navy">Result: </span>
+                  <span className="font-semibold text-brand-navy">Delivery highlight: </span>
                   {story.homepageSummary}
                 </p>
 

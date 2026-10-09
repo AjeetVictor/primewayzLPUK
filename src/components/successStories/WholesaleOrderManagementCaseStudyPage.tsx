@@ -27,6 +27,7 @@ import {
   type SuccessStory,
 } from '../../data/successStories';
 import { DigitalSystemsReviewCtaGroup } from '../conversion/DigitalSystemsReviewCtaGroup';
+import { EvidenceDisclosure } from './EvidenceDisclosure';
 
 const ASSET_BASE = '/images/success-stories/wholesale-order-management';
 
@@ -715,6 +716,8 @@ export function WholesaleOrderManagementCaseStudyPage({
         </div>
       </section>
 
+      <EvidenceDisclosure evidence={story.evidence} />
+
       <section className="bg-slate-50 px-6 py-20 lg:px-8">
         <div className="mx-auto max-w-[1200px]">
           <div className="grid gap-10 lg:grid-cols-[0.7fr_1.3fr] lg:items-start">
@@ -1026,7 +1029,7 @@ export function WholesaleOrderManagementCaseStudyPage({
                 </h3>
               </div>
               <p className="mt-5 text-sm leading-7 text-slate-600">
-                The client directed that its identity, internal project references, proprietary business rules, sensitive operational logic, confidential screenshots and commercial measures must not be published. This caution is increasingly justified as AI-assisted software development can make imitation and replication easier. The case study therefore preserves the accuracy of the delivery approach while withholding information that could expose the client's competitive or pre-launch position.
+                The client identity, internal project references, proprietary business rules, sensitive operational logic, confidential screenshots and commercial measures are not published. The case study therefore describes the delivery approach and operational scope without exposing confidential client information.
               </p>
             </article>
 

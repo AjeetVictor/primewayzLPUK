@@ -694,12 +694,13 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
         id="sdaas-authority-proof"
         eyebrow="Software delivery experience"
         heading="From owned products to established business applications"
-        introduction="Our product-engineering work spans new customer-facing journeys, evolving commerce platforms and careful enhancement of established business-critical software."
+        introduction="These stories demonstrate relevant engineering delivery across customer-facing products, commerce platforms and established applications. They do not claim that a customer purchased the current subscription plans or capacities."
         storySlugs={[
           'rentreadbuy-book-rental-platform',
           'wholesale-order-management-platform',
           'restaurant-self-ordering-platform',
         ]}
+        evidenceFor="software-development-subscription"
         ctaLabel="Read the delivery story"
       />
 
