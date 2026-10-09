@@ -37,17 +37,18 @@ export const Hero = () => {
           >
             <p className={`inline-flex items-center gap-2 rounded-full border border-brand-border bg-white px-4 py-2 ${brandTypography.eyebrow} text-brand-blue shadow-sm`}>
               <span className="h-2 w-2 rounded-full bg-brand-cyan" aria-hidden />
-              Practical digital transformation for UK SMEs
+              Digital Transformation Services for UK SMEs
             </p>
             <h1 className={`mt-5 ${shellClasses.heroTitle}`}>
-              Digital Transformation Services
-              <br />
-              for <span className="text-brand-cyan">UK SMEs</span>
+              Connect Your Systems. Simplify Your Workflows.{' '}
+              <span className="text-brand-cyan">Grow With Confidence.</span>
             </h1>
-            <div className="mt-4 max-w-lg space-y-3 text-base leading-7 text-slate-600 sm:leading-8">
-              <p>Primewayz UK is the UK-focused business vertical of Primewayz Infotech, helping SMEs modernise operations through custom software, CRM and workflow automation, AI agents and agentic workflows, website and application support, SEO and digital visibility, and remote IT resources.</p>
-              <p>We focus on reducing repetitive work, connecting disconnected systems and improving existing technology through practical, controlled delivery.</p>
-            </div>
+            <p className="mt-4 max-w-lg text-base leading-7 text-slate-600 sm:leading-8">
+              Improve the way your business operates by connecting existing software, simplifying
+              repetitive workflows and introducing practical automation where it adds value. From
+              websites and CRM to custom applications and governed AI, Primewayz UK helps SMEs make
+              measurable progress without unnecessary system replacement.
+            </p>
 
             <DigitalSystemsReviewCtaGroup
               className="mt-7"
@@ -56,6 +57,8 @@ export const Hero = () => {
               secondaryPlacement="homepage_hero_secondary"
               websiteCheckerPlacement="homepage_hero_website_checker"
               variant="hero"
+              primaryLabel="Free Digital Systems Review"
+              secondaryLabel="Book a Discovery Call"
             />
 
             <ul className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-medium leading-5 text-slate-600 sm:text-xs" aria-label="Promotional support areas">

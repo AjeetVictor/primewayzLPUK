@@ -68,6 +68,11 @@ export function PricingPageContent() {
           Choose the capacity that matches your current priorities. Start with a structured sprint,
           move into monthly delivery, or step down to maintenance when active development slows.
         </p>
+        <p className="mx-auto mt-4 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
+          These plans cover structured development, website improvements and ongoing technical
+          capacity. Complex integrations, AI agent implementations and specialist requirements are
+          scoped separately following discovery.
+        </p>
         {hydrated && invalidQueryPlan ? (
           <p className="mt-4 text-sm text-amber-700">
             That plan link is not recognised — browse the options below.

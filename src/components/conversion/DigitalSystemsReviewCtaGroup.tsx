@@ -31,6 +31,8 @@ type DigitalSystemsReviewCtaGroupProps = {
   websiteCheckerPlacement?: FreeReviewCtaPlacement;
   /** Optional local label override. Shared CTA copy remains the default. */
   primaryLabel?: string;
+  /** Optional local label override. Shared CTA copy remains the default. */
+  secondaryLabel?: string;
   className?: string;
 };
 
@@ -90,6 +92,7 @@ export function DigitalSystemsReviewCtaGroup({
   serviceArea,
   websiteCheckerPlacement,
   primaryLabel = FREE_REVIEW_CTA_LABEL,
+  secondaryLabel = DISCOVERY_CALL_CTA_LABEL,
   className = '',
 }: DigitalSystemsReviewCtaGroupProps) {
   const location = useLocation();
@@ -137,7 +140,7 @@ export function DigitalSystemsReviewCtaGroup({
             strokeWidth={2.1}
             aria-hidden
           />
-          {DISCOVERY_CALL_CTA_LABEL}
+          {secondaryLabel}
         </Link>
       </div>
 

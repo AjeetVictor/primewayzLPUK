@@ -171,18 +171,18 @@ function DeliveryDashboard() {
 
       <div className="delivery-dashboard__metrics">
         <div className="delivery-dashboard__metric">
-          <strong>+28%</strong>
-          <span>Performance</span>
+          <strong>Operational efficiency</strong>
+          <span>Simpler workflows</span>
         </div>
 
         <div className="delivery-dashboard__metric">
-          <strong>-16%</strong>
-          <span>Risk</span>
+          <strong>Controlled implementation</strong>
+          <span>Managed risk</span>
         </div>
 
         <div className="delivery-dashboard__metric">
-          <strong>+42%</strong>
-          <span>Opportunities</span>
+          <strong>Better visibility</strong>
+          <span>Improvement opportunities</span>
         </div>
       </div>
     </aside>

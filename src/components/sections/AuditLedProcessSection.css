@@ -211,9 +211,9 @@
 .delivery-dashboard__metric strong {
   display: block;
   color: var(--dp-blue);
-  font-size: 22px;
+  font-size: 14px;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1.25;
   letter-spacing: 0;
 }
 
@@ -629,7 +629,7 @@
   }
 
   .delivery-dashboard__metric strong {
-    font-size: 18px;
+    font-size: 13px;
   }
 
   .delivery-process__steps {

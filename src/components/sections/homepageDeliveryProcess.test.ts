@@ -112,6 +112,11 @@ test('homepage places service routes directly after the hero and keeps pricing p
   assert.doesNotMatch(pricingPage, /deliveryProcessSteps/);
   assert.match(pricingPage, /PricingPageContent/);
   assert.match(read('src/components/pricing/PricingPageContent.tsx'), /Scale/);
+  const deliveryProcess = read('src/components/sections/AuditLedProcessSection.tsx');
+  assert.doesNotMatch(deliveryProcess, /\+28%|-16%|\+42%/);
+  assert.match(deliveryProcess, /Operational efficiency/);
+  assert.match(deliveryProcess, /Controlled implementation/);
+  assert.match(deliveryProcess, /Better visibility/);
 });
 
 test('delivery process intro copy matches approved homepage wording', () => {

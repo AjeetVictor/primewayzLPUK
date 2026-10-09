@@ -75,7 +75,8 @@ test('homepage has one H1 with approved text and preserved CTA hierarchy', () =>
   const hero = read('src/components/Hero.tsx');
   assert.equal((hero.match(/<h1\b/g) || []).length, 1);
   assert.match(hero, /Digital Transformation Services/);
-  assert.match(hero, /Practical digital transformation for UK SMEs/);
+  assert.match(hero, /Digital Transformation Services for UK SMEs/);
+  assert.match(hero, /Connect Your Systems\. Simplify Your Workflows/);
   assert.match(hero, /UK SMEs/);
   assert.match(hero, /homepage_hero_primary/);
   assert.match(hero, /homepage_hero_secondary/);
