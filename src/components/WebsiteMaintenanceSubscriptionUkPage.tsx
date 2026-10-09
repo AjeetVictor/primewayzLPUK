@@ -4,6 +4,8 @@ import { TrackedLink } from './common/TrackedLink';
 import { SelfAuditCta } from './SelfAuditCta';
 import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
 import { AuthorityProofSection } from './sections/AuthorityProofSection';
+import { CommercialBoundarySummary } from './commercial/CommercialBoundarySummary';
+import { MaintenanceEngineeringComparison } from './commercial/MaintenanceEngineeringComparison';
 import { getSuccessStoryPath } from '../data/successStories';
 import type { FreeReviewCtaPlacement, FreeReviewServiceArea } from '../constants/conversionCta';
 
@@ -17,12 +19,12 @@ const visibilitySupportItems = [
 ];
 
 const maintenanceSupportItems = [
-  'Bug fixing, monitoring and controlled technical housekeeping',
+  'Bug fixing, agreed planned checks and controlled technical housekeeping',
   'Security updates, dependency updates and platform updates',
   'Routine website and application maintenance',
   'Performance stability, release support and operational continuity',
   'Controlled minor improvements within agreed support capacity',
-  'Ongoing ownership so live systems stay reliable after launch',
+  'Ongoing technical ownership for stable live systems after launch',
 ];
 
 const visibilityPainPoints = [
@@ -34,7 +36,7 @@ const visibilityPainPoints = [
 
 const maintenancePainPoints = [
   'Small fixes and updates keep waiting because nobody owns them.',
-  'Live websites or applications need reliable monitoring and support.',
+  'Live websites or applications need planned checks and dependable ownership.',
   'Security, dependency and platform updates are irregular.',
   'You need continuity without treating every request as a new project.',
 ];
@@ -121,15 +123,15 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => {
     : 'Website Maintenance Subscription for UK Businesses';
   const intro = isVisibilityPage
     ? 'Improve website visibility, technical SEO foundations, page clarity, performance and enquiry journeys through structured optimisation, conversion improvements and ongoing support.'
-    : 'Predictable monthly website maintenance subscription for UK SMEs covering updates, fixes, security monitoring, performance checks and continuous improvements. Get reliable technical ownership without managing every website issue as a separate project.';
+    : 'Predictable monthly website maintenance for stable UK SME websites and applications, covering agreed updates, fixes, planned security and performance checks, and controlled minor improvements within finite capacity.';
   const supportItems = isVisibilityPage ? visibilitySupportItems : maintenanceSupportItems;
   const painPoints = isVisibilityPage ? visibilityPainPoints : maintenancePainPoints;
   const supportHeading = isVisibilityPage
     ? 'Website visibility support that improves search discovery and enquiry readiness'
-    : 'Website maintenance subscription that keeps UK SME websites secure, reliable and improving';
+    : 'Continuity support for stable UK SME websites and applications';
   const supportLead = isVisibilityPage
     ? 'Visibility and conversion work focuses on discovery, clarity, trust and enquiry completion. Related website maintenance can sit alongside this service when ongoing ownership is also required.'
-    : 'A website maintenance subscription keeps your digital presence stable through planned checks, fixes, security updates and controlled improvements. Larger features, integrations and new product work are managed separately through structured development engagements.';
+    : 'Maintenance Mode provides light-touch continuity through agreed planned checks, fixes, updates and minor improvements within finite monthly capacity. It is not continuous surveillance or guaranteed availability. Larger features, integrations and recurring backlog work use active product-engineering capacity or a separately scoped engagement.';
   const relatedHeading = isVisibilityPage
     ? 'Connect visibility work with the services around it'
     : 'Connect managed support with the services around it';
@@ -294,6 +296,10 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => {
         </div>
       </section>
 
+      {isMaintenancePage ? <MaintenanceEngineeringComparison /> : null}
+
+      {isMaintenancePage ? <CommercialBoundarySummary /> : null}
+
       <section id="website-maintenance-rhythm" className="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1200px]">
           <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
@@ -339,7 +345,7 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => {
             <p className="mt-3 text-sm leading-6 text-slate-600">
               {isVisibilityPage
                 ? 'Best for UK SMEs that already have a live website and need clearer discovery, stronger trust signals and better enquiry journeys.'
-                : 'Best for UK SMEs that already have live websites or applications and need consistent updates, fixes, monitoring and operational continuity.'}
+                : 'Best for UK SMEs that already have stable live websites or applications and need planned updates, fixes, agreed checks and operational continuity.'}
             </p>
           </div>
 
@@ -350,7 +356,7 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => {
             <p className="mt-3 text-sm leading-6 text-slate-600">
               {isVisibilityPage
                 ? 'Improve landing pages, contact forms, CTAs, tracking, technical search foundations, Search Console findings and conversion journeys.'
-                : 'Protect reliability through monitoring, security updates, dependency updates, release support and controlled technical housekeeping.'}
+                : 'Support continuity through agreed security and performance checks, dependency updates, release support and controlled technical housekeeping within plan capacity.'}
             </p>
           </div>
 
@@ -380,7 +386,7 @@ export const WebsiteMaintenanceSubscriptionUkPage = () => {
           id="website-maintenance-authority-proof"
           eyebrow="Managed support experience"
           heading="Supporting systems that must keep working while they improve"
-          introduction="Long-running applications require more than reactive fixes. They need inherited-system understanding, controlled enhancement, delivery continuity and clear technical ownership."
+          introduction="These published examples demonstrate inherited-system understanding, connected operational workflows, controlled releases, delivery continuity and ongoing engineering. They do not represent a support-response or availability guarantee."
           storySlugs={['wholesale-order-management-platform', 'rentreadbuy-book-rental-platform']}
           ctaLabel="Read the delivery story"
         />

@@ -88,7 +88,7 @@ export const STATIC_PAGE_SEO: Record<string, { title: string; description: strin
     '/maintenance': {
       title: 'Website Maintenance Subscription UK | Primewayz',
       description:
-        'Website maintenance subscription for UK businesses with predictable monthly support for updates, fixes, security monitoring, performance checks and ongoing technical care.',
+        'Website maintenance subscription for stable UK business websites and applications, with planned updates, fixes, security and performance checks within agreed monthly capacity.',
     },
     '/crm-automation-support': {
       title: 'Systems Integration, CRM & Workflow Automation UK | Primewayz',

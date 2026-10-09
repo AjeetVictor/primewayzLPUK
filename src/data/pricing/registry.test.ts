@@ -63,3 +63,17 @@ test('preserved commercial prices match approved launch values', () => {
     assert.equal(plan!.numericPriceMinor, Math.round(minorPounds * 100));
   }
 });
+
+test('Maintenance Mode capacity, discount and commitment remain unchanged', () => {
+  const plan = getPricingPlanBySlug('maintenance-mode');
+  assert.ok(plan);
+  assert.equal(plan!.displayedPrice, '£405');
+  assert.equal(plan!.capacityLabel, '8–10 hours/month');
+  assert.equal(plan!.capacityHours, 10);
+  assert.equal(plan!.launchDiscountLabel, '10% Launch Discount');
+  assert.equal(plan!.referencePriceLabel, '£450');
+  assert.match(plan!.importantBoundary ?? '', /initial three-month commitment/);
+  assert.equal(PRICING_COMMERCIAL_POLICY.version, '2026.09.1');
+  assert.match(PRICING_COMMERCIAL_POLICY.thirdPartyCostPolicy, /Hosting/);
+  assert.match(PRICING_COMMERCIAL_POLICY.emergencyWorkPolicy, /not automatically included/);
+});

@@ -25,6 +25,7 @@ import { EntityTermLink } from './commercial/EntityTermLink';
 import { MonthlyDeliverySnapshot } from './commercial/MonthlyDeliverySnapshot';
 import { AuthorityProofSection } from './sections/AuthorityProofSection';
 import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
+import { MaintenanceEngineeringComparison } from './commercial/MaintenanceEngineeringComparison';
 import { SDAAS_COMMERCIAL_IMAGES } from '../data/sdaas/images';
 import { SDAAS_JOURNEY_STEPS, SDAAS_SECTION_TRANSITIONS } from '../data/sdaas/pageJourney';
 import {
@@ -365,6 +366,12 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
           subscription does not provide unlimited integration work.
         </p>
       </CommercialSectionShell>
+
+      <section className="bg-slate-50 px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1200px]">
+          <MaintenanceEngineeringComparison compact />
+        </div>
+      </section>
 
       {/* Process */}
       <CommercialSectionShell
