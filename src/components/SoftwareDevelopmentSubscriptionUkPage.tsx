@@ -358,6 +358,12 @@ export const SoftwareDevelopmentSubscriptionUkPage = () => {
           <EntityTermLink term="productDiscovery" /> or{' '}
           <EntityTermLink term="existingAppRescue" /> phase before normal monthly delivery begins.
         </p>
+        <p className="mt-4 max-w-4xl text-sm leading-7 text-slate-600">
+          Discovery determines whether an integration or automation requirement fits the agreed
+          monthly capacity and backlog, needs an initial scoped phase, or requires a custom proposal.
+          Third-party services and complex dependencies are confirmed before implementation; the
+          subscription does not provide unlimited integration work.
+        </p>
       </CommercialSectionShell>
 
       {/* Process */}

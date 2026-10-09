@@ -401,9 +401,33 @@ export function CustomAiAgentDevelopmentUkPage() {
         </div>
       </section>
 
+      <section className="px-4 py-16 sm:px-6 lg:px-8" aria-labelledby="automation-choice-title">
+        <div className="mx-auto grid max-w-[1200px] gap-5 lg:grid-cols-2">
+          <article className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Deterministic automation</p>
+            <h2 id="automation-choice-title" className="mt-3 text-2xl font-bold text-slate-950">Use fixed rules when the decision path is clear</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              Triggers, conditions, routing, validation and notifications are usually the safer and
+              simpler choice when inputs and expected actions can be defined consistently.
+            </p>
+          </article>
+          <article className="rounded-3xl border border-emerald-200 bg-emerald-50/50 p-6">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Agentic workflow</p>
+            <h3 className="mt-3 text-2xl font-bold text-slate-950">Use AI when context or reasoning genuinely adds value</h3>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              AI-assisted steps may suit classification, retrieval, drafting or coordination where
+              fixed rules are insufficient. Permissions, approvals, fallback and escalation remain
+              defined around the workflow.
+            </p>
+          </article>
+        </div>
+      </section>
+
       <div className="mx-auto max-w-[1200px] px-4 pb-4 sm:px-6 lg:px-8">
         <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
           <h3 className="text-lg font-bold text-slate-950">AI commercial and production boundaries</h3>
+          <p className="mt-3 text-sm leading-7 text-slate-600">{AI_COMMERCIAL_POLICY.commercialModel.productionBoundary}</p>
+          <p className="mt-3 text-sm leading-7 text-slate-600">{AI_COMMERCIAL_POLICY.commercialModel.ongoingRefinement}</p>
           <p className="mt-3 text-sm leading-7 text-slate-600">{AI_COMMERCIAL_POLICY.thirdPartyCosts.statement}</p>
           <p className="mt-3 text-sm leading-7 text-slate-600">{AI_COMMERCIAL_POLICY.productionBoundaries.statement}</p>
         </div>

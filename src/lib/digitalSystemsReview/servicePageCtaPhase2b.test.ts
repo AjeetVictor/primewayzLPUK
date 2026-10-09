@@ -604,3 +604,43 @@ test('preservation: SelfAuditCta, authority proof, contact, chrome and Phase 2A 
 
   assert.deepEqual([...REVIEW_SERVICE_AREAS], [...FREE_REVIEW_SERVICE_AREAS]);
 });
+
+test('UK-02 integration and automation positioning preserves route, proof and CTA contracts', () => {
+  const crm = read('src/components/CrmIntegrationSupportUkPage.tsx');
+  const ai = read('src/components/CustomAiAgentDevelopmentUkPage.tsx');
+  const capabilities = read('src/components/sections/SystemsIntegrationCapabilityGrid.tsx');
+  const subscription = read('src/components/SoftwareDevelopmentSubscriptionUkPage.tsx');
+  const pricing = read('src/components/pricing/PricingPageContent.tsx');
+  const homepageRoutes = read('src/components/sections/ServiceRoutesSection.tsx');
+
+  assert.equal((crm.match(/<h1\b/g) || []).length, 1);
+  assert.equal((ai.match(/<h1\b/g) || []).length, 1);
+  assert.match(crm, /Systems Integration, CRM & Workflow Automation for UK SMEs/);
+  assert.match(crm, /SystemsIntegrationCapabilityGrid/);
+  assert.match(crm, /PRICING_COMMERCIAL_POLICY\.thirdPartyCostPolicy/);
+  assert.match(crm, /does[\s\S]*not provide unlimited integration work/);
+  assert.match(crm, /storySlugs=\{\['wholesale-order-management-platform'\]\}/);
+  assert.doesNotMatch(crm, /improve enquiry visibility and follow-up/);
+
+  for (const heading of [
+    'Systems integration and data synchronisation',
+    'Rules-based workflow automation',
+    'AI-assisted workflows where appropriate',
+    'Ongoing engineering and maintenance',
+  ]) {
+    assert.match(capabilities, new RegExp(heading));
+  }
+
+  assert.match(ai, /Deterministic automation/);
+  assert.match(ai, /Agentic workflow/);
+  assert.match(ai, /AI_COMMERCIAL_POLICY\.commercialModel\.productionBoundary/);
+  assert.match(ai, /AI_COMMERCIAL_POLICY\.commercialModel\.ongoingRefinement/);
+  assert.match(ai, /ai_agent_hero_primary/);
+  assert.match(ai, /ai_agent_final_primary/);
+
+  assert.match(subscription, /fits the agreed[\s\S]*monthly capacity and backlog/);
+  assert.match(pricing, /fit agreed monthly capacity, require an initial scoped phase or/);
+  assert.match(homepageRoutes, /CANONICAL_ROUTES\.crmAutomationSupport/);
+  assert.match(homepageRoutes, /service_card_click_crm_automation/);
+  assert.match(homepageRoutes, /Systems Integration, CRM & Workflow Automation/);
+});

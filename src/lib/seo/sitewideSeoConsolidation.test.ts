@@ -412,3 +412,12 @@ test('fixed public asset renderers declare intrinsic image dimensions', () => {
     );
   }
 });
+
+test('UK-02 keeps CRM canonical ownership with systems-integration metadata', () => {
+  const app = read('src/App.tsx');
+  const seo = read('src/lib/seo/staticPageSeo.ts');
+  assert.match(app, /path="\/crm-automation-support" element=\{<CrmIntegrationSupportUkPage/);
+  assert.match(app, /path="\/crm-integration-support-uk" element=\{<Navigate to="\/crm-automation-support" replace/);
+  assert.match(seo, /Systems Integration, CRM & Workflow Automation UK \| Primewayz/);
+  assert.match(seo, /data synchronisation, lead routing, rules-based workflows/);
+});

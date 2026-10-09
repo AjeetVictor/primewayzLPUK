@@ -70,8 +70,9 @@ export function PricingPageContent() {
         </p>
         <p className="mx-auto mt-4 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
           These plans cover structured development, website improvements and ongoing technical
-          capacity. Complex integrations, AI agent implementations and specialist requirements are
-          scoped separately following discovery.
+          capacity. Discovery confirms whether complex integrations, AI agent implementations and
+          specialist requirements fit agreed monthly capacity, require an initial scoped phase or
+          need a custom proposal.
         </p>
         {hydrated && invalidQueryPlan ? (
           <p className="mt-4 text-sm text-amber-700">

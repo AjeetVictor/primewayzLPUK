@@ -40,12 +40,12 @@ const serviceRoutes: ServiceRouteCard[] = [
     eventName: 'service_card_click_website_visibility',
   },
   {
-    title: 'CRM & Workflow Automation',
+    title: 'Systems Integration, CRM & Workflow Automation',
     description:
-      'Connect website enquiries, CRM records, follow-up workflows and reporting so leads are handled consistently.',
-    outcomes: ['Website-to-CRM capture', 'Consistent follow-up', 'Clear lead routing'],
+      'Connect business systems, synchronise approved data and automate reliable CRM and operational workflows.',
+    outcomes: ['Connected systems', 'Reliable data flow', 'Rules-based automation'],
     href: CANONICAL_ROUTES.crmAutomationSupport,
-    linkLabel: 'Explore CRM automation support',
+    linkLabel: 'Explore integration and CRM automation support',
     icon: 'crm',
     tone: 'teal',
     eventName: 'service_card_click_crm_automation',

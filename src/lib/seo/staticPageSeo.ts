@@ -91,9 +91,9 @@ export const STATIC_PAGE_SEO: Record<string, { title: string; description: strin
         'Website maintenance subscription for UK businesses with predictable monthly support for updates, fixes, security monitoring, performance checks and ongoing technical care.',
     },
     '/crm-automation-support': {
-      title: 'CRM Automation Support for UK SMEs | Primewayz',
+      title: 'Systems Integration, CRM & Workflow Automation UK | Primewayz',
       description:
-        'CRM automation support for UK SMEs covering website enquiries, lead routing, data migration, follow-up workflows, integrations and reporting.',
+        'Systems integration, CRM and workflow automation for UK SMEs covering data synchronisation, lead routing, rules-based workflows, integrations and ongoing engineering.',
     },
     '/custom-ai-agent-development-uk': {
       title: 'Custom AI Agent Development Services UK | Primewayz',

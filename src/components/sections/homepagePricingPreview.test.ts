@@ -212,7 +212,7 @@ test('pricing page uses canonical registry and single-page grid structure', () =
   assert.match(pageContent, /PricingGridCard/);
   assert.match(pageContent, /PricingPlanDetailModal/);
   assert.match(pageContent, /Simple, transparent pricing for every stage of growth/);
-  assert.match(pageContent, /Complex integrations, AI agent implementations and specialist requirements are/);
+  assert.match(pageContent, /specialist requirements fit agreed monthly capacity/);
   assert.match(pageContent, /Foundation Sprint|getPrimaryPricingGridPlans/);
   assert.match(pageContent, /Scale/);
   assert.match(pageContent, /Enterprise/);

@@ -12,7 +12,9 @@ import {
 import { SelfAuditCta } from './SelfAuditCta';
 import { DigitalSystemsReviewCtaGroup } from './conversion/DigitalSystemsReviewCtaGroup';
 import { AuthorityProofSection } from './sections/AuthorityProofSection';
+import { SystemsIntegrationCapabilityGrid } from './sections/SystemsIntegrationCapabilityGrid';
 import { getSuccessStoryPath } from '../data/successStories';
+import { PRICING_COMMERCIAL_POLICY } from '../data/pricing/helpers';
 
 const services = [
   {
@@ -151,7 +153,7 @@ const relatedLinks = [
     title: 'Wholesale order-management platform story',
     href: getSuccessStoryPath('wholesale-order-management-platform'),
     anchor: 'Wholesale order-management and workflow platform example',
-    text: 'See how structured CRM and operational workflow support can improve enquiry visibility and follow-up across complex business processes.',
+    text: 'See how connected catalogue, inventory, warehouse, customer and order workflows were understood and supported through controlled ongoing engineering.',
   },
 ];
 
@@ -173,18 +175,18 @@ export function CrmIntegrationSupportUkPage() {
           <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
             <div>
               <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">
-                CRM Automation Support
+                Systems Integration, CRM & Workflow Automation
               </p>
 
               <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-                CRM Automation Support for UK SMEs
+                Systems Integration, CRM & Workflow Automation for UK SMEs
               </h1>
 
               <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200">
-                Connect website enquiries, CRM records, lead routing, follow-up workflows and
-                reporting so leads move through the business consistently and teams have reliable
-                information. Primewayz helps UK SMEs set up, clean up and automate practical CRM
-                processes while reducing missed follow-ups, duplicate records and repetitive administration.
+                Connect business systems, synchronise approved data and automate repeatable workflows
+                while keeping CRM, lead handling and reporting reliable. Primewayz helps UK SMEs map,
+                implement and improve practical integrations without unnecessary platform replacement.
+                CRM automation remains a core part of the service, alongside wider operational workflows.
               </p>
 
               <div className="mt-8 flex flex-col gap-4">
@@ -239,6 +241,8 @@ export function CrmIntegrationSupportUkPage() {
 
       <SelfAuditCta variant="inline" utmContent="crm_page" ctaLocation="crm_page" />
 
+      <SystemsIntegrationCapabilityGrid />
+
       <section id="crm-services" className="px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1200px]">
           <div className="max-w-3xl">
@@ -247,13 +251,13 @@ export function CrmIntegrationSupportUkPage() {
             </p>
 
             <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-              CRM automation support built around real enquiry, workflow and follow-up challenges
+              Integration and automation built around real operational and CRM challenges
             </h2>
 
             <p className="mt-4 text-lg leading-8 text-slate-600">
-              We help UK SMEs set up and improve the practical parts of lead management: website
-              forms, CRM fields, enquiry routing, notifications, reporting, workflow automation,
-              third-party integrations, and ongoing operational improvements.
+              We help UK SMEs connect approved systems, synchronise operational data and automate
+              repeatable work. That includes website forms, CRM fields, enquiry routing, notifications,
+              reporting, rules-based workflows and ongoing integration improvements.
             </p>
           </div>
 
@@ -266,6 +270,21 @@ export function CrmIntegrationSupportUkPage() {
               </div>
             ))}
           </div>
+
+          <aside className="mt-10 rounded-3xl border border-amber-200 bg-amber-50/60 p-6" aria-label="Integration scope and dependencies">
+            <h3 className="text-lg font-bold text-slate-950">Scope, dependencies and commercial boundaries</h3>
+            <p className="mt-3 text-sm leading-7 text-slate-700">
+              Discovery confirms the systems, data ownership, field mapping, APIs, permissions,
+              security requirements, exception handling and operational responsibilities. Approved
+              light integrations and rules-based workflows may be delivered within agreed monthly
+              capacity. Complex integrations, data migration, production AI and specialist controls
+              require an initial scoped phase or custom proposal. Monthly capacity is finite and does
+              not provide unlimited integration work.
+            </p>
+            <p className="mt-3 text-sm leading-7 text-slate-700">
+              {PRICING_COMMERCIAL_POLICY.thirdPartyCostPolicy}
+            </p>
+          </aside>
 
           <div className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-bold text-slate-950">
