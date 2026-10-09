@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { trackConversionEvent } from '../lib/analytics';
 import { BOOK_CALL_HASH, isBookCallHash } from '../constants/contactBooking';
@@ -7,16 +8,37 @@ import {
   loadCalendlyScript,
   subscribeCalendlyPostMessages,
 } from '../lib/calendly';
+import {
+  bookingContextAnalyticsPayload,
+  resolveBookingContext,
+} from '../lib/bookingContext';
 
 export function ContactBookingStrip() {
+  const location = useLocation();
+  const bookingContext = useMemo(
+    () => resolveBookingContext(new URLSearchParams(location.search)),
+    [location.search],
+  );
+  const calendarOpenTracked = useRef(false);
   const [isCalendlyOpen, setIsCalendlyOpen] = useState(false);
   const [isCalendlyLoading, setIsCalendlyLoading] = useState(false);
 
-  useEffect(() => subscribeCalendlyPostMessages('contact_calendly_inline'), []);
+  useEffect(
+    () => subscribeCalendlyPostMessages('contact_calendly_inline', bookingContext),
+    [bookingContext],
+  );
 
   useEffect(() => {
     const openFromHash = () => {
       if (!isBookCallHash(window.location.hash)) return;
+      if (!calendarOpenTracked.current) {
+        calendarOpenTracked.current = true;
+        trackConversionEvent('booking_calendar_open', {
+          cta_text: 'Open booking calendar',
+          cta_location: 'contact_booking_hash',
+          ...bookingContextAnalyticsPayload(bookingContext),
+        });
+      }
       const bookCallSection = document.getElementById(BOOK_CALL_HASH);
       bookCallSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       setIsCalendlyLoading(true);
@@ -26,7 +48,7 @@ export function ContactBookingStrip() {
     openFromHash();
     window.addEventListener('hashchange', openFromHash);
     return () => window.removeEventListener('hashchange', openFromHash);
-  }, []);
+  }, [bookingContext]);
 
   useEffect(() => {
     if (!isCalendlyOpen) return;
@@ -36,7 +58,7 @@ export function ContactBookingStrip() {
         await loadCalendlyScript();
         const parentElement = document.getElementById('primewayz-calendly-inline');
         if (!parentElement) return;
-        initCalendlyInlineWidget(parentElement, 'contact_calendly_inline');
+        initCalendlyInlineWidget(parentElement, 'contact_calendly_inline', bookingContext);
       } catch {
         // Calendly is optional; page remains usable without it.
       } finally {
@@ -45,13 +67,15 @@ export function ContactBookingStrip() {
     };
 
     void mountCalendly();
-  }, [isCalendlyOpen]);
+  }, [isCalendlyOpen, bookingContext]);
 
   const openCalendly = () => {
     trackConversionEvent('booking_calendar_open', {
       cta_text: 'Open booking calendar',
       cta_location: 'contact_booking_strip',
+      ...bookingContextAnalyticsPayload(bookingContext),
     });
+    calendarOpenTracked.current = true;
     setIsCalendlyLoading(true);
     setIsCalendlyOpen(true);
   };

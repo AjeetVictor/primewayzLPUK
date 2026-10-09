@@ -13,6 +13,7 @@ import {
   assertNoProhibitedAnalyticsProps,
   buildDigitalSystemsReviewAnalyticsPayload,
 } from '../../lib/digitalSystemsReview/analytics';
+import { buildBookCallUrl } from '../../lib/bookingContext';
 
 type DigitalSystemsReviewCtaLinkProps = {
   kind: 'review' | 'discovery';
@@ -73,6 +74,11 @@ export function DigitalSystemsReviewCtaLink({
 }: DigitalSystemsReviewCtaLinkProps) {
   const location = useLocation();
   const route = location.pathname || '/';
+  const discoveryHref = buildBookCallUrl({
+    serviceArea,
+    sourceRoute: route,
+    ctaPlacement: placement,
+  });
 
   if (kind === 'review') {
     const href = buildFreeReviewCtaUrl(sourceLocation, serviceArea);
@@ -92,7 +98,7 @@ export function DigitalSystemsReviewCtaLink({
 
   return (
     <Link
-      to={DISCOVERY_CALL_DESTINATION}
+      to={discoveryHref}
       onClick={() => {
         emitBookCallClick(sourceLocation, placement, route, serviceArea);
         onClick?.();

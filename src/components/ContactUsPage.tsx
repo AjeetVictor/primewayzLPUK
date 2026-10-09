@@ -10,7 +10,7 @@ import {
 import { ContactForm } from './ContactForm';
 import { ContactBookingStrip } from './ContactBookingStrip';
 import { buildSelfAuditCtaUrl } from './SelfAuditCta';
-import { trackEvent } from '../lib/analytics';
+import { trackCtaClick, trackEvent } from '../lib/analytics';
 import { BOOK_CALL_HASH } from '../constants/contactBooking';
 
 const CONTACT_PHONE_DISPLAY = '+44 7588 741740';
@@ -186,14 +186,30 @@ export const ContactUsPage = () => {
 
             if (card.href.startsWith('/') || card.href.includes('#')) {
               return (
-                <a key={card.title} href={card.href} className={className}>
+                <a
+                  key={card.title}
+                  href={card.href}
+                  className={className}
+                  onClick={() => trackCtaClick(card.title, card.title === 'Book a discovery call' ? 'contact_option_booking' : 'contact_option_direct', {
+                    contact_method: card.title === 'Call us' ? 'phone' : card.title === 'Email us' ? 'email' : 'booking',
+                    destination: card.href,
+                  })}
+                >
                   {content}
                 </a>
               );
             }
 
             return (
-              <a key={card.title} href={card.href} className={className}>
+              <a
+                key={card.title}
+                href={card.href}
+                className={className}
+                onClick={() => trackCtaClick(card.title, 'contact_option_direct', {
+                  contact_method: card.title === 'Call us' ? 'phone' : 'email',
+                  destination: card.href,
+                })}
+              >
                 {content}
               </a>
             );

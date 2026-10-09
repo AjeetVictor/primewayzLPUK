@@ -13,6 +13,7 @@ export type ContactSupportArea = (typeof CONTACT_SUPPORT_AREAS)[number];
 export interface ContactEnquiryCommercialContext {
   serviceInterest?: ContactSupportArea;
   sourcePagePath?: string;
+  submissionPagePath?: string;
   firstAttribution?: ContactAttribution;
   latestAttribution?: ContactAttribution;
 }
@@ -28,6 +29,7 @@ interface ContactAttribution {
 interface ContactEnquiryContextInput {
   supportArea?: unknown;
   sourcePagePath?: unknown;
+  submissionPagePath?: unknown;
   firstUtmSource?: unknown;
   firstUtmMedium?: unknown;
   firstUtmCampaign?: unknown;
@@ -79,6 +81,7 @@ export function buildContactEnquiryCommercialContext(
 
   const serviceInterest = normaliseSupportArea(input.supportArea);
   const sourcePagePath = normaliseSourcePagePath(input.sourcePagePath);
+  const submissionPagePath = normaliseSourcePagePath(input.submissionPagePath);
 
   const firstAttribution: ContactAttribution = {
     utm_source: normaliseOptionalText(input.firstUtmSource, ATTRIBUTION_VALUE_MAX),
@@ -98,6 +101,7 @@ export function buildContactEnquiryCommercialContext(
 
   if (serviceInterest) context.serviceInterest = serviceInterest;
   if (sourcePagePath) context.sourcePagePath = sourcePagePath;
+  if (submissionPagePath) context.submissionPagePath = submissionPagePath;
   if (hasAttribution(firstAttribution)) context.firstAttribution = firstAttribution;
   if (hasAttribution(latestAttribution)) context.latestAttribution = latestAttribution;
 

@@ -20,6 +20,7 @@ import {
 import { PRICING_COMMERCIAL_POLICY } from '../../data/pricing/helpers';
 import { usePricingSelection } from '../../hooks/usePricingSelection';
 import { trackPricingComparisonView, trackPricingCtaClick } from '../../lib/pricing/analytics';
+import { buildBookCallUrl } from '../../lib/bookingContext';
 import { cn } from '../../utils/cn';
 import { PricingGridCard } from './PricingGridCard';
 import { PricingPlanDetailModal } from './PricingPlanDetailModal';
@@ -175,7 +176,11 @@ export function PricingPageContent() {
             </div>
           </div>
           <Link
-            to={DISCOVERY_CALL_DESTINATION}
+            to={buildBookCallUrl({
+              sourceRoute: '/pricing',
+              ctaPlacement: 'pricing_final_cta',
+              selectedPlan: selection?.planSlug,
+            })}
             onClick={() =>
               trackPricingCtaClick({
                 cta_text: DISCOVERY_CALL_CTA_LABEL,

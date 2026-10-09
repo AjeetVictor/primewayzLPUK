@@ -63,6 +63,15 @@ import {
 } from './src/lib/leads/reviewLeadsAdminService.ts';
 import { normalizeLeadStatus } from './src/lib/leads/statuses.ts';
 import { buildContactEnquiryCommercialContext } from './src/lib/contactEnquiryContext.ts';
+import {
+  assertContactJsonContentType,
+  assertContactPayloadSize,
+  assertSerializedContactPayloadSize,
+  ContactEnquiryHoneypotError,
+  ContactEnquiryValidationError,
+  validateContactEnquiry,
+} from './src/lib/contactEnquiryValidation.ts';
+import { checkContactEnquiryRateLimit } from './src/lib/contactEnquiryRateLimit.ts';
 import { buildPricingContentBacklogCreateInputs } from './src/data/pricing/contentBacklogSeeds.ts';
 import {
   classifyUnmatchedRequest,
@@ -2300,15 +2309,20 @@ app.post('/api/contact', async (req, res) => {
   try {
     const sourceContext = resolveRequestSource(req, 'contact-form');
     assertTenantCapability(sourceContext, 'forms');
-    const { name, email, message, phone } = req.body;
-    if (!name || !email || !message) {
-      return res.status(400).json({ error: 'Name, email, and message are required' });
+    assertContactJsonContentType(
+      typeof req.headers['content-type'] === 'string' ? req.headers['content-type'] : undefined,
+    );
+    assertContactPayloadSize(
+      typeof req.headers['content-length'] === 'string' ? req.headers['content-length'] : undefined,
+    );
+    const ip = getClientIp(req);
+    const rate = checkContactEnquiryRateLimit(ip);
+    if (!rate.allowed) {
+      res.setHeader('Retry-After', String(rate.retryAfterSeconds));
+      return res.status(429).json({ error: 'Too many contact requests. Please wait and try again.' });
     }
-
-    if (typeof message !== 'string' || message.length < 10 || message.length > 2000) {
-      return res.status(400).json({ error: 'Message must be between 10 and 2000 characters' });
-    }
-
+    assertSerializedContactPayloadSize(req.body);
+    const { name, email, message, phone } = validateContactEnquiry(req.body);
     const commercialContext = buildContactEnquiryCommercialContext(req.body);
 
     await prisma.formResponse.create({
@@ -2329,6 +2343,12 @@ app.post('/api/contact', async (req, res) => {
   } catch (err) {
     const sourceFailure = sourceResolutionFailure(res, err);
     if (sourceFailure) return sourceFailure;
+    if (err instanceof ContactEnquiryHoneypotError) {
+      return res.status(400).json({ error: 'Unable to process this submission.' });
+    }
+    if (err instanceof ContactEnquiryValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
     console.error('Contact form error:', err);
     res.status(500).json({ error: 'Could not save contact request' });
   }

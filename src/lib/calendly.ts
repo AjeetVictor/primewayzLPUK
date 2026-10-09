@@ -2,6 +2,10 @@ import { getFirstUtmParams, getLatestUtmParams } from './utm';
 import { trackConversionEvent } from './analytics';
 import { assertNoProhibitedAnalyticsProps } from './digitalSystemsReview/analytics';
 import { DEFAULT_PW_UK_CALENDLY_BOOKING_URL } from './scheduling/calendlyDefaults';
+import {
+  bookingContextAnalyticsPayload,
+  type BookingContext,
+} from './bookingContext';
 
 /** UK site widget URL — first implementation of the Scheduling service public booking URL. */
 export const CALENDLY_BASE_URL = DEFAULT_PW_UK_CALENDLY_BOOKING_URL;
@@ -85,7 +89,11 @@ declare global {
   }
 }
 
-export function initCalendlyInlineWidget(parentElement: HTMLElement, ctaLocation: string): void {
+export function initCalendlyInlineWidget(
+  parentElement: HTMLElement,
+  ctaLocation: string,
+  bookingContext: BookingContext = {},
+): void {
   if (!window.Calendly?.initInlineWidget) return;
 
   parentElement.innerHTML = '';
@@ -101,6 +109,7 @@ export function initCalendlyInlineWidget(parentElement: HTMLElement, ctaLocation
     calendly_url: CALENDLY_BASE_URL,
     cta_location: ctaLocation,
     source_page: window.location.pathname,
+    ...bookingContextAnalyticsPayload(bookingContext),
   });
 }
 
@@ -110,7 +119,43 @@ const CALENDLY_MESSAGE_EVENTS = new Set([
   'calendly.profile_page_viewed',
 ]);
 
-export function subscribeCalendlyPostMessages(ctaLocation: string): () => void {
+const processedCompletionKeys = new Set<string>();
+const COMPLETION_STORAGE_KEY = 'primewayz_calendly_completed_bookings';
+
+export function getCalendlyCompletionKey(data: unknown): string {
+  const eventUri = (data as { payload?: { event?: { uri?: unknown } } })?.payload?.event?.uri;
+  return typeof eventUri === 'string' && /^https:\/\/api\.calendly\.com\/scheduled_events\/[A-Za-z0-9_-]+$/.test(eventUri)
+    ? eventUri
+    : 'unidentified-completion';
+}
+
+export function shouldProcessCalendlyCompletion(data: unknown): boolean {
+  const key = getCalendlyCompletionKey(data);
+  let stored = new Set<string>();
+  try {
+    stored = new Set(JSON.parse(sessionStorage.getItem(COMPLETION_STORAGE_KEY) || '[]'));
+  } catch {
+    stored = new Set();
+  }
+  if (processedCompletionKeys.has(key) || stored.has(key)) return false;
+  processedCompletionKeys.add(key);
+  stored.add(key);
+  try {
+    sessionStorage.setItem(COMPLETION_STORAGE_KEY, JSON.stringify([...stored].slice(-20)));
+  } catch {
+    // In-memory protection still applies when storage is unavailable.
+  }
+  return true;
+}
+
+export function resetCalendlyCompletionGuardForTests(): void {
+  processedCompletionKeys.clear();
+}
+
+export function subscribeCalendlyPostMessages(
+  ctaLocation: string,
+  bookingContext: BookingContext = {},
+): () => void {
   const handleCalendlyEvent = (event: MessageEvent) => {
     if (event.origin !== 'https://calendly.com') return;
 
@@ -122,6 +167,7 @@ export function subscribeCalendlyPostMessages(ctaLocation: string): () => void {
       lead_type: 'discovery_call',
       cta_location: ctaLocation,
       source_page: window.location.pathname,
+      ...bookingContextAnalyticsPayload(bookingContext),
     };
 
     if (calendlyEventName === 'calendly.date_and_time_selected') {
@@ -130,6 +176,7 @@ export function subscribeCalendlyPostMessages(ctaLocation: string): () => void {
     }
 
     if (calendlyEventName === 'calendly.event_scheduled') {
+      if (!shouldProcessCalendlyCompletion(event.data)) return;
       trackConversionEvent('calendly_event_scheduled', basePayload);
 
       const leadPayload = {

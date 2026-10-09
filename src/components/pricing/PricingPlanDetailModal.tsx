@@ -12,6 +12,7 @@ import { PRICING_COMMERCIAL_POLICY } from '../../data/pricing/helpers';
 import type { PricingPlanDefinition } from '../../data/pricing/types';
 import { buildPricingReviewUrl } from '../../lib/pricing/buildPricingReviewUrl';
 import { trackPricingCtaClick } from '../../lib/pricing/analytics';
+import { buildBookCallUrl } from '../../lib/bookingContext';
 import type { StoredPricingSelectionV1 } from '../../lib/pricing/pricingSelection';
 import { cn } from '../../utils/cn';
 
@@ -72,6 +73,11 @@ export function PricingPlanDetailModal({
 
   const config = getPricingGridConfig(plan.slug);
   const reviewUrl = buildPricingReviewUrl(plan.slug);
+  const bookingUrl = buildBookCallUrl({
+    sourceRoute: '/pricing',
+    ctaPlacement: 'pricing_plan_detail_modal_secondary',
+    selectedPlan: plan.slug,
+  });
   const isFoundation = plan.slug === 'foundation-sprint';
   const isRecurring = plan.engagementType === 'recurring_delivery';
 
@@ -252,7 +258,16 @@ export function PricingPlanDetailModal({
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
               <Link
-                to={DISCOVERY_CALL_DESTINATION}
+                to={bookingUrl}
+                onClick={() =>
+                  trackPricingCtaClick({
+                    cta_text: DISCOVERY_CALL_CTA_LABEL,
+                    cta_location: 'pricing_plan_detail_modal_secondary',
+                    page_path: '/pricing',
+                    selection,
+                    journey_type: 'pricing_discovery_call',
+                  })
+                }
                 className={cn(shellClasses.btnHeroSecondary, 'sm:w-auto')}
               >
                 {DISCOVERY_CALL_CTA_LABEL}

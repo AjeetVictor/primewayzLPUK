@@ -17,6 +17,7 @@ import {
   assertNoProhibitedAnalyticsProps,
   buildDigitalSystemsReviewAnalyticsPayload,
 } from '../../lib/digitalSystemsReview/analytics';
+import { buildBookCallUrl } from '../../lib/bookingContext';
 
 export type DigitalSystemsReviewCtaGroupVariant = 'hero' | 'closing' | 'onDark' | 'caseStudyDark';
 
@@ -98,6 +99,11 @@ export function DigitalSystemsReviewCtaGroup({
   const location = useLocation();
   const reviewHref = buildFreeReviewCtaUrl(sourceLocation, serviceArea);
   const route = location.pathname || '/';
+  const discoveryHref = buildBookCallUrl({
+    serviceArea,
+    sourceRoute: route,
+    ctaPlacement: secondaryPlacement,
+  });
   const isHero = variant === 'hero';
   const isOnDark = variant === 'onDark';
   const isCaseStudyDark = variant === 'caseStudyDark';
@@ -131,7 +137,7 @@ export function DigitalSystemsReviewCtaGroup({
         </Link>
 
         <Link
-          to={DISCOVERY_CALL_DESTINATION}
+          to={discoveryHref}
           onClick={() => emitBookCallClick(sourceLocation, secondaryPlacement, route, serviceArea)}
           className={secondaryClass}
         >

@@ -1,4 +1,5 @@
-import { useState, ChangeEvent, FormEvent, useEffect } from 'react';
+import { useState, ChangeEvent, FormEvent, useEffect, useMemo, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { AlertCircle, CheckCircle, Loader2, PartyPopper } from 'lucide-react';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
@@ -8,6 +9,7 @@ import { apiUrl } from '../utils/apiUrl';
 import { trackConversionEvent, trackEvent } from '../lib/analytics';
 import { assertNoProhibitedAnalyticsProps } from '../lib/digitalSystemsReview/analytics';
 import { getFirstUtmParams, getLatestUtmParams } from '../lib/utm';
+import { resolveBookingContext } from '../lib/bookingContext';
 
 interface FormData {
   name: string;
@@ -105,6 +107,11 @@ const emptyForm: FormData = {
 };
 
 export function ContactForm({ variant = 'full' }: ContactFormProps) {
+  const location = useLocation();
+  const bookingContext = useMemo(
+    () => resolveBookingContext(new URLSearchParams(location.search)),
+    [location.search],
+  );
   const [formData, setFormData] = useState<FormData>(emptyForm);
   const [phone, setPhone] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
@@ -112,6 +119,12 @@ export function ContactForm({ variant = 'full' }: ContactFormProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [hasStartedForm, setHasStartedForm] = useState(false);
+  const [companyWebsite, setCompanyWebsite] = useState('');
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (Object.keys(errors).length > 0) errorSummaryRef.current?.focus();
+  }, [errors]);
 
   const handleFormStart = () => {
     if (hasStartedForm) return;
@@ -196,7 +209,9 @@ export function ContactForm({ variant = 'full' }: ContactFormProps) {
         phone: parsedPhoneNumbers[0] || null,
         phoneNumbers: parsedPhoneNumbers,
         supportArea: formData.supportArea,
-        sourcePagePath: window.location.pathname,
+        sourcePagePath: bookingContext.sourceRoute || window.location.pathname,
+        submissionPagePath: window.location.pathname,
+        companyWebsite,
         firstUtmSource: firstUtm.utm_source,
         firstUtmMedium: firstUtm.utm_medium,
         firstUtmCampaign: firstUtm.utm_campaign,
@@ -236,6 +251,7 @@ export function ContactForm({ variant = 'full' }: ContactFormProps) {
         setIsSubmitted(true);
         setFormData(emptyForm);
         setPhone('');
+        setCompanyWebsite('');
       } else {
         setSubmitError(data?.error || 'Something went wrong. Please try again later.');
       }
@@ -341,6 +357,34 @@ export function ContactForm({ variant = 'full' }: ContactFormProps) {
       </div>
 
       <form onSubmit={handleSubmit} onFocus={handleFormStart} className="space-y-5" noValidate>
+        {Object.keys(errors).length > 0 ? (
+          <div
+            ref={errorSummaryRef}
+            tabIndex={-1}
+            role="alert"
+            className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+          >
+            <p className="font-semibold">Please correct the highlighted fields.</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              {Object.values(errors).filter(Boolean).map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        <div className="absolute left-[-9999px] h-px w-px overflow-hidden" aria-hidden="true">
+          <label htmlFor="companyWebsite">Company website confirmation</label>
+          <input
+            id="companyWebsite"
+            name="companyWebsite"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            value={companyWebsite}
+            onChange={(event) => setCompanyWebsite(event.target.value)}
+          />
+        </div>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div className="space-y-1.5">
             <label htmlFor="name" className="block text-sm font-semibold text-slate-700">
@@ -531,7 +575,7 @@ export function ContactForm({ variant = 'full' }: ContactFormProps) {
               'Send enquiry'
             )}
           </motion.button>
-          <p className="text-sm text-slate-500">Usually answered within one UK business day.</p>
+          <p className="text-sm text-slate-500">We will review your enquiry and respond as soon as practical.</p>
         </div>
       </form>
     </div>

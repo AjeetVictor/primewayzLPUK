@@ -100,7 +100,12 @@ test('contact API payload includes controlled attribution fields', () => {
 
   assert.match(
     contactForm,
-    /sourcePagePath:\s*window\.location\.pathname/,
+    /sourcePagePath:\s*bookingContext\.sourceRoute \|\| window\.location\.pathname/,
+  );
+
+  assert.match(
+    contactForm,
+    /submissionPagePath:\s*window\.location\.pathname/,
   );
 
   assert.match(
