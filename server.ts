@@ -70,8 +70,10 @@ import {
   ContactEnquiryHoneypotError,
   ContactEnquiryValidationError,
   validateContactEnquiry,
+  validateContactSubmissionId,
 } from './src/lib/contactEnquiryValidation.ts';
 import { checkContactEnquiryRateLimit } from './src/lib/contactEnquiryRateLimit.ts';
+import { persistContactSubmission } from './src/lib/contactEnquirySubmission.ts';
 import { buildPricingContentBacklogCreateInputs } from './src/data/pricing/contentBacklogSeeds.ts';
 import {
   classifyUnmatchedRequest,
@@ -2323,23 +2325,32 @@ app.post('/api/contact', async (req, res) => {
     }
     assertSerializedContactPayloadSize(req.body);
     const { name, email, message, phone } = validateContactEnquiry(req.body);
+    const submissionId = validateContactSubmissionId(req.body);
     const commercialContext = buildContactEnquiryCommercialContext(req.body);
 
-    await prisma.formResponse.create({
-      data: {
-        name,
-        email,
-        message,
-        phone: phone || null,
-        commercialContext:
-          Object.keys(commercialContext).length > 0
-            ? (commercialContext as Prisma.InputJsonObject)
-            : undefined,
-        ...toPersistedSourceContext(sourceContext),
-      },
+    const result = await persistContactSubmission(prisma, {
+      ...(submissionId ? { submissionId } : {}),
+      name,
+      email,
+      message,
+      phone: phone || null,
+      commercialContext:
+        Object.keys(commercialContext).length > 0
+          ? (commercialContext as Prisma.InputJsonObject)
+          : undefined,
+      ...toPersistedSourceContext(sourceContext),
     });
 
-    res.status(201).json({ success: true });
+    if (result.resultCategory === 'conflict') {
+      return res.status(409).json({
+        success: false,
+        error: 'idempotency_key_conflict',
+      });
+    }
+    res.status(201).json({
+      success: true,
+      resultCategory: result.resultCategory,
+    });
   } catch (err) {
     const sourceFailure = sourceResolutionFailure(res, err);
     if (sourceFailure) return sourceFailure;
@@ -3592,5 +3603,3 @@ async function createServer() {
 }
 
 createServer();
-
-

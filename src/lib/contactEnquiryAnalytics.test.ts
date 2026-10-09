@@ -29,12 +29,12 @@ const contactRoute = server.slice(routeStart, routeEnd);
 test('contact conversion requires persisted 201 success', () => {
   assert.match(
     contactRoute,
-    /await prisma\.formResponse\.create\([\s\S]*?res\.status\(201\)\.json\(\{ success: true \}\);/,
+    /await persistContactSubmission\(prisma,[\s\S]*?res\.status\(201\)\.json\([\s\S]*?resultCategory: result\.resultCategory/,
   );
 
   assert.match(
     contactForm,
-    /const data = await response\.json\(\)\.catch\(\(\) => null\);\s*if \(response\.status === 201 && data\?\.success === true\) \{[\s\S]*?trackConversionEvent\('contact_enquiry_complete', conversionPayload\);/,
+    /const data = await response\.json\(\)\.catch\(\(\) => null\);[\s\S]*?if \(response\.status === 201 && data\?\.success === true\) \{[\s\S]*?trackConversionEvent\('contact_enquiry_complete', conversionPayload\);/,
   );
 
   assert.equal(
@@ -44,10 +44,7 @@ test('contact conversion requires persisted 201 success', () => {
 });
 
 test('contact API success response does not expose the stored form record', () => {
-  assert.match(
-    contactRoute,
-    /res\.status\(201\)\.json\(\{ success: true \}\);/,
-  );
+  assert.match(contactRoute, /res\.status\(201\)\.json\([\s\S]*?success:\s*true/);
 
   assert.doesNotMatch(
     contactRoute,
@@ -86,10 +83,8 @@ test('contact conversion includes the selected non-PII service interest', () => 
   );
 
   assert.ok(payloadMatch, 'Conversion payload was not found');
-  assert.match(
-    payloadMatch[1],
-    /service_interest:\s*formData\.supportArea/,
-  );
+  assert.match(payloadMatch[1], /serviceInterest:\s*formData\.supportArea/);
+  assert.match(payloadMatch[1], /buildFunnelAttribution/);
 });
 
 test('contact API payload includes controlled attribution fields', () => {
@@ -98,10 +93,7 @@ test('contact API payload includes controlled attribution fields', () => {
     /supportArea:\s*formData\.supportArea/,
   );
 
-  assert.match(
-    contactForm,
-    /sourcePagePath:\s*bookingContext\.sourceRoute \|\| window\.location\.pathname/,
-  );
+  assert.match(contactForm, /sourcePagePath:\s*bookingContext\.sourceRoute \|\| window\.location\.pathname/);
 
   assert.match(
     contactForm,
@@ -146,7 +138,7 @@ test('contact lifecycle event remains separate', () => {
 test('contact successful enquiry emits generate_lead once', () => {
   assert.match(
     contactForm,
-    /if \(response\.status === 201 && data\?\.success === true\) \{[\s\S]*?trackConversionEvent\('contact_enquiry_complete', conversionPayload\);[\s\S]*?trackConversionEvent\('generate_lead', conversionPayload\);/,
+    /if \(response\.status === 201 && data\?\.success === true\) \{[\s\S]*?trackConversionEvent\('contact_enquiry_complete', conversionPayload\);[\s\S]*?if \(data\?\.resultCategory === 'created'\) \{[\s\S]*?trackConversionEvent\('generate_lead', conversionPayload\);/,
   );
 
   assert.equal(

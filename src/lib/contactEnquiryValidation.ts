@@ -5,6 +5,15 @@ export class ContactEnquiryHoneypotError extends Error { constructor() { super('
 export function assertContactJsonContentType(contentType?: string): void { if (!contentType?.toLowerCase().startsWith('application/json')) throw new ContactEnquiryValidationError('Content-Type must be application/json.'); }
 export function assertContactPayloadSize(contentLength?: string): void { if (!contentLength) return; const bytes = Number(contentLength); if (!Number.isFinite(bytes) || bytes < 0 || bytes > CONTACT_ENQUIRY_LIMITS.maxPayloadBytes) throw new ContactEnquiryValidationError('Contact request is too large.'); }
 export function assertSerializedContactPayloadSize(body: unknown): void { if (Buffer.byteLength(JSON.stringify(body), 'utf8') > CONTACT_ENQUIRY_LIMITS.maxPayloadBytes) throw new ContactEnquiryValidationError('Contact request is too large.'); }
+export function validateContactSubmissionId(body: unknown): string | null {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  const value = (body as Record<string, unknown>).submissionId;
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string' || !/^[a-fA-F0-9]{32}$/.test(value)) {
+    throw new ContactEnquiryValidationError('Submission identifier is invalid.');
+  }
+  return value.toLowerCase();
+}
 function requiredText(value: unknown, label: string, min: number, max: number): string { if (typeof value !== 'string') throw new ContactEnquiryValidationError(`${label} is required.`); const normalized = value.trim(); if (normalized.length < min || normalized.length > max) throw new ContactEnquiryValidationError(`${label} must be between ${min} and ${max} characters.`); return normalized; }
 export function validateContactEnquiry(body: unknown): { name: string; email: string; message: string; phone: string | null } {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new ContactEnquiryValidationError('Invalid contact request.');

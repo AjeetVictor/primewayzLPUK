@@ -83,9 +83,10 @@ test('page_view sends the current document title', () => {
   assert.match(trackPageViewBlock, /page_title: document\.title,/);
 });
 
-test('AnalyticsTracker does not attach duplicate history listeners', () => {
-  assert.doesNotMatch(tracker, /addEventListener\(/);
-  assert.doesNotMatch(tracker, /removeEventListener\(/);
+test('AnalyticsTracker listens only for explicit consent changes alongside router navigation', () => {
+  assert.match(tracker, /addEventListener\(ANALYTICS_CONSENT_CHANGE_EVENT/);
+  assert.match(tracker, /removeEventListener\(ANALYTICS_CONSENT_CHANGE_EVENT/);
+  assert.doesNotMatch(tracker, /addEventListener\(['"]popstate['"]/);
 });
 
 test('conversion events send full attribution payload to GA4', () => {

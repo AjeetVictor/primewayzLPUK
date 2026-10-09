@@ -55,6 +55,7 @@ import { FaqPage } from './components/FaqPage';
 import { HowItWorksPage } from './components/HowItWorksPage';
 import { NotFoundPage } from './components/NotFoundPage';
 import { RouteMetadata } from './components/RouteMetadata';
+import { AnalyticsConsentManager } from './components/AnalyticsConsentManager';
 
 const ClientOnly = ({ children }: { children: ReactNode }) => {
   const [mounted, setMounted] = useState(false);
@@ -204,6 +205,7 @@ export const App = ({ initialData }: AppProps) => {
 
       {!showSiteChrome ? null : <Footer />}
       {showSiteChrome ? <ClientOnly><LazyLiveChat /></ClientOnly> : null}
+      {!isAdmin ? <AnalyticsConsentManager /> : null}
     </div>
   );
 };

@@ -288,12 +288,12 @@ test('campaignDictionary is not imported by utm.ts', () => {
   assert.doesNotMatch(utmSource, /campaignDictionary/);
 });
 
-test('existing inbound UTM capture in utm.ts remains unchanged', () => {
+test('inbound UTM capture remains supported and normalizes values', () => {
   const utmSource = fs.readFileSync(path.join(root, 'src/lib/utm.ts'), 'utf8');
   assert.match(utmSource, /export function readUtmParamsFromSearch\(search: string\): UtmParams/);
   assert.match(
     utmSource,
-    /utm_source: params\.get\('utm_source'\),\s+utm_medium: params\.get\('utm_medium'\),/,
+    /utm_source: normalizeUtmValue\(params\.get\('utm_source'\)\),\s+utm_medium: normalizeUtmValue\(params\.get\('utm_medium'\)\),/,
   );
   assert.doesNotMatch(utmSource, /isOwnedUtmSource|validateOwnedCampaignUtm|isCanonicalCampaignId/);
 });

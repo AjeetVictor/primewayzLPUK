@@ -164,7 +164,7 @@ const pageContent = {
       {
         title: '2. How we use cookies',
         body:
-          'We may use cookies to keep the website working, improve security, understand how visitors use the website, measure performance, remember preferences, and improve our marketing and user experience.',
+          'We use essential technologies to operate the website. Optional analytics are off unless you explicitly accept them in Cookie settings.',
       },
       {
         title: '3. Essential cookies',
@@ -174,7 +174,7 @@ const pageContent = {
       {
         title: '4. Analytics cookies',
         body:
-          'Analytics cookies help us understand website traffic, popular pages, visitor journeys, and conversion performance. We use this information to improve the website and make our UK business content more useful.',
+          'Google Analytics 4 is loaded only after you opt in to optional analytics. Rejecting or withdrawing consent stops future measurement and removes analytics cookies where the browser permits.',
       },
       {
         title: '5. Marketing cookies',
@@ -184,12 +184,12 @@ const pageContent = {
       {
         title: '6. Third-party cookies',
         body:
-          'Some cookies may be placed by third-party tools used for analytics, security, embedded content, booking, forms, or advertising. These third parties may process limited information according to their own policies.',
+          'Booking tools load only when you choose to open the booking calendar. The booking provider may process information needed to provide that requested service under its own policies.',
       },
       {
         title: '7. Cookie consent',
         body:
-          'For non-essential cookies, we aim to request consent where required under UK cookie rules. You should be able to accept, reject, or manage non-essential cookies when a cookie banner or settings tool is available.',
+          'You can accept, reject, or manage optional analytics using Cookie settings. You can change or withdraw your choice at any time using the persistent Cookie settings control. Enquiry and booking forms remain available when analytics are rejected.',
       },
       {
         title: '8. Managing cookies in your browser',

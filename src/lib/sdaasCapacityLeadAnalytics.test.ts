@@ -13,7 +13,7 @@ const form = fs.readFileSync(
 test('sdaas capacity request emits generate_lead only after API success', () => {
   assert.match(
     form,
-    /if \(!response\.ok\) \{[\s\S]*?throw new Error\('Submission failed'\);[\s\S]*?\}[\s\S]*?trackSdaasEvent\('sdaas_form_submit'[\s\S]*?trackConversionEvent\('generate_lead'/,
+    /if \(!response\.ok\) \{[\s\S]*?throw new Error\('Submission failed'\);[\s\S]*?\}[\s\S]*?trackSdaasEvent\('sdaas_form_submit'[\s\S]*?if \(result\.resultCategory === 'created'\) \{[\s\S]*?trackConversionEvent\('generate_lead'/,
   );
 
   assert.equal(

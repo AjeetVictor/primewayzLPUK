@@ -10,6 +10,9 @@ import { trackConversionEvent, trackEvent } from '../lib/analytics';
 import { assertNoProhibitedAnalyticsProps } from '../lib/digitalSystemsReview/analytics';
 import { getFirstUtmParams, getLatestUtmParams } from '../lib/utm';
 import { resolveBookingContext } from '../lib/bookingContext';
+import { submissionIdForPayload, type SubmissionIdentity } from '../lib/submissionId';
+import { getFirstLandingPage } from '../lib/chatSource';
+import { buildFunnelAttribution } from '../lib/funnelAttribution';
 
 interface FormData {
   name: string;
@@ -121,6 +124,7 @@ export function ContactForm({ variant = 'full' }: ContactFormProps) {
   const [hasStartedForm, setHasStartedForm] = useState(false);
   const [companyWebsite, setCompanyWebsite] = useState('');
   const errorSummaryRef = useRef<HTMLDivElement>(null);
+  const submissionIdentityRef = useRef<SubmissionIdentity | null>(null);
 
   useEffect(() => {
     if (Object.keys(errors).length > 0) errorSummaryRef.current?.focus();
@@ -201,16 +205,27 @@ export function ContactForm({ variant = 'full' }: ContactFormProps) {
         '',
         formData.message.trim(),
       ].filter((line): line is string => line !== null);
+      const name = formData.name.trim();
+      const email = formData.email.trim().toLowerCase();
+      const message = messageLines.join('\n');
+      const phoneNumber = parsedPhoneNumbers[0] || null;
 
       const payload = {
-        name: formData.name.trim(),
-        email: formData.email.trim().toLowerCase(),
-        message: messageLines.join('\n'),
-        phone: parsedPhoneNumbers[0] || null,
+        submissionId: submissionIdForPayload(
+          submissionIdentityRef,
+          [name, email, message, phoneNumber],
+        ),
+        name,
+        email,
+        message,
+        phone: phoneNumber,
         phoneNumbers: parsedPhoneNumbers,
         supportArea: formData.supportArea,
+        landingPagePath: getFirstLandingPage(),
         sourcePagePath: bookingContext.sourceRoute || window.location.pathname,
         submissionPagePath: window.location.pathname,
+        ctaPlacement: bookingContext.ctaPlacement,
+        selectedPlanSlug: bookingContext.selectedPlan,
         companyWebsite,
         firstUtmSource: firstUtm.utm_source,
         firstUtmMedium: firstUtm.utm_medium,
@@ -234,21 +249,34 @@ export function ContactForm({ variant = 'full' }: ContactFormProps) {
 
       const data = await response.json().catch(() => null);
 
+      if (response.status === 409) {
+        setSubmitError('This enquiry could not be matched safely. Please refresh the form and try again.');
+        return;
+      }
+
       if (response.status === 201 && data?.success === true) {
         const conversionPayload = {
           form_name: 'primewayz_uk_contact_form',
           lead_type: 'contact_enquiry',
-          service_interest: formData.supportArea,
-          cta_location: 'contact_form',
+          ...buildFunnelAttribution({
+            serviceInterest: formData.supportArea,
+            sourcePage: getFirstLandingPage(),
+            submissionPage: window.location.pathname,
+            ctaPlacement: bookingContext.ctaPlacement || 'contact_form',
+            selectedPlan: bookingContext.selectedPlan,
+          }),
           submission_success: true,
         };
 
         assertNoProhibitedAnalyticsProps(conversionPayload);
         trackConversionEvent('contact_enquiry_complete', conversionPayload);
         trackEvent('contact_form_submit', conversionPayload);
-        trackConversionEvent('generate_lead', conversionPayload);
+        if (data?.resultCategory === 'created') {
+          trackConversionEvent('generate_lead', conversionPayload);
+        }
 
         setIsSubmitted(true);
+        submissionIdentityRef.current = null;
         setFormData(emptyForm);
         setPhone('');
         setCompanyWebsite('');

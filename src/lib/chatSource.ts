@@ -42,13 +42,22 @@ export function inferServiceInterest(pathname: string): string | null {
   return null;
 }
 
-export function getFirstLandingPage(): string {
+export function captureFirstLandingPage(pathname?: string): string {
   if (typeof window === 'undefined') return '/';
-  const existing = window.sessionStorage.getItem(FIRST_LANDING_KEY);
-  if (existing) return existing;
-  const landing = window.location.pathname || '/';
-  window.sessionStorage.setItem(FIRST_LANDING_KEY, landing);
+  const currentPath = (pathname ?? window.location.pathname ?? '/').split(/[?#]/, 1)[0] || '/';
+  const landing = currentPath.startsWith('/') && !currentPath.startsWith('//') ? currentPath : '/';
+  try {
+    const existing = window.sessionStorage.getItem(FIRST_LANDING_KEY);
+    if (existing?.startsWith('/') && !existing.startsWith('//')) return existing.split(/[?#]/, 1)[0] || '/';
+    window.sessionStorage.setItem(FIRST_LANDING_KEY, landing);
+  } catch {
+    return landing;
+  }
   return landing;
+}
+
+export function getFirstLandingPage(): string {
+  return captureFirstLandingPage();
 }
 
 export interface ChatSourcePayload {

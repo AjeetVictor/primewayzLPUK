@@ -171,7 +171,11 @@ export async function collectConversionEvidence(
         ? (form.commercialContext as Record<string, unknown>)
         : {};
     const sourcePagePath =
-      typeof context.sourcePagePath === 'string' ? context.sourcePagePath : null;
+      typeof context.landingPagePath === 'string'
+        ? context.landingPagePath
+        : typeof context.sourcePagePath === 'string'
+          ? context.sourcePagePath
+          : null;
     const firstAttr = extractUtmFromJson(context.firstAttribution);
     const latestAttr = extractUtmFromJson(context.latestAttribution);
 

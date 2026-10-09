@@ -3,6 +3,7 @@ import { createRoot, hydrateRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App, { type InitialAppData } from './App.tsx';
 import { captureUtmParams } from './lib/utm';
+import { captureFirstLandingPage } from './lib/chatSource';
 import './index.css';
 
 declare global {
@@ -13,6 +14,7 @@ declare global {
 
 // Capture campaign attribution before React effects or conversion events run.
 captureUtmParams(window.location.search);
+captureFirstLandingPage(window.location.pathname);
 
 const basePath = import.meta.env.VITE_APP_BASE_PATH || '/';
 const routerBase = basePath === '/' ? undefined : basePath;

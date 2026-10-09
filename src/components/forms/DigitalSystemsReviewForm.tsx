@@ -38,6 +38,7 @@ import {
 } from '../../lib/digitalSystemsReview/confirmationSummary';
 import { isPlausibleWebsite } from '../../lib/digitalSystemsReview/isPlausibleWebsite';
 import { writeFreeReviewSuccessMarker } from '../../lib/digitalSystemsReview/successMarker';
+import { buildFunnelAttribution } from '../../lib/funnelAttribution';
 
 type FormState = {
   name: string;
@@ -82,7 +83,8 @@ function safeLandingPage(): string {
 
 function safeReferrer(): string | undefined {
   try {
-    return typeof document !== 'undefined' ? document.referrer || undefined : undefined;
+    if (typeof document === 'undefined' || !document.referrer) return undefined;
+    return new URL(document.referrer).origin;
   } catch {
     return undefined;
   }
@@ -282,7 +284,7 @@ export function DigitalSystemsReviewForm({
         serviceInterest: form.serviceArea,
         journeyType: 'digital_systems_review',
         sourcePagePath: typeof window !== 'undefined' ? window.location.pathname : DIGITAL_SYSTEMS_REVIEW_PATH,
-        pageLocation: typeof window !== 'undefined' ? window.location.href : undefined,
+        pageLocation: typeof window !== 'undefined' ? window.location.pathname : undefined,
         sourceSection: pricingSelection?.sourceSection,
         recommendedNextStepCommercial: form.preferredNextStep,
         journeyReference: chatSessionId ?? submissionId,
@@ -369,6 +371,13 @@ export function DigitalSystemsReviewForm({
 
         const generatedLeadPayload = {
           ...analyticsPayload,
+          ...buildFunnelAttribution({
+            serviceInterest: analyticsServiceArea(),
+            sourcePage: safeLandingPage(),
+            submissionPage: DIGITAL_SYSTEMS_REVIEW_PATH,
+            ctaPlacement: sourceLocation,
+            selectedPlan: selectedPlanSlug,
+          }),
           form_name: 'digital_systems_review',
           lead_type: 'digital_systems_review',
         };

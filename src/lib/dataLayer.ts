@@ -1,13 +1,14 @@
 import { getFirstUtmParams, getLatestUtmParams } from './utm';
+import { hasAnalyticsConsent } from './analyticsConsent';
 
 declare global {
   interface Window {
-    dataLayer?: Record<string, unknown>[];
+    dataLayer?: unknown[];
   }
 }
 
 export function pushDataLayer(payload: Record<string, unknown>): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !hasAnalyticsConsent()) return;
 
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push(payload);

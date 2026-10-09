@@ -6,12 +6,16 @@ import {
   bookingContextAnalyticsPayload,
   type BookingContext,
 } from './bookingContext';
+import { buildFunnelAttribution } from './funnelAttribution';
+import { getFirstLandingPage } from './chatSource';
+import { hasAnalyticsConsent } from './analyticsConsent';
 
 /** UK site widget URL — first implementation of the Scheduling service public booking URL. */
 export const CALENDLY_BASE_URL = DEFAULT_PW_UK_CALENDLY_BOOKING_URL;
 export const CALENDLY_SCRIPT_URL = 'https://assets.calendly.com/assets/external/widget.js';
 
 export function buildCalendlyUrl(): string {
+  if (!hasAnalyticsConsent()) return CALENDLY_BASE_URL;
   const latest = getLatestUtmParams();
   const first = getFirstUtmParams();
   const url = new URL(CALENDLY_BASE_URL);
@@ -32,6 +36,7 @@ export function buildCalendlyUrl(): string {
 }
 
 export function getCalendlyUtmPayload(): Record<string, string> {
+  if (!hasAnalyticsConsent()) return {};
   const latest = getLatestUtmParams();
   const first = getFirstUtmParams();
 
@@ -109,6 +114,13 @@ export function initCalendlyInlineWidget(
     calendly_url: CALENDLY_BASE_URL,
     cta_location: ctaLocation,
     source_page: window.location.pathname,
+    ...buildFunnelAttribution({
+      serviceInterest: bookingContext.serviceArea,
+      sourcePage: bookingContext.sourceRoute || getFirstLandingPage(),
+      submissionPage: window.location.pathname,
+      ctaPlacement: bookingContext.ctaPlacement || ctaLocation,
+      selectedPlan: bookingContext.selectedPlan,
+    }),
     ...bookingContextAnalyticsPayload(bookingContext),
   });
 }
@@ -167,6 +179,13 @@ export function subscribeCalendlyPostMessages(
       lead_type: 'discovery_call',
       cta_location: ctaLocation,
       source_page: window.location.pathname,
+      ...buildFunnelAttribution({
+        serviceInterest: bookingContext.serviceArea,
+        sourcePage: bookingContext.sourceRoute || getFirstLandingPage(),
+        submissionPage: window.location.pathname,
+        ctaPlacement: bookingContext.ctaPlacement || ctaLocation,
+        selectedPlan: bookingContext.selectedPlan,
+      }),
       ...bookingContextAnalyticsPayload(bookingContext),
     };
 

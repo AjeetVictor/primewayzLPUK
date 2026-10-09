@@ -1,8 +1,9 @@
-import { useMemo, useState, type FormEvent, type ChangeEvent } from 'react';
+import { useMemo, useRef, useState, type FormEvent, type ChangeEvent } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, Send, X } from 'lucide-react';
 import { useRevealMotion } from '../hooks/useRevealMotion';
 import { apiUrl } from '../utils/apiUrl';
+import { submissionIdForPayload, type SubmissionIdentity } from '../lib/submissionId';
 
 type StackFormData = {
   name: string;
@@ -30,6 +31,7 @@ export const TechStack = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const submissionIdentityRef = useRef<SubmissionIdentity | null>(null);
 
   const allStacks = useMemo(() => stackRows.flat(), []);
 
@@ -39,6 +41,7 @@ export const TechStack = () => {
     setSubmitError(null);
     setIsSubmitting(false);
     setFormData(initialFormData);
+    submissionIdentityRef.current = null;
   };
 
   const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -62,23 +65,35 @@ export const TechStack = () => {
     ].filter(Boolean);
 
     try {
+      const name = formData.name.trim();
+      const email = formData.email.trim().toLowerCase();
+      const message = messageLines.join('\n');
       const response = await fetch(apiUrl('/api/contact'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: formData.name.trim(),
-          email: formData.email.trim().toLowerCase(),
-          message: messageLines.join('\n'),
+          submissionId: submissionIdForPayload(
+            submissionIdentityRef,
+            [name, email, message, null],
+          ),
+          name,
+          email,
+          message,
         }),
       });
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        throw new Error(data?.error || 'Unable to submit stack request right now.');
+        throw new Error(
+          response.status === 409
+            ? 'This request could not be matched safely. Please start a new request.'
+            : data?.error || 'Unable to submit stack request right now.',
+        );
       }
 
       setSubmitMessage(`Thanks! We received your request for ${selectedStack}.`);
       setFormData(initialFormData);
+      submissionIdentityRef.current = null;
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Failed to send your request.');
     } finally {

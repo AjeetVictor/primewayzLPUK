@@ -8,6 +8,7 @@ import {
   ContactEnquiryHoneypotError,
   ContactEnquiryValidationError,
   validateContactEnquiry,
+  validateContactSubmissionId,
 } from './contactEnquiryValidation';
 import {
   checkContactEnquiryRateLimit,
@@ -47,6 +48,15 @@ test('filled honeypot is rejected while an absent or empty field is accepted', (
   assert.throws(() => validateContactEnquiry({ ...base, companyWebsite: 'spam' }), ContactEnquiryHoneypotError);
 });
 
+test('contact submission identifiers are optional but strictly validated', () => {
+  assert.equal(validateContactSubmissionId({}), null);
+  assert.equal(validateContactSubmissionId({ submissionId: 'A'.repeat(32) }), 'a'.repeat(32));
+  assert.throws(
+    () => validateContactSubmissionId({ submissionId: 'not-a-valid-key' }),
+    ContactEnquiryValidationError,
+  );
+});
+
 test('contact rate limiting isolates and resets endpoint buckets', () => {
   resetContactEnquiryRateLimitForTests();
   for (let index = 0; index < 5; index += 1) assert.equal(checkContactEnquiryRateLimit('203.0.113.9', 1000).allowed, true);
@@ -63,6 +73,7 @@ test('contact route validates before persistence and keeps the 201 success contr
   assert.match(route, /assertContactJsonContentType/);
   assert.match(route, /checkContactEnquiryRateLimit/);
   assert.match(route, /validateContactEnquiry\(req\.body\)/);
-  assert.ok(route.indexOf('validateContactEnquiry(req.body)') < route.indexOf('prisma.formResponse.create'));
-  assert.match(route, /res\.status\(201\)\.json\(\{ success: true \}\)/);
+  assert.ok(route.indexOf('validateContactEnquiry(req.body)') < route.indexOf('persistContactSubmission'));
+  assert.match(route, /res\.status\(201\)\.json\(\{[\s\S]*?resultCategory:\s*result\.resultCategory/);
+  assert.match(route, /res\.status\(409\)\.json\([\s\S]*?idempotency_key_conflict/);
 });

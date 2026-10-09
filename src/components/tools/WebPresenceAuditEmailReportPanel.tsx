@@ -17,6 +17,8 @@ import { getScoreBand } from '../../lib/audit/scoreBands';
 import { trackConversionEvent, trackEvent } from '../../lib/analytics';
 import { assertNoProhibitedAnalyticsProps } from '../../lib/digitalSystemsReview/analytics';
 import { getUtmAnalyticsPayload } from '../../lib/utm';
+import { getFirstLandingPage } from '../../lib/chatSource';
+import { buildFunnelAttribution } from '../../lib/funnelAttribution';
 import { apiUrl } from '../../utils/apiUrl';
 
 export type EmailReportPhase = 'form' | 'submitting' | 'success' | 'skipped' | 'error';
@@ -226,8 +228,12 @@ export function WebPresenceAuditEmailReportPanel({
       const leadConversionPayload = {
         form_name: 'web_presence_audit_email_report',
         lead_type: 'web_presence_audit',
-        service_interest: 'website_visibility_support',
-        cta_location: ctaLocation,
+        ...buildFunnelAttribution({
+          serviceInterest: 'website_visibility_support',
+          sourcePage: getFirstLandingPage(),
+          submissionPage: window.location.pathname,
+          ctaPlacement: ctaLocation,
+        }),
         lead_storage: payload.leadStorage,
         email_delivery_status: payload.emailDeliveryStatus || 'unknown',
         score_band: `${scoreBand.min}-${scoreBand.max}`,

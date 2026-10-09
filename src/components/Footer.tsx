@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import {
   ArrowRight,
   ChevronRight,
@@ -17,6 +17,7 @@ import { AUDIT_CHECKER_PATH } from '../constants/navigation';
 import { apiUrl } from '../utils/apiUrl';
 import { SelfAuditCta } from './SelfAuditCta';
 import { getFirstUtmParams, getLatestUtmParams } from '../lib/utm';
+import { submissionIdForPayload, type SubmissionIdentity } from '../lib/submissionId';
 
 const TEAL = '#087E8B';
 const BORDER = '#D7E7EC';
@@ -148,6 +149,7 @@ function FooterLinkList({
 export const Footer = () => {
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterStatus, setNewsletterStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const newsletterSubmissionRef = useRef<SubmissionIdentity | null>(null);
 
   const handleNewsletterSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -160,13 +162,18 @@ export const Footer = () => {
     setNewsletterStatus('loading');
 
     try {
+      const message = buildNewsletterMessage();
       const response = await fetch(apiUrl('/api/contact'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          submissionId: submissionIdForPayload(
+            newsletterSubmissionRef,
+            ['Newsletter subscriber', email, message, null],
+          ),
           name: 'Newsletter subscriber',
           email,
-          message: buildNewsletterMessage(),
+          message,
         }),
       });
 
@@ -174,6 +181,7 @@ export const Footer = () => {
 
       setNewsletterEmail('');
       setNewsletterStatus('success');
+      newsletterSubmissionRef.current = null;
     } catch {
       setNewsletterStatus('error');
     }

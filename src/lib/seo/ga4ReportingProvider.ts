@@ -196,7 +196,7 @@ export function createDefaultGa4ReportingProvider(
             { name: 'keyEvents' },
             { name: 'generate_lead' },
             { name: 'contact_form_submit' },
-            { name: 'booking_completed' },
+            { name: 'calendly_event_scheduled' },
           ],
           limit: '100000',
         },

@@ -1,5 +1,5 @@
 import { getFullUtmAnalyticsPayload } from './utm';
-import { pushDataLayer } from './dataLayer';
+import { hasAnalyticsConsent } from './analyticsConsent';
 
 export const GA_MEASUREMENT_ID =
   import.meta.env?.VITE_GA_MEASUREMENT_ID || 'G-669V6LN0B7';
@@ -22,14 +22,50 @@ const BOOK_CALL_LOCATION_EVENT_MAP: Record<string, string> = {
 
 export function isGaEnabled(): boolean {
   return Boolean(
+    hasAnalyticsConsent() &&
     GA_MEASUREMENT_ID &&
-      typeof window !== 'undefined' &&
-      typeof window.gtag === 'function'
+    typeof window !== 'undefined' &&
+    typeof window.gtag === 'function'
   );
 }
 
 export function initGA(): void {
-  // GA base script is loaded from index.html.
+  if (!hasAnalyticsConsent() || typeof window === 'undefined' || window.gtag) return;
+
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = (...args: unknown[]) => {
+    window.dataLayer?.push(args);
+  };
+  window.gtag('js', new Date());
+  window.gtag('config', GA_MEASUREMENT_ID, { send_page_view: false });
+
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA_MEASUREMENT_ID)}`;
+  script.dataset.primewayzGa4 = 'true';
+  document.head.appendChild(script);
+}
+
+export function disableGA(): void {
+  if (typeof window === 'undefined') return;
+  window.gtag = undefined;
+  window.dataLayer = [];
+  document.querySelectorAll('script[data-primewayz-ga4]').forEach(script => script.remove());
+
+  const hostname = window.location.hostname;
+  const domains = [undefined, hostname, `.${hostname}`];
+  if (hostname === 'primewayz.com' || hostname.endsWith('.primewayz.com')) {
+    domains.push('.primewayz.com');
+  }
+  const cookieNames = document.cookie
+    .split(';')
+    .map(cookie => cookie.trim().split('=', 1)[0])
+    .filter(name => /^_ga(?:_|$)|^_gid$|^_gat(?:_|$)/.test(name));
+  for (const name of cookieNames) {
+    for (const domain of domains) {
+      document.cookie = `${name}=; Max-Age=0; path=/; SameSite=Lax${domain ? `; domain=${domain}` : ''}`;
+    }
+  }
 }
 
 export function trackPageView(path: string, extraParams?: Record<string, unknown>): void {
@@ -74,11 +110,6 @@ export function trackConversionEvent(
     ...getFullUtmAnalyticsPayload(),
     ...params,
   };
-
-  pushDataLayer({
-    event: eventName,
-    ...payload,
-  });
 
   trackEvent(eventName, payload);
 }
@@ -255,4 +286,3 @@ export function trackChatLeadConverted(params?: {
     lead_type: 'chat_conversion',
   });
 }
-

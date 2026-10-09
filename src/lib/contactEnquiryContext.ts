@@ -1,3 +1,5 @@
+import { isPricingPlanSlug } from '../data/pricing/helpers';
+
 export const CONTACT_SUPPORT_AREAS = [
   'Website updates & maintenance',
   'Technical SEO & visibility',
@@ -12,8 +14,11 @@ export type ContactSupportArea = (typeof CONTACT_SUPPORT_AREAS)[number];
 
 export interface ContactEnquiryCommercialContext {
   serviceInterest?: ContactSupportArea;
+  landingPagePath?: string;
   sourcePagePath?: string;
   submissionPagePath?: string;
+  ctaPlacement?: string;
+  selectedPlanSlug?: string;
   firstAttribution?: ContactAttribution;
   latestAttribution?: ContactAttribution;
 }
@@ -28,8 +33,11 @@ interface ContactAttribution {
 
 interface ContactEnquiryContextInput {
   supportArea?: unknown;
+  landingPagePath?: unknown;
   sourcePagePath?: unknown;
   submissionPagePath?: unknown;
+  ctaPlacement?: unknown;
+  selectedPlanSlug?: unknown;
   firstUtmSource?: unknown;
   firstUtmMedium?: unknown;
   firstUtmCampaign?: unknown;
@@ -54,6 +62,21 @@ function normaliseOptionalText(value: unknown, maxLength: number): string | null
   return normalised.slice(0, maxLength);
 }
 
+function normaliseAttributionValue(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalised = value
+    .replace(/[\u0000-\u001F\u007F]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, ATTRIBUTION_VALUE_MAX);
+  if (
+    !normalised
+    || /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/.test(normalised)
+    || /(?:\+?\d[\d\s().-]{7,}\d)/.test(normalised)
+  ) return null;
+  return normalised;
+}
+
 function normaliseSupportArea(value: unknown): ContactSupportArea | null {
   const normalised = normaliseOptionalText(value, 80);
   if (!normalised) return null;
@@ -65,7 +88,12 @@ function normaliseSupportArea(value: unknown): ContactSupportArea | null {
 
 function normaliseSourcePagePath(value: unknown): string | null {
   const normalised = normaliseOptionalText(value, SOURCE_PAGE_PATH_MAX);
-  if (!normalised || !normalised.startsWith('/')) return null;
+  if (
+    !normalised
+    || !normalised.startsWith('/')
+    || normalised.startsWith('//')
+    || normalised.includes('\\')
+  ) return null;
 
   return normalised.split(/[?#]/, 1)[0] || null;
 }
@@ -80,28 +108,34 @@ export function buildContactEnquiryCommercialContext(
   const context: ContactEnquiryCommercialContext = {};
 
   const serviceInterest = normaliseSupportArea(input.supportArea);
+  const landingPagePath = normaliseSourcePagePath(input.landingPagePath);
   const sourcePagePath = normaliseSourcePagePath(input.sourcePagePath);
   const submissionPagePath = normaliseSourcePagePath(input.submissionPagePath);
+  const ctaPlacement = normaliseOptionalText(input.ctaPlacement, 80);
+  const selectedPlanSlug = normaliseOptionalText(input.selectedPlanSlug, 64);
 
   const firstAttribution: ContactAttribution = {
-    utm_source: normaliseOptionalText(input.firstUtmSource, ATTRIBUTION_VALUE_MAX),
-    utm_medium: normaliseOptionalText(input.firstUtmMedium, ATTRIBUTION_VALUE_MAX),
-    utm_campaign: normaliseOptionalText(input.firstUtmCampaign, ATTRIBUTION_VALUE_MAX),
-    utm_content: normaliseOptionalText(input.firstUtmContent, ATTRIBUTION_VALUE_MAX),
-    utm_term: normaliseOptionalText(input.firstUtmTerm, ATTRIBUTION_VALUE_MAX),
+    utm_source: normaliseAttributionValue(input.firstUtmSource),
+    utm_medium: normaliseAttributionValue(input.firstUtmMedium),
+    utm_campaign: normaliseAttributionValue(input.firstUtmCampaign),
+    utm_content: normaliseAttributionValue(input.firstUtmContent),
+    utm_term: normaliseAttributionValue(input.firstUtmTerm),
   };
 
   const latestAttribution: ContactAttribution = {
-    utm_source: normaliseOptionalText(input.latestUtmSource, ATTRIBUTION_VALUE_MAX),
-    utm_medium: normaliseOptionalText(input.latestUtmMedium, ATTRIBUTION_VALUE_MAX),
-    utm_campaign: normaliseOptionalText(input.latestUtmCampaign, ATTRIBUTION_VALUE_MAX),
-    utm_content: normaliseOptionalText(input.latestUtmContent, ATTRIBUTION_VALUE_MAX),
-    utm_term: normaliseOptionalText(input.latestUtmTerm, ATTRIBUTION_VALUE_MAX),
+    utm_source: normaliseAttributionValue(input.latestUtmSource),
+    utm_medium: normaliseAttributionValue(input.latestUtmMedium),
+    utm_campaign: normaliseAttributionValue(input.latestUtmCampaign),
+    utm_content: normaliseAttributionValue(input.latestUtmContent),
+    utm_term: normaliseAttributionValue(input.latestUtmTerm),
   };
 
   if (serviceInterest) context.serviceInterest = serviceInterest;
+  if (landingPagePath) context.landingPagePath = landingPagePath;
   if (sourcePagePath) context.sourcePagePath = sourcePagePath;
   if (submissionPagePath) context.submissionPagePath = submissionPagePath;
+  if (ctaPlacement && /^[a-zA-Z0-9_-]+$/.test(ctaPlacement)) context.ctaPlacement = ctaPlacement;
+  if (selectedPlanSlug && isPricingPlanSlug(selectedPlanSlug)) context.selectedPlanSlug = selectedPlanSlug;
   if (hasAttribution(firstAttribution)) context.firstAttribution = firstAttribution;
   if (hasAttribution(latestAttribution)) context.latestAttribution = latestAttribution;
 

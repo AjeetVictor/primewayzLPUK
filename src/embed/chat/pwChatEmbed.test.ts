@@ -229,14 +229,28 @@ test('analytics: default sink prefers PWSCTrackEvent, then gtag, then dataLayer'
     gtag: () => calls.push('gtag'),
     dataLayer: { push: () => calls.push('dl') },
   };
-  createDefaultPwChatAnalyticsSink(full as unknown as Window)('chat_open', {});
+  createDefaultPwChatAnalyticsSink(full as unknown as Window, () => true)('chat_open', {});
   const gtagOnly = { gtag: (...args: unknown[]) => calls.push(`gtag:${String(args[1])}`), dataLayer: [] };
-  createDefaultPwChatAnalyticsSink(gtagOnly as unknown as Window)('chat_open', {});
+  createDefaultPwChatAnalyticsSink(gtagOnly as unknown as Window, () => true)('chat_open', {});
   const dataLayer: unknown[] = [];
-  createDefaultPwChatAnalyticsSink({ dataLayer } as unknown as Window)('chat_open', { placement: 'chat_widget' });
+  createDefaultPwChatAnalyticsSink({ dataLayer } as unknown as Window, () => true)('chat_open', { placement: 'chat_widget' });
   assert.deepEqual(calls, ['pwsc', 'gtag:chat_open']);
   assert.deepEqual(dataLayer, [{ event: 'chat_open', placement: 'chat_widget' }]);
-  assert.doesNotThrow(() => createDefaultPwChatAnalyticsSink({ PWSCTrackEvent: () => { throw new Error('x'); } } as unknown as Window)('chat_open', {}));
+  assert.doesNotThrow(() => createDefaultPwChatAnalyticsSink({ PWSCTrackEvent: () => { throw new Error('x'); } } as unknown as Window, () => true)('chat_open', {}));
+});
+
+test('analytics: embedded chat emits nothing until analytics consent', () => {
+  const calls: string[] = [];
+  const sink = createDefaultPwChatAnalyticsSink(
+    {
+      PWSCTrackEvent: () => calls.push('event'),
+      gtag: () => calls.push('gtag'),
+      dataLayer: [],
+    } as unknown as Window,
+    () => false,
+  );
+  sink('chat_open', {});
+  assert.deepEqual(calls, []);
 });
 
 test('analytics: tracker only emits the six supported events', () => {

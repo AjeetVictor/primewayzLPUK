@@ -60,15 +60,20 @@ export function buildPwChatAnalyticsPayload(props: PwChatAnalyticsProps = {}): R
 }
 
 type AnalyticsWindow = Window & {
+  __PRIMEWAYZ_ANALYTICS_CONSENT__?: boolean;
   PWSCTrackEvent?: (eventName: string, params?: Record<string, unknown>) => void;
   gtag?: (...args: unknown[]) => void;
   dataLayer?: unknown[];
 };
 
 /** Uses the first available host transport: Site Controls, then gtag, then dataLayer. */
-export function createDefaultPwChatAnalyticsSink(win: Window): VisitorChatAnalyticsSink {
+export function createDefaultPwChatAnalyticsSink(
+  win: Window,
+  consentCheck?: () => boolean,
+): VisitorChatAnalyticsSink {
   return (eventName, params) => {
     const host = win as AnalyticsWindow;
+    if (!(consentCheck?.() ?? host.__PRIMEWAYZ_ANALYTICS_CONSENT__ === true)) return;
     try {
       if (typeof host.PWSCTrackEvent === 'function') {
         host.PWSCTrackEvent(eventName, params);

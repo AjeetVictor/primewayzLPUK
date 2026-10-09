@@ -11,6 +11,7 @@ export type UtmParams = {
 const UTM_STORAGE_KEY = 'primewayz_utm_attribution';
 const FIRST_UTM_STORAGE_KEY = 'primewayz_first_utm_attribution';
 const LATEST_UTM_STORAGE_KEY = 'primewayz_latest_utm_attribution';
+export const UTM_VALUE_MAX_LENGTH = 160;
 
 export const WEB_PRESENCE_AUDIT_CAMPAIGN = 'web_presence_audit_launch';
 export const WEB_PRESENCE_AUDIT_CANONICAL_CAMPAIGN = 'PWUK-VIS-2026-01';
@@ -30,12 +31,27 @@ const EMPTY_UTM: UtmParams = {
 export function readUtmParamsFromSearch(search: string): UtmParams {
   const params = new URLSearchParams(search);
   return {
-    utm_source: params.get('utm_source'),
-    utm_medium: params.get('utm_medium'),
-    utm_campaign: params.get('utm_campaign'),
-    utm_content: params.get('utm_content'),
-    utm_term: params.get('utm_term'),
+    utm_source: normalizeUtmValue(params.get('utm_source')),
+    utm_medium: normalizeUtmValue(params.get('utm_medium')),
+    utm_campaign: normalizeUtmValue(params.get('utm_campaign')),
+    utm_content: normalizeUtmValue(params.get('utm_content')),
+    utm_term: normalizeUtmValue(params.get('utm_term')),
   };
+}
+
+export function normalizeUtmValue(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value
+    .replace(/[\u0000-\u001F\u007F]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, UTM_VALUE_MAX_LENGTH);
+  if (
+    !normalized
+    || /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/.test(normalized)
+    || /(?:\+?\d[\d\s().-]{7,}\d)/.test(normalized)
+  ) return null;
+  return normalized;
 }
 
 function hasUtmValues(utm: UtmParams): boolean {
@@ -50,11 +66,11 @@ function readStoredUtm(key: string): UtmParams {
     if (!raw) return { ...EMPTY_UTM };
     const parsed = JSON.parse(raw) as Partial<UtmParams>;
     return {
-      utm_source: parsed.utm_source ?? null,
-      utm_medium: parsed.utm_medium ?? null,
-      utm_campaign: parsed.utm_campaign ?? null,
-      utm_content: parsed.utm_content ?? null,
-      utm_term: parsed.utm_term ?? null,
+      utm_source: normalizeUtmValue(parsed.utm_source),
+      utm_medium: normalizeUtmValue(parsed.utm_medium),
+      utm_campaign: normalizeUtmValue(parsed.utm_campaign),
+      utm_content: normalizeUtmValue(parsed.utm_content),
+      utm_term: normalizeUtmValue(parsed.utm_term),
     };
   } catch {
     return { ...EMPTY_UTM };
@@ -63,7 +79,11 @@ function readStoredUtm(key: string): UtmParams {
 
 function writeStoredUtm(key: string, utm: UtmParams): void {
   if (typeof window === 'undefined') return;
-  window.sessionStorage.setItem(key, JSON.stringify(utm));
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(utm));
+  } catch {
+    // Campaign attribution remains available from the current URL if storage is blocked.
+  }
 }
 
 /** @deprecated Use getFirstUtmParams for first-touch attribution. */

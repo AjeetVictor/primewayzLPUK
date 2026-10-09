@@ -35,6 +35,10 @@ function collapseSingleLine(value: string): string {
 function trimAttributionValue(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const collapsed = collapseSingleLine(value).slice(0, REVIEW_FIELD_LIMITS.utmMax);
+  if (
+    /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/.test(collapsed)
+    || /(?:\+?\d[\d\s().-]{7,}\d)/.test(collapsed)
+  ) return undefined;
   return collapsed || undefined;
 }
 

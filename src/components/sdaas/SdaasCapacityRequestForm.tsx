@@ -6,6 +6,10 @@ import { COMPANY_TRUST_LINKS } from '../../constants/companyTrustLinks';
 import { CANONICAL_ROUTES } from '../../constants/canonicalRoutes';
 import { trackSdaasEvent } from '../../lib/sdaasAnalytics';
 import { trackConversionEvent } from '../../lib/analytics';
+import { submissionIdForPayload, type SubmissionIdentity } from '../../lib/submissionId';
+import { getFirstUtmParams, getLatestUtmParams } from '../../lib/utm';
+import { getFirstLandingPage } from '../../lib/chatSource';
+import { buildFunnelAttribution } from '../../lib/funnelAttribution';
 import {
   budgetRangeOptions,
   helpNeedOptions,
@@ -98,6 +102,7 @@ export function SdaasCapacityRequestForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const startedRef = useRef(false);
+  const submissionIdentityRef = useRef<SubmissionIdentity | null>(null);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -130,19 +135,51 @@ export function SdaasCapacityRequestForm() {
     setErrors({});
 
     try {
+      const name = sanitizeText(form.firstName, NAME_MAX);
+      const email = sanitizeText(form.workEmail, 120).toLowerCase();
+      const message = buildMessage(form);
+      const firstUtm = getFirstUtmParams();
+      const latestUtm = getLatestUtmParams();
       const response = await fetch(apiUrl('/api/contact'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: sanitizeText(form.firstName, NAME_MAX),
-          email: sanitizeText(form.workEmail, 120).toLowerCase(),
-          message: buildMessage(form),
+          submissionId: submissionIdForPayload(
+            submissionIdentityRef,
+            [name, email, message, null],
+          ),
+          name,
+          email,
+          message,
           phone: null,
+          supportArea: 'Software / product delivery',
+          landingPagePath: getFirstLandingPage(),
+          sourcePagePath: SDAAS_CAPACITY_REQUEST_PATH,
+          submissionPagePath: SDAAS_CAPACITY_REQUEST_PATH,
+          ctaPlacement: 'capacity_form',
+          firstUtmSource: firstUtm.utm_source,
+          firstUtmMedium: firstUtm.utm_medium,
+          firstUtmCampaign: firstUtm.utm_campaign,
+          firstUtmContent: firstUtm.utm_content,
+          firstUtmTerm: firstUtm.utm_term,
+          latestUtmSource: latestUtm.utm_source,
+          latestUtmMedium: latestUtm.utm_medium,
+          latestUtmCampaign: latestUtm.utm_campaign,
+          latestUtmContent: latestUtm.utm_content,
+          latestUtmTerm: latestUtm.utm_term,
         }),
       });
 
       if (!response.ok) {
         throw new Error('Submission failed');
+      }
+
+      const result = await response.json() as {
+        success?: boolean;
+        resultCategory?: 'created' | 'duplicate';
+      };
+      if (result.success !== true || !result.resultCategory) {
+        throw new Error('Submission could not be confirmed');
       }
 
       trackSdaasEvent('sdaas_form_submit', {
@@ -151,17 +188,23 @@ export function SdaasCapacityRequestForm() {
         help_need: form.helpNeed,
       });
 
-      trackConversionEvent('generate_lead', {
-        form_name: 'sdaas_capacity_request',
-        lead_type: 'software_capacity_request',
-        cta_location: 'capacity_form',
-        source_page: SDAAS_CAPACITY_REQUEST_PATH,
-        service_interest: 'Software & Product Engineering',
-        help_need: form.helpNeed,
-      });
+      if (result.resultCategory === 'created') {
+        trackConversionEvent('generate_lead', {
+          form_name: 'sdaas_capacity_request',
+          lead_type: 'software_capacity_request',
+          ...buildFunnelAttribution({
+            serviceInterest: 'Software & Product Engineering',
+            sourcePage: getFirstLandingPage(),
+            submissionPage: SDAAS_CAPACITY_REQUEST_PATH,
+            ctaPlacement: 'capacity_form',
+          }),
+          help_need: form.helpNeed,
+        });
+      }
 
       setSubmitted(true);
       setForm(initialState);
+      submissionIdentityRef.current = null;
       startedRef.current = false;
     } catch {
       setErrors({

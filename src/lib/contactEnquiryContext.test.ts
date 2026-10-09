@@ -67,5 +67,36 @@ test('caps attribution values before persistence', () => {
     firstUtmCampaign: 'x'.repeat(500),
   });
 
+  test('normalizes malformed attribution values before persistence', () => {
+    const context = buildContactEnquiryCommercialContext({
+      firstUtmSource: `campaign\n${'x'.repeat(200)}`,
+      latestUtmCampaign: 'private.person@example.com',
+      latestUtmTerm: '+44 7700 900123',
+    });
+
+    test('persists only safe funnel route, CTA and registered plan attribution', () => {
+      assert.deepEqual(
+        buildContactEnquiryCommercialContext({
+          supportArea: 'Software / product delivery',
+          landingPagePath: '/pricing?email=private@example.com',
+          sourcePagePath: '/success-stories/example#request',
+          submissionPagePath: '/contact-us',
+          ctaPlacement: 'pricing_plan_detail_modal_secondary',
+          selectedPlanSlug: 'essential',
+        }),
+        {
+          serviceInterest: 'Software / product delivery',
+          landingPagePath: '/pricing',
+          sourcePagePath: '/success-stories/example',
+          submissionPagePath: '/contact-us',
+          ctaPlacement: 'pricing_plan_detail_modal_secondary',
+          selectedPlanSlug: 'essential',
+        },
+      );
+    });
+    assert.equal(context.firstAttribution?.utm_source?.length, 160);
+    assert.equal(context.latestAttribution, undefined);
+  });
+
   assert.equal(context.firstAttribution?.utm_campaign?.length, 160);
 });

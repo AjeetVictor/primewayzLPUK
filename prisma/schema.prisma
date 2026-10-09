@@ -63,6 +63,7 @@ enum AutopilotContentVersionStatus {
 // --- Form Responses ---
 model FormResponse {
   id                Int      @id @default(autoincrement())
+  submissionId      String?  @unique @db.VarChar(64)
   name              String
   email             String
   message           String   @db.Text
