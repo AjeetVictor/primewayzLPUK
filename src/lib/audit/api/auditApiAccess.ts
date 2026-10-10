@@ -1,8 +1,8 @@
-import { PRIMEWAYZ_TENANTS } from '../../platform/tenantRegistry.ts';
+import { isTenantActive, PRIMEWAYZ_TENANTS } from '../../platform/tenantRegistry.ts';
 import { tenantSupportsCapability } from '../../platform/tenantCapabilities.ts';
 
 const DEFAULT_ALLOWED_ORIGINS = PRIMEWAYZ_TENANTS
-  .filter((tenant) => tenant.active && tenantSupportsCapability(tenant.tenantId, 'audit'))
+  .filter((tenant) => isTenantActive(tenant) && tenantSupportsCapability(tenant.tenantId, 'audit'))
   .flatMap((tenant) => [...tenant.allowedOrigins]);
 type Bucket = { count: number; resetAt: number };
 const buckets = new Map<string, Bucket>();

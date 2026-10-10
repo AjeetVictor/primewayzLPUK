@@ -147,3 +147,10 @@ The working tree also retains all earlier uncommitted Phase 1 files shown by git
 ## Recommendation
 
 Phase 1A local hardening is complete, but the production decision remains no-go until the blockers above are closed. Do not start Phase 2, apply the production migration, provision live privileges, or deploy.
+## Phase 1B integration checkpoint
+
+Phase 1A was preserved as local commit bf228fc1faafe514daee7277f1c35e7f4ebdaea7 on codex/phase1a-admin-access. It was integrated with feat/rrb-silver-campaign-tenant at 5e5b18351d4cdbecb34aa31470468e5c7ad80aeb on codex/phase1b-multitenant-integration.
+
+The integration adds a reusable, fail-closed activationEnv registry rule. RentReadBuy Silver uses RRB_SILVER_CAMPAIGN_ENABLED and remains disabled unless its value is exactly true after trimming/case normalization. Its allowed-origin list remains empty and no domain, grant, recipient, migration, or production action was introduced.
+
+Phase 1B validation passed: Prisma validation/generation, TypeScript, 58 focused Host/Silver/isolation tests, 75 WordPress tests, 318 platform tests, 1,398 complete tests, client build, and SSR build. See tenant-access-phase1b-integration.md for merge evidence, staging requirements, unresolved policy, and rollback planning.

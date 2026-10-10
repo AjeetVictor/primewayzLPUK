@@ -1,5 +1,5 @@
 import { SourceResolutionError } from './sourceResolver.ts';
-import { getTenantById } from './tenantRegistry.ts';
+import { getTenantById, isTenantActive } from './tenantRegistry.ts';
 
 /**
  * Resolve the Admin tenant selector for operational queries.
@@ -10,7 +10,7 @@ export function resolveAdminTenantFilter(requested: string | undefined | null): 
   const value = typeof requested === 'string' && requested.length > 0 ? requested : 'pw-uk';
   if (value === 'all') return undefined;
   const tenant = getTenantById(value);
-  if (!tenant?.active) {
+  if (!tenant || !isTenantActive(tenant)) {
     throw new SourceResolutionError('Unknown or inactive tenant filter.');
   }
   return tenant.tenantId;

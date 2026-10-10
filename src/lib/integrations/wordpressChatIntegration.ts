@@ -39,7 +39,7 @@ import {
 import { toVisitorReference } from '../chat/chatOperationalSemantics.ts';
 import { ChatConversationConflictError, type ChatConversationStore } from '../chat/chatConversationService.ts';
 import { CHAT_SESSION_ID_MAX_LENGTH, PUBLIC_CHAT_INPUT_LIMITS } from '../chat/publicChatGuards.ts';
-import { getTenantById, type PlatformTenantConfig } from '../platform/tenantRegistry.ts';
+import { getTenantById, isTenantActive, type PlatformTenantConfig } from '../platform/tenantRegistry.ts';
 import { tenantSupportsCapability } from '../platform/tenantCapabilities.ts';
 import {
   DELEGATED_CHAT_WRITE_ACTIONS,
@@ -378,7 +378,7 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
       status: (databaseReachable ? serviceStatus(chatEnabled, canAcceptMessages) : 'unavailable') as ServiceStatus,
       api: { status: 'ok', version: WORDPRESS_CHAT_API_VERSION },
       authentication: { valid: true, integrationId: principal.integrationId, scopes: [...principal.scopes] },
-      tenantBinding: { tenantId: tenant.tenantId, valid: true, active: tenant.active },
+      tenantBinding: { tenantId: tenant.tenantId, valid: true, active: isTenantActive(tenant) },
       chat: { enabled: chatEnabled, canAcceptMessages },
       team,
       database: { status: databaseReachable ? 'reachable' : 'unreachable' },
@@ -459,7 +459,7 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
       }
 
       const tenant = getTenantById(principal.tenantId);
-      if (!tenant?.active) {
+      if (!tenant || !isTenantActive(tenant)) {
         throw new WordPressChatIntegrationError(503, 'tenant_unavailable', 'The bound tenant is not available.');
       }
 

@@ -4,7 +4,7 @@
  */
 
 import type { PlatformTenantId } from './sourceContext.ts';
-import { getTenantById, PLATFORM_TENANTS } from './tenantRegistry.ts';
+import { getTenantAllowedOrigins, getTenantById, isTenantActive, PLATFORM_TENANTS } from './tenantRegistry.ts';
 
 export type TenantCapability = 'audit' | 'forms' | 'chat' | 'conversion' | 'scheduling';
 
@@ -47,7 +47,7 @@ export function resolveTenantCapability(
 
 /** Origins allowed for a public capability (active tenants only). */
 export function getOriginsForCapability(capability: TenantCapability): readonly string[] {
-  return PLATFORM_TENANTS.filter((tenant) => tenant.active && tenant.capabilities[capability]).flatMap(
-    (tenant) => [...tenant.allowedOrigins],
+  return PLATFORM_TENANTS.filter((tenant) => isTenantActive(tenant) && tenant.capabilities[capability]).flatMap(
+    (tenant) => [...getTenantAllowedOrigins(tenant)],
   );
 }

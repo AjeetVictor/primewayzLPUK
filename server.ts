@@ -86,7 +86,8 @@ import { resolveAuthorizedAdminTenantFilter, AdminTenantAccessError, assertAdmin
 import { accessSnapshot, runSerializableAccessTransaction } from './src/lib/admin/adminAccessMutation.ts';
 import { getTenantDisplayName, resolveTenantChatPresentation } from './src/lib/platform/tenantRegistry.ts';
 import { resolveAppointmentRequestTimezone } from './src/lib/platform/timeZone.ts';
-import { buildOfflineChatBotReply } from './src/lib/chat/visitorChatTypes.ts';
+import { resolveOfflineAcknowledgement, resolveTenantBotReply } from './src/lib/chat/tenantBotReply.ts';
+import { createChatEmbedReleaseHandler, CHAT_EMBED_RELEASE_ROUTE } from './src/lib/chat/chatEmbedRelease.ts';
 import { buildPublicPlatformCapabilities } from './src/lib/platform/publicCapabilities.ts';
 import { publicPlatformApiCorsMiddleware } from './src/lib/platform/publicPlatformApiCors.ts';
 import { getAdminNotificationSummary } from './src/lib/admin/adminNotificationSummaryService.ts';
@@ -467,7 +468,7 @@ function logChatDbFallback(context: string, err: unknown) {
 }
 
 function offlineChatBotReplyForTenant(tenantId: string | null | undefined): string {
-  return buildOfflineChatBotReply(resolveTenantChatPresentation(tenantId));
+  return resolveOfflineAcknowledgement(tenantId);
 }
 
 async function offlineChatRespondPayload(userText: string, source?: SourceContext) {
@@ -3107,7 +3108,7 @@ app.post('/api/chat/respond', async (req, res) => {
     sourceContext = resolveRequestSource(req, 'chat');
     assertTenantCapability(sourceContext, 'chat');
     enforceChatRateLimit(req, 'message', sourceContext, sessionId);
-    const { userName, attachmentIds, replyToId } = validateChatRespondInput(req.body);
+    const { userName, attachmentIds, replyToId, intentKey } = validateChatRespondInput(req.body);
     await assertChatSessionSource(sessionId, sourceContext);
     await assertPublicChatReferencesOwned(publicChatReferenceStore, sessionId, { attachmentIds, replyToId });
     await prisma.chatSession.upsert({
@@ -3116,12 +3117,16 @@ app.post('/api/chat/respond', async (req, res) => {
       create: { id: sessionId, name: userName || null, visitorLastSeenAt: new Date(), status: 'new', ...toPersistedSourceContext(sourceContext) },
     });
 
+    // Resolved from the server-derived tenant; an intent key from another tenant finds nothing.
+    const botReply = resolveTenantBotReply(sourceContext.tenantId, intentKey);
+    const approvedAnswer = botReply.kind === 'approved_answer';
+
     const userMessage = await prisma.chatMessage.create({
       data: {
         sessionId,
         sender: 'user',
         text: message,
-        answered: false,
+        answered: approvedAnswer,
         replyToId,
         attachments: attachmentIds
           ? { connect: attachmentIds.map((id) => ({ id })) }
@@ -3130,13 +3135,13 @@ app.post('/api/chat/respond', async (req, res) => {
       include: chatMessageInclude,
     });
 
-    await autoUpdateConversationStatus(sessionId, 'admin_needed');
+    if (!approvedAnswer) await autoUpdateConversationStatus(sessionId, 'admin_needed');
 
     const botMessage = await prisma.chatMessage.create({
       data: {
         sessionId,
         sender: 'bot',
-        text: offlineChatBotReplyForTenant(sourceContext.tenantId),
+        text: botReply.text,
         answered: true,
         replyToId: userMessage.id,
       },
@@ -3542,6 +3547,11 @@ app.get(['/', '/services', '/blog'], (req, res, next) => {
     .set('Cache-Control', 'public, max-age=300')
     .send(markdown);
 });
+
+// Versioned, immutable visitor chat embed releases (SRI-pinnable by host sites).
+app.get(CHAT_EMBED_RELEASE_ROUTE, createChatEmbedReleaseHandler({
+  releasesDir: path.join(__dirname, 'embed-releases', 'chat'),
+}));
 
 // --- Static files ---
 if (isProd) {

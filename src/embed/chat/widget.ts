@@ -44,7 +44,6 @@ import type { VisitorChatAnalyticsSink } from '../../lib/chat/visitorChatAnalyti
 import {
   buildVisitorLauncherAriaLabel,
   formatVisitorUnreadBadge,
-  getVisitorChatHeaderTitle,
   resolveVisitorHeaderStatus,
   resolveVisitorPresenceTone,
   VISITOR_CHAT_MESSAGE_SAVED,
@@ -56,6 +55,7 @@ import {
   createPwChatTracker,
   type PwChatFailureReason,
 } from './analytics.ts';
+import { resolvePwChatBranding, type PwChatBranding } from './branding.ts';
 import {
   createPwChatApiClient,
   sendWithSessionRecovery,
@@ -67,8 +67,10 @@ import type { PwChatEmbedConfig, PwChatIntentConfig } from './config.ts';
 import {
   computeLauncherBottom,
   isPwChatMobileViewport,
-  PW_CHAT_COLLISION_SELECTORS,
+  mergeCollisionSelectors,
+  queryCollisionElements,
   readVisibleObstacleRect,
+  resolveLauncherEdge,
   type RectLike,
 } from './layout.ts';
 import {
@@ -87,12 +89,20 @@ export const PW_CHAT_AVAILABILITY_REFRESH_MS = 60000;
 const POLL_DEGRADED_AFTER_FAILURES = 3;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const GENERIC_CONTEXT: VisitorChatRouteContext<string> = {
-  key: 'generic',
-  match: () => true,
-  greeting: 'How can we help?',
-  supportingText: 'Ask a question or describe what you need. The Primewayz team reviews every conversation.',
-};
+function genericContext(branding: PwChatBranding): VisitorChatRouteContext<string> {
+  return {
+    key: 'generic',
+    match: () => true,
+    greeting: branding.greeting,
+    supportingText: branding.supportingText,
+  };
+}
+
+function headerTitle(branding: PwChatBranding, latestResponder: 'bot' | 'admin' | null): string {
+  if (latestResponder === 'admin') return branding.teamName;
+  if (latestResponder === 'bot') return branding.assistantName;
+  return branding.panelTitle;
+}
 
 type Timers = {
   setTimeout: (fn: () => void, ms: number) => unknown;
@@ -114,6 +124,8 @@ export type PwChatWidgetDeps = {
 export type PwChatWidgetHandle = {
   open: () => void;
   close: () => void;
+  /** Keeps the launcher clear of a host element; returns an unregister function. */
+  registerObstacle: (element: Element) => () => void;
   destroy: () => void;
   host: HTMLElement;
   shadow: ShadowRoot;
@@ -216,13 +228,30 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
   if (!capabilities.ok || !isObject(capabilities.body)) return null;
   const capabilityFlags = capabilities.body.capabilities;
   if (!isObject(capabilityFlags) || capabilityFlags.chat !== true) return null;
+  const branding = resolvePwChatBranding(capabilities.body.chatWidget);
+  // A branded tenant only renders on the host it was configured for.
+  if (branding.publicSiteKey && branding.publicSiteKey !== config.siteKey) return null;
+  const fallbackAvailability: ChatAvailability = {
+    ...DEFAULT_CHAT_AVAILABILITY,
+    responseExpectation: branding.fallbackResponseExpectation,
+  };
+  const intents = config.intents.length > 0 ? config.intents : branding.intents;
+  const collisionSelectors = mergeCollisionSelectors(
+    branding.launcher.collisionSelectors,
+    config.launcher.collisionSelectors,
+  );
+  const launcherMinBottom = resolveLauncherEdge(
+    branding.launcher.bottomOffsetPx,
+    config.launcher.bottomOffsetPx,
+  );
+  const registeredObstacles = new Set<Element>();
 
   const availabilityResult = await api.get('/api/chat/availability');
   if (availabilityResult.status === 403) return null;
   if (doc.getElementById(PW_CHAT_HOST_ID)) return null;
 
   // --- state ---
-  let availability = parseAvailability(availabilityResult.body) ?? DEFAULT_CHAT_AVAILABILITY;
+  let availability = parseAvailability(availabilityResult.body) ?? fallbackAvailability;
   let serviceDegraded = !availabilityResult.ok;
   let forbidden = false;
   let isOpen = false;
@@ -268,8 +297,13 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
   host.setAttribute('data-pw-chat-version', PW_CHAT_EMBED_VERSION);
   host.style.cssText = 'all: initial;';
   const shadow = host.attachShadow({ mode: 'closed' });
-  const dom = buildPwChatDom(doc, shadow);
+  const dom = buildPwChatDom(doc, shadow, branding);
   doc.body.appendChild(host);
+  const senderLabels = {
+    assistant: branding.assistantName,
+    team: branding.teamName,
+    humanJoinedNotice: branding.humanJoinedNotice,
+  };
 
   const pagePath = () => {
     if (config.pageUrl) {
@@ -281,12 +315,13 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
     }
     return win.location.pathname || '/';
   };
+  const fallbackContext = genericContext(branding);
   const routeContext = matchVisitorChatRouteContext(
     pagePath(),
     buildVisitorChatRouteContexts(config.contexts),
-    GENERIC_CONTEXT,
+    fallbackContext,
   );
-  const intro = routeContext === GENERIC_CONTEXT && config.pageContext
+  const intro = routeContext === fallbackContext && config.pageContext
     ? config.pageContext
     : { greeting: routeContext.greeting, supportingText: routeContext.supportingText };
 
@@ -358,6 +393,7 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
     dom.launcher.setAttribute('aria-label', buildVisitorLauncherAriaLabel({
       presence,
       unreadCount: conv.unreadCount,
+      launcherName: branding.launcherLabel,
     }));
     const badgeText = formatVisitorUnreadBadge(conv.unreadCount);
     dom.badge.hidden = !badgeText;
@@ -372,8 +408,10 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
       waitingForTeam: waitingForTeam && Boolean(contact.email),
       serviceAvailable,
     });
-    dom.title.textContent = getVisitorChatHeaderTitle(latestResponder);
-    dom.statusText.textContent = VISITOR_HEADER_STATUS_LABELS[headerStatus];
+    dom.title.textContent = headerTitle(branding, latestResponder);
+    dom.statusText.textContent = headerStatus === 'waiting_for_team'
+      ? branding.waitingForTeamLabel
+      : VISITOR_HEADER_STATUS_LABELS[headerStatus];
     setTone(dom.statusDot, headerTone(headerStatus));
 
     dom.introGreeting.textContent = intro.greeting;
@@ -381,7 +419,7 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
     dom.introText.hidden = !intro.supportingText;
     dom.expectation.textContent = availability.responseExpectation;
     dom.expectation.hidden = !availability.responseExpectation;
-    const visibleIntents = conv.messages.length === 0 ? config.intents : [];
+    const visibleIntents = conv.messages.length === 0 ? intents : [];
     const intentSignature = `${visibleIntents.length}|${selectedIntent ?? ''}`;
     if (intentSignature !== lastIntentSignature) {
       lastIntentSignature = intentSignature;
@@ -392,7 +430,7 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
       .join('|');
     if (messageSignature !== lastMessageSignature) {
       lastMessageSignature = messageSignature;
-      renderMessages(doc, dom.log, dom.messageList, conv.messages);
+      renderMessages(doc, dom.log, dom.messageList, conv.messages, senderLabels);
     }
 
     dom.leadForm.hidden = !showLeadForm;
@@ -423,14 +461,17 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
   const applyLauncherPosition = () => {
     if (destroyed) return;
     const obstacles: RectLike[] = [];
-    for (const selector of PW_CHAT_COLLISION_SELECTORS) {
-      const rect = readVisibleObstacleRect(win, doc.querySelector(selector));
+    const elements = new Set([...queryCollisionElements(doc, collisionSelectors), ...registeredObstacles]);
+    for (const element of elements) {
+      if (!element.isConnected) continue;
+      const rect = readVisibleObstacleRect(win, element);
       if (rect) obstacles.push(rect);
     }
     const bottom = computeLauncherBottom({
       viewportWidth: win.innerWidth,
       viewportHeight: win.innerHeight,
       obstacles,
+      minBottom: launcherMinBottom,
     });
     dom.root.style.setProperty('--pw-chat-bottom', `${bottom}px`);
   };
@@ -660,8 +701,10 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
     render();
     announce('Sending');
 
+    // Only an unedited intent question asks the server for that intent's approved answer.
+    const intentKey = intents.find((intent) => intent.key === selectedIntent && intent.label === text)?.key;
     const result = await sendWithSessionRecovery(session, (id) =>
-      api.post('/api/chat/respond', { sessionId: id, message: text }));
+      api.post('/api/chat/respond', { sessionId: id, message: text, ...(intentKey ? { intentKey } : {}) }));
     if (destroyed) return;
     sending = false;
 
@@ -892,15 +935,27 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
     listen(win.visualViewport, 'resize', applyMobileSheet);
     listen(win.visualViewport, 'scroll', applyMobileSheet);
   }
-  if (typeof win.MutationObserver === 'function') {
-    for (const selector of PW_CHAT_COLLISION_SELECTORS) {
-      const target = doc.querySelector(selector);
-      if (!target) continue;
-      const observer = new win.MutationObserver(scheduleLayout);
-      observer.observe(target, { attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
-      cleanups.push(() => observer.disconnect());
-    }
-  }
+  const observeObstacle = (target: Element): (() => void) => {
+    if (typeof win.MutationObserver !== 'function') return () => {};
+    const observer = new win.MutationObserver(scheduleLayout);
+    observer.observe(target, { attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+    const disconnect = () => observer.disconnect();
+    cleanups.push(disconnect);
+    return disconnect;
+  };
+  for (const target of queryCollisionElements(doc, collisionSelectors)) observeObstacle(target);
+
+  const registerObstacle = (element: Element): (() => void) => {
+    if (destroyed || !element || registeredObstacles.has(element)) return () => {};
+    registeredObstacles.add(element);
+    const disconnect = observeObstacle(element);
+    scheduleLayout();
+    return () => {
+      if (!registeredObstacles.delete(element)) return;
+      disconnect();
+      scheduleLayout();
+    };
+  };
 
   applyLauncherPosition();
   render();
@@ -929,6 +984,7 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
   return {
     open,
     close,
+    registerObstacle,
     host,
     shadow,
     destroy: () => {
@@ -942,6 +998,7 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
       pollGeneration += 1;
       heartbeatGeneration += 1;
       for (const cleanup of cleanups.splice(0)) cleanup();
+      registeredObstacles.clear();
       host.remove();
     },
   };

@@ -1,4 +1,4 @@
-import { getTenantById } from '../platform/tenantRegistry.ts';
+import { getTenantById, isTenantActive } from '../platform/tenantRegistry.ts';
 
 export type AdminTenantPrincipal = {
   id: number;
@@ -20,7 +20,7 @@ export class AdminTenantAccessError extends Error {
 }
 
 function activeGrantedTenantIds(principal: AdminTenantPrincipal): string[] {
-  return [...new Set(principal.tenantIds)].filter((tenantId) => getTenantById(tenantId)?.active);
+  return [...new Set(principal.tenantIds)].filter((tenantId) => Boolean(getTenantById(tenantId) && isTenantActive(getTenantById(tenantId)!)));
 }
 
 /**
@@ -55,7 +55,7 @@ export function resolveAuthorizedAdminTenantFilter(
   }
 
   const tenant = getTenantById(requestedValue);
-  if (!tenant?.active) {
+  if (!tenant || !isTenantActive(tenant)) {
     throw new AdminTenantAccessError(400, 'invalid_tenant_filter', 'Unknown or inactive tenant filter.');
   }
   const tenantId = tenant.tenantId;
@@ -84,7 +84,7 @@ export function validateTenantGrants(tenantIds: unknown): string[] {
     throw new AdminTenantAccessError(400, 'invalid_tenant_grants', 'tenantIds must be an array of active tenant IDs.');
   }
   const unique = [...new Set(tenantIds)];
-  if (unique.some((tenantId) => !getTenantById(tenantId)?.active)) {
+  if (unique.some((tenantId) => !Boolean(getTenantById(tenantId) && isTenantActive(getTenantById(tenantId)!)))) {
     throw new AdminTenantAccessError(400, 'invalid_tenant_grants', 'Tenant grants must reference active tenants.');
   }
   return unique;
