@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { apiUrl } from '../../utils/apiUrl';
 import { AdminTenantFilter } from './AdminTenantFilter';
+import type { AdminTenantOption } from '../../lib/platform/tenantRegistry';
 import {
   AUDIT_LEAD_ADMIN_STATUSES,
   type AuditLeadAdminStatus,
@@ -24,6 +25,7 @@ type AdminAuditLeadsPanelProps = {
   onTenantFilterChange?: (value: string) => void;
   tenantIds?: readonly string[];
   isPlatformOwner?: boolean;
+  tenantOptions?: readonly AdminTenantOption[];
 };
 
 const STATUS_LABELS: Record<AuditLeadAdminStatus, string> = {
@@ -74,6 +76,7 @@ export function AdminAuditLeadsPanel({
   onTenantFilterChange,
   tenantIds,
   isPlatformOwner = true,
+  tenantOptions,
 }: AdminAuditLeadsPanelProps) {
   const [items, setItems] = useState<SafeAuditLeadListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -256,6 +259,7 @@ export function AdminAuditLeadsPanel({
             onChange={setTenantFilter}
             tenantIds={tenantIds}
             isPlatformOwner={isPlatformOwner}
+            options={tenantOptions}
           />
           <select
             value={statusFilter}

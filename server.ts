@@ -83,10 +83,12 @@ import type { NextFunction, Request, Response } from 'express';
 import { resolveSourceContext, SourceResolutionError, assertTenantCapability } from './src/lib/platform/sourceResolver.ts';
 import { toPersistedSourceContext, type PrimewayzSourceChannel, type SourceContext } from './src/lib/platform/sourceContext.ts';
 import { resolveAuthorizedAdminTenantFilter, AdminTenantAccessError, assertAdminTenantAccess, validateTenantGrants, type AdminTenantPrincipal } from './src/lib/admin/adminTenantAccess.ts';
+import { createAdminTenantOptionsHandler } from './src/lib/admin/adminTenantOptionsRoute.ts';
 import { accessSnapshot, runSerializableAccessTransaction } from './src/lib/admin/adminAccessMutation.ts';
 import { getTenantDisplayName, resolveTenantChatPresentation } from './src/lib/platform/tenantRegistry.ts';
 import { resolveAppointmentRequestTimezone } from './src/lib/platform/timeZone.ts';
-import { resolveOfflineAcknowledgement, resolveTenantBotReply } from './src/lib/chat/tenantBotReply.ts';
+import { resolveOfflineAcknowledgement, resolveTenantBotReply, visitorMessageIsAnsweredByTenantBot } from './src/lib/chat/tenantBotReply.ts';
+import { UNANSWERED_VISITOR_MESSAGE_WHERE } from './src/lib/chat/chatOperationalSemantics.ts';
 import { createChatEmbedReleaseHandler, CHAT_EMBED_RELEASE_ROUTE } from './src/lib/chat/chatEmbedRelease.ts';
 import { buildPublicPlatformCapabilities } from './src/lib/platform/publicCapabilities.ts';
 import { publicPlatformApiCorsMiddleware } from './src/lib/platform/publicPlatformApiCors.ts';
@@ -1834,6 +1836,8 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
+app.get('/api/admin/tenant-options', requireAdmin, createAdminTenantOptionsHandler());
+
 app.get('/api/admin/check-auth', async (req, res) => {
   try {
     const token = req.cookies?.[adminCookieName];
@@ -2136,6 +2140,17 @@ const adminChatStore: AdminChatStore = {
         },
       },
     }),
+  countUnansweredVisitorMessages: async ({ tenantId }) => {
+    const rows = await prisma.chatMessage.groupBy({
+      by: ['sessionId'],
+      where: {
+        ...UNANSWERED_VISITOR_MESSAGE_WHERE,
+        ...(tenantId ? { session: { tenantId } } : {}),
+      },
+      _count: { _all: true },
+    });
+    return rows.map((row) => ({ sessionId: row.sessionId, count: row._count._all }));
+  },
   countMessagesInSession: (messageId, sessionId) =>
     prisma.chatMessage.count({ where: { id: messageId, sessionId } }),
   countAttachmentsInSession: (attachmentIds, sessionId) =>
@@ -3118,8 +3133,10 @@ app.post('/api/chat/respond', async (req, res) => {
     });
 
     // Resolved from the server-derived tenant; an intent key from another tenant finds nothing.
+    // An approved intent is stored answered. Anything else stays unanswered for the inbox,
+    // even though the acknowledgement below still records status bot_replied.
     const botReply = resolveTenantBotReply(sourceContext.tenantId, intentKey);
-    const approvedAnswer = botReply.kind === 'approved_answer';
+    const approvedAnswer = visitorMessageIsAnsweredByTenantBot(botReply);
 
     const userMessage = await prisma.chatMessage.create({
       data: {

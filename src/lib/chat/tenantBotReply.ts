@@ -31,3 +31,8 @@ export function resolveTenantBotReply(
   if (approved) return { kind: 'approved_answer', text: approved };
   return { kind: 'offline_acknowledgement', text: resolveOfflineAcknowledgement(tenantId) };
 }
+
+/** Only an approved intent counts as answered. The offline acknowledgement does not. */
+export function visitorMessageIsAnsweredByTenantBot(reply: TenantBotReply): boolean {
+  return reply.kind === 'approved_answer';
+}

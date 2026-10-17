@@ -16,7 +16,8 @@ import {
 } from '../lib/chatTypes';
 import { QuotedMessagePreview } from './chat/QuotedMessagePreview';
 import { AdminTenantFilter } from './admin/AdminTenantFilter';
-import { getTenantDisplayName } from '../lib/platform/tenantRegistry';
+import { matchesAdminChatStatusFilter } from '../lib/admin/adminChatAttention';
+import { getTenantDisplayName, type AdminTenantOption } from '../lib/platform/tenantRegistry';
 import { trackAdminChatReply, trackChatLeadConverted } from '../lib/analytics';
 
 interface CurrentUser {
@@ -48,9 +49,21 @@ export const AdminMobileChat = () => {
   const [replyingToMessageId, setReplyingToMessageId] = useState<number | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [tenantFilter, setTenantFilter] = useState('pw-uk');
+  const [tenantOptions, setTenantOptions] = useState<readonly AdminTenantOption[] | null>(null);
 
   const tenantQuery = (path: string) =>
     `${path}${path.includes('?') ? '&' : '?'}tenantId=${encodeURIComponent(tenantFilter)}`;
+
+  const loadTenantOptions = async () => {
+    try {
+      const res = await adminRequest('/api/admin/tenant-options');
+      if (!res.ok) return;
+      const data = await res.json() as { options?: AdminTenantOption[] };
+      if (Array.isArray(data.options)) setTenantOptions(data.options);
+    } catch (error) {
+      console.error('Failed to load tenant options:', error);
+    }
+  };
 
   const checkAuth = async () => {
     try {
@@ -61,6 +74,7 @@ export const AdminMobileChat = () => {
         setUser(data.user);
         const tenantIds = data.user?.tenantIds ?? [];
         setTenantFilter(data.user?.isPlatformOwner ? 'pw-uk' : tenantIds[0] ?? '');
+        loadTenantOptions();
         if (!isOperationsRole(data.user?.role) || (!data.user?.isPlatformOwner && tenantIds.length === 0)) {
           setLoginError('Your account does not have chat access.');
           setIsAuthenticated(false);
@@ -102,6 +116,15 @@ export const AdminMobileChat = () => {
   }, []);
 
   useEffect(() => {
+    if (!tenantOptions || !user) return;
+    if (tenantOptions.some((option) => option.value === tenantFilter)) return;
+    const fallback = user.isPlatformOwner
+      ? tenantOptions.find((option) => option.value === 'pw-uk')?.value ?? 'pw-uk'
+      : tenantOptions.find((option) => option.value !== 'all')?.value ?? '';
+    if (fallback !== tenantFilter) setTenantFilter(fallback);
+  }, [tenantOptions, user, tenantFilter]);
+
+  useEffect(() => {
     if (!isAuthenticated) return;
     fetchSessions();
     const interval = setInterval(fetchSessions, 5000);
@@ -131,6 +154,7 @@ export const AdminMobileChat = () => {
       setIsAuthenticated(true);
       setUser(data.user);
       setPassword('');
+      loadTenantOptions();
     } catch {
       setLoginError('Login failed. Please try again.');
     }
@@ -154,13 +178,14 @@ export const AdminMobileChat = () => {
 
   const filteredSessions = useMemo(() => {
     return sessions
-      .filter((session) => {
-        if (statusFilter === 'all') return true;
-        if (statusFilter === 'unread') return (unreadBySession[session.id] || 0) > 0;
-        return (session.status || 'new') === statusFilter;
-      })
+      .filter((session) => matchesAdminChatStatusFilter(statusFilter, {
+        status: session.status,
+        unreadCount: unreadBySession[session.id] || 0,
+        needsAttention: session.needsAttention,
+        messages: messages.filter((message) => message.sessionId === session.id),
+      }))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [sessions, statusFilter, unreadBySession]);
+  }, [sessions, statusFilter, unreadBySession, messages]);
 
   const sendReply = async (text: string, options?: { isQuickReply?: boolean }) => {
     if (!selectedSessionId || !text.trim()) return;
@@ -393,6 +418,7 @@ export const AdminMobileChat = () => {
           value={tenantFilter}
           tenantIds={user?.tenantIds}
           isPlatformOwner={user?.isPlatformOwner}
+          options={tenantOptions ?? undefined}
           onChange={(value) => {
             setTenantFilter(value);
             setSelectedSessionId(null);

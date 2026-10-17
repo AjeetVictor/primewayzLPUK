@@ -158,6 +158,8 @@ export interface ChatSessionRecord {
   browser?: string | null;
   serviceInterest?: string | null;
   closedAt?: string | null;
+  /** True when an unanswered visitor message still needs a person, regardless of status. */
+  needsAttention?: boolean;
   /** Owning tenant for this conversation — drives Admin quick-reply copy. */
   tenantId?: string | null;
   market?: string | null;

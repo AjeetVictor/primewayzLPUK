@@ -1,16 +1,19 @@
 import { SourceResolutionError } from './sourceResolver.ts';
-import { getTenantById, isTenantActive } from './tenantRegistry.ts';
+import { getTenantById, isTenantOperational } from './tenantRegistry.ts';
 
 /**
  * Resolve the Admin tenant selector for operational queries.
  * Returns a concrete tenant id, or `undefined` for All entities (no tenant predicate).
  * Rejects inactive / unknown ids — never accepts arbitrary tenant strings.
  */
-export function resolveAdminTenantFilter(requested: string | undefined | null): string | undefined {
+export function resolveAdminTenantFilter(
+  requested: string | undefined | null,
+  env: NodeJS.ProcessEnv = process.env,
+): string | undefined {
   const value = typeof requested === 'string' && requested.length > 0 ? requested : 'pw-uk';
   if (value === 'all') return undefined;
   const tenant = getTenantById(value);
-  if (!tenant || !isTenantActive(tenant)) {
+  if (!tenant || !isTenantOperational(tenant, env)) {
     throw new SourceResolutionError('Unknown or inactive tenant filter.');
   }
   return tenant.tenantId;

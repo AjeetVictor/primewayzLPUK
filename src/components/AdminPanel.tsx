@@ -12,7 +12,8 @@ import { RichBlogEditor } from './admin/RichBlogEditor';
 import { AdminAuditLeadsPanel } from './admin/AdminAuditLeadsPanel';
 import { AdminConversionDashboard } from './admin/AdminConversionDashboard';
 import { AdminTenantFilter } from './admin/AdminTenantFilter';
-import { ADMIN_TENANT_FILTER_OPTIONS, getTenantDisplayName } from '../lib/platform/tenantRegistry';
+import { ADMIN_TENANT_FILTER_OPTIONS, getTenantDisplayName, type AdminTenantOption } from '../lib/platform/tenantRegistry';
+import { conversationRequiresHumanAttention, matchesAdminChatStatusFilter } from '../lib/admin/adminChatAttention';
 import { AutopilotPanel } from './admin/autopilot/AutopilotPanel';
 import { ChatConfirmDialog } from './admin/ChatConfirmDialog';
 import { sanitizeBlogHtml } from '../utils/sanitizeHtml';
@@ -104,6 +105,7 @@ interface ChatMessage {
     deletedAt?: string | null;
     isInternalNote?: boolean;
   } | null;
+  answered?: boolean;
   isInternalNote?: boolean;
   deletedAt?: string | null;
   deletedBy?: number | null;
@@ -167,6 +169,7 @@ interface ChatSession {
   tenantId?: string | null;
   market?: string | null;
   sourceSite?: string | null;
+  needsAttention?: boolean;
   createdAt: string;
   messages: {
     text: string;
@@ -184,6 +187,7 @@ interface ChatConversation {
   lastMessage: ChatMessage | null;
   lastMessageAt: string | null;
   status: ConversationStatus | string;
+  needsAttention?: boolean;
   unreadCount: number;
   serviceInterest?: string | null;
   firstLandingPage?: string | null;
@@ -529,6 +533,7 @@ const AdminPanelContent = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [adminTenantFilter, setAdminTenantFilter] = useState('pw-uk');
+  const [tenantOptions, setTenantOptions] = useState<readonly AdminTenantOption[] | null>(null);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyingToMessageId, setReplyingToMessageId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState('');
@@ -573,6 +578,17 @@ const AdminPanelContent = () => {
   const adminFileInputRef = useRef<HTMLInputElement | null>(null);
   const lastHeartbeatAtRef = useRef(0);
 
+  const loadTenantOptions = async () => {
+    try {
+      const res = await fetch(apiUrl('/api/admin/tenant-options'), { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json() as { options?: AdminTenantOption[] };
+      if (Array.isArray(data.options)) setTenantOptions(data.options);
+    } catch (error) {
+      console.error('Failed to load tenant options:', error);
+    }
+  };
+
   const checkAuth = async () => {
     try {
       const res = await fetch(apiUrl('/api/admin/check-auth'), { credentials: 'include' });
@@ -584,6 +600,7 @@ const AdminPanelContent = () => {
           data.user?.isPlatformOwner ? 'pw-uk' : data.user?.tenantIds?.[0] ?? '',
         );
         setActiveTab(getDefaultAdminTab(data.user?.role));
+        loadTenantOptions();
         fetchData(false, data.user);
         fetchChatAvailability();
         fetchNotificationSummary();
@@ -631,6 +648,14 @@ const AdminPanelContent = () => {
     }
   }, [adminTenantFilter, activeTab]);
 
+  useEffect(() => {
+    if (!tenantOptions || !user) return;
+    if (tenantOptions.some((option) => option.value === adminTenantFilter)) return;
+    const fallback = user.isPlatformOwner
+      ? tenantOptions.find((option) => option.value === 'pw-uk')?.value ?? tenantOptions[0]?.value ?? 'pw-uk'
+      : tenantOptions.find((option) => option.value !== 'all')?.value ?? '';
+    if (fallback !== adminTenantFilter) setAdminTenantFilter(fallback);
+  }, [tenantOptions, user, adminTenantFilter]);
 
   const fetchNotificationSummary = async () => {
     setIsLoadingNotificationSummary(true);
@@ -850,6 +875,7 @@ const AdminPanelContent = () => {
         setIsAuthenticated(true);
         setUser(data.user);
         setActiveTab(getDefaultAdminTab(data.user?.role));
+        loadTenantOptions();
         fetchData(false, data.user);
         fetchChatAvailability();
       } else {
@@ -1281,6 +1307,7 @@ const AdminPanelContent = () => {
         tenantId: session.tenantId,
         market: session.market,
         sourceSite: session.sourceSite,
+        needsAttention: session.needsAttention,
       });
     });
 
@@ -1325,6 +1352,11 @@ const AdminPanelContent = () => {
           lastMessage,
           lastMessageAt: lastMessage?.timestamp || conversation.lastMessageAt,
           unreadCount: unreadBySession[conversation.sessionId] || 0,
+          needsAttention: conversationRequiresHumanAttention({
+            status: conversation.status,
+            needsAttention: conversation.needsAttention,
+            messages,
+          }),
         };
       })
       .sort((a, b) => new Date(b.lastMessageAt || b.createdAt || 0).getTime() - new Date(a.lastMessageAt || a.createdAt || 0).getTime());
@@ -1342,9 +1374,12 @@ const AdminPanelContent = () => {
       (conversation.firstLandingPage?.toLowerCase().includes(term) || false);
 
     if (!matchesSearch) return false;
-    if (chatStatusFilter === 'all') return true;
-    if (chatStatusFilter === 'unread') return conversation.unreadCount > 0;
-    return conversation.status === chatStatusFilter;
+    return matchesAdminChatStatusFilter(chatStatusFilter, {
+      status: conversation.status,
+      unreadCount: conversation.unreadCount,
+      needsAttention: conversation.needsAttention,
+      messages: conversation.messages,
+    });
   });
 
   const selectedConversation = chatConversations.find(
@@ -1619,10 +1654,11 @@ const AdminPanelContent = () => {
                 onChange={setAdminTenantFilter}
                 tenantIds={user?.tenantIds}
                 isPlatformOwner={user?.isPlatformOwner}
+                options={tenantOptions ?? undefined}
               />
             )}
             <button 
-              onClick={() => { fetchData(); fetchNotificationSummary(); }}
+              onClick={() => { loadTenantOptions(); fetchData(); fetchNotificationSummary(); }}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-200 rounded-xl text-sm font-medium hover:bg-zinc-50 transition-colors"
             >
               <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -2214,6 +2250,7 @@ const AdminPanelContent = () => {
               onTenantFilterChange={setAdminTenantFilter}
               tenantIds={user?.tenantIds}
               isPlatformOwner={user?.isPlatformOwner}
+              tenantOptions={tenantOptions ?? undefined}
             />
           </Tabs.Content>
           )}
@@ -3223,7 +3260,7 @@ const AdminPanelContent = () => {
                               })}
                               className="min-w-40 rounded-lg border border-zinc-200 bg-white p-2 text-xs disabled:opacity-60"
                             >
-                              {ADMIN_TENANT_FILTER_OPTIONS.filter((option) => option.value !== 'all').map((option) => (
+                              {(tenantOptions ?? ADMIN_TENANT_FILTER_OPTIONS).filter((option) => option.value !== 'all').map((option) => (
                                 <option key={option.value} value={option.value}>{option.label}</option>
                               ))}
                             </select>
