@@ -74,6 +74,7 @@ const BASIS_LABEL: Record<string, string> = {
   capability_disabled: 'Chat is off in the platform build',
   suspended: 'Centrally suspended',
   revoked: 'Centrally revoked',
+  entitlement_required: 'A central entitlement record is required before chat opens',
   store_unavailable: 'Entitlement store unavailable',
 };
 
@@ -91,9 +92,11 @@ function tenantText(tenant: TenantEntitlement): string {
 export function AdminTenantChatEntitlements({
   canManage,
   request,
+  tenantFilter,
 }: {
   canManage: boolean;
   request: (path: string, init?: RequestInit) => Promise<Response>;
+  tenantFilter?: string;
 }) {
   const titleId = useId();
   const statusFieldId = useId();
@@ -136,6 +139,7 @@ export function AdminTenantChatEntitlements({
   const selected = tenants.find((tenant) => tenant.tenantId === selectedId) ?? null;
   const normalizedQuery = query.trim().toLowerCase();
   const visible = tenants.filter((tenant) => {
+    if (tenantFilter && tenantFilter !== 'all' && tenant.tenantId !== tenantFilter) return false;
     if (normalizedQuery && !tenantText(tenant).includes(normalizedQuery)) return false;
     if (recordFilter === 'all') return true;
     if (recordFilter === 'none') return !tenant.entitlement;

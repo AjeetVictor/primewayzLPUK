@@ -11,7 +11,7 @@ The public marketing pages use their own art direction. Inside the admin dashboa
 ## Navigation hierarchy
 
 1. **Admin Dashboard** is the page title (`h1`). It names the signed-in workspace, not an individual module.
-2. **Administration sections** is the Radix tab list. It is the only primary navigation inside the dashboard. Tenant Management and Chat Connect are siblings of Form Responses, Chat History, and User Management. They are not nested under Chat History.
+2. **Administration sections** is the Radix tab list. Chat Leads, Chat History, Tenant Management, and Chat Connect are one **Chat Platform** tab. Inside that workspace, a second navigation lists Overview, Inbox & Leads, History, Team & Presence, Tenants, Sites & Domains, Integrations, Users & Permissions, Audit & Activity, and Settings. Blog, forms, Autopilot, and platform user management stay as their own tabs.
 3. Each section has one `h2`. Descriptions sit in that header, in normal sentence case.
 4. A record title inside a section is an `h3`. Do not skip from `h2` to an unlabeled table.
 5. The dashboard tenant menu filters operational modules that already take `tenantId`. Tenant Management and Chat Connect load the tenants the signed-in operator is allowed to see from their own APIs. Do not silently reuse the dashboard tenant menu to narrow those APIs.
@@ -76,7 +76,7 @@ Positive status text is emerald-900 on emerald-50. Warning status text is amber-
 
 Primary actions (`Register installation`, `Save entitlement`) are zinc-900 with white text. Secondary actions are white with a zinc-500 border and zinc-800 text. Destructive actions (`Revoke`) are white with red-800 text and a red-200 border.
 
-Every button has hover, focus-visible, and disabled treatments. Focus is a 2px zinc-900 outline, 2px outside the control. Disabled actions use reduced opacity and `disabled`, and they do not submit.
+Every button has hover, focus-visible, pressed (`active:`), and disabled treatments. Primary hover is zinc-700, secondary hover is zinc-100, danger hover is red-50. Focus is a 2px zinc-900 outline, 2px outside the control. Disabled actions use reduced opacity and `disabled`, and they do not submit. Inactive admin tabs use the same hover, pressed, and focus treatments. The active tab stays white with emerald-800 text.
 
 Dangerous work uses a button, then `ChatConfirmDialog`. Do not call `window.confirm`, `window.alert`, or `window.prompt`.
 

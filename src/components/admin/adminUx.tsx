@@ -1,16 +1,23 @@
 import { type ReactNode, type Ref } from 'react';
 
 export const adminControlClass =
-  'mt-1 w-full rounded-xl border border-zinc-500 bg-white px-3 py-2 text-sm font-normal text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-50';
+  'mt-1 w-full min-h-11 rounded-xl border border-zinc-500 bg-white px-3 py-2 text-sm font-normal text-zinc-900 hover:border-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:border-zinc-300 disabled:bg-zinc-50 disabled:text-zinc-500';
 
 export const adminPrimaryButtonClass =
-  'inline-flex min-h-11 items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:opacity-60';
+  'inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-700 active:bg-zinc-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-400 disabled:opacity-60 disabled:hover:bg-zinc-400';
 
 export const adminSecondaryButtonClass =
-  'inline-flex min-h-11 items-center justify-center rounded-xl border border-zinc-500 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:opacity-60';
+  'inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-zinc-500 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 transition-colors hover:border-zinc-800 hover:bg-zinc-100 active:bg-zinc-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:border-zinc-300 disabled:text-zinc-400 disabled:opacity-60 disabled:hover:bg-white';
 
 export const adminDangerButtonClass =
-  'inline-flex min-h-11 items-center justify-center rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-800 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-800 disabled:cursor-not-allowed disabled:opacity-60';
+  'inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-800 transition-colors hover:border-red-800 hover:bg-red-50 active:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-800 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-white';
+
+/** Primary admin tab. Inactive tabs expose hover, pressed, and focus. Active tabs stay white with emerald-800 text. */
+export function adminTabTriggerClass(forcedActive = false): string {
+  const base = 'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900';
+  if (forcedActive) return `${base} bg-white text-emerald-800 shadow-sm`;
+  return `${base} text-zinc-600 hover:bg-white hover:text-zinc-900 active:bg-zinc-100 data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm`;
+}
 
 const statusToneClass = {
   positive: 'bg-emerald-50 text-emerald-900 ring-emerald-200',

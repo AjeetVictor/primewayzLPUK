@@ -4,9 +4,23 @@ This note describes the layers that already exist and the two layers that are pl
 
 The layers stay separate. A change in one layer does not rename or replace another.
 
+Primewayz Chat Platform is the central administration product. Primewayz Chat Connect is the add-on installed in a tenant's WordPress, React, Shopify, or other supported environment. Those names are not interchangeable.
+
+## Commercial tenant registry
+
+`PLATFORM_TENANTS` remains the compile-time catalog for tenants that ship with the application. `PlatformTenantAccount` is the commercial record for that same tenant id, or for a customer onboarded without a code change. It is not a second identity. Opening a commercial record for `pw-uk` uses `pw-uk`.
+
+No commercial row keeps the compile-time decision. A row whose lifecycle is draft, suspended, or archived closes access even when the catalog still says active. A failed registry read denies chat. It is not treated as "no row". The only fallback is a missing table before `20261019200000_platform_tenant_account` is applied.
+
+New tenants start as drafts with `explicitEntitlement`. Chat stays closed until the Host/Owner writes a central entitlement. Catalog tenants keep the existing no-row entitlement behavior.
+
+Sites, exact origins, and installation links hang off the commercial record. An origin is pending until DNS TXT at `_primewayz-chat.<host>` or `/.well-known/primewayz-chat-verification.txt` matches the stored token hash. Typing an origin does not authorize it. The origin column is unique, so two tenants cannot claim one origin. Compile-time origins stay reserved as well.
+
+Account status, chat entitlement, installation authorization, connector health, frontend visibility, and operator availability remain separate decisions. Effective chat authorization still goes through `resolveEffectiveTenantChat`.
+
 ## Tenant identity and entitlements
 
-A tenant is a brand and data boundary in `PLATFORM_TENANTS`. Examples already registered are `pw-uk`, `pw-infotech`, `rrb`, and `rrb-silver-campaign`. The registry is the tenant list. Chat Connect does not create a second tenant table.
+A tenant is a brand and data boundary. Examples already registered in the catalog are `pw-uk`, `pw-infotech`, `rrb`, and `rrb-silver-campaign`. Chat Connect installations are not tenants.
 
 Activation is the registry `active` flag plus an optional environment gate. `rrb-silver-campaign` stays off unless `RRB_SILVER_CAMPAIGN_ENABLED` is exactly `true`. That gate remains authoritative.
 
@@ -48,6 +62,18 @@ A stored session with no tenant id is a pre-tenant Primewayz UK conversation. Re
 ## Human response handling
 
 People answer through the admin inbox and through delegated WordPress reply, resolve, and reopen actions. Those writes use the shared conversation store and stay inside the session’s tenant. A suspended or revoked entitlement stops new messages and the other admin chat mutations. It does not rewrite transcripts or session ownership. Public visitor history stays on the closed visitor channel. Authorised admin history, and WordPress dashboard and conversation reads, remain.
+
+## Extension boundaries
+
+These are not implemented in the commercial registry. A later change needs its own grant and must not infer the feature from a chat entitlement, a connector heartbeat, or an active tenant:
+
+- Real-time voice uses another media path on the same tenant boundary.
+- Multimodal conversations stay on the conversation store and do not rewrite historical session ownership.
+- AI agent services need a separate grant, a human handoff, and a tenant data boundary.
+- Workflow automation and business integrations are tenant-scoped actions, not connector health.
+- A future Primewayz Connect marketplace can catalogue connectors. Billing and downloads are not part of installation authorization. See `Docs/future-primewayz-connect-marketplace.md`.
+
+The connector registration API stays technology-neutral for `wordpress`, `shopify`, and `custom`. `react` remains the first-party Primewayz UK surface. Unsupported technologies are not given a pretend connector.
 
 ## Future real-time voice
 

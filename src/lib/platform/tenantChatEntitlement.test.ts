@@ -360,7 +360,7 @@ test('migration is additive and server wiring keeps visitor, capabilities, CORS,
   assert.doesNotMatch(executable, /ChatSession|ChatMessage|ChatConnectInstallation|ALTER TABLE/);
   const server = fs.readFileSync(path.join(process.cwd(), 'server.ts'), 'utf8');
   assert.match(server, /function resolveTenantChatAccess\(tenantId: string\) \{\s*return resolveEffectiveTenantChat\(\{/);
-  assert.match(server, /createPublicChatApiCorsMiddleware\(resolveTenantChatAccess\)/);
+  assert.match(server, /createPublicChatApiCorsMiddleware\(resolveTenantChatAccess/);
   assert.match(server, /applyEffectiveChatToCapabilities\(buildPublicPlatformCapabilities/);
   assert.match(server, /const decision = await resolveTenantChatAccess\(sourceContext\.tenantId\)/);
   assert.equal((server.match(/resolveChatAccess: resolveTenantChatAccess/g) ?? []).length, 3);

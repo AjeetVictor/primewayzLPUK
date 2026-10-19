@@ -163,9 +163,11 @@ function installationText(installation: Installation): string {
 export function AdminChatConnectInstallations({
   canManage,
   request,
+  tenantFilter,
 }: {
   canManage: boolean;
   request: (path: string, init?: RequestInit) => Promise<Response>;
+  tenantFilter?: string;
 }) {
   const titleId = useId();
   const credentialTitleId = useId();
@@ -283,6 +285,7 @@ export function AdminChatConnectInstallations({
 
   const normalizedQuery = query.trim().toLowerCase();
   const visible = installations.filter((installation) => {
+    if (tenantFilter && tenantFilter !== 'all' && installation.tenantKey !== tenantFilter) return false;
     if (normalizedQuery && !installationText(installation).includes(normalizedQuery)) return false;
     if (authorizationFilter !== 'all' && installation.authorizationStatus !== authorizationFilter) return false;
     if (healthFilter !== 'all' && installation.connectionHealth !== healthFilter) return false;

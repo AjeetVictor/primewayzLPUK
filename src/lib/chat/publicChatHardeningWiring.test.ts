@@ -45,6 +45,7 @@ test('requireAdmin rejects missing / invalid admin sessions with 401 and require
 
 test('unauthenticated sender=admin and sender=bot can no longer be posted publicly', () => {
   assert.doesNotMatch(adminReplyRoute, /resolveRequestSource\(req, 'chat'\)/, 'no public fallback path remains');
+  assert.doesNotMatch(adminReplyRoute, /resolveChatRequestSource\(req, 'chat'\)/, 'no public fallback path remains');
   assert.doesNotMatch(server, /getAdminUserFromRequest/);
   assert.match(adminChatRoutes, /if \(!isPermittedAdminChatReplySender\(sender\)\) \{\s*throw new AdminChatAccessError\(403, 'sender_not_allowed'/);
 });
@@ -84,7 +85,7 @@ test('visitor /api/chat/respond still stores sender=user and returns the existin
 
 test('respond guards run before any write', () => {
   const order = [
-    "resolveRequestSource(req, 'chat')",
+    "resolveChatRequestSource(req, 'chat')",
     "enforceChatRateLimit(req, 'message', sourceContext, sessionId)",
     'validateChatRespondInput(req.body)',
     'assertChatSessionSource(sessionId, sourceContext)',
@@ -140,9 +141,9 @@ test('heartbeat and session responses no longer return the full ChatSession row'
 
 test('source identity is still server-derived for public chat routes', () => {
   for (const route of [availabilityRoute, historyRoute, heartbeatRoute, sessionRoute, respondRoute]) {
-    assert.match(route, /resolveRequestSource\(req, 'chat'\)/);
+    assert.match(route, /resolveChatRequestSource\(req, 'chat'\)/);
   }
-  assert.match(appointmentRoute, /resolveRequestSource\(req, 'booking'\)/);
+  assert.match(appointmentRoute, /resolveChatRequestSource\(req, 'booking'\)/);
   assert.match(respondRoute, /toPersistedSourceContext\(sourceContext\)/);
 });
 
