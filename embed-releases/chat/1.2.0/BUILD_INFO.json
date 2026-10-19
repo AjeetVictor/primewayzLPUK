@@ -1,0 +1,10 @@
+{
+  "artifact": "pw-chat.js",
+  "buildVersion": "1.2.0",
+  "gitCommit": "319ecde39168dfdd1f82020be0438d62f784c6ec",
+  "gitSourceDirty": false,
+  "builtAt": "2026-10-19T09:40:19.283Z",
+  "sha256": "41d936b859820ce243463f25f5098cf9118df0a7c47fbb249318e00e52ceb5d3",
+  "sizeBytes": 49057,
+  "gzipBytes": 16640
+}
