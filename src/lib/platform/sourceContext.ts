@@ -15,9 +15,9 @@ export type PlatformTenantId =
 /** Compatibility alias — prefer PlatformTenantId for new code. */
 export type PrimewayzTenantId = PlatformTenantId;
 
-export type PlatformBrand = 'Primewayz' | 'RentReadBuy';
+export type PlatformBrand = 'Primewayz' | 'RentReadBuy' | 'Customer';
 
-export type PrimewayzMarket = 'UK' | 'IN' | 'US' | 'UAE' | 'MX';
+export type PrimewayzMarket = 'UK' | 'IN' | 'US' | 'UAE' | 'MX' | 'OTHER';
 
 export type PrimewayzSourceChannel =
   | 'website-audit'
@@ -31,7 +31,8 @@ export type PrimewayzSourceChannel =
   | 'other';
 
 export type SourceContext = {
-  tenantId: PlatformTenantId;
+  /** Compile-time ids stay in PlatformTenantId. Database-onboarded tenants use their stored id. */
+  tenantId: string;
   brand: PlatformBrand;
   market: PrimewayzMarket;
   sourceSite: string;

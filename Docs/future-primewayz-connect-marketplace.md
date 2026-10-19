@@ -2,6 +2,8 @@
 
 This note records how a later marketplace can sit on the Chat Connect installation registry. It does not add a catalogue, billing, licensing, downloads, or a marketplace UI.
 
+The commercial tenant registry is the customer and site boundary a marketplace would attach to. Installation authorization, verified origins, and tenant lifecycle stay the gates. Marketplace billing is a separate grant and is not implied by an active installation or an entitled chat tenant.
+
 ## Three separate concepts
 
 **Tenant.** A tenant is a brand and data boundary already registered in `PLATFORM_TENANTS` (for example `pw-uk`, `pw-infotech`, `rrb-silver-campaign`). The installation registry stores that tenant key. It does not create another tenant table, and an installation cannot invent or rename a tenant. Tenant activation stays on the registry and its environment gate. Central chat entitlement is a separate Host/Owner record (`TenantChatEntitlement`). It is not installation authorization, and it is not connector health.

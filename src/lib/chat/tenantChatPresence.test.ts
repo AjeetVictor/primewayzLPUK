@@ -265,7 +265,7 @@ test('wiring: server presence reads and writes are tenant-scoped with no global 
   assert.match(payload, /readOptionalTenantChatPresence\(prisma, presenceTenantId\)/);
 
   const publicRoute = server.slice(server.indexOf("app.get('/api/chat/availability'"), server.indexOf("app.get('/api/chat/availability'") + 600);
-  assert.match(publicRoute, /resolveRequestSource\(req, 'chat'\)/);
+  assert.match(publicRoute, /resolveChatRequestSource\(req, 'chat'\)/);
   assert.match(publicRoute, /getChatAvailabilityPayload\(sourceContext\)/);
   assert.doesNotMatch(publicRoute, /req\.(query|body)\.tenantId/);
 

@@ -684,7 +684,7 @@ test('the admin Origin guard is mounted before any admin route', () => {
 
 test('public visitor history route still derives tenant from Origin/Host', () => {
   const history = routeSource("app.get('/api/chat/:sessionId'");
-  assert.match(history, /resolveRequestSource\(req, 'chat'\)/);
+  assert.match(history, /resolveChatRequestSource\(req, 'chat'\)/);
   assert.match(history, /await assertChatSessionSource\(req\.params\.sessionId, sourceContext\)/);
   assert.match(history, /formatVisitorMessage\(message\)/);
 });

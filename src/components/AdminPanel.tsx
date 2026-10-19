@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send, FileText, Save, UploadCloud, Archive, Star, Bell, BellOff, Paperclip, Image as ImageIcon, CalendarClock, StickyNote, Pencil, X, Check, Reply, Gauge, Bot, BadgeCheck } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Send, FileText, Save, UploadCloud, Archive, Star, Bell, BellOff, Paperclip, Image as ImageIcon, CalendarClock, StickyNote, Pencil, X, Check, Reply, Gauge, Bot } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiUrl } from '../utils/apiUrl';
 import { PasswordInput } from './ui/PasswordInput';
@@ -14,6 +14,8 @@ import { AdminConversionDashboard } from './admin/AdminConversionDashboard';
 import { AdminTenantFilter } from './admin/AdminTenantFilter';
 import { AdminChatConnectInstallations } from './admin/AdminChatConnectInstallations';
 import { AdminTenantChatEntitlements } from './admin/AdminTenantChatEntitlements';
+import { AdminChatPlatform, chatPlatformHidesDashboardSearch, isChatPlatformSection } from './admin/AdminChatPlatform';
+import { adminPrimaryButtonClass, adminSecondaryButtonClass, adminTabTriggerClass } from './admin/adminUx';
 import { ADMIN_TENANT_FILTER_OPTIONS, getTenantDisplayName, type AdminTenantOption } from '../lib/platform/tenantRegistry';
 import { conversationRequiresHumanAttention, matchesAdminChatStatusFilter } from '../lib/admin/adminChatAttention';
 import { readAdminReplyEntitlementFailure } from '../lib/admin/adminReplyEntitlementNotice';
@@ -1718,35 +1720,14 @@ const AdminPanelContent = () => {
                 {TENANT_CHAT_PRESENCE_NOTE}
               </p>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <select
-                value={availabilityMode}
-                onChange={(event) => setAvailabilityMode(event.target.value as ChatAvailabilityMode)}
-                className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 outline-none focus:ring-2 focus:ring-emerald-500/20"
-              >
-                <option value="auto">Auto</option>
-                <option value="online">Online</option>
-                <option value="away">Away</option>
-                <option value="offline">Offline</option>
-              </select>
-              <input
-                value={availabilityMessage}
-                onChange={(event) => setAvailabilityMessage(event.target.value)}
-                placeholder="Optional public status message"
-                maxLength={180}
-                className="min-w-0 rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 sm:w-72"
-              />
-              <button
-                type="button"
-                onClick={saveChatAvailability}
-                disabled={isSavingAvailability}
-                className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
-              >
-                {isSavingAvailability ? 'Saving...' : 'Save status'}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('platform-team')}
+              className={adminSecondaryButtonClass}
+            >
+              Change team presence
+            </button>
           </div>
-          {availabilityError && <p className="mt-2 text-xs font-bold text-red-600">{availabilityError}</p>}
         </div>
 
 
@@ -1898,7 +1879,7 @@ const AdminPanelContent = () => {
           </div>
         )}
 
-        {activeTab !== 'tenant-management' && activeTab !== 'chat-connect' && (
+        {!chatPlatformHidesDashboardSearch(activeTab) && (
         <div className="mb-8">
           <div className="relative max-w-md">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" aria-hidden="true" />
@@ -1921,7 +1902,7 @@ const AdminPanelContent = () => {
                 {canViewForms && (
                 <Tabs.Trigger 
                   value="forms"
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+                  className={adminTabTriggerClass()}
                 >
                   <ClipboardList className="w-4 h-4" />
                   Form Responses
@@ -1942,7 +1923,7 @@ const AdminPanelContent = () => {
                 {canViewAuditLeads && (
                 <Tabs.Trigger
                   value="audit-leads"
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+                  className={adminTabTriggerClass()}
                 >
                   <Gauge className="w-4 h-4" />
                   Audit Leads
@@ -1960,7 +1941,7 @@ const AdminPanelContent = () => {
                 {canViewConversion && (
                 <Tabs.Trigger
                   value="conversion"
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+                  className={adminTabTriggerClass()}
                 >
                   <LayoutDashboard className="w-4 h-4" />
                   Conversion
@@ -1975,28 +1956,13 @@ const AdminPanelContent = () => {
                     {conversionScope.unavailableLabel}
                   </span>
                 )}
-                {canViewChatLeads && (
-                <Tabs.Trigger 
-                  value="leads"
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
-                >
-                  <Users className="w-4 h-4" />
-                  Chat Leads
-                  <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
-                    {chatSessions.length}
-                  </span>
-                </Tabs.Trigger>
-                )}
-                {canViewChatHistory && (
-                <Tabs.Trigger 
-                  value="chats"
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+                {(canViewChatLeads || canViewChatHistory || user?.isPlatformOwner) && (
+                <Tabs.Trigger
+                  value="chat-platform"
+                  className={adminTabTriggerClass(isChatPlatformSection(activeTab) && activeTab !== 'chat-platform')}
                 >
                   <MessageSquare className="w-4 h-4" />
-                  Chat History
-                  <span className="ml-1 px-1.5 py-0.5 bg-zinc-100 rounded-md text-[10px] text-zinc-400">
-                    {chatConversations.length}
-                  </span>
+                  Chat Platform
                 </Tabs.Trigger>
                 )}
                 {showSchedulingCapabilityNote && (
@@ -2013,7 +1979,7 @@ const AdminPanelContent = () => {
             {canViewBlogCms && (
               <Tabs.Trigger 
                 value="blog"
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+                className={adminTabTriggerClass()}
               >
                 <FileText className="w-4 h-4" />
                 Blog CMS
@@ -2039,7 +2005,7 @@ const AdminPanelContent = () => {
             {canViewAutopilot && (
               <Tabs.Trigger
                 value="autopilot"
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+                className={adminTabTriggerClass()}
               >
                 <Bot className="w-4 h-4" />
                 Autopilot
@@ -2062,7 +2028,7 @@ const AdminPanelContent = () => {
             {canViewBlogComments && (
               <Tabs.Trigger 
                 value="comments"
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+                className={adminTabTriggerClass()}
               >
                 <MessageSquare className="w-4 h-4" />
                 Blog Comments
@@ -2088,7 +2054,7 @@ const AdminPanelContent = () => {
             {user?.isPlatformOwner && userManagementScope.available && (
               <Tabs.Trigger 
                 value="users"
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+                className={adminTabTriggerClass()}
               >
                 <Users className="w-4 h-4" />
                 User Management
@@ -2097,25 +2063,73 @@ const AdminPanelContent = () => {
                 </span>
               </Tabs.Trigger>
             )}
-            {(canViewOperations || user?.isPlatformOwner) && (
-              <Tabs.Trigger
-                value="tenant-management"
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
-              >
-                <BadgeCheck className="w-4 h-4" />
-                Tenant Management
-              </Tabs.Trigger>
-            )}
-            {(canViewOperations || user?.isPlatformOwner) && (
-              <Tabs.Trigger
-                value="chat-connect"
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
-              >
-                <Shield className="w-4 h-4" />
-                Chat Connect
-              </Tabs.Trigger>
-            )}
           </Tabs.List>
+
+          {isChatPlatformSection(activeTab) && (canViewOperations || user?.isPlatformOwner) && (
+            <AdminChatPlatform
+              section={activeTab}
+              onSection={setActiveTab}
+              canManage={Boolean(user?.isPlatformOwner)}
+              request={adminRequest}
+              onOpenUserManagement={() => setActiveTab('users')}
+              team={(
+                <form
+                  className="grid gap-4 rounded-2xl border border-zinc-500 bg-white p-4 sm:grid-cols-2"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void saveChatAvailability();
+                  }}
+                >
+                  <h3 className="text-base font-semibold text-zinc-900 sm:col-span-2">Team presence</h3>
+                  <p className="text-sm leading-6 text-zinc-700 sm:col-span-2">{TENANT_CHAT_PRESENCE_NOTE} Current status: {availabilityLabel}. Chat leads and chat history stay in this workspace.</p>
+                  <label htmlFor="presence-mode" className="block text-sm font-semibold text-zinc-800">
+                    Presence mode
+                    <select
+                      id="presence-mode"
+                      value={availabilityMode}
+                      onChange={(event) => setAvailabilityMode(event.target.value as ChatAvailabilityMode)}
+                      className="mt-1 w-full min-h-11 rounded-xl border border-zinc-500 bg-white px-3 py-2 text-sm text-zinc-900 hover:border-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+                    >
+                      <option value="auto">Auto</option>
+                      <option value="online">Online</option>
+                      <option value="away">Away</option>
+                      <option value="offline">Offline</option>
+                    </select>
+                  </label>
+                  <label htmlFor="presence-message" className="block text-sm font-semibold text-zinc-800">
+                    Public status message
+                    <input
+                      id="presence-message"
+                      value={availabilityMessage}
+                      onChange={(event) => setAvailabilityMessage(event.target.value)}
+                      maxLength={180}
+                      className="mt-1 w-full min-h-11 rounded-xl border border-zinc-500 px-3 py-2 text-sm text-zinc-900 hover:border-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+                    />
+                  </label>
+                  {availabilityError ? <p role="alert" className="text-sm font-semibold text-red-800 sm:col-span-2">{availabilityError}</p> : null}
+                  <div className="sm:col-span-2">
+                    <button type="submit" className={adminPrimaryButtonClass} disabled={isSavingAvailability}>
+                      {isSavingAvailability ? 'Please wait…' : 'Save presence'}
+                    </button>
+                  </div>
+                </form>
+              )}
+              integrations={(
+                <AdminChatConnectInstallations
+                  canManage={Boolean(user?.isPlatformOwner)}
+                  request={adminRequest}
+                  tenantFilter={adminTenantFilter}
+                />
+              )}
+              entitlements={(
+                <AdminTenantChatEntitlements
+                  canManage={Boolean(user?.isPlatformOwner)}
+                  request={adminRequest}
+                  tenantFilter={adminTenantFilter}
+                />
+              )}
+            />
+          )}
 
           {canViewOperations && (
             <>
@@ -3188,23 +3202,6 @@ const AdminPanelContent = () => {
               </div>
             </div>
           </Tabs.Content>
-          )}
-
-          {(canViewOperations || user?.isPlatformOwner) && (
-            <Tabs.Content value="tenant-management" className="outline-none">
-              <AdminTenantChatEntitlements
-                canManage={Boolean(user?.isPlatformOwner)}
-                request={adminRequest}
-              />
-            </Tabs.Content>
-          )}
-          {(canViewOperations || user?.isPlatformOwner) && (
-            <Tabs.Content value="chat-connect" className="outline-none">
-              <AdminChatConnectInstallations
-                canManage={Boolean(user?.isPlatformOwner)}
-                request={adminRequest}
-              />
-            </Tabs.Content>
           )}
 
           {user?.isPlatformOwner && userManagementScope.available && (

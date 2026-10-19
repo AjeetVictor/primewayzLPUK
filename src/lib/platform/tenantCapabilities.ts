@@ -24,11 +24,19 @@ export function getTenantCapabilities(tenantId: string): TenantCapabilityMap | n
   return tenant.capabilities;
 }
 
+const runtimeCapabilities = new Map<string, TenantCapabilityMap>();
+
+/** Database-onboarded tenants only. Compile-time capability maps stay authoritative. */
+export function rememberRuntimeTenantCapabilities(tenantId: string, capabilities: TenantCapabilityMap): void {
+  if (getTenantById(tenantId)) return;
+  runtimeCapabilities.set(tenantId, capabilities);
+}
+
 export function tenantSupportsCapability(
   tenantId: string,
   capability: TenantCapability,
 ): boolean {
-  const capabilities = getTenantCapabilities(tenantId);
+  const capabilities = getTenantCapabilities(tenantId) ?? runtimeCapabilities.get(tenantId);
   return Boolean(capabilities?.[capability]);
 }
 

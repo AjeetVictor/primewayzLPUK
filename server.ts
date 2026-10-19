@@ -85,13 +85,13 @@ import { toPersistedSourceContext, type PrimewayzSourceChannel, type SourceConte
 import { resolveAuthorizedAdminTenantFilter, AdminTenantAccessError, assertAdminTenantAccess, validateTenantGrants, type AdminTenantPrincipal } from './src/lib/admin/adminTenantAccess.ts';
 import { createAdminTenantOptionsHandler } from './src/lib/admin/adminTenantOptionsRoute.ts';
 import { accessSnapshot, runSerializableAccessTransaction } from './src/lib/admin/adminAccessMutation.ts';
-import { getTenantDisplayName, resolveTenantChatPresentation } from './src/lib/platform/tenantRegistry.ts';
+import { getTenantById, getTenantDisplayName, resolveTenantChatPresentation } from './src/lib/platform/tenantRegistry.ts';
 import { resolveAppointmentRequestTimezone } from './src/lib/platform/timeZone.ts';
 import { resolveOfflineAcknowledgement, resolveTenantBotReply, visitorMessageIsAnsweredByTenantBot } from './src/lib/chat/tenantBotReply.ts';
 import { UNANSWERED_VISITOR_MESSAGE_WHERE } from './src/lib/chat/chatOperationalSemantics.ts';
 import { createChatEmbedReleaseHandler, CHAT_EMBED_RELEASE_ROUTE } from './src/lib/chat/chatEmbedRelease.ts';
 import { applyEffectiveChatToCapabilities, buildPublicPlatformCapabilities } from './src/lib/platform/publicCapabilities.ts';
-import { publicPlatformApiCorsMiddleware } from './src/lib/platform/publicPlatformApiCors.ts';
+import { createPublicPlatformApiCorsMiddleware } from './src/lib/platform/publicPlatformApiCors.ts';
 import { getAdminNotificationSummary } from './src/lib/admin/adminNotificationSummaryService.ts';
 import { createAdminRequestOriginMiddleware, getAdminAllowedOrigins } from './src/lib/admin/adminRequestOrigin.ts';
 import { createAdminChatRouteHandlers, type AdminChatStore } from './src/lib/admin/adminChatRoutes.ts';
@@ -107,8 +107,11 @@ import {
 } from './src/lib/integrations/wordpressChatIntegration.ts';
 import { createPrismaChatConnectStore } from './src/lib/chatConnect/prismaStore.ts';
 import { createPrismaTenantChatEntitlementStore } from './src/lib/platform/tenantChatEntitlementPrisma.ts';
+import { createPrismaTenantAccountStore } from './src/lib/platform/tenantAccountPrisma.ts';
+import { createChatPlatformAdminHandlers, CHAT_PLATFORM_ADMIN_PREFIX } from './src/lib/platform/tenantAccountAdmin.ts';
+import { lookupVerifiedTenantOrigin, resolvePublicTenantSource } from './src/lib/platform/verifiedOriginResolution.ts';
+import { rememberRuntimeTenantCapabilities } from './src/lib/platform/tenantCapabilities.ts';
 import {
-  assertVisitorChatEntitlement,
   resolveEffectiveTenantChat,
   TenantChatEntitlementUnavailableError,
 } from './src/lib/platform/tenantChatEntitlement.ts';
@@ -236,6 +239,7 @@ app.use(sharedAuditReportNoindexMiddleware);
 const prisma = new PrismaClient();
 const chatConnectStore = createPrismaChatConnectStore(prisma);
 const tenantChatEntitlementStore = createPrismaTenantChatEntitlementStore(prisma);
+const tenantAccountStore = createPrismaTenantAccountStore(prisma);
 const __dirname = path.resolve();
 
 const allBlogPosts = getAllBlogPosts();
@@ -251,6 +255,25 @@ function resolveRequestSource(req: Request, sourceChannel: PrimewayzSourceChanne
     body: req.body,
     allowLocalDevelopment: !isProd,
     campaignId: typeof req.body?.campaignId === 'string' ? req.body.campaignId : undefined,
+  });
+}
+
+async function resolveVerifiedChatOrigin(origin: string) {
+  const verified = await lookupVerifiedTenantOrigin(tenantAccountStore, origin, { allowLocalHttp: !isProd });
+  if (!verified || verified.availability === 'unavailable') return verified;
+  rememberRuntimeTenantCapabilities(verified.account.tenantId, verified.account.capabilities);
+  return { availability: 'ready' as const, tenantId: verified.tenantId };
+}
+
+async function resolveChatRequestSource(req: Request, sourceChannel: PrimewayzSourceChannel): Promise<SourceContext> {
+  return resolvePublicTenantSource({
+    origin: req.get('origin'),
+    host: req.get('host'),
+    sourceChannel,
+    body: req.body,
+    allowLocalDevelopment: !isProd,
+    campaignId: typeof req.body?.campaignId === 'string' ? req.body.campaignId : undefined,
+    store: tenantAccountStore,
   });
 }
 
@@ -2471,7 +2494,33 @@ app.post(`${CHAT_CONNECT_ADMIN_COLLECTION_PATH}/:installationId/reactivate`, req
 app.post(`${CHAT_CONNECT_ADMIN_COLLECTION_PATH}/:installationId/revoke`, requireAdmin, requirePlatformOwner, chatConnectAdmin.revoke);
 app.post(`${CHAT_CONNECT_ADMIN_COLLECTION_PATH}/:installationId/rotate-credentials`, requireAdmin, requirePlatformOwner, chatConnectAdmin.rotate);
 
-const tenantChatEntitlementAdmin = createTenantChatEntitlementAdminHandlers({ store: tenantChatEntitlementStore });
+const tenantChatEntitlementAdmin = createTenantChatEntitlementAdminHandlers({
+  store: tenantChatEntitlementStore,
+  accounts: tenantAccountStore,
+});
+const chatPlatformAdmin = createChatPlatformAdminHandlers({
+  accounts: tenantAccountStore,
+  entitlements: tenantChatEntitlementStore,
+  installations: chatConnectStore,
+});
+app.get(`${CHAT_PLATFORM_ADMIN_PREFIX}/overview`, requireAdmin, chatPlatformAdmin.overview);
+app.get(`${CHAT_PLATFORM_ADMIN_PREFIX}/tenants`, requireAdmin, chatPlatformAdmin.listTenants);
+app.post(`${CHAT_PLATFORM_ADMIN_PREFIX}/tenants`, requireAdmin, chatPlatformAdmin.createTenant);
+app.post(`${CHAT_PLATFORM_ADMIN_PREFIX}/tenants/:tenantId/commercial-record`, requireAdmin, chatPlatformAdmin.openRecord);
+app.patch(`${CHAT_PLATFORM_ADMIN_PREFIX}/tenants/:tenantId`, requireAdmin, chatPlatformAdmin.updateTenant);
+app.post(`${CHAT_PLATFORM_ADMIN_PREFIX}/tenants/:tenantId/activate`, requireAdmin, chatPlatformAdmin.activate);
+app.post(`${CHAT_PLATFORM_ADMIN_PREFIX}/tenants/:tenantId/suspend`, requireAdmin, chatPlatformAdmin.suspend);
+app.post(`${CHAT_PLATFORM_ADMIN_PREFIX}/tenants/:tenantId/reactivate`, requireAdmin, chatPlatformAdmin.reactivate);
+app.post(`${CHAT_PLATFORM_ADMIN_PREFIX}/tenants/:tenantId/archive`, requireAdmin, chatPlatformAdmin.archive);
+app.post(`${CHAT_PLATFORM_ADMIN_PREFIX}/tenants/:tenantId/restore`, requireAdmin, chatPlatformAdmin.restore);
+app.get(`${CHAT_PLATFORM_ADMIN_PREFIX}/sites`, requireAdmin, chatPlatformAdmin.sites);
+app.post(`${CHAT_PLATFORM_ADMIN_PREFIX}/tenants/:tenantId/sites`, requireAdmin, chatPlatformAdmin.createSite);
+app.post(`${CHAT_PLATFORM_ADMIN_PREFIX}/sites/:siteId/status`, requireAdmin, chatPlatformAdmin.siteStatus);
+app.post(`${CHAT_PLATFORM_ADMIN_PREFIX}/sites/:siteId/origins`, requireAdmin, chatPlatformAdmin.createOrigin);
+app.post(`${CHAT_PLATFORM_ADMIN_PREFIX}/origins/:originId/verify`, requireAdmin, chatPlatformAdmin.verifyOrigin);
+app.post(`${CHAT_PLATFORM_ADMIN_PREFIX}/origins/:originId/reissue`, requireAdmin, chatPlatformAdmin.reissue);
+app.post(`${CHAT_PLATFORM_ADMIN_PREFIX}/sites/:siteId/installations`, requireAdmin, chatPlatformAdmin.link);
+app.get(`${CHAT_PLATFORM_ADMIN_PREFIX}/audit`, requireAdmin, chatPlatformAdmin.audits);
 app.get(TENANT_CHAT_ENTITLEMENT_ADMIN_PATH, requireAdmin, tenantChatEntitlementAdmin.list);
 app.post(`${TENANT_CHAT_ENTITLEMENT_ADMIN_PATH}/:tenantId`, requireAdmin, requirePlatformOwner, tenantChatEntitlementAdmin.set);
 
@@ -2757,14 +2806,16 @@ function resolveTenantChatAccess(tenantId: string) {
   return resolveEffectiveTenantChat({
     tenantId,
     lookup: () => lookupTenantChatEntitlement(tenantId),
+    account: () => tenantAccountStore.gate(tenantId),
   });
 }
 
 async function assertEffectivePublicTenantChat(source: SourceContext): Promise<void> {
-  await assertVisitorChatEntitlement(
-    source.tenantId,
-    () => lookupTenantChatEntitlement(source.tenantId),
-  );
+  const decision = await resolveTenantChatAccess(source.tenantId);
+  if (decision.basis === 'store_unavailable') throw new TenantChatEntitlementUnavailableError();
+  if (!decision.allowed) {
+    throw new SourceResolutionError('Capability "chat" is not enabled for this tenant.');
+  }
 }
 
 app.options('/api/v1/website-audits', (req, res) => {
@@ -2898,20 +2949,33 @@ app.post('/api/tools/digital-visibility-check/lead', async (req, res) => {
 });
 
 // Visitor Chat CORS only (/api/chat/*). Does not apply to /api/admin/*.
-app.use(createPublicChatApiCorsMiddleware(resolveTenantChatAccess));
+app.use(createPublicChatApiCorsMiddleware(resolveTenantChatAccess, resolveVerifiedChatOrigin));
 // Public platform + scheduling availability CORS (not webhooks).
-app.use(publicPlatformApiCorsMiddleware);
+app.use(createPublicPlatformApiCorsMiddleware(resolveVerifiedChatOrigin));
 
 app.get('/api/platform/capabilities', async (req, res) => {
   try {
-    const sourceContext = resolveRequestSource(req, 'other');
+    const sourceContext = await resolveChatRequestSource(req, 'other');
     const decision = await resolveTenantChatAccess(sourceContext.tenantId);
     if (decision.basis === 'store_unavailable') {
       console.warn(`[tenant-chat-entitlement] store unavailable tenant=${sourceContext.tenantId}`);
     }
-    return res.json(applyEffectiveChatToCapabilities(buildPublicPlatformCapabilities(sourceContext), decision));
+    const compiled = getTenantById(sourceContext.tenantId);
+    const account = compiled ? null : await tenantAccountStore.findAccount(sourceContext.tenantId);
+    if (!compiled && !account) {
+      throw new SourceResolutionError('Request source is not a registered platform property.');
+    }
+    return res.json(applyEffectiveChatToCapabilities(
+      buildPublicPlatformCapabilities(sourceContext, process.env, account ? {
+        displayName: account.displayName,
+        capabilities: account.capabilities,
+      } : undefined),
+      decision,
+    ));
   } catch (error) {
-    return sourceResolutionFailure(res, error) ?? res.status(500).json({ error: 'Failed to resolve platform capabilities' });
+    return sourceResolutionFailure(res, error)
+      ?? tenantChatEntitlementFailure(res, error)
+      ?? res.status(500).json({ error: 'Failed to resolve platform capabilities' });
   }
 });
 
@@ -2974,7 +3038,7 @@ app.post('/api/scheduling/webhooks/calendly', async (req, res) => {
 
 app.get('/api/chat/availability', async (req, res) => {
   try {
-    const sourceContext = resolveRequestSource(req, 'chat');
+    const sourceContext = await resolveChatRequestSource(req, 'chat');
     assertTenantCapability(sourceContext, 'chat');
     await assertEffectivePublicTenantChat(sourceContext);
     enforceChatRateLimit(req, 'read', sourceContext);
@@ -2992,7 +3056,7 @@ app.post('/api/chat/session', async (req, res) => {
   if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
 
   try {
-    const sourceContext = resolveRequestSource(req, 'chat');
+    const sourceContext = await resolveChatRequestSource(req, 'chat');
     assertTenantCapability(sourceContext, 'chat');
     await assertEffectivePublicTenantChat(sourceContext);
     enforceChatRateLimit(req, 'session', sourceContext, sessionId);
@@ -3075,7 +3139,7 @@ app.post('/api/chat/heartbeat', async (req, res) => {
   if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
 
   try {
-    const sourceContext = resolveRequestSource(req, 'chat');
+    const sourceContext = await resolveChatRequestSource(req, 'chat');
     assertTenantCapability(sourceContext, 'chat');
     await assertEffectivePublicTenantChat(sourceContext);
     enforceChatRateLimit(req, 'heartbeat', sourceContext, sessionId);
@@ -3157,7 +3221,7 @@ app.post('/api/chat/heartbeat', async (req, res) => {
 
 app.get('/api/chat/:sessionId', async (req, res) => {
   try {
-    const sourceContext = resolveRequestSource(req, 'chat');
+    const sourceContext = await resolveChatRequestSource(req, 'chat');
     assertTenantCapability(sourceContext, 'chat');
     await assertEffectivePublicTenantChat(sourceContext);
     enforceChatRateLimit(req, 'read', sourceContext, req.params.sessionId);
@@ -3195,7 +3259,7 @@ app.post('/api/chat/respond', async (req, res) => {
 
   let sourceContext: SourceContext | undefined;
   try {
-    sourceContext = resolveRequestSource(req, 'chat');
+    sourceContext = await resolveChatRequestSource(req, 'chat');
     assertTenantCapability(sourceContext, 'chat');
     await assertEffectivePublicTenantChat(sourceContext);
     enforceChatRateLimit(req, 'message', sourceContext, sessionId);
@@ -3270,7 +3334,7 @@ app.post('/api/chat/appointments', async (req, res) => {
   if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
 
   try {
-    const sourceContext = resolveRequestSource(req, 'booking');
+    const sourceContext = await resolveChatRequestSource(req, 'booking');
     assertTenantCapability(sourceContext, 'chat');
     await assertEffectivePublicTenantChat(sourceContext);
     assertTenantCapability(sourceContext, 'scheduling');

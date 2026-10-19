@@ -1,25 +1,30 @@
 # Chat platform release — SSH deployment runbook
 
-This is the operator procedure for the two pending Prisma migrations and the application that enforces central tenant chat entitlement. Do not run it until the release is approved. Do not use `prisma db push` or `prisma migrate reset`.
+This is the operator procedure for the Chat Platform release, including the commercial tenant-account migration. Do not run it until the release is approved. Do not use `prisma db push` or `prisma migrate reset`.
 
 The application is the Primewayz UK Node process (`primewayz-uk` in `ecosystem.config.cjs`) on the host that serves `https://uk.primewayz.com`. Primewayz Infotech and other tenants use that same process and the same MySQL database. Confirm the PM2 name with `pm2 list` before restarting anything.
 
 ## Migration order
 
-Apply both folders with `npx prisma migrate deploy`. Prisma runs them in folder-name order. There is no foreign key between them, and neither one alters `ChatSession`, `ChatMessage`, or `User`.
+Apply the pending folders with `npx prisma migrate deploy`. Prisma runs them in folder-name order. None of these migrations alters `ChatSession`, `ChatMessage`, `User`, or `UserTenantGrant`.
 
 | Order | Folder | What it does |
 | ----- | ------ | ------------ |
 | 1 | `prisma/migrations/20261019120000_chat_connect_installation_registry` | Creates `ChatConnectInstallation`, `ChatConnectAuditLog`, and `ChatConnectIdempotencyKey`. Seeds `cci_pw_infotech_wordpress` and `cci_pw_uk_first_party` only when those ids are absent. Does not copy `WORDPRESS_CHAT_INTEGRATION_TOKEN`. Does not seed RentReadBuy or Silver. |
 | 2 | `prisma/migrations/20261019180000_tenant_chat_entitlement` | Creates `TenantChatEntitlement` and `TenantChatEntitlementAudit`. Inserts no rows. |
+| 3 | `prisma/migrations/20261019200000_platform_tenant_account` | Creates `PlatformTenantAccount`, `PlatformTenantSite`, `PlatformTenantOrigin`, `PlatformTenantAudit`, and `PlatformTenantSiteInstallation`. Inserts no tenants and no origins. |
 
-`20261019180000` does not depend on the installation tables. `20261019120000` does not depend on the entitlement tables. The new application does depend on both being present before it serves traffic.
+`20261019180000` does not depend on the installation tables. `20261019120000` does not depend on the entitlement tables. `20261019200000` does not depend on either of them. The new application does depend on the entitlement tables, and on the commercial registry once that migration is the version being served.
+
+On a database that already received the Chat Connect and entitlement migrations, the only new folder is `20261019200000_platform_tenant_account`. `migrate deploy` skips folders that are already finished. Do not run the SQL file by hand a second time: MySQL rejects the second `CREATE TABLE`. A second `migrate deploy` is the idempotent path, and it must do nothing.
 
 Deploying the new application before `TenantChatEntitlement` exists makes every entitlement read fail. The platform then refuses new chat messages for every tenant, including Primewayz UK and Primewayz Infotech. That is intentional. A missing store must not look like “no row”.
 
 Applying the tables before the new application is safe. The previous application ignores them.
 
 Leave `TenantChatEntitlement` empty after deployment. No row keeps Primewayz UK and Primewayz Infotech on their existing chat behavior. Silver stays disabled unless `RRB_SILVER_CAMPAIGN_ENABLED` is exactly `true`. Do not insert an `entitled` row to “turn chat on”.
+
+Leave `PlatformTenantAccount` empty unless the Host/Owner has already decided to open a commercial record. No commercial row keeps the compile-time tenant. A suspended or archived row closes that tenant even when the catalog still says active. Do not create a suspended row during deployment. Rolling these five tables back removes that closure and makes the catalog tenant reachable again.
 
 ## 1. Pre-deployment database backup
 
@@ -52,12 +57,13 @@ npx prisma validate
 npx prisma migrate status
 ```
 
-Pending output must list only:
+Pending output must be a subset of these three folders, in this order, and nothing else:
 
 - `20261019120000_chat_connect_installation_registry`
 - `20261019180000_tenant_chat_entitlement`
+- `20261019200000_platform_tenant_account`
 
-If a different migration is pending, or a previous migration is recorded as failed, stop. Do not deploy.
+Folders already applied on this database are omitted. After the Chat Connect release, the usual pending list is only `20261019200000_platform_tenant_account`. If a different migration is pending, or a previous migration is recorded as failed, stop. Do not deploy.
 
 Apply only after the backup file is confirmed:
 
@@ -74,26 +80,35 @@ SHOW TABLES LIKE 'ChatConnectAuditLog';
 SHOW TABLES LIKE 'ChatConnectIdempotencyKey';
 SHOW TABLES LIKE 'TenantChatEntitlement';
 SHOW TABLES LIKE 'TenantChatEntitlementAudit';
+SHOW TABLES LIKE 'PlatformTenantAccount';
+SHOW TABLES LIKE 'PlatformTenantSite';
+SHOW TABLES LIKE 'PlatformTenantOrigin';
+SHOW TABLES LIKE 'PlatformTenantAudit';
+SHOW TABLES LIKE 'PlatformTenantSiteInstallation';
 
 SELECT id, tenantId, integrationTechnology, authorizationStatus, legacyEnvBinding
 FROM ChatConnectInstallation
 WHERE id IN ('cci_pw_infotech_wordpress', 'cci_pw_uk_first_party');
 
 SELECT COUNT(*) AS entitlement_rows FROM TenantChatEntitlement;
+SELECT COUNT(*) AS commercial_tenant_rows FROM PlatformTenantAccount;
+SHOW INDEX FROM PlatformTenantOrigin WHERE Key_name = 'PlatformTenantOrigin_origin_key';
 ```
 
 Expected:
 
 - Both installation ids exist. Infotech technology is `wordpress` and `legacyEnvBinding` is true. UK technology is `react` and `legacyEnvBinding` is false.
 - No installation row for `rrb` or `rrb-silver-campaign`.
-- `entitlement_rows` is 0.
-- `_prisma_migrations` has both folders with a finished applied time and a null rolled-back time.
+- `entitlement_rows` is 0 unless a Host/Owner saved a row before this check.
+- `commercial_tenant_rows` is 0 on the first deploy. The migration does not insert tenants.
+- `PlatformTenantOrigin.origin` has one unique index. Two tenants cannot store the same origin.
+- `_prisma_migrations` has each applied folder with a finished time and a null rolled-back time. `20261019200000_platform_tenant_account` appears once.
 
 `npx prisma generate` is required only if the deploy host runs the TypeScript server from source and the client was not already generated for this schema. The production start path is `scripts/start-server.ts` through PM2.
 
 ## 3. Deployment procedure
 
-Build and switch the process only after both migrations are applied.
+Build and switch the process only after every pending migration listed above is applied. The entitlement tables must exist before the new process serves traffic. The commercial registry tables must exist before that same process is asked to resolve a database-managed origin. A missing registry table, and only that condition, keeps the previous catalog behavior. A failed read of a present registry denies chat.
 
 ```bash
 git status
@@ -118,8 +133,8 @@ It does not read entitlement for admin conversation history. Host/Owner changes 
 
 Run these against `https://uk.primewayz.com` after the process is up. They are reads plus one real visitor message on the existing UK chat, which has no entitlement row.
 
-1. `npx prisma migrate status` shows both migrations applied and no pending folders.
-2. `SELECT COUNT(*) FROM TenantChatEntitlement` is still 0.
+1. `npx prisma migrate status` shows the Chat Connect, entitlement, and `20261019200000_platform_tenant_account` migrations applied, and no pending folders.
+2. `SELECT COUNT(*) FROM TenantChatEntitlement` is still 0, and `SELECT COUNT(*) FROM PlatformTenantAccount` is still 0, unless the Host/Owner intentionally wrote a row after the migration.
 3. From a browser on `https://uk.primewayz.com`, open the site chat, send a short message, and confirm it appears in the UK admin inbox. Reply from the inbox and confirm the reply is stored.
 4. `GET /api/platform/capabilities` with `Origin: https://uk.primewayz.com` returns `capabilities.chat: true`. The same call with `Origin: https://primewayz.com` returns `capabilities.chat: true`.
 5. WordPress `POST /api/integrations/wordpress/chat` with the existing integration credential and `{ "action": "diagnostics" }` returns `ok: true`, `chat.enabled: true`, and the existing diagnostics keys.
@@ -141,7 +156,17 @@ Roll the application back before dropping tables.
 
 Drop tables only when this release is being removed from the database, and only after the previous application is the process that is serving.
 
-Entitlement first, because nothing else references it:
+Commercial registry first. Nothing else references these tables. Dropping them deletes domain challenges and any suspension that existed only as a commercial row. Export `PlatformTenantAccount` and `PlatformTenantAudit` first if those suspensions or domain records must be kept. After the drop, compile-time tenants use the pre-migration path again.
+
+```sql
+DROP TABLE `PlatformTenantSiteInstallation`;
+DROP TABLE `PlatformTenantAudit`;
+DROP TABLE `PlatformTenantOrigin`;
+DROP TABLE `PlatformTenantSite`;
+DROP TABLE `PlatformTenantAccount`;
+```
+
+Entitlement next, because nothing else references it:
 
 ```sql
 DROP TABLE `TenantChatEntitlementAudit`;
@@ -158,6 +183,7 @@ DROP TABLE `ChatConnectInstallation`;
 
 If the database should forget the migration history as well, delete only these rows from `_prisma_migrations`:
 
+- `20261019200000_platform_tenant_account`
 - `20261019180000_tenant_chat_entitlement`
 - `20261019120000_chat_connect_installation_registry`
 

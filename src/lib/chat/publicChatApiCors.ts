@@ -45,9 +45,20 @@ export function isPublicChatCorsPath(pathname: string): boolean {
 
 type CorsHeaderSink = { setHeader(name: string, value: string): unknown };
 
-export function applyPublicChatApiCors(req: Pick<Request, 'get'>, res: CorsHeaderSink): boolean {
-  const origin = req.get('origin')?.trim().replace(/\/$/, '');
-  if (!isPublicChatOriginAllowed(origin)) return false;
+export type VerifiedChatOrigin =
+  | { availability: 'ready'; tenantId: string }
+  | { availability: 'unavailable' }
+  | null;
+
+export type VerifiedChatOriginDirectory = (origin: string) => Promise<VerifiedChatOrigin>;
+
+export function applyPublicChatApiCors(
+  req: Pick<Request, 'get'>,
+  res: CorsHeaderSink,
+  trustedOrigin?: string,
+): boolean {
+  const origin = trustedOrigin ?? req.get('origin')?.trim().replace(/\/$/, '');
+  if (!trustedOrigin && !isPublicChatOriginAllowed(origin)) return false;
   if (origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
@@ -71,7 +82,10 @@ const ORIGIN_NOT_ALLOWED = { error: 'Origin is not allowed.' };
  * An optional entitlement gate runs only after the registry allow, and only when Origin is present.
  * Store failure denies the origin. It does not fall through to the no-row allow.
  */
-export function createPublicChatApiCorsMiddleware(gate?: PublicChatEntitlementGate) {
+export function createPublicChatApiCorsMiddleware(
+  gate?: PublicChatEntitlementGate,
+  verifiedOrigins?: VerifiedChatOriginDirectory,
+) {
   return async (req: Request, res: Response, next: () => void): Promise<void> => {
     try {
       if (!isPublicChatCorsPath(req.path)) {
@@ -79,19 +93,35 @@ export function createPublicChatApiCorsMiddleware(gate?: PublicChatEntitlementGa
         return;
       }
       const origin = req.get('origin')?.trim().replace(/\/$/, '');
+      let trustedOrigin: string | undefined;
+      let verifiedTenantId: string | undefined;
       if (!isPublicChatOriginAllowed(origin)) {
-        res.status(403).json(ORIGIN_NOT_ALLOWED);
-        return;
+        if (!origin || !verifiedOrigins) {
+          res.status(403).json(ORIGIN_NOT_ALLOWED);
+          return;
+        }
+        const verified = await verifiedOrigins(origin);
+        if (!verified) {
+          res.status(403).json(ORIGIN_NOT_ALLOWED);
+          return;
+        }
+        if (verified.availability === 'unavailable') {
+          res.status(503).json(CHAT_TEMPORARILY_UNAVAILABLE);
+          return;
+        }
+        trustedOrigin = origin;
+        verifiedTenantId = verified.tenantId;
       }
       if (gate && origin) {
         const tenant = getTenantByOrigin(origin);
-        if (!tenant) {
+        const tenantId = tenant?.tenantId ?? verifiedTenantId;
+        if (!tenantId) {
           res.status(403).json(ORIGIN_NOT_ALLOWED);
           return;
         }
         let decision: EffectiveTenantChatDecision;
         try {
-          decision = await gate(tenant.tenantId);
+          decision = await gate(tenantId);
         } catch {
           decision = { allowed: false, basis: 'store_unavailable' };
         }
@@ -104,7 +134,7 @@ export function createPublicChatApiCorsMiddleware(gate?: PublicChatEntitlementGa
           return;
         }
       }
-      if (!applyPublicChatApiCors(req, res)) {
+      if (!applyPublicChatApiCors(req, res, trustedOrigin)) {
         res.status(403).json(ORIGIN_NOT_ALLOWED);
         return;
       }

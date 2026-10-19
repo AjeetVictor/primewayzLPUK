@@ -1506,3 +1506,95 @@ model TenantChatEntitlementAudit {
 
   @@index([tenantId, createdAt])
 }
+
+// --- Primewayz Chat Platform commercial tenant registry ---
+// Same tenant id as PLATFORM_TENANTS when the tenant already exists in source.
+// A row never creates a second identity. No row keeps the compile-time tenant.
+// Suspended and archived rows stay in place so a failed read cannot fall back to compile-time access.
+// Absence of the table (migration not applied) is the only legacy fallback.
+
+model PlatformTenantAccount {
+  tenantId              String    @id @db.VarChar(32)
+  displayName           String    @db.VarChar(120)
+  brand                 String    @db.VarChar(64)
+  market                String    @db.VarChar(16)
+  organizationName      String    @db.VarChar(160)
+  primaryContactName    String    @db.VarChar(120)
+  primaryContactEmail   String    @db.VarChar(320)
+  lifecycleStatus       String    @db.VarChar(16)
+  capabilities          Json
+  sourceKind            String    @db.VarChar(32)
+  explicitEntitlement   Boolean   @default(false)
+  createdAt             DateTime  @default(now())
+  activatedAt           DateTime?
+  suspendedAt           DateTime?
+  archivedAt            DateTime?
+  updatedAt             DateTime  @updatedAt
+  sites                 PlatformTenantSite[]
+  origins               PlatformTenantOrigin[]
+  audits                PlatformTenantAudit[]
+  siteInstallations     PlatformTenantSiteInstallation[]
+
+  @@index([lifecycleStatus, updatedAt])
+}
+
+model PlatformTenantSite {
+  id            String    @id @db.VarChar(64)
+  tenantId      String    @db.VarChar(32)
+  displayName   String    @db.VarChar(120)
+  technology    String    @db.VarChar(32)
+  status        String    @db.VarChar(16)
+  createdAt     DateTime  @default(now())
+  activatedAt   DateTime?
+  updatedAt     DateTime  @updatedAt
+  tenant        PlatformTenantAccount @relation(fields: [tenantId], references: [tenantId], onDelete: Restrict)
+  origins       PlatformTenantOrigin[]
+  installations PlatformTenantSiteInstallation[]
+
+  @@index([tenantId, status])
+}
+
+model PlatformTenantOrigin {
+  id                    String    @id @db.VarChar(64)
+  tenantId              String    @db.VarChar(32)
+  siteId                String    @db.VarChar(64)
+  origin                String    @unique @db.VarChar(300)
+  verificationStatus    String    @db.VarChar(16)
+  verificationTokenHash String    @db.VarChar(64)
+  verifiedMethod        String?   @db.VarChar(32)
+  challengeIssuedAt     DateTime
+  verifiedAt            DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  tenant                PlatformTenantAccount @relation(fields: [tenantId], references: [tenantId], onDelete: Restrict)
+  site                  PlatformTenantSite    @relation(fields: [siteId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, verificationStatus])
+  @@index([siteId])
+}
+
+model PlatformTenantAudit {
+  id          Int      @id @default(autoincrement())
+  tenantId    String   @db.VarChar(32)
+  actorUserId Int?
+  action      String   @db.VarChar(64)
+  details     Json
+  createdAt   DateTime @default(now())
+  tenant      PlatformTenantAccount @relation(fields: [tenantId], references: [tenantId], onDelete: Restrict)
+
+  @@index([tenantId, createdAt])
+  @@index([createdAt])
+}
+
+model PlatformTenantSiteInstallation {
+  siteId         String   @db.VarChar(64)
+  installationId String   @db.VarChar(64)
+  tenantId       String   @db.VarChar(32)
+  createdAt      DateTime @default(now())
+  site           PlatformTenantSite    @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  tenant         PlatformTenantAccount @relation(fields: [tenantId], references: [tenantId], onDelete: Restrict)
+
+  @@id([siteId, installationId])
+  @@unique([installationId])
+  @@index([tenantId])
+}

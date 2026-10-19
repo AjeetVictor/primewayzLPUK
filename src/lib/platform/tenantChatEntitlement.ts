@@ -5,8 +5,8 @@
  * A failed entitlement read denies chat so a stored suspension cannot reopen.
  */
 
+import { foldTenantAccountGate, type TenantAccountChatGate } from './tenantAccountModel.ts';
 import { SourceResolutionError } from './sourceResolver.ts';
-import { getTenantById, isTenantActive } from './tenantRegistry.ts';
 
 export const TENANT_CHAT_ENTITLEMENT_STATUSES = ['entitled', 'suspended', 'revoked'] as const;
 
@@ -53,6 +53,7 @@ export type EffectiveTenantChatBasis =
   | 'capability_disabled'
   | 'suspended'
   | 'revoked'
+  | 'entitlement_required'
   | 'store_unavailable';
 
 export type EffectiveTenantChatDecision = {
@@ -83,6 +84,7 @@ export function decideEffectiveTenantChat(input: {
   active: boolean;
   compileTimeChat: boolean;
   entitlement: EntitlementLookupResult;
+  requiresExplicitEntitlement?: boolean;
 }): EffectiveTenantChatDecision {
   if (!input.known) return { allowed: false, basis: 'unknown_tenant' };
   if (!input.active) return { allowed: false, basis: 'inactive_tenant' };
@@ -91,6 +93,7 @@ export function decideEffectiveTenantChat(input: {
     return { allowed: false, basis: 'store_unavailable' };
   }
   const status = input.entitlement.record?.status;
+  if (!status && input.requiresExplicitEntitlement) return { allowed: false, basis: 'entitlement_required' };
   if (!status) return { allowed: true, basis: 'allowed_existing' };
   if (status === 'entitled') return { allowed: true, basis: 'allowed_entitled' };
   if (status === 'suspended') return { allowed: false, basis: 'suspended' };
@@ -102,17 +105,27 @@ export async function resolveEffectiveTenantChat(input: {
   tenantId: string;
   env?: NodeJS.ProcessEnv;
   lookup: () => Promise<{ status: TenantChatEntitlementStatus } | null>;
+  account?: () => Promise<TenantAccountChatGate>;
 }): Promise<EffectiveTenantChatDecision> {
   const env = input.env ?? process.env;
-  const tenant = getTenantById(input.tenantId);
-  const known = Boolean(tenant);
-  const active = Boolean(tenant && isTenantActive(tenant, env));
-  const compileTimeChat = Boolean(tenant?.capabilities.chat);
-  if (!known || !active || !compileTimeChat) {
+  let gate: TenantAccountChatGate = { availability: 'legacy' };
+  if (input.account) {
+    try {
+      gate = await input.account();
+    } catch {
+      gate = { availability: 'unavailable' };
+    }
+  }
+  const folded = foldTenantAccountGate({ tenantId: input.tenantId, env, gate });
+  if (folded.shortCircuit === 'store_unavailable') {
+    return { allowed: false, basis: 'store_unavailable' };
+  }
+  if (!folded.known || !folded.active || !folded.compileTimeChat) {
     return decideEffectiveTenantChat({
-      known,
-      active,
-      compileTimeChat,
+      known: folded.known,
+      active: folded.active,
+      compileTimeChat: folded.compileTimeChat,
+      requiresExplicitEntitlement: folded.requiresExplicitEntitlement,
       entitlement: { availability: 'ready', record: null },
     });
   }
@@ -122,6 +135,7 @@ export async function resolveEffectiveTenantChat(input: {
       known: true,
       active: true,
       compileTimeChat: true,
+      requiresExplicitEntitlement: folded.requiresExplicitEntitlement,
       entitlement: { availability: 'ready', record },
     });
   } catch {

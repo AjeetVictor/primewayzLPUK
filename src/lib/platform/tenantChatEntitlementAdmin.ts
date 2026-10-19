@@ -1,5 +1,7 @@
 import type { Request, RequestHandler, Response } from 'express';
 import { getTenantById, isTenantActive, PLATFORM_TENANTS, type PlatformTenantConfig } from './tenantRegistry.ts';
+import type { TenantAccountRecord } from './tenantAccountModel.ts';
+import type { TenantAccountStore } from './tenantAccountStore.ts';
 import {
   decideEffectiveTenantChat,
   isTenantChatEntitlementStatus,
@@ -93,23 +95,41 @@ function entitlementView(record: TenantChatEntitlementRecord | null) {
   };
 }
 
+function accountCloses(account: TenantAccountRecord | undefined): boolean {
+  return Boolean(account && account.lifecycleStatus !== 'active');
+}
+
 export async function listTenantChatEntitlementViews(
   store: TenantChatEntitlementStore,
   principal: TenantChatAdminPrincipal,
   requestedTenantId: string | null,
   env: NodeJS.ProcessEnv = process.env,
+  commercialAccounts: readonly TenantAccountRecord[] = [],
 ): Promise<TenantChatEntitlementAdminView[]> {
+  const accounts = new Map(commercialAccounts.map((account) => [account.tenantId, account]));
   let tenants = visibleEntitlementTenants(principal);
   if (requestedTenantId) {
-    if (!getTenantById(requestedTenantId)) fail(400, 'invalid_tenant', 'Unknown tenant.');
-    if (!tenants.some((tenant) => tenant.tenantId === requestedTenantId)) {
+    const compiled = getTenantById(requestedTenantId);
+    const commercial = accounts.get(requestedTenantId);
+    if (!compiled && !commercial) fail(400, 'invalid_tenant', 'Unknown tenant.');
+    if (compiled) {
+      if (!tenants.some((tenant) => tenant.tenantId === requestedTenantId)) {
+        fail(403, 'tenant_access_denied', 'This account is not assigned to the selected tenant.');
+      }
+      tenants = tenants.filter((tenant) => tenant.tenantId === requestedTenantId);
+    } else if (!principal.isPlatformOwner && !principal.tenantIds.includes(requestedTenantId)) {
       fail(403, 'tenant_access_denied', 'This account is not assigned to the selected tenant.');
+    } else {
+      tenants = [];
     }
-    tenants = tenants.filter((tenant) => tenant.tenantId === requestedTenantId);
   }
+  const recordIds = [
+    ...tenants.map((tenant) => tenant.tenantId),
+    ...commercialAccounts.filter((account) => !getTenantById(account.tenantId)).map((account) => account.tenantId),
+  ];
   let records: TenantChatEntitlementRecord[];
   try {
-    records = await store.list(tenants.map((tenant) => tenant.tenantId));
+    records = await store.list(recordIds);
   } catch {
     fail(503, 'entitlement_store_unavailable', 'Tenant chat entitlements are temporarily unavailable.');
   }
@@ -134,8 +154,43 @@ export async function listTenantChatEntitlementViews(
       entitlement: entitlementView(record),
       effective: decideEffectiveTenantChat({
         known: true,
-        active: isTenantActive(tenant, env),
+        active: accountCloses(accounts.get(tenant.tenantId)) ? false : isTenantActive(tenant, env),
         compileTimeChat: tenant.capabilities.chat,
+        entitlement: { availability: 'ready', record },
+      }),
+      recentChanges: recent.map((entry) => ({
+        status: entry.status,
+        reason: entry.reason,
+        actorUserId: entry.actorUserId,
+        createdAt: entry.createdAt.toISOString(),
+      })),
+    });
+  }
+  for (const account of commercialAccounts) {
+    if (getTenantById(account.tenantId)) continue;
+    if (!principal.isPlatformOwner && !principal.tenantIds.includes(account.tenantId)) continue;
+    if (requestedTenantId && account.tenantId !== requestedTenantId) continue;
+    const record = byTenant.get(account.tenantId) ?? null;
+    let recent: Awaited<ReturnType<TenantChatEntitlementStore['recentAudits']>>;
+    try {
+      recent = await store.recentAudits(account.tenantId, 5);
+    } catch {
+      fail(503, 'entitlement_store_unavailable', 'Tenant chat entitlements are temporarily unavailable.');
+    }
+    views.push({
+      tenantId: account.tenantId,
+      displayName: account.displayName,
+      brand: account.brand,
+      market: account.market,
+      registryActive: account.lifecycleStatus === 'active',
+      activationControlled: false,
+      compileTimeChat: account.capabilities.chat,
+      entitlement: entitlementView(record),
+      effective: decideEffectiveTenantChat({
+        known: true,
+        active: account.lifecycleStatus === 'active',
+        compileTimeChat: account.capabilities.chat,
+        requiresExplicitEntitlement: account.explicitEntitlement,
         entitlement: { availability: 'ready', record },
       }),
       recentChanges: recent.map((entry) => ({
@@ -156,11 +211,14 @@ export async function setTenantChatEntitlement(
   status: unknown,
   reason: unknown,
   at: Date,
+  knownDatabaseTenant = false,
 ): Promise<TenantChatEntitlementRecord> {
   if (!principal.isPlatformOwner) {
     fail(403, 'platform_owner_required', 'Tenant chat entitlement changes are restricted to the platform Host/Owner.');
   }
-  if (!getTenantById(tenantId)) fail(400, 'invalid_tenant', 'Unknown tenant.');
+  if (!getTenantById(tenantId) && !knownDatabaseTenant) {
+    fail(400, 'invalid_tenant', 'Unknown tenant.');
+  }
   if (!isTenantChatEntitlementStatus(status)) {
     fail(400, 'invalid_request', 'Status must be entitled, suspended, or revoked.');
   }
@@ -203,8 +261,18 @@ function assertObject(body: unknown): Record<string, unknown> {
   return body as Record<string, unknown>;
 }
 
+async function commercialAccounts(store: TenantAccountStore | undefined): Promise<TenantAccountRecord[]> {
+  if (!store) return [];
+  const listed = await store.listAccounts();
+  if (listed.availability === 'unavailable') {
+    fail(503, 'tenant_registry_unavailable', 'The tenant registry is temporarily unavailable.');
+  }
+  return listed.accounts;
+}
+
 export function createTenantChatEntitlementAdminHandlers(deps: {
   store: TenantChatEntitlementStore;
+  accounts?: TenantAccountStore;
   now?: () => Date;
   env?: NodeJS.ProcessEnv;
 }) {
@@ -216,7 +284,8 @@ export function createTenantChatEntitlementAdminHandlers(deps: {
       const requested = req.query.tenantId;
       if (Array.isArray(requested)) fail(400, 'invalid_request', 'tenantId must be a single value.');
       const tenantId = typeof requested === 'string' && requested.length > 0 ? requested : null;
-      const tenants = await listTenantChatEntitlementViews(deps.store, principal, tenantId, deps.env ?? process.env);
+      const accounts = await commercialAccounts(deps.accounts);
+      const tenants = await listTenantChatEntitlementViews(deps.store, principal, tenantId, deps.env ?? process.env, accounts);
       res.setHeader('Cache-Control', 'no-store');
       res.json({ success: true, canManage: principal.isPlatformOwner, tenants });
     } catch (err) {
@@ -231,7 +300,21 @@ export function createTenantChatEntitlementAdminHandlers(deps: {
       const unexpected = Object.keys(body).filter((key) => key !== 'status' && key !== 'reason');
       if (unexpected.length > 0) fail(400, 'invalid_request', 'Request contains unsupported fields.');
       const tenantId = String(req.params.tenantId ?? '');
-      const record = await setTenantChatEntitlement(deps.store, principal, tenantId, body.status, body.reason, now());
+      let knownDatabaseTenant = false;
+      if (!getTenantById(tenantId)) {
+        const accounts = await commercialAccounts(deps.accounts);
+        knownDatabaseTenant = accounts.some((account) => account.tenantId === tenantId);
+        if (!knownDatabaseTenant) fail(400, 'invalid_tenant', 'Unknown tenant.');
+      }
+      const record = await setTenantChatEntitlement(
+        deps.store,
+        principal,
+        tenantId,
+        body.status,
+        body.reason,
+        now(),
+        knownDatabaseTenant,
+      );
       res.json({
         success: true,
         entitlement: {
