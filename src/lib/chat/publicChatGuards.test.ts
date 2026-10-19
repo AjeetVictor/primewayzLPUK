@@ -259,12 +259,19 @@ const LIVE_CHAT_SOURCE_PAYLOAD = {
 test('current LiveChat respond payload is accepted unchanged', () => {
   assert.deepEqual(
     validateChatRespondInput({ sessionId: LEGACY_ID, message: 'Hello there', userName: 'Sam', attachmentIds: [] }),
-    { message: 'Hello there', userName: 'Sam', attachmentIds: [], replyToId: null },
+    { message: 'Hello there', userName: 'Sam', attachmentIds: [], replyToId: null, intentKey: null },
   );
   assert.deepEqual(
     validateChatRespondInput({ sessionId: STRONG_ID, message: 'Shared an attachment' }),
-    { message: 'Shared an attachment', userName: undefined, attachmentIds: undefined, replyToId: null },
+    { message: 'Shared an attachment', userName: undefined, attachmentIds: undefined, replyToId: null, intentKey: null },
   );
+});
+
+test('intentKey is optional and malformed values are ignored rather than rejected', () => {
+  assert.equal(validateChatRespondInput({ message: 'hi', intentKey: 'silver_joining' }).intentKey, 'silver_joining');
+  assert.equal(validateChatRespondInput({ message: 'hi', intentKey: '<script>' }).intentKey, null);
+  assert.equal(validateChatRespondInput({ message: 'hi', intentKey: 'a'.repeat(65) }).intentKey, null);
+  assert.equal(validateChatRespondInput({ message: 'hi', intentKey: 7 }).intentKey, null);
 });
 
 test('message length and whitespace limits', () => {

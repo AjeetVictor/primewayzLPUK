@@ -1,4 +1,5 @@
 import {
+  getTenantById,
   NEUTRAL_CHAT_TEAM_LABEL,
   resolveTenantChatPresentation,
 } from './platform/tenantRegistry.ts';
@@ -52,6 +53,13 @@ function formatQuickReplyTeamMember(teamLabel: string): string {
   return `the ${teamLabel}`;
 }
 
+/** Software-service wording that must never reach a reading_membership tenant's visitors. */
+const SOFTWARE_SERVICE_TEMPLATE_IDS: readonly QuickReplyTemplateId[] = [
+  'project_details',
+  'booking',
+  'plans_overview',
+];
+
 /**
  * Resolve Admin Chat quick-reply copy from the conversation's ChatSession.tenantId
  * (not the Admin filter). Unknown / null tenants get neutral wording — never UK defaults.
@@ -61,8 +69,9 @@ export function resolveQuickReplyTemplates(
 ): QuickReplyTemplate[] {
   const { teamLabel, businessHours } = resolveTenantChatPresentation(tenantId);
   const teamMember = formatQuickReplyTeamMember(teamLabel);
+  const profile = (tenantId ? getTenantById(tenantId)?.quickReplyProfile : undefined) ?? 'software_services';
 
-  return [
+  const templates: QuickReplyTemplate[] = [
     {
       id: 'follow_up',
       text: `Thanks for reaching out! A member of ${teamMember} will respond shortly.`,
@@ -84,6 +93,9 @@ export function resolveQuickReplyTemplates(
       text: 'Our monthly subscription plans start with a Foundation Sprint. Would you like an overview?',
     },
   ];
+  return profile === 'reading_membership'
+    ? templates.filter((template) => !SOFTWARE_SERVICE_TEMPLATE_IDS.includes(template.id))
+    : templates;
 }
 
 /**

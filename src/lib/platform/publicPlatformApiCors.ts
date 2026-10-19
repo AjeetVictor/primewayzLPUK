@@ -5,7 +5,7 @@
  */
 
 import type { Request, Response } from 'express';
-import { getTenantByOrigin, PLATFORM_TENANTS } from './tenantRegistry.ts';
+import { getTenantAllowedOrigins, getTenantByOrigin, isTenantActive, PLATFORM_TENANTS } from './tenantRegistry.ts';
 
 const PUBLIC_PLATFORM_EXACT_PATHS = new Set([
   '/api/platform/capabilities',
@@ -13,8 +13,8 @@ const PUBLIC_PLATFORM_EXACT_PATHS = new Set([
 ]);
 
 export function getPublicPlatformAllowedOrigins(): readonly string[] {
-  return PLATFORM_TENANTS.filter((tenant) => tenant.active).flatMap((tenant) => [
-    ...tenant.allowedOrigins,
+  return PLATFORM_TENANTS.filter((tenant) => isTenantActive(tenant)).flatMap((tenant) => [
+    ...getTenantAllowedOrigins(tenant),
   ]);
 }
 

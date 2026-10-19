@@ -264,11 +264,20 @@ function optionalReplyToId(body: Body): number | null {
   return value as number;
 }
 
+const INTENT_KEY_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/i;
+
+/** Malformed or unknown intent keys are ignored, never an error: the message is still delivered. */
+function optionalIntentKey(body: Body): string | null {
+  const value = body.intentKey;
+  return typeof value === 'string' && INTENT_KEY_PATTERN.test(value) ? value : null;
+}
+
 export function validateChatRespondInput(rawBody: unknown): {
   message: string;
   userName?: string;
   attachmentIds?: number[];
   replyToId: number | null;
+  intentKey: string | null;
 } {
   const body = asBody(rawBody);
   assertBoundedCampaignId(body);
@@ -281,6 +290,7 @@ export function validateChatRespondInput(rawBody: unknown): {
     userName: optionalBoundedString(body, 'userName', PUBLIC_CHAT_INPUT_LIMITS.name),
     attachmentIds: optionalAttachmentIds(body),
     replyToId: optionalReplyToId(body),
+    intentKey: optionalIntentKey(body),
   };
 }
 

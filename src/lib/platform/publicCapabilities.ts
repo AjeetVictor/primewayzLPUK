@@ -3,6 +3,7 @@
  * Never exposes secrets, webhook keys, or internal provider URIs.
  */
 
+import type { TenantChatWidgetConfig } from '../chat/tenantChatWidget.ts';
 import type { SourceContext } from './sourceContext.ts';
 import { getTenantById } from './tenantRegistry.ts';
 import {
@@ -30,6 +31,8 @@ export type PublicPlatformCapabilitiesResponse = {
     eventTypeKey: string | null;
     publicBookingUrl: string | null;
   };
+  /** Present only for tenants with tenant-owned chat branding; absent keeps widget defaults. */
+  chatWidget?: TenantChatWidgetConfig;
 };
 
 export function buildPublicPlatformCapabilities(
@@ -58,6 +61,7 @@ export function buildPublicPlatformCapabilities(
     },
     capabilities,
     scheduling,
+    ...(tenant.chatWidget && capabilities.chat ? { chatWidget: tenant.chatWidget } : {}),
   };
 }
 

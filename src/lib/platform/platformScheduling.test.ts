@@ -760,9 +760,11 @@ test('server offline bot reply uses tenant presentation (no constant Primewayz U
     server,
     /const OFFLINE_CHAT_BOT_REPLY[\s\S]*Primewayz UK team/,
   );
-  assert.match(server, /buildOfflineChatBotReply/);
   assert.match(server, /offlineChatBotReplyForTenant/);
   assert.match(server, /resolveTenantChatPresentation/);
+  assert.match(server, /resolveTenantBotReply\(sourceContext\.tenantId, intentKey\)/);
+  const botReply = readFileSync(new URL('../chat/tenantBotReply.ts', import.meta.url), 'utf8');
+  assert.match(botReply, /buildOfflineChatBotReply\(presentation\)/);
 });
 
 test('appointment confirmation copy uses resolved tenant businessHours', () => {

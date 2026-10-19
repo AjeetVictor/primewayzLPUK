@@ -11,7 +11,7 @@
  */
 
 import type { PrimewayzSourceChannel, SourceContext } from './sourceContext.ts';
-import { getTenantByHost, getTenantByOrigin, getTenantById } from './tenantRegistry.ts';
+import { getTenantByHost, getTenantByOrigin, getTenantById, isTenantActive } from './tenantRegistry.ts';
 import { tenantSupportsCapability, type TenantCapability } from './tenantCapabilities.ts';
 
 export class SourceResolutionError extends Error {
@@ -52,7 +52,7 @@ export function resolveSourceContext(input: {
       tenant = getTenantById('pw-uk');
     }
   }
-  if (!tenant || !tenant.active) {
+  if (!tenant || !isTenantActive(tenant)) {
     throw new SourceResolutionError('Request source is not a registered platform property.');
   }
   return {

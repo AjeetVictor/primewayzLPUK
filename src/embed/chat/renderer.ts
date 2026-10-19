@@ -3,13 +3,14 @@
  * written with textContent; no HTML strings are parsed anywhere in the widget.
  */
 
-import { getVisitorFacingSenderLabel } from '../../lib/chat/visitorChatIdentity.ts';
-import { PUBLIC_CHAT_INPUT_LIMITS } from '../../lib/chat/publicChatInputLimits.ts';
 import {
-  VISITOR_CHAT_REGION_NAME,
-  VISITOR_MESSAGE_STATUS_LABELS,
-} from '../../lib/chat/visitorChatUi.ts';
+  getVisitorFacingSenderLabel,
+  VISITOR_CHAT_HUMAN_JOINED_NOTICE,
+} from '../../lib/chat/visitorChatIdentity.ts';
+import { PUBLIC_CHAT_INPUT_LIMITS } from '../../lib/chat/publicChatInputLimits.ts';
+import { VISITOR_MESSAGE_STATUS_LABELS } from '../../lib/chat/visitorChatUi.ts';
 import type { VisitorChatMessage } from '../../lib/chat/visitorChatTypes.ts';
+import { PW_CHAT_THEME_PROPERTIES, type PwChatBranding } from './branding.ts';
 import type { PwChatIntentConfig } from './config.ts';
 import { PW_CHAT_STYLES } from './styles.ts';
 
@@ -56,11 +57,15 @@ function chatIcon(doc: Document): SVGSVGElement {
 
 export type PwChatDom = ReturnType<typeof buildPwChatDom>;
 
-export function buildPwChatDom(doc: Document, shadow: ShadowRoot) {
+export function buildPwChatDom(doc: Document, shadow: ShadowRoot, branding: PwChatBranding) {
   const style = el(doc, 'style');
   style.textContent = PW_CHAT_STYLES;
 
   const root = el(doc, 'div', 'pw-chat-root');
+  for (const [token, colour] of Object.entries(branding.theme)) {
+    const property = PW_CHAT_THEME_PROPERTIES[token as keyof typeof PW_CHAT_THEME_PROPERTIES];
+    if (property && colour) root.style.setProperty(property, colour);
+  }
 
   const launcher = el(doc, 'button', 'pw-chat-launcher');
   launcher.type = 'button';
@@ -97,7 +102,7 @@ export function buildPwChatDom(doc: Document, shadow: ShadowRoot) {
   header.append(heading, closeButton);
 
   const log = el(doc, 'div', 'pw-chat-log');
-  log.setAttribute('aria-label', `${VISITOR_CHAT_REGION_NAME} conversation`);
+  log.setAttribute('aria-label', `${branding.regionName} conversation`);
   log.tabIndex = 0;
   const intro = el(doc, 'div', 'pw-chat-intro');
   const introGreeting = el(doc, 'p', 'pw-chat-intro-greeting');
@@ -112,7 +117,7 @@ export function buildPwChatDom(doc: Document, shadow: ShadowRoot) {
   const leadForm = el(doc, 'form', 'pw-chat-lead');
   leadForm.hidden = true;
   leadForm.noValidate = true;
-  const leadTitle = el(doc, 'p', 'pw-chat-lead-title', 'Leave your details so the Primewayz team can follow up.');
+  const leadTitle = el(doc, 'p', 'pw-chat-lead-title', branding.leadPrompt);
   const leadName = el(doc, 'input', 'pw-chat-input');
   leadName.type = 'text';
   leadName.autocomplete = 'name';
@@ -201,16 +206,27 @@ export function renderIntents(
   }
 }
 
-function renderMessage(doc: Document, message: VisitorChatMessage): HTMLElement {
+export type PwChatSenderLabels = { assistant: string; team: string; humanJoinedNotice: string };
+
+function senderLabel(sender: string, labels: PwChatSenderLabels): string {
+  if (sender === 'bot') return labels.assistant;
+  if (sender === 'admin') return labels.team;
+  return getVisitorFacingSenderLabel(sender);
+}
+
+function renderMessage(doc: Document, message: VisitorChatMessage, labels: PwChatSenderLabels): HTMLElement {
   const item = el(doc, 'div', `pw-chat-msg pw-chat-msg--${message.sender}`);
   if (message.sender !== 'system') {
-    item.append(el(doc, 'span', 'pw-chat-msg-label', getVisitorFacingSenderLabel(message.sender)));
+    item.append(el(doc, 'span', 'pw-chat-msg-label', senderLabel(message.sender, labels)));
   }
   if (message.deletedAt) {
     item.append(el(doc, 'p', 'pw-chat-msg-text pw-chat-msg-deleted', 'This message was deleted.'));
     return item;
   }
-  if (message.text) item.append(el(doc, 'p', 'pw-chat-msg-text', message.text));
+  const textContent = message.sender === 'system' && message.text === VISITOR_CHAT_HUMAN_JOINED_NOTICE
+    ? labels.humanJoinedNotice
+    : message.text;
+  if (textContent) item.append(el(doc, 'p', 'pw-chat-msg-text', textContent));
   for (const attachment of message.attachments ?? []) {
     const name = typeof attachment?.originalName === 'string' ? attachment.originalName : 'file';
     item.append(el(doc, 'span', 'pw-chat-msg-meta', `Attachment: ${name}`));
@@ -226,9 +242,10 @@ export function renderMessages(
   log: HTMLElement,
   list: HTMLElement,
   messages: readonly VisitorChatMessage[],
+  labels: PwChatSenderLabels,
 ): void {
   const nearBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
-  list.replaceChildren(...messages.map((message) => renderMessage(doc, message)));
+  list.replaceChildren(...messages.map((message) => renderMessage(doc, message, labels)));
   if (nearBottom || messages[messages.length - 1]?.sender === 'user') {
     log.scrollTop = log.scrollHeight;
   }

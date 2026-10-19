@@ -92,13 +92,24 @@ function createDb() {
 
 // --- Test app mirroring the server.ts wiring (auth middleware faked) ---
 
-type TestAdminRequest = Request & { adminUser?: { id: number; role: string } };
+type TestAdminRequest = Request & {
+  adminUser?: {
+    id: number;
+    role: string;
+    isPlatformOwner: boolean;
+    tenantIds: string[];
+  };
+};
 
 function fakeRequireAdmin(req: TestAdminRequest, res: Response, next: NextFunction) {
-  if (!(req.get('cookie') ?? '').includes('primewayz_admin_token=ops')) {
+  const cookie = req.get('cookie') ?? '';
+  if (cookie.includes('primewayz_admin_token=ops')) {
+    req.adminUser = { id: 7, role: 'editor', isPlatformOwner: true, tenantIds: [] };
+  } else if (cookie.includes('primewayz_admin_token=tenant')) {
+    req.adminUser = { id: 8, role: 'editor', isPlatformOwner: false, tenantIds: ['pw-infotech'] };
+  } else {
     return res.status(401).json({ success: false, error: 'Not authenticated' });
   }
-  req.adminUser = { id: 7, role: 'editor' };
   return next();
 }
 
@@ -192,6 +203,28 @@ test('status: cross-tenant, legacy-outside-All, inactive-tenant and unknown sess
     assert.equal((await app.call('PATCH', `/api/admin/sessions/${UK}/status?tenantId=pw-uk`, { status: 'archived' })).status, 400);
     assert.equal(snapshot(app.db), before);
     assert.equal((await app.call('PATCH', `/api/admin/sessions/${LEGACY}/status?tenantId=all`, { status: 'closed' })).status, 200, 'legacy rows only under All entities');
+  } finally {
+    await app.close();
+  }
+});
+
+test('tenant operators cannot mutate another tenant or use all-tenant scope', async () => {
+  const app = await startApp();
+  try {
+    const before = snapshot(app.db);
+    const cookie = 'primewayz_admin_token=tenant';
+    const attempts: Array<[string, string, unknown]> = [
+      ['PATCH', `/api/admin/sessions/${UK}/status?tenantId=all`, { status: 'closed' }],
+      ['PATCH', `/api/admin/sessions/${UK}/status?tenantId=pw-uk`, { status: 'closed' }],
+      ['PATCH', '/api/admin/chat/messages/1?tenantId=all', { text: 'unauthorized' }],
+      ['DELETE', '/api/admin/chat/messages/1?tenantId=all', undefined],
+      ['PATCH', '/api/admin/chat-alerts/1/status?tenantId=all', { status: 'resolved' }],
+      ['PATCH', '/api/admin/chat/appointments/1?tenantId=all', { status: 'cancelled' }],
+    ];
+    for (const [method, path, body] of attempts) {
+      assert.equal((await app.call(method, path, body, cookie)).status, 403, `${method} ${path}`);
+    }
+    assert.equal(snapshot(app.db), before, 'denied mutations leave all rows unchanged');
   } finally {
     await app.close();
   }

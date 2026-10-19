@@ -1,0 +1,2 @@
+# Embed releases are pinned by SRI hash; store and check out byte-for-byte.
+embed-releases/** -text

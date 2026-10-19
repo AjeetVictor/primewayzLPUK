@@ -131,9 +131,10 @@ export function formatVisitorUnreadBadge(unreadCount: number): string | null {
 export function buildVisitorLauncherAriaLabel(params: {
   presence: VisitorPresenceTone;
   unreadCount: number;
+  launcherName?: string;
 }): string {
   const status = VISITOR_PRESENCE_STATUS_LABELS[params.presence];
-  const base = `${VISITOR_CHAT_LAUNCHER_NAME}. ${status}.`;
+  const base = `${params.launcherName ?? VISITOR_CHAT_LAUNCHER_NAME}. ${status}.`;
   if (params.unreadCount <= 0) return base;
   if (params.unreadCount === 1) return `${base} 1 unread reply.`;
   return `${base} ${params.unreadCount} unread replies.`;

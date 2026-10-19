@@ -188,7 +188,7 @@ test('admin presence rejects "All entities" and unknown tenants instead of aggre
   const helper = server.slice(server.indexOf('function resolveAdminPresenceTenantId'), server.indexOf("app.get('/api/admin/chat/availability'"));
   assert.match(helper, /tenantId = adminTenantId\(req\)/);
   assert.match(helper, /if \(!tenantId\) \{\s*res\.status\(400\)/);
-  assert.match(helper, /sourceResolutionFailure\(res, error\)/);
+  assert.match(helper, /adminTenantAccessFailure\(res, error\)/);
 });
 
 // --- D. Admin write isolation ---

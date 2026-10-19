@@ -302,9 +302,14 @@ export async function listAdminAuditLeads(
 export async function getAdminAuditLeadById(
   prisma: PrismaClient,
   id: number,
+  tenantId: string | 'all' = 'all',
 ): Promise<SafeAuditLeadDetail | null> {
   const lead = await prisma.toolLead.findFirst({
-    where: { id, source: AUDIT_LEAD_SOURCE },
+    where: {
+      id,
+      source: AUDIT_LEAD_SOURCE,
+      ...(tenantId === 'all' ? {} : { tenantId }),
+    },
   });
 
   if (!lead) return null;
@@ -328,9 +333,14 @@ export async function updateAdminAuditLeadStatus(
   prisma: PrismaClient,
   id: number,
   status: AuditLeadAdminStatus,
+  tenantId: string | 'all' = 'all',
 ): Promise<SafeAuditLeadDetail | null> {
   const lead = await prisma.toolLead.findFirst({
-    where: { id, source: AUDIT_LEAD_SOURCE },
+    where: {
+      id,
+      source: AUDIT_LEAD_SOURCE,
+      ...(tenantId === 'all' ? {} : { tenantId }),
+    },
   });
   if (!lead) return null;
 
@@ -360,12 +370,17 @@ export async function addAdminAuditLeadNote(
   prisma: PrismaClient,
   id: number,
   noteInput: unknown,
+  tenantId: string | 'all' = 'all',
 ): Promise<SafeAuditLeadDetail | null> {
   const note = sanitizeNoteText(noteInput);
   if (!note) return null;
 
   const lead = await prisma.toolLead.findFirst({
-    where: { id, source: AUDIT_LEAD_SOURCE },
+    where: {
+      id,
+      source: AUDIT_LEAD_SOURCE,
+      ...(tenantId === 'all' ? {} : { tenantId }),
+    },
   });
   if (!lead) return null;
 

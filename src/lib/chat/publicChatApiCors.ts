@@ -5,7 +5,7 @@
  */
 
 import type { Request, Response } from 'express';
-import { getTenantByOrigin, PRIMEWAYZ_TENANTS } from '../platform/tenantRegistry.ts';
+import { getTenantAllowedOrigins, getTenantByOrigin, isTenantActive, PRIMEWAYZ_TENANTS } from '../platform/tenantRegistry.ts';
 import { tenantSupportsCapability } from '../platform/tenantCapabilities.ts';
 
 /** Excludes POST /api/chat: that is the authenticated, same-origin admin reply endpoint. */
@@ -20,8 +20,8 @@ const PUBLIC_CHAT_EXACT_PATHS = new Set([
 
 export function getPublicChatAllowedOrigins(): readonly string[] {
   return PRIMEWAYZ_TENANTS
-    .filter((tenant) => tenant.active && tenantSupportsCapability(tenant.tenantId, 'chat'))
-    .flatMap((tenant) => [...tenant.allowedOrigins]);
+    .filter((tenant) => isTenantActive(tenant) && tenantSupportsCapability(tenant.tenantId, 'chat'))
+    .flatMap((tenant) => [...getTenantAllowedOrigins(tenant)]);
 }
 
 /** Exact Origin match against active chat-capable tenant allowedOrigins. Missing Origin is allowed (S2S / same-host). */

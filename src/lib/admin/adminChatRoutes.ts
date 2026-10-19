@@ -13,11 +13,11 @@
  */
 
 import type { Request, RequestHandler, Response } from 'express';
-import { resolveAdminTenantFilter } from '../platform/adminTenantFilter.ts';
 import { SourceResolutionError } from '../platform/sourceResolver.ts';
 import { getTenantById } from '../platform/tenantRegistry.ts';
 import { assertChatSessionIdShape, isPermittedAdminChatReplySender, PublicChatRequestError } from '../chat/publicChatGuards.ts';
 import { createTeamReply, type ChatConversationStore } from '../chat/chatConversationService.ts';
+import { AdminTenantAccessError, assertAdminTenantAccess, resolveAuthorizedAdminTenantFilter, type AdminTenantPrincipal } from './adminTenantAccess.ts';
 
 export class AdminChatAccessError extends Error {
   readonly status: number;
@@ -58,8 +58,15 @@ export type AdminChatRouteDeps = {
   logUnavailable(context: string, err: unknown): void;
 };
 
-export function requestedTenantFilter(req: Request): string | undefined {
-  return resolveAdminTenantFilter(typeof req.query.tenantId === 'string' ? req.query.tenantId : undefined);
+function adminPrincipal(req: Request & { adminUser?: AdminTenantPrincipal }): AdminTenantPrincipal {
+  if (!req.adminUser) {
+    throw new AdminTenantAccessError(401, 'admin_access_required', 'Authenticated admin access is required.');
+  }
+  return req.adminUser;
+}
+
+export function requestedTenantFilter(req: Request & { adminUser?: AdminTenantPrincipal }): string | undefined {
+  return resolveAuthorizedAdminTenantFilter(typeof req.query.tenantId === 'string' ? req.query.tenantId : undefined, adminPrincipal(req));
 }
 
 /**
@@ -70,10 +77,16 @@ export function requestedTenantFilter(req: Request): string | undefined {
 export function assertAdminCanAccessChatSession(
   session: AdminChatSessionOwnership | null,
   tenantFilter: string | undefined,
+  principal?: AdminTenantPrincipal,
 ): AdminChatSessionOwnership {
   if (!session) throw new AdminChatAccessError(404, 'chat_session_not_found', 'Chat session not found.');
   if (session.tenantId && !getTenantById(session.tenantId)?.active) {
     throw new AdminChatAccessError(403, 'tenant_not_permitted', 'This chat belongs to an inactive platform entity.');
+  }
+  if (principal) {
+    assertAdminTenantAccess(session.tenantId, principal);
+  } else if (!tenantFilter) {
+    throw new AdminChatAccessError(403, 'platform_owner_required', 'All-tenant chat access requires an authorized platform Host/Owner.');
   }
   if (tenantFilter && session.tenantId !== tenantFilter) {
     throw new AdminChatAccessError(403, 'tenant_scope_mismatch', 'This chat is outside the selected platform entity.');
@@ -85,9 +98,10 @@ async function loadAuthorisedSession(
   store: AdminChatStore,
   rawSessionId: unknown,
   tenantFilter: string | undefined,
+  principal: AdminTenantPrincipal,
 ): Promise<AdminChatSessionOwnership> {
   const sessionId = assertChatSessionIdShape(rawSessionId);
-  return assertAdminCanAccessChatSession(await store.findSessionOwnership(sessionId), tenantFilter);
+  return assertAdminCanAccessChatSession(await store.findSessionOwnership(sessionId), tenantFilter, principal);
 }
 
 function invalidReply(field: string, message: string): AdminChatAccessError {
@@ -160,6 +174,9 @@ export function createAdminChatFailureResponder(deps: Pick<AdminChatRouteDeps, '
     if (err instanceof AdminChatAccessError) {
       return res.status(err.status).json({ error: err.message, code: err.code });
     }
+    if (err instanceof AdminTenantAccessError) {
+      return res.status(err.status).json({ error: err.message, code: err.code });
+    }
     if (err instanceof PublicChatRequestError) {
       return res.status(err.status).json(err.toResponseBody());
     }
@@ -200,7 +217,8 @@ export function createAdminChatRouteHandlers(deps: AdminChatRouteDeps): {
 
     sessionHistory: async (req, res) => {
       try {
-        const session = await loadAuthorisedSession(store, req.params.sessionId, requestedTenantFilter(req));
+        const typedRequest = req as Request & { adminUser?: AdminTenantPrincipal };
+        const session = await loadAuthorisedSession(store, req.params.sessionId, requestedTenantFilter(typedRequest), adminPrincipal(typedRequest));
         res.json(await store.listSessionMessages(session.id));
       } catch (err) {
         fail(res, err, 'Admin chat history unavailable', { error: 'Chat is temporarily unavailable', unavailable: true });
@@ -210,7 +228,8 @@ export function createAdminChatRouteHandlers(deps: AdminChatRouteDeps): {
     reply: async (req, res) => {
       try {
         const input = validateAdminChatReplyInput(req.body);
-        await loadAuthorisedSession(store, input.sessionId, requestedTenantFilter(req));
+        const typedRequest = req as Request & { adminUser?: AdminTenantPrincipal };
+        await loadAuthorisedSession(store, input.sessionId, requestedTenantFilter(typedRequest), adminPrincipal(typedRequest));
         await assertAdminChatReferencesOwned(store, input);
         const { message } = await deps.conversations.transaction(async (tx) => {
           const session = await tx.findSession(input.sessionId);
