@@ -11,6 +11,30 @@ import { startPwChatWidget, type PwChatWidgetDeps, type PwChatWidgetHandle } fro
 
 const INSTALL_FLAG = '__primewayzChatEmbedInstalled';
 
+/**
+ * True only for the exact query value `pw_chat=open`.
+ * The flag is a convenience signal, not authorization. Never throws.
+ */
+export function readPwChatOpenQuery(search: unknown): boolean {
+  try {
+    if (typeof search !== 'string' || search.length === 0) return false;
+    return new URLSearchParams(search).get('pw_chat') === 'open';
+  } catch {
+    return false;
+  }
+}
+
+/** Reads `location.search` and applies `readPwChatOpenQuery`. Never throws. */
+export function readPwChatOpenFromWindow(
+  win: { location?: { search?: unknown } | null } | null | undefined,
+): boolean {
+  try {
+    return readPwChatOpenQuery(win?.location?.search);
+  } catch {
+    return false;
+  }
+}
+
 export type PrimewayzChatPublicApi = Readonly<{
   version: string;
   open: () => void;
@@ -70,6 +94,9 @@ export function installPrimewayzChat(
   } catch {
     // A host script already owns the name; the widget still boots.
   }
+
+  // Queue through the same pendingOpen path as PrimewayzChat.open(). Close() can still cancel it.
+  if (readPwChatOpenFromWindow(win)) publicApi.open();
 
   const boot = async (): Promise<PwChatWidgetHandle | null> => {
     try {
