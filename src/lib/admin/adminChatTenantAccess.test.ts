@@ -10,7 +10,12 @@ import {
   createAdminChatRouteHandlers,
   type AdminChatStore,
 } from './adminChatRoutes.ts';
-import type { ChatConversationStore, ChatConversationTx } from '../chat/chatConversationService.ts';
+import {
+  advanceConversationStatus,
+  resolveConversation,
+  type ChatConversationStore,
+  type ChatConversationTx,
+} from '../chat/chatConversationService.ts';
 import { createAdminRequestOriginMiddleware, getAdminAllowedOrigins } from './adminRequestOrigin.ts';
 import { resolveSourceContext, SourceResolutionError } from '../platform/sourceResolver.ts';
 import { validateExistingOrNewChatSessionId } from '../chat/publicChatGuards.ts';
@@ -579,6 +584,82 @@ test('unanswered visitor messages stay visible when status is bot_replied', asyn
     else process.env.RRB_SILVER_CAMPAIGN_ENABLED = savedEnabled;
     if (savedOrigins === undefined) delete process.env.RRB_SILVER_CAMPAIGN_ALLOWED_ORIGINS;
     else process.env.RRB_SILVER_CAMPAIGN_ALLOWED_ORIGINS = savedOrigins;
+    await app.close();
+  }
+});
+
+test('needsAttention clears after an authorised reply or resolution and returns for a new visitor message', async () => {
+  const app = await startAdminApp();
+  try {
+    const sessionAttention = async (tenantId: string, sessionId: string) => {
+      const listed = await app.call('GET', `/api/admin/sessions?tenantId=${tenantId}`, ops);
+      assert.equal(listed.status, 200);
+      const session = listed.json.find((row: { id: string }) => row.id === sessionId);
+      assert.ok(session, sessionId);
+      return session as { id: string; status: string; needsAttention: boolean };
+    };
+
+    assert.equal((await sessionAttention('pw-uk', UK_SESSION)).needsAttention, true);
+
+    const note = await app.call('POST', '/api/chat?tenantId=pw-uk', {
+      ...ops,
+      body: { sessionId: UK_SESSION, sender: 'admin', text: 'internal only', isInternalNote: true },
+    });
+    assert.equal(note.status, 201);
+    assert.equal((await sessionAttention('pw-uk', UK_SESSION)).needsAttention, true, 'an internal note does not clear attention');
+
+    const reply = await app.call('POST', '/api/chat?tenantId=pw-uk', {
+      ...ops,
+      body: { sessionId: UK_SESSION, sender: 'admin', text: 'We can help with that' },
+    });
+    assert.equal(reply.status, 201);
+    const cleared = await sessionAttention('pw-uk', UK_SESSION);
+    assert.equal(cleared.status, 'admin_replied');
+    assert.equal(cleared.needsAttention, false, 'an authorised human reply clears attention');
+    assert.equal(app.db.messages.find((message) => message.id === 1)!.answered, true);
+
+    app.db.messages.push({
+      id: 900,
+      sessionId: UK_SESSION,
+      sender: 'user',
+      text: 'One more question',
+      isInternalNote: false,
+      answered: false,
+      replyToId: null,
+      timestamp: new Date(),
+    });
+    await advanceConversationStatus(app.db.conversations, UK_SESSION, 'admin_needed');
+    await advanceConversationStatus(app.db.conversations, UK_SESSION, 'bot_replied');
+    const returned = await sessionAttention('pw-uk', UK_SESSION);
+    assert.equal(returned.status, 'bot_replied');
+    assert.equal(returned.needsAttention, true, 'a new unanswered visitor message returns attention');
+
+    const infotechBefore = await sessionAttention('pw-infotech', INFOTECH_SESSION);
+    assert.equal(infotechBefore.needsAttention, true);
+    const resolved = await resolveConversation(app.db.conversations, {
+      session: (await app.db.conversations.findSession(INFOTECH_SESSION))!,
+    });
+    assert.equal(resolved.toStatus, 'closed');
+    const resolvedRow = await sessionAttention('pw-infotech', INFOTECH_SESSION);
+    assert.equal(resolvedRow.status, 'closed');
+    assert.equal(resolvedRow.needsAttention, false, 'resolution clears attention');
+    assert.equal(app.db.messages.find((message) => message.id === 2)!.answered, false, 'resolution does not rewrite the visitor message');
+
+    app.db.messages.push({
+      id: 901,
+      sessionId: INFOTECH_SESSION,
+      sender: 'user',
+      text: 'Still here',
+      isInternalNote: false,
+      answered: false,
+      replyToId: null,
+      timestamp: new Date(),
+    });
+    await advanceConversationStatus(app.db.conversations, INFOTECH_SESSION, 'bot_replied');
+    const stillClosed = await sessionAttention('pw-infotech', INFOTECH_SESSION);
+    assert.equal(stillClosed.status, 'closed');
+    assert.equal(stillClosed.needsAttention, false, 'a closed conversation stays out of the queue');
+  } finally {
     await app.close();
   }
 });

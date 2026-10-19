@@ -83,6 +83,45 @@ test('record ownership checks reject legacy, inactive, and unassigned tenants fo
   assert.doesNotThrow(() => assertAdminTenantAccess(null, platformAdmin));
 });
 
+test('operational filtering keeps pw-uk, pw-infotech and rrb in filters and grants while Silver is disabled', () => {
+  const liveTenants = ['pw-uk', 'pw-infotech', 'rrb'] as const;
+  const disabledSilverEnvs: NodeJS.ProcessEnv[] = [
+    {},
+    {
+      RRB_SILVER_CAMPAIGN_ENABLED: 'false',
+      RRB_SILVER_CAMPAIGN_ALLOWED_ORIGINS: 'https://silver-preview.example.test',
+    },
+  ];
+  const operator = {
+    id: 9,
+    role: 'editor',
+    isPlatformOwner: false,
+    tenantIds: [...liveTenants, 'pw-us', 'rrb-silver-campaign'],
+  };
+
+  for (const env of disabledSilverEnvs) {
+    assert.deepEqual(
+      listAuthorizedAdminTenantOptions(platformAdmin, env).map((option) => option.value),
+      [...liveTenants, 'all'],
+    );
+    assert.deepEqual(
+      listAuthorizedAdminTenantOptions(operator, env).map((option) => option.value),
+      [...liveTenants],
+    );
+    assert.deepEqual(validateTenantGrants([...liveTenants], env), [...liveTenants]);
+    for (const tenantId of liveTenants) {
+      assert.equal(resolveAuthorizedAdminTenantFilter(tenantId, platformAdmin, env), tenantId);
+      assert.equal(resolveAuthorizedAdminTenantFilter(tenantId, operator, env), tenantId);
+      assert.doesNotThrow(() => assertAdminTenantAccess(tenantId, operator, env));
+    }
+    assert.throws(() => validateTenantGrants(['rrb-silver-campaign'], env), { code: 'invalid_tenant_grants' });
+    assert.throws(
+      () => resolveAuthorizedAdminTenantFilter('rrb-silver-campaign', platformAdmin, env),
+      { code: 'invalid_tenant_filter' },
+    );
+  }
+});
+
 test('grant validation accepts unique active tenants and rejects unknown or inactive IDs', () => {
   assert.deepEqual(validateTenantGrants(['rrb', 'pw-uk', 'rrb']), ['rrb', 'pw-uk']);
   assert.throws(() => validateTenantGrants(['pw-us']), {
