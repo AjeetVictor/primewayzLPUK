@@ -8,6 +8,7 @@ import { VISITOR_CHAT_PROHIBITED_ANALYTICS_KEYS } from '../../lib/chat/visitorCh
 import { PW_CHAT_EMBED_ANALYTICS_EVENTS } from './analytics.ts';
 import { PW_CHAT_FORBIDDEN_PAYLOAD_KEYS } from './apiClient.ts';
 import { installPrimewayzChat } from './install.ts';
+import { PW_CHAT_EMBED_VERSION } from './version.ts';
 import type { PwChatWidgetHandle } from './widget.ts';
 
 type HostWindow = Window & typeof globalThis;
@@ -1008,6 +1009,228 @@ test('mobile: the panel does not auto-reopen on a phone even when the campaign p
   win.sessionStorage.setItem('rrb_silver_chat_panel_open', 'true');
   const { handle } = await boot(win, silverBackend());
   assert.equal(q(handle!, '.pw-chat-panel')!.hidden, true);
+});
+
+// --- Email deep link (?pw_chat=open) ---
+
+type PublicChat = { version: string; open: () => void; close: () => void };
+const publicChat = (win: HostWindow) => (win as unknown as { PrimewayzChat: PublicChat }).PrimewayzChat;
+
+test('deep link: exact pw_chat=open opens after init and keeps utm attribution only', async () => {
+  const win = createWindow({
+    url: 'https://www.primewayz.com/?pw_chat=open&utm_source=email&utm_medium=signature&token=secret&email=a%40b.com',
+  });
+  const events: string[] = [];
+  const { handle, backend } = await boot(win, createBackend(), (name) => events.push(name));
+  assert.ok(handle);
+  assert.equal(publicChat(win).version, PW_CHAT_EMBED_VERSION);
+  assert.equal(win.document.getElementById('pw-chat-root')!.getAttribute('data-pw-chat-version'), PW_CHAT_EMBED_VERSION);
+  assert.equal(q(handle, '.pw-chat-panel')!.hidden, false);
+  assert.equal(q(handle, '.pw-chat-launcher')!.getAttribute('aria-expanded'), 'true');
+  await flush();
+  const heartbeat = posts(backend.calls, '/api/chat/heartbeat')[0]!.body!;
+  assert.equal(heartbeat.currentPageUrl, 'https://www.primewayz.com/?utm_source=email&utm_medium=signature');
+  assert.equal(heartbeat.utmSource, 'email');
+  assert.equal(heartbeat.utmMedium, 'signature');
+  assert.equal('utmCampaign' in heartbeat, false);
+  assert.equal('pw_chat' in heartbeat, false);
+  const serialized = JSON.stringify(heartbeat);
+  for (const secret of ['pw_chat', 'token', 'secret', 'a@b.com', 'email=']) {
+    assert.equal(serialized.includes(secret), false, secret);
+  }
+  assert.deepEqual(events, ['chat_open']);
+  publicChat(win).open();
+  handle.open();
+  await flush();
+  assert.deepEqual(events, ['chat_open']);
+});
+
+test('deep link: no pw_chat parameter leaves the panel closed', async () => {
+  const win = createWindow({ url: 'https://www.primewayz.com/?utm_source=email&utm_medium=signature' });
+  const events: string[] = [];
+  const { handle, backend } = await boot(win, createBackend(), (name) => events.push(name));
+  assert.ok(handle);
+  assert.equal(q(handle, '.pw-chat-panel')!.hidden, true);
+  assert.equal(win.localStorage.length, 0);
+  assert.equal(win.sessionStorage.getItem('primewayz_chat_panel_open'), null);
+  assert.equal(posts(backend.calls, '/api/chat/heartbeat').length, 0);
+  assert.deepEqual(events, []);
+});
+
+for (const search of [
+  '?pw_chat=OPEN',
+  '?pw_chat=Open',
+  '?pw_chat=true',
+  '?pw_chat=1',
+  '?pw_chat=opened',
+  '?pw_chat=',
+  '?pw_chat=open%20',
+  '?PW_chat=open',
+  '?chat=open',
+  '?pw_chat=closed&pw_chat=open',
+]) {
+  test(`deep link: ${search} does not open the widget`, async () => {
+    const win = createWindow({ url: `https://www.primewayz.com/${search}` });
+    const events: string[] = [];
+    const { handle } = await boot(win, createBackend(), (name) => events.push(name));
+    assert.ok(handle);
+    assert.equal(q(handle, '.pw-chat-panel')!.hidden, true);
+    assert.equal(win.localStorage.length, 0);
+    assert.equal(win.sessionStorage.getItem('primewayz_chat_panel_open'), null);
+    assert.deepEqual(events, []);
+  });
+}
+
+test('deep link: denied capability prevents opening', async () => {
+  const win = createWindow({ url: 'https://www.primewayz.com/?pw_chat=open&utm_source=email' });
+  const events: string[] = [];
+  const backend = createBackend({
+    'GET /api/platform/capabilities': () => ({ status: 200, body: { capabilities: { chat: false, scheduling: true } } }),
+  });
+  const { handle } = await boot(win, backend, (name) => events.push(name));
+  assert.equal(handle, null);
+  assert.equal(win.document.getElementById('pw-chat-root'), null);
+  assert.deepEqual(backend.calls.map((call) => call.path), ['/api/platform/capabilities']);
+  assert.equal(win.localStorage.length, 0);
+  assert.deepEqual(events, []);
+});
+
+test('deep link: site-key mismatch prevents opening', async () => {
+  const win = createWindow({
+    config: { ...SILVER_CONFIG, siteKey: 'primewayz-infotech' },
+    url: 'https://www.primewayz.com/?pw_chat=open&utm_source=email',
+  });
+  const events: string[] = [];
+  const backend = silverBackend();
+  const { handle } = await boot(win, backend, (name) => events.push(name));
+  assert.equal(handle, null);
+  assert.equal(win.document.getElementById('pw-chat-root'), null);
+  assert.deepEqual(backend.calls.map((call) => call.path), ['/api/platform/capabilities']);
+  assert.deepEqual(events, []);
+});
+
+test('deep link: availability 403 prevents opening', async () => {
+  const win = createWindow({ url: 'https://www.primewayz.com/?pw_chat=open' });
+  const events: string[] = [];
+  const backend = createBackend({
+    'GET /api/chat/availability': () => ({ status: 403, body: { error: 'Origin is not allowed.' } }),
+  });
+  const { handle } = await boot(win, backend, (name) => events.push(name));
+  assert.equal(handle, null);
+  assert.equal(win.document.getElementById('pw-chat-root'), null);
+  assert.deepEqual(events, []);
+  assert.equal(win.localStorage.length, 0);
+});
+
+test('deep link: missing config does not open a widget', async () => {
+  const win = createWindow({ config: null, url: 'https://www.primewayz.com/?pw_chat=open' });
+  const { handle, backend } = await boot(win);
+  assert.equal(handle, null);
+  assert.equal(win.document.getElementById('pw-chat-root'), null);
+  assert.equal(backend.calls.length, 0);
+});
+
+test('deep link: mobile pw_chat=open opens the sheet; the session flag alone does not', async () => {
+  const closed = createWindow({ width: 400, url: 'https://www.primewayz.com/?utm_source=email&utm_medium=signature' });
+  closed.sessionStorage.setItem('primewayz_chat_panel_open', 'true');
+  const withoutFlag = await boot(closed);
+  assert.equal(q(withoutFlag.handle!, '.pw-chat-panel')!.hidden, true);
+  assert.equal(closed.document.body.style.position, '');
+
+  const opened = createWindow({
+    width: 390,
+    url: 'https://www.primewayz.com/?pw_chat=open&utm_source=email&utm_medium=signature&token=secret',
+  });
+  const events: string[] = [];
+  const withFlag = await boot(opened, createBackend(), (name) => events.push(name));
+  assert.equal(q(withFlag.handle!, '.pw-chat-panel')!.hidden, false);
+  assert.equal(opened.document.body.style.position, 'fixed');
+  assert.equal(q(withFlag.handle!, '.pw-chat-launcher')!.hidden, true);
+  await flush();
+  const heartbeat = posts(withFlag.backend.calls, '/api/chat/heartbeat')[0]!.body!;
+  assert.equal(heartbeat.currentPageUrl, 'https://www.primewayz.com/?utm_source=email&utm_medium=signature');
+  assert.equal(heartbeat.utmSource, 'email');
+  assert.equal(heartbeat.utmMedium, 'signature');
+  assert.equal(JSON.stringify(heartbeat).includes('token'), false);
+  assert.deepEqual(events, ['chat_open']);
+});
+
+test('deep link: desktop session restoration still reopens when pw_chat is absent', async () => {
+  const win = createWindow({ url: 'https://primewayz.com/services/?utm_source=email&token=secret' });
+  win.sessionStorage.setItem('primewayz_chat_panel_open', 'true');
+  const events: string[] = [];
+  const { handle, backend } = await boot(win, createBackend(), (name) => events.push(name));
+  assert.equal(q(handle!, '.pw-chat-panel')!.hidden, false);
+  assert.deepEqual(events, ['chat_open']);
+  await flush();
+  const heartbeat = posts(backend.calls, '/api/chat/heartbeat')[0]!.body!;
+  assert.equal(heartbeat.currentPageUrl, 'https://primewayz.com/services/?utm_source=email');
+  assert.equal(JSON.stringify(heartbeat).includes('token'), false);
+});
+
+test('deep link: desktop restore plus pw_chat=open records a single chat_open', async () => {
+  const win = createWindow({ url: 'https://www.primewayz.com/services/?pw_chat=open&utm_source=email&token=secret' });
+  win.sessionStorage.setItem('primewayz_chat_panel_open', 'true');
+  const events: string[] = [];
+  const { handle, backend } = await boot(win, createBackend(), (name) => events.push(name));
+  assert.equal(q(handle!, '.pw-chat-panel')!.hidden, false);
+  assert.deepEqual(events, ['chat_open']);
+  publicChat(win).open();
+  handle!.open();
+  await flush();
+  assert.deepEqual(events, ['chat_open']);
+  const heartbeat = posts(backend.calls, '/api/chat/heartbeat')[0]!.body!;
+  assert.equal(heartbeat.currentPageUrl, 'https://www.primewayz.com/services/?utm_source=email');
+  assert.equal(JSON.stringify(heartbeat).includes('pw_chat'), false);
+  assert.equal(JSON.stringify(heartbeat).includes('secret'), false);
+});
+
+test('deep link: PrimewayzChat.close before initialization cancels the pending open', async () => {
+  const win = createWindow({ url: 'https://www.primewayz.com/?pw_chat=open&utm_source=email' });
+  const backend = createBackend();
+  const events: string[] = [];
+  const pending = installPrimewayzChat(win, {
+    fetchImpl: backend.fetchImpl,
+    timers: nodeTimers,
+    analyticsSink: (name) => events.push(name),
+  });
+  assert.ok(pending);
+  publicChat(win).close();
+  const handle = await pending;
+  if (handle) liveHandles.push(handle);
+  await flush();
+  assert.ok(handle);
+  assert.equal(q(handle, '.pw-chat-panel')!.hidden, true);
+  assert.equal(q(handle, '.pw-chat-launcher')!.hidden, false);
+  assert.equal(win.sessionStorage.getItem('primewayz_chat_panel_open'), null);
+  assert.equal(win.localStorage.length, 0);
+  assert.equal(posts(backend.calls, '/api/chat/heartbeat').length, 0);
+  assert.deepEqual(events, []);
+});
+
+test('deep link: programmatic PrimewayzChat.open still opens when the query is absent', async () => {
+  const win = createWindow({ url: 'https://primewayz.com/contact/' });
+  const backend = createBackend();
+  const events: string[] = [];
+  const pending = installPrimewayzChat(win, {
+    fetchImpl: backend.fetchImpl,
+    timers: nodeTimers,
+    analyticsSink: (name) => events.push(name),
+  });
+  assert.ok(pending);
+  publicChat(win).open();
+  const handle = await pending;
+  if (handle) liveHandles.push(handle);
+  await flush();
+  assert.ok(handle);
+  assert.equal(q(handle, '.pw-chat-panel')!.hidden, false);
+  assert.deepEqual(events, ['chat_open']);
+  publicChat(win).close();
+  assert.equal(q(handle, '.pw-chat-panel')!.hidden, true);
+  publicChat(win).open();
+  await flush();
+  assert.equal(q(handle, '.pw-chat-panel')!.hidden, false);
+  assert.deepEqual(events, ['chat_open']);
 });
 
 test('branding: tenants without chatWidget keep the existing Primewayz widget unchanged', async () => {

@@ -28,6 +28,8 @@ import {
   type PwChatApiResult,
 } from './apiClient.ts';
 import { DEFAULT_PW_CHAT_STORAGE_KEYS, normalizeApiBaseUrl, parsePwChatConfig } from './config.ts';
+import { readPwChatOpenFromWindow, readPwChatOpenQuery } from './install.ts';
+import { PW_CHAT_EMBED_VERSION } from './version.ts';
 import { computeLauncherBottom, rectsIntersect } from './layout.ts';
 import { resolvePwChatBookingUrl, toAttributionPageUrl } from './widget.ts';
 import { DEFAULT_CHAT_AVAILABILITY } from '../../lib/chat/visitorChatTypes.ts';
@@ -283,7 +285,56 @@ test('attribution: page URL keeps origin, path and utm_* only', () => {
     toAttributionPageUrl('https://primewayz.com/services/?utm_source=li&token=secret&email=a%40b.com#top'),
     'https://primewayz.com/services/?utm_source=li',
   );
+  assert.equal(
+    toAttributionPageUrl('https://www.primewayz.com/?pw_chat=open&utm_source=email&utm_medium=signature&token=secret&email=a%40b.com'),
+    'https://www.primewayz.com/?utm_source=email&utm_medium=signature',
+  );
   assert.equal(toAttributionPageUrl('https://primewayz.com/'), 'https://primewayz.com/');
+});
+
+test('version: current embed artifact is 1.2.0', () => {
+  assert.equal(PW_CHAT_EMBED_VERSION, '1.2.0');
+});
+
+test('deep link query: only the exact value open is accepted', () => {
+  assert.equal(readPwChatOpenQuery('?pw_chat=open'), true);
+  assert.equal(readPwChatOpenQuery('pw_chat=open'), true);
+  assert.equal(readPwChatOpenQuery('?utm_source=email&pw_chat=open&utm_medium=signature'), true);
+  assert.equal(readPwChatOpenQuery(''), false);
+  assert.equal(readPwChatOpenQuery(undefined), false);
+  assert.equal(readPwChatOpenQuery(null), false);
+  assert.equal(readPwChatOpenQuery('?utm_source=email&utm_medium=signature'), false);
+  assert.equal(readPwChatOpenQuery('?PW_chat=open'), false);
+  assert.equal(readPwChatOpenQuery('?chat=open'), false);
+  assert.equal(readPwChatOpenQuery('?pw_chat=open&pw_chat=closed'), true);
+  assert.equal(readPwChatOpenQuery('?pw_chat=closed&pw_chat=open'), false);
+  for (const value of ['OPEN', 'Open', 'true', '1', 'opened', 'open ', ' open', '']) {
+    assert.equal(readPwChatOpenQuery(`?pw_chat=${encodeURIComponent(value)}`), false, JSON.stringify(value));
+  }
+});
+
+test('deep link query: unavailable or throwing location data does not throw', () => {
+  assert.equal(readPwChatOpenFromWindow(null), false);
+  assert.equal(readPwChatOpenFromWindow(undefined), false);
+  assert.equal(readPwChatOpenFromWindow({}), false);
+  assert.equal(readPwChatOpenFromWindow({ location: null }), false);
+  assert.equal(readPwChatOpenFromWindow({ location: {} }), false);
+  assert.equal(readPwChatOpenFromWindow({ location: { search: 1 } }), false);
+  assert.equal(readPwChatOpenFromWindow({ location: { search: '?pw_chat=open' } }), true);
+  const blocked: { location?: { search: string } } = {};
+  Object.defineProperty(blocked, 'location', {
+    get() {
+      throw new Error('SecurityError');
+    },
+  });
+  assert.equal(readPwChatOpenFromWindow(blocked), false);
+  const malformedSearch: { search?: string } = {};
+  Object.defineProperty(malformedSearch, 'search', {
+    get() {
+      throw new Error('malformed');
+    },
+  });
+  assert.equal(readPwChatOpenFromWindow({ location: malformedSearch }), false);
 });
 
 // --- Shared history helpers ---

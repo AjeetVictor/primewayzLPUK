@@ -1,2 +1,2 @@
 /** Bump on every artifact change vendored into the WordPress plugin (semver). */
-export const PW_CHAT_EMBED_VERSION = '1.1.0';
+export const PW_CHAT_EMBED_VERSION = '1.2.0';
