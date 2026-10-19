@@ -264,6 +264,22 @@ export function getTenantAllowedOrigins(
   return [...new Set([...tenant.allowedOrigins, ...configured])];
 }
 
+/**
+ * A tenant can be offered in admin filters and grants only when it is active and has at
+ * least one allowed origin. Activation without a usable origin is not operational.
+ */
+export function isTenantOperational(
+  tenant: PlatformTenantConfig,
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return isTenantActive(tenant, env) && getTenantAllowedOrigins(tenant, env).length > 0;
+}
+
+export type AdminTenantOption = {
+  value: string;
+  label: string;
+};
+
 export function getTenantByOrigin(
   origin: string,
   env: NodeJS.ProcessEnv = process.env,
@@ -327,16 +343,19 @@ export function resolveTenantTimeZone(tenantId: string | null | undefined): stri
   return configured ?? NEUTRAL_TENANT_TIMEZONE;
 }
 
-/** Live admin filters: active tenants only, plus All entities. Inactive markets stay registered but unselectable. */
-export function getAdminTenantFilterOptions(env: NodeJS.ProcessEnv = process.env) {
+/** Live admin filters: operational tenants only, plus All entities. Inactive markets stay registered but unselectable. */
+export function getAdminTenantFilterOptions(env: NodeJS.ProcessEnv = process.env): AdminTenantOption[] {
   return [
-    ...PLATFORM_TENANTS.filter((tenant) => isTenantActive(tenant, env)).map((tenant) => ({
+    ...PLATFORM_TENANTS.filter((tenant) => isTenantOperational(tenant, env)).map((tenant) => ({
       value: tenant.tenantId,
       label: tenant.displayName,
     })),
     { value: 'all', label: 'All entities' },
-  ] as const;
+  ];
 }
 
-// Browser bundles cannot read server activation flags, so activation-controlled tenants stay hidden.
+/**
+ * Empty-env snapshot for the client bundle. It cannot see server activation flags, so the
+ * live admin UI must replace it with the authenticated server list.
+ */
 export const ADMIN_TENANT_FILTER_OPTIONS = getAdminTenantFilterOptions({});

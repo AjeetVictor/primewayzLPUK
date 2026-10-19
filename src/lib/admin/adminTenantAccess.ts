@@ -1,4 +1,9 @@
-import { getTenantById, isTenantActive } from '../platform/tenantRegistry.ts';
+import {
+  getAdminTenantFilterOptions,
+  getTenantById,
+  isTenantOperational,
+  type AdminTenantOption,
+} from '../platform/tenantRegistry.ts';
 
 export type AdminTenantPrincipal = {
   id: number;
@@ -19,8 +24,25 @@ export class AdminTenantAccessError extends Error {
   }
 }
 
-function activeGrantedTenantIds(principal: AdminTenantPrincipal): string[] {
-  return [...new Set(principal.tenantIds)].filter((tenantId) => Boolean(getTenantById(tenantId) && isTenantActive(getTenantById(tenantId)!)));
+function activeGrantedTenantIds(
+  principal: AdminTenantPrincipal,
+  env: NodeJS.ProcessEnv = process.env,
+): string[] {
+  return [...new Set(principal.tenantIds)].filter((tenantId) => {
+    const tenant = getTenantById(tenantId);
+    return Boolean(tenant && isTenantOperational(tenant, env));
+  });
+}
+
+/** Host/Owner sees every operational tenant. Operators see only their current grants. */
+export function listAuthorizedAdminTenantOptions(
+  principal: AdminTenantPrincipal,
+  env: NodeJS.ProcessEnv = process.env,
+): AdminTenantOption[] {
+  const operational = getAdminTenantFilterOptions(env);
+  if (principal.isPlatformOwner) return operational;
+  const granted = new Set(activeGrantedTenantIds(principal, env));
+  return operational.filter((option) => option.value !== 'all' && granted.has(option.value));
 }
 
 /**
@@ -31,6 +53,7 @@ function activeGrantedTenantIds(principal: AdminTenantPrincipal): string[] {
 export function resolveAuthorizedAdminTenantFilter(
   requested: string | undefined | null,
   principal: AdminTenantPrincipal | null | undefined,
+  env: NodeJS.ProcessEnv = process.env,
 ): string | undefined {
   if (!principal) {
     throw new AdminTenantAccessError(401, 'admin_access_required', 'Authenticated admin access is required.');
@@ -46,7 +69,7 @@ export function resolveAuthorizedAdminTenantFilter(
 
   if (!requestedValue) {
     if (principal.isPlatformOwner) return 'pw-uk';
-    const tenantIds = activeGrantedTenantIds(principal);
+    const tenantIds = activeGrantedTenantIds(principal, env);
     if (tenantIds.length === 1) return tenantIds[0];
     if (tenantIds.length > 1) {
       throw new AdminTenantAccessError(400, 'tenant_selection_required', 'Select one of your assigned tenants.');
@@ -55,11 +78,11 @@ export function resolveAuthorizedAdminTenantFilter(
   }
 
   const tenant = getTenantById(requestedValue);
-  if (!tenant || !isTenantActive(tenant)) {
+  if (!tenant || !isTenantOperational(tenant, env)) {
     throw new AdminTenantAccessError(400, 'invalid_tenant_filter', 'Unknown or inactive tenant filter.');
   }
   const tenantId = tenant.tenantId;
-  if (!principal.isPlatformOwner && !activeGrantedTenantIds(principal).includes(tenantId)) {
+  if (!principal.isPlatformOwner && !activeGrantedTenantIds(principal, env).includes(tenantId)) {
     throw new AdminTenantAccessError(403, 'tenant_access_denied', 'This account is not assigned to the selected tenant.');
   }
   return tenantId;
@@ -69,22 +92,29 @@ export function resolveAuthorizedAdminTenantFilter(
 export function assertAdminTenantAccess(
   tenantId: string | null | undefined,
   principal: AdminTenantPrincipal | null | undefined,
+  env: NodeJS.ProcessEnv = process.env,
 ): void {
   if (!principal) {
     throw new AdminTenantAccessError(401, 'admin_access_required', 'Authenticated admin access is required.');
   }
   if (principal.isPlatformOwner) return;
-  if (!tenantId || !activeGrantedTenantIds(principal).includes(tenantId)) {
+  if (!tenantId || !activeGrantedTenantIds(principal, env).includes(tenantId)) {
     throw new AdminTenantAccessError(403, 'tenant_access_denied', "This record is outside the account's assigned tenants.");
   }
 }
 
-export function validateTenantGrants(tenantIds: unknown): string[] {
+export function validateTenantGrants(
+  tenantIds: unknown,
+  env: NodeJS.ProcessEnv = process.env,
+): string[] {
   if (!Array.isArray(tenantIds) || !tenantIds.every((tenantId) => typeof tenantId === 'string')) {
     throw new AdminTenantAccessError(400, 'invalid_tenant_grants', 'tenantIds must be an array of active tenant IDs.');
   }
   const unique = [...new Set(tenantIds)];
-  if (unique.some((tenantId) => !Boolean(getTenantById(tenantId) && isTenantActive(getTenantById(tenantId)!)))) {
+  if (unique.some((tenantId) => {
+    const tenant = getTenantById(tenantId);
+    return !tenant || !isTenantOperational(tenant, env);
+  })) {
     throw new AdminTenantAccessError(400, 'invalid_tenant_grants', 'Tenant grants must reference active tenants.');
   }
   return unique;

@@ -17,6 +17,7 @@ import { SourceResolutionError } from '../platform/sourceResolver.ts';
 import { getTenantById } from '../platform/tenantRegistry.ts';
 import { assertChatSessionIdShape, isPermittedAdminChatReplySender, PublicChatRequestError } from '../chat/publicChatGuards.ts';
 import { createTeamReply, type ChatConversationStore } from '../chat/chatConversationService.ts';
+import { annotateAdminSessionsWithAttention } from './adminChatAttention.ts';
 import { AdminTenantAccessError, assertAdminTenantAccess, resolveAuthorizedAdminTenantFilter, type AdminTenantPrincipal } from './adminTenantAccess.ts';
 
 export class AdminChatAccessError extends Error {
@@ -47,6 +48,7 @@ export type AdminChatStore = {
   listMessages(filter: { tenantId?: string }): Promise<unknown[]>;
   listSessionMessages(sessionId: string): Promise<unknown[]>;
   listSessions(filter: { tenantId?: string }): Promise<unknown[]>;
+  countUnansweredVisitorMessages(filter: { tenantId?: string }): Promise<Array<{ sessionId: string; count: number }>>;
   countMessagesInSession(messageId: number, sessionId: string): Promise<number>;
   countAttachmentsInSession(attachmentIds: number[], sessionId: string): Promise<number>;
 };
@@ -209,7 +211,12 @@ export function createAdminChatRouteHandlers(deps: AdminChatRouteDeps): {
 
     listSessions: async (req, res) => {
       try {
-        res.json(await store.listSessions({ tenantId: requestedTenantFilter(req) }));
+        const tenantId = requestedTenantFilter(req);
+        const [sessions, unanswered] = await Promise.all([
+          store.listSessions({ tenantId }),
+          store.countUnansweredVisitorMessages({ tenantId }),
+        ]);
+        res.json(annotateAdminSessionsWithAttention(sessions, unanswered));
       } catch (err) {
         fail(res, err, 'Admin session list unavailable', { error: 'Chat is temporarily unavailable', unavailable: true });
       }

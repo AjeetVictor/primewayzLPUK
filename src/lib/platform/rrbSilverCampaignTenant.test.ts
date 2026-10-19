@@ -6,11 +6,12 @@ import express from 'express';
 import type { ToolLead } from '@prisma/client';
 import { listAdminAuditLeads } from '../audit/leads/adminAuditLeadsService.ts';
 import { assertAdminCanAccessChatSession } from '../admin/adminChatRoutes.ts';
-import { resolveAuthorizedAdminTenantFilter, validateTenantGrants } from '../admin/adminTenantAccess.ts';
+import { listAuthorizedAdminTenantOptions, resolveAuthorizedAdminTenantFilter, validateTenantGrants } from '../admin/adminTenantAccess.ts';
+import { conversationRequiresHumanAttention } from '../admin/adminChatAttention.ts';
 import { resolveQuickReplyTemplates } from '../chatTypes.ts';
 import { publicChatApiCorsMiddleware, isPublicChatOriginAllowed } from '../chat/publicChatApiCors.ts';
 import { validateExistingOrNewChatSessionId } from '../chat/publicChatGuards.ts';
-import { resolveOfflineAcknowledgement, resolveTenantBotReply } from '../chat/tenantBotReply.ts';
+import { resolveOfflineAcknowledgement, resolveTenantBotReply, visitorMessageIsAnsweredByTenantBot } from '../chat/tenantBotReply.ts';
 import {
   RRB_SILVER_APPROVED_ANSWERS,
   RRB_SILVER_CHAT_WIDGET,
@@ -85,8 +86,41 @@ test('tenant: activation accepts only explicit true and disabled Silver stays ou
     assert.equal(getAdminTenantFilterOptions(process.env).some((option) => option.value === TENANT), false);
   }
   process.env[ACTIVATION_ENV] = ' TrUe ';
+  delete process.env[ORIGIN_ENV];
   assert.equal(isTenantActive(tenant), true);
+  assert.equal(getAdminTenantFilterOptions(process.env).some((option) => option.value === TENANT), false, 'activation without an origin is not selectable');
+  process.env[ORIGIN_ENV] = PREVIEW;
   assert.equal(getAdminTenantFilterOptions(process.env).some((option) => option.value === TENANT), true);
+});
+
+test('tenant: invalid or missing Silver origins stay out of active selections and grants', () => {
+  const host = { id: 1, role: 'admin', isPlatformOwner: true, tenantIds: [] as string[] };
+  process.env[ACTIVATION_ENV] = 'true';
+  for (const origins of [undefined, '', 'https://*.rentreadbuy.com', 'https://rentreadbuy.com', 'not a url']) {
+    if (origins === undefined) delete process.env[ORIGIN_ENV];
+    else process.env[ORIGIN_ENV] = origins;
+    assert.equal(getAdminTenantFilterOptions(process.env).some((option) => option.value === TENANT), false, String(origins));
+    assert.throws(() => validateTenantGrants([TENANT]), { code: 'invalid_tenant_grants' });
+    assert.throws(() => resolveAuthorizedAdminTenantFilter(TENANT, host), { code: 'invalid_tenant_filter' });
+  }
+  process.env[ORIGIN_ENV] = PREVIEW;
+  assert.equal(getAdminTenantFilterOptions(process.env).some((option) => option.value === TENANT), true);
+  assert.deepEqual(validateTenantGrants([TENANT]), [TENANT]);
+  const options = listAuthorizedAdminTenantOptions(host);
+  assert.ok(options.some((option) => option.value === TENANT));
+  assert.ok(options.some((option) => option.value === 'all'));
+  assert.deepEqual(
+    listAuthorizedAdminTenantOptions({ id: 2, role: 'editor', isPlatformOwner: false, tenantIds: [TENANT] }).map((option) => option.value),
+    [TENANT],
+  );
+  assert.deepEqual(
+    listAuthorizedAdminTenantOptions({ id: 3, role: 'editor', isPlatformOwner: false, tenantIds: ['rrb'] }).map((option) => option.value),
+    ['rrb'],
+  );
+  assert.throws(
+    () => resolveAuthorizedAdminTenantFilter(TENANT, { id: 3, role: 'editor', isPlatformOwner: false, tenantIds: ['rrb'] }),
+    { status: 403, code: 'tenant_access_denied' },
+  );
 });
 test('tenant: no production origin is hardcoded; with no env configured the tenant accepts no traffic', () => {
   delete process.env[ORIGIN_ENV];
@@ -337,6 +371,29 @@ test('answers: each intent returns its approved answer, restating only approved 
   assert.match(resolveTenantBotReply(TENANT, 'silver_price_inclusions').text, /₹899 for 3 months/);
   assert.match(resolveTenantBotReply(TENANT, 'silver_book_limits').text, /up to 2 books at a time/);
   assert.match(resolveTenantBotReply(TENANT, 'silver_book_limits').text, /up to 60 days/);
+});
+
+test('escalation: approved Silver questions do not need a person, unsupported messages do', () => {
+  for (const key of Object.keys(RRB_SILVER_APPROVED_ANSWERS)) {
+    const reply = resolveTenantBotReply(TENANT, key);
+    assert.equal(visitorMessageIsAnsweredByTenantBot(reply), true);
+    assert.equal(conversationRequiresHumanAttention({
+      status: 'bot_replied',
+      messages: [{ sender: 'user', answered: true }],
+    }), false, key);
+  }
+  const unsupported = resolveTenantBotReply(TENANT, 'can you deliver to another planet');
+  assert.equal(unsupported.kind, 'offline_acknowledgement');
+  assert.equal(visitorMessageIsAnsweredByTenantBot(unsupported), false);
+  assert.equal(conversationRequiresHumanAttention({
+    status: 'bot_replied',
+    messages: [{ sender: 'user', answered: false }],
+  }), true);
+  assert.equal(conversationRequiresHumanAttention({
+    status: 'closed',
+    unansweredVisitorMessageCount: 2,
+  }), false, 'closed conversations stay out of the queue');
+  assert.equal(resolveTenantBotReply('pw-uk', 'silver_price_inclusions').kind, 'offline_acknowledgement');
 });
 
 test('answers: free text and unknown intents get the RentReadBuy offline acknowledgement', () => {

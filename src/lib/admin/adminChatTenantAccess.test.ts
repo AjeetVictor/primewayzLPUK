@@ -10,7 +10,12 @@ import {
   createAdminChatRouteHandlers,
   type AdminChatStore,
 } from './adminChatRoutes.ts';
-import type { ChatConversationStore, ChatConversationTx } from '../chat/chatConversationService.ts';
+import {
+  advanceConversationStatus,
+  resolveConversation,
+  type ChatConversationStore,
+  type ChatConversationTx,
+} from '../chat/chatConversationService.ts';
 import { createAdminRequestOriginMiddleware, getAdminAllowedOrigins } from './adminRequestOrigin.ts';
 import { resolveSourceContext, SourceResolutionError } from '../platform/sourceResolver.ts';
 import { validateExistingOrNewChatSessionId } from '../chat/publicChatGuards.ts';
@@ -80,6 +85,17 @@ function createDb() {
     },
     async countAttachmentsInSession() {
       return 0;
+    },
+    async countUnansweredVisitorMessages({ tenantId }) {
+      const counts = new Map<string, number>();
+      for (const message of messages) {
+        const session = sessions.get(message.sessionId);
+        if (tenantId && session?.tenantId !== tenantId) continue;
+        if (message.sender === 'user' && !message.answered && !message.isInternalNote) {
+          counts.set(message.sessionId, (counts.get(message.sessionId) ?? 0) + 1);
+        }
+      }
+      return [...counts.entries()].map(([sessionId, count]) => ({ sessionId, count }));
     },
   };
 
@@ -162,6 +178,8 @@ function fakeRequireAdmin(req: TestAdminRequest, res: Response, next: NextFuncti
     req.adminUser = { id: 2, email: 'tenant@example.com', role: 'editor', isPlatformOwner: false, tenantIds: ['pw-infotech'] };
   } else if (cookie.includes('primewayz_admin_token=unassigned')) {
     req.adminUser = { id: 3, email: 'unassigned@example.com', role: 'editor', isPlatformOwner: false, tenantIds: [] };
+  } else if (cookie.includes('primewayz_admin_token=silver')) {
+    req.adminUser = { id: 5, email: 'silver@example.com', role: 'editor', isPlatformOwner: false, tenantIds: ['rrb-silver-campaign'] };
   } else if (cookie.includes('primewayz_admin_token=blog')) req.adminUser = { id: 4, email: 'blog@example.com', role: 'blog_author', isPlatformOwner: false, tenantIds: [] };
   else return res.status(401).json({ success: false, error: 'Not authenticated' });
   return next();
@@ -512,4 +530,144 @@ test('AdminMobileChat scopes lists and replies with the shared Admin tenant filt
   assert.match(mobile, /<AdminTenantFilter/);
   assert.match(mobile, /adminRequest\(tenantQuery\('\/api\/admin\/sessions'\)\)/);
   assert.match(mobile, /adminRequest\(tenantQuery\('\/api\/admin\/chats'\)\)/);
+});
+
+test('unanswered visitor messages stay visible when status is bot_replied', async () => {
+  const savedEnabled = process.env.RRB_SILVER_CAMPAIGN_ENABLED;
+  const savedOrigins = process.env.RRB_SILVER_CAMPAIGN_ALLOWED_ORIGINS;
+  process.env.RRB_SILVER_CAMPAIGN_ENABLED = 'true';
+  process.env.RRB_SILVER_CAMPAIGN_ALLOWED_ORIGINS = 'https://silver-preview.example.test';
+  const app = await startAdminApp();
+  try {
+    const silverSession = (id: string) => ({
+      id,
+      tenantId: 'rrb-silver-campaign',
+      market: 'IN',
+      sourceSite: 'rentreadbuy-silver',
+      sourceOrigin: 'https://silver-preview.example.test',
+      sourceChannel: 'chat',
+      status: 'bot_replied',
+    });
+    app.db.sessions.set('silver-approved', silverSession('silver-approved'));
+    app.db.sessions.set('silver-open', silverSession('silver-open'));
+    app.db.messages.push(
+      { id: 50, sessionId: 'silver-approved', sender: 'user', text: 'How does Silver Membership work?', isInternalNote: false, answered: true, replyToId: null, timestamp: new Date(50) },
+      { id: 51, sessionId: 'silver-open', sender: 'user', text: 'Can you ship to Mars?', isInternalNote: false, answered: false, replyToId: null, timestamp: new Date(51) },
+    );
+
+    const listed = await app.call('GET', '/api/admin/sessions?tenantId=rrb-silver-campaign', ops);
+    assert.equal(listed.status, 200);
+    const byId = Object.fromEntries(listed.json.map((session: { id: string }) => [session.id, session]));
+    assert.equal(byId['silver-approved'].status, 'bot_replied');
+    assert.equal(byId['silver-approved'].needsAttention, false, 'approved Silver answer does not escalate');
+    assert.equal(byId['silver-open'].status, 'bot_replied');
+    assert.equal(byId['silver-open'].needsAttention, true, 'unanswered message stays visible');
+    assert.equal(app.db.sessions.get('silver-open')!.status, 'bot_replied');
+
+    const silverOps = { cookie: 'primewayz_admin_token=silver', origin: UK_ADMIN_ORIGIN };
+    const scoped = await app.call('GET', '/api/admin/sessions', silverOps);
+    assert.deepEqual(scoped.json.map((session: { id: string }) => session.id).sort(), ['silver-approved', 'silver-open']);
+    assert.equal((await app.call('GET', '/api/admin/sessions?tenantId=pw-uk', silverOps)).status, 403);
+    assert.equal((await app.call('GET', `/api/admin/sessions/${UK_SESSION}/messages?tenantId=pw-uk`, silverOps)).status, 403);
+    assert.equal((await app.call('GET', '/api/admin/sessions?tenantId=rrb-silver-campaign', tenantOps)).status, 403);
+
+    const everyone = await app.call('GET', '/api/admin/sessions?tenantId=all', ops);
+    assert.equal(everyone.status, 200);
+    assert.equal(everyone.json.length, 5, 'Host/Owner keeps platform-wide visibility');
+
+    const uk = (await app.call('GET', '/api/admin/sessions?tenantId=pw-uk', ops)).json[0];
+    assert.equal(uk.id, UK_SESSION);
+    assert.equal(uk.status, 'bot_replied');
+    assert.equal(uk.needsAttention, true, 'existing unanswered tenant messages stay visible');
+  } finally {
+    if (savedEnabled === undefined) delete process.env.RRB_SILVER_CAMPAIGN_ENABLED;
+    else process.env.RRB_SILVER_CAMPAIGN_ENABLED = savedEnabled;
+    if (savedOrigins === undefined) delete process.env.RRB_SILVER_CAMPAIGN_ALLOWED_ORIGINS;
+    else process.env.RRB_SILVER_CAMPAIGN_ALLOWED_ORIGINS = savedOrigins;
+    await app.close();
+  }
+});
+
+test('needsAttention clears after an authorised reply or resolution and returns for a new visitor message', async () => {
+  const app = await startAdminApp();
+  try {
+    const sessionAttention = async (tenantId: string, sessionId: string) => {
+      const listed = await app.call('GET', `/api/admin/sessions?tenantId=${tenantId}`, ops);
+      assert.equal(listed.status, 200);
+      const session = listed.json.find((row: { id: string }) => row.id === sessionId);
+      assert.ok(session, sessionId);
+      return session as { id: string; status: string; needsAttention: boolean };
+    };
+
+    assert.equal((await sessionAttention('pw-uk', UK_SESSION)).needsAttention, true);
+
+    const note = await app.call('POST', '/api/chat?tenantId=pw-uk', {
+      ...ops,
+      body: { sessionId: UK_SESSION, sender: 'admin', text: 'internal only', isInternalNote: true },
+    });
+    assert.equal(note.status, 201);
+    assert.equal((await sessionAttention('pw-uk', UK_SESSION)).needsAttention, true, 'an internal note does not clear attention');
+
+    const reply = await app.call('POST', '/api/chat?tenantId=pw-uk', {
+      ...ops,
+      body: { sessionId: UK_SESSION, sender: 'admin', text: 'We can help with that' },
+    });
+    assert.equal(reply.status, 201);
+    const cleared = await sessionAttention('pw-uk', UK_SESSION);
+    assert.equal(cleared.status, 'admin_replied');
+    assert.equal(cleared.needsAttention, false, 'an authorised human reply clears attention');
+    assert.equal(app.db.messages.find((message) => message.id === 1)!.answered, true);
+
+    app.db.messages.push({
+      id: 900,
+      sessionId: UK_SESSION,
+      sender: 'user',
+      text: 'One more question',
+      isInternalNote: false,
+      answered: false,
+      replyToId: null,
+      timestamp: new Date(),
+    });
+    await advanceConversationStatus(app.db.conversations, UK_SESSION, 'admin_needed');
+    await advanceConversationStatus(app.db.conversations, UK_SESSION, 'bot_replied');
+    const returned = await sessionAttention('pw-uk', UK_SESSION);
+    assert.equal(returned.status, 'bot_replied');
+    assert.equal(returned.needsAttention, true, 'a new unanswered visitor message returns attention');
+
+    const infotechBefore = await sessionAttention('pw-infotech', INFOTECH_SESSION);
+    assert.equal(infotechBefore.needsAttention, true);
+    const resolved = await resolveConversation(app.db.conversations, {
+      session: (await app.db.conversations.findSession(INFOTECH_SESSION))!,
+    });
+    assert.equal(resolved.toStatus, 'closed');
+    const resolvedRow = await sessionAttention('pw-infotech', INFOTECH_SESSION);
+    assert.equal(resolvedRow.status, 'closed');
+    assert.equal(resolvedRow.needsAttention, false, 'resolution clears attention');
+    assert.equal(app.db.messages.find((message) => message.id === 2)!.answered, false, 'resolution does not rewrite the visitor message');
+
+    app.db.messages.push({
+      id: 901,
+      sessionId: INFOTECH_SESSION,
+      sender: 'user',
+      text: 'Still here',
+      isInternalNote: false,
+      answered: false,
+      replyToId: null,
+      timestamp: new Date(),
+    });
+    await advanceConversationStatus(app.db.conversations, INFOTECH_SESSION, 'bot_replied');
+    const stillClosed = await sessionAttention('pw-infotech', INFOTECH_SESSION);
+    assert.equal(stillClosed.status, 'closed');
+    assert.equal(stillClosed.needsAttention, false, 'a closed conversation stays out of the queue');
+  } finally {
+    await app.close();
+  }
+});
+
+test('tenant options stay behind admin auth and acknowledgements do not create a second alert', () => {
+  assert.match(server, /app\.get\('\/api\/admin\/tenant-options', requireAdmin, createAdminTenantOptionsHandler\(\)\)/);
+  const respond = routeSource("app.post('/api/chat/respond'");
+  assert.match(respond, /visitorMessageIsAnsweredByTenantBot\(botReply\)/);
+  assert.match(respond, /autoUpdateConversationStatus\(sessionId, 'bot_replied'\)/);
+  assert.doesNotMatch(respond, /chatAlert\.create/);
 });

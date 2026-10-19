@@ -1,4 +1,4 @@
-import { ADMIN_TENANT_FILTER_OPTIONS } from '../../lib/platform/tenantRegistry';
+import { ADMIN_TENANT_FILTER_OPTIONS, type AdminTenantOption } from '../../lib/platform/tenantRegistry';
 
 type AdminTenantFilterProps = {
   value: string;
@@ -6,6 +6,8 @@ type AdminTenantFilterProps = {
   className?: string;
   tenantIds?: readonly string[];
   isPlatformOwner?: boolean;
+  /** Server-derived operational tenants. Falls back to the empty-env snapshot until loaded. */
+  options?: readonly AdminTenantOption[];
 };
 
 export function AdminTenantFilter({
@@ -14,8 +16,9 @@ export function AdminTenantFilter({
   className = '',
   tenantIds,
   isPlatformOwner = true,
+  options: tenantOptions,
 }: AdminTenantFilterProps) {
-  const options = ADMIN_TENANT_FILTER_OPTIONS.filter((option) =>
+  const options = (tenantOptions ?? ADMIN_TENANT_FILTER_OPTIONS).filter((option) =>
     option.value === 'all'
       ? isPlatformOwner
       : tenantIds === undefined || isPlatformOwner || tenantIds.includes(option.value),

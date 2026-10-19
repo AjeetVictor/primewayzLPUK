@@ -7,6 +7,7 @@ import { getTenantNotificationRecipient } from './notificationRouting.ts';
 import { defaultUkSourceContext, toPersistedSourceContext } from './sourceContext.ts';
 import { assertChatSessionTenantAccess, resolveSourceContext } from './sourceResolver.ts';
 import { ADMIN_TENANT_FILTER_OPTIONS } from './tenantRegistry.ts';
+import { listAuthorizedAdminTenantOptions } from '../admin/adminTenantAccess.ts';
 
 function toolLead(partial: Partial<ToolLead> & Pick<ToolLead, 'id'>): ToolLead {
   return {
@@ -122,6 +123,26 @@ test('admin filter options expose only active tenants plus all', () => {
   assert.deepEqual(
     ADMIN_TENANT_FILTER_OPTIONS.map((option) => option.value),
     ['pw-uk', 'pw-infotech', 'rrb', 'all'],
+  );
+  assert.equal(ADMIN_TENANT_FILTER_OPTIONS.some((option) => option.value === 'rrb-silver-campaign'), false);
+  assert.equal(ADMIN_TENANT_FILTER_OPTIONS.some((option) => option.value === 'pw-us'), false);
+  assert.deepEqual(
+    listAuthorizedAdminTenantOptions({
+      id: 1,
+      role: 'admin',
+      isPlatformOwner: true,
+      tenantIds: [],
+    }, {}).map((option) => option.value),
+    ['pw-uk', 'pw-infotech', 'rrb', 'all'],
+  );
+  assert.deepEqual(
+    listAuthorizedAdminTenantOptions({
+      id: 2,
+      role: 'editor',
+      isPlatformOwner: false,
+      tenantIds: ['pw-infotech'],
+    }, {}).map((option) => option.value),
+    ['pw-infotech'],
   );
 });
 
