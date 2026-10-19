@@ -13,9 +13,11 @@ import type { Request, RequestHandler } from 'express';
 import {
   AdminChatAccessError,
   assertAdminCanAccessChatSession,
+  assertOperationalChatWriteAllowed,
   createAdminChatFailureResponder,
   requestedTenantFilter,
   type AdminChatSessionOwnership,
+  type OperationalChatAccessResolver,
 } from './adminChatRoutes.ts';
 import { AdminTenantAccessError, type AdminTenantPrincipal } from './adminTenantAccess.ts';
 import { assertChatSessionIdShape } from '../chat/publicChatGuards.ts';
@@ -48,6 +50,8 @@ export type AdminChatMutationDeps = {
   store: AdminChatMutationStore;
   isDatabaseUnavailableError(err: unknown): boolean;
   logUnavailable(context: string, err: unknown): void;
+  /** Same effective entitlement the admin reply route uses. Reads do not call it. */
+  resolveChatAccess: OperationalChatAccessResolver;
 };
 
 type AdminMutationRequest = Request & { adminUser?: AdminTenantPrincipal };
@@ -69,10 +73,10 @@ async function assertRecordSessionInScope(
   tenantFilter: string | undefined,
   missing: () => AdminChatAccessError,
   principal?: AdminTenantPrincipal,
-): Promise<void> {
+): Promise<AdminChatSessionOwnership> {
   const ownership = await store.findSessionOwnership(sessionId);
   if (!ownership) throw missing();
-  assertAdminCanAccessChatSession(ownership, tenantFilter, principal);
+  return assertAdminCanAccessChatSession(ownership, tenantFilter, principal);
 }
 
 export function createAdminChatMutationHandlers(deps: AdminChatMutationDeps): {
@@ -102,7 +106,8 @@ export function createAdminChatMutationHandlers(deps: AdminChatMutationDeps): {
         }
         const tenantFilter = requestedTenantFilter(req);
         const sessionId = assertChatSessionIdShape(req.params.sessionId);
-        assertAdminCanAccessChatSession(await store.findSessionOwnership(sessionId), tenantFilter, principalFor(req));
+        const owned = assertAdminCanAccessChatSession(await store.findSessionOwnership(sessionId), tenantFilter, principalFor(req));
+        await assertOperationalChatWriteAllowed(owned.tenantId, deps.resolveChatAccess);
         const session = await store.setSessionStatus(
           sessionId,
           conversationStatusData(status, { closedById: req.adminUser?.id ?? null }),
@@ -120,7 +125,7 @@ export function createAdminChatMutationHandlers(deps: AdminChatMutationDeps): {
         const tenantFilter = requestedTenantFilter(req);
         const existing = await store.findMessage(id);
         if (!existing) return res.status(404).json({ error: 'Message not found' });
-        await assertRecordSessionInScope(store, existing.sessionId, tenantFilter, () => notFound('Message not found'), principalFor(req));
+        const owned = await assertRecordSessionInScope(store, existing.sessionId, tenantFilter, () => notFound('Message not found'), principalFor(req));
         if (existing.sender !== 'admin') {
           return res.status(400).json({ error: 'Only admin messages can be edited' });
         }
@@ -128,6 +133,7 @@ export function createAdminChatMutationHandlers(deps: AdminChatMutationDeps): {
 
         const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
         if (!text) return res.status(400).json({ error: 'Message text is required' });
+        await assertOperationalChatWriteAllowed(owned.tenantId, deps.resolveChatAccess);
 
         return res.json(await store.editMessage(id, text));
       } catch (err) {
@@ -142,10 +148,11 @@ export function createAdminChatMutationHandlers(deps: AdminChatMutationDeps): {
         const tenantFilter = requestedTenantFilter(req);
         const existing = await store.findMessage(id);
         if (!existing) return res.status(404).json({ error: 'Message not found' });
-        await assertRecordSessionInScope(store, existing.sessionId, tenantFilter, () => notFound('Message not found'), principalFor(req));
+        const owned = await assertRecordSessionInScope(store, existing.sessionId, tenantFilter, () => notFound('Message not found'), principalFor(req));
         if (existing.sender !== 'admin') {
           return res.status(400).json({ error: 'Only admin messages can be deleted' });
         }
+        await assertOperationalChatWriteAllowed(owned.tenantId, deps.resolveChatAccess);
 
         return res.json(await store.softDeleteMessage(id, req.adminUser?.id ?? null));
       } catch (err) {
@@ -160,7 +167,8 @@ export function createAdminChatMutationHandlers(deps: AdminChatMutationDeps): {
         const tenantFilter = requestedTenantFilter(req);
         const alert = await store.findAlert(id);
         if (!alert) return res.status(404).json({ error: 'Alert not found' });
-        await assertRecordSessionInScope(store, alert.sessionId, tenantFilter, () => notFound('Alert not found'), principalFor(req));
+        const owned = await assertRecordSessionInScope(store, alert.sessionId, tenantFilter, () => notFound('Alert not found'), principalFor(req));
+        await assertOperationalChatWriteAllowed(owned.tenantId, deps.resolveChatAccess);
 
         const status = typeof req.body?.status === 'string' ? req.body.status : 'reviewed';
         return res.json(await store.updateAlertStatus(id, status));
@@ -176,7 +184,8 @@ export function createAdminChatMutationHandlers(deps: AdminChatMutationDeps): {
         const tenantFilter = requestedTenantFilter(req);
         const appointment = await store.findAppointment(id);
         if (!appointment) return res.status(404).json({ error: 'Appointment not found' });
-        await assertRecordSessionInScope(store, appointment.sessionId, tenantFilter, () => notFound('Appointment not found'), principalFor(req));
+        const owned = await assertRecordSessionInScope(store, appointment.sessionId, tenantFilter, () => notFound('Appointment not found'), principalFor(req));
+        await assertOperationalChatWriteAllowed(owned.tenantId, deps.resolveChatAccess);
 
         return res.json(await store.updateAppointment(id, {
           status: typeof req.body?.status === 'string' ? req.body.status : undefined,

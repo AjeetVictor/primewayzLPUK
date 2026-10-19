@@ -7,6 +7,7 @@
 import type { Request, Response } from 'express';
 import { getTenantAllowedOrigins, getTenantByOrigin, isTenantActive, PRIMEWAYZ_TENANTS } from '../platform/tenantRegistry.ts';
 import { tenantSupportsCapability } from '../platform/tenantCapabilities.ts';
+import type { EffectiveTenantChatDecision } from '../platform/tenantChatEntitlement.ts';
 
 /** Excludes POST /api/chat: that is the authenticated, same-origin admin reply endpoint. */
 const PUBLIC_CHAT_EXACT_PATHS = new Set([
@@ -58,23 +59,65 @@ export function applyPublicChatApiCors(req: Pick<Request, 'get'>, res: CorsHeade
   return true;
 }
 
+export type PublicChatEntitlementGate = (tenantId: string) => Promise<EffectiveTenantChatDecision>;
+
+const CHAT_TEMPORARILY_UNAVAILABLE = { error: 'Chat is temporarily unavailable.' };
+const ORIGIN_NOT_ALLOWED = { error: 'Origin is not allowed.' };
+
 /**
  * Express middleware scoped by isPublicChatCorsPath.
  * Allowed Origin: set CORS headers; OPTIONS => 204.
  * Unknown Origin: 403. No Origin: continue without ACAO.
+ * An optional entitlement gate runs only after the registry allow, and only when Origin is present.
+ * Store failure denies the origin. It does not fall through to the no-row allow.
  */
-export function publicChatApiCorsMiddleware(req: Request, res: Response, next: () => void): void {
-  if (!isPublicChatCorsPath(req.path)) {
-    next();
-    return;
-  }
-  if (!applyPublicChatApiCors(req, res)) {
-    res.status(403).json({ error: 'Origin is not allowed.' });
-    return;
-  }
-  if (req.method === 'OPTIONS') {
-    res.status(204).end();
-    return;
-  }
-  next();
+export function createPublicChatApiCorsMiddleware(gate?: PublicChatEntitlementGate) {
+  return async (req: Request, res: Response, next: () => void): Promise<void> => {
+    try {
+      if (!isPublicChatCorsPath(req.path)) {
+        next();
+        return;
+      }
+      const origin = req.get('origin')?.trim().replace(/\/$/, '');
+      if (!isPublicChatOriginAllowed(origin)) {
+        res.status(403).json(ORIGIN_NOT_ALLOWED);
+        return;
+      }
+      if (gate && origin) {
+        const tenant = getTenantByOrigin(origin);
+        if (!tenant) {
+          res.status(403).json(ORIGIN_NOT_ALLOWED);
+          return;
+        }
+        let decision: EffectiveTenantChatDecision;
+        try {
+          decision = await gate(tenant.tenantId);
+        } catch {
+          decision = { allowed: false, basis: 'store_unavailable' };
+        }
+        if (decision.basis === 'store_unavailable') {
+          res.status(503).json(CHAT_TEMPORARILY_UNAVAILABLE);
+          return;
+        }
+        if (!decision.allowed) {
+          res.status(403).json(ORIGIN_NOT_ALLOWED);
+          return;
+        }
+      }
+      if (!applyPublicChatApiCors(req, res)) {
+        res.status(403).json(ORIGIN_NOT_ALLOWED);
+        return;
+      }
+      if (req.method === 'OPTIONS') {
+        res.status(204).end();
+        return;
+      }
+      next();
+    } catch {
+      if (!res.headersSent) res.status(503).json(CHAT_TEMPORARILY_UNAVAILABLE);
+    }
+  };
 }
+
+/** Registry-only CORS. Production passes an entitlement gate at the server mount. */
+export const publicChatApiCorsMiddleware = createPublicChatApiCorsMiddleware();

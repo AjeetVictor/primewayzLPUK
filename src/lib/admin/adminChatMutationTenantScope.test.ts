@@ -6,6 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { createAdminChatMutationHandlers, type AdminChatMutationStore } from './adminChatMutationRoutes.ts';
+import type { OperationalChatAccessResolver } from './adminChatRoutes.ts';
 
 // --- In-memory model: sessions, messages, alerts and appointment requests across tenants ---
 
@@ -113,12 +114,15 @@ function fakeRequireAdmin(req: TestAdminRequest, res: Response, next: NextFuncti
   return next();
 }
 
-async function startApp() {
+const allowExistingChat: OperationalChatAccessResolver = async () => ({ allowed: true, basis: 'allowed_existing' });
+
+async function startApp(options: { resolveChatAccess?: OperationalChatAccessResolver } = {}) {
   const db = createDb();
   const handlers = createAdminChatMutationHandlers({
     store: db.store,
     isDatabaseUnavailableError: () => false,
     logUnavailable: () => undefined,
+    resolveChatAccess: options.resolveChatAccess ?? allowExistingChat,
   });
   const app = express();
   app.use(express.json());
@@ -315,6 +319,78 @@ test('appointment update: in-scope update succeeds; cross-tenant and unknown app
     assert.equal(snapshot(app.db), before);
   } finally {
     await app.close();
+  }
+});
+
+test('suspended entitlement blocks admin chat mutations and leaves stored rows unchanged', async () => {
+  const app = await startApp({
+    resolveChatAccess: async (tenantId) => ({ allowed: false, basis: tenantId === 'pw-uk' ? 'revoked' : 'suspended' }),
+  });
+  try {
+    const before = snapshot(app.db);
+    const status = await app.call('PATCH', `/api/admin/sessions/${INFOTECH}/status?tenantId=pw-infotech`, { status: 'closed' });
+    assert.equal(status.status, 403);
+    assert.equal(status.json.code, 'chat_not_entitled');
+    const edit = await app.call('PATCH', `/api/admin/chat/messages/${app.db.ids[INFOTECH]}?tenantId=pw-infotech`, { text: 'changed' });
+    assert.equal(edit.status, 403);
+    const deleted = await app.call('DELETE', `/api/admin/chat/messages/${app.db.ids[UK]}?tenantId=pw-uk`);
+    assert.equal(deleted.status, 403);
+    assert.equal(deleted.json.code, 'chat_not_entitled');
+    const alert = await app.call('PATCH', `/api/admin/chat-alerts/${app.db.ids[INFOTECH]}/status?tenantId=pw-infotech`, { status: 'reviewed' });
+    assert.equal(alert.status, 403);
+    const appointment = await app.call('PATCH', `/api/admin/chat/appointments/${app.db.ids[INFOTECH]}?tenantId=pw-infotech`, { status: 'confirmed' });
+    assert.equal(appointment.status, 403);
+    assert.equal(snapshot(app.db), before);
+    const visitorEdit = await app.call('PATCH', `/api/admin/chat/messages/${100 + app.db.ids[INFOTECH]}?tenantId=pw-infotech`, { text: 'x' });
+    assert.equal(visitorEdit.status, 400, 'existing validation still wins for a visitor message');
+    assert.equal(snapshot(app.db), before);
+  } finally {
+    await app.close();
+  }
+});
+
+test('legacy session mutations follow Primewayz UK entitlement and ignore a body tenant', async () => {
+  const cases = [
+    { basis: 'allowed_entitled', allowed: true },
+    { basis: 'suspended', allowed: false },
+    { basis: 'revoked', allowed: false },
+    { basis: 'store_unavailable', allowed: false },
+  ] as const;
+
+  for (const item of cases) {
+    const lookups: string[] = [];
+    const app = await startApp({
+      resolveChatAccess: async (tenantId) => {
+        lookups.push(tenantId);
+        if (tenantId !== 'pw-uk') return { allowed: true, basis: 'allowed_entitled' };
+        if (item.basis === 'store_unavailable') throw new Error('entitlement store down');
+        return { allowed: item.allowed, basis: item.basis };
+      },
+    });
+    try {
+      const before = snapshot(app.db);
+      const status = await app.call('PATCH', `/api/admin/sessions/${LEGACY}/status?tenantId=all`, {
+        status: 'closed',
+        tenantId: 'pw-infotech',
+      });
+      assert.deepEqual(lookups, ['pw-uk'], item.basis);
+      assert.equal(app.db.sessions.get(LEGACY)!.tenantId, null);
+      if (item.allowed) {
+        assert.equal(status.status, 200, item.basis);
+        assert.equal(app.db.sessions.get(LEGACY)!.status, 'closed');
+      } else {
+        assert.equal(status.status, item.basis === 'store_unavailable' ? 503 : 403, item.basis);
+        assert.equal(status.json.code, item.basis === 'store_unavailable' ? 'chat_service_unavailable' : 'chat_not_entitled');
+        assert.equal(snapshot(app.db), before);
+      }
+      const infotech = await app.call('PATCH', `/api/admin/sessions/${INFOTECH}/status?tenantId=pw-infotech`, { status: 'lead_qualified' });
+      assert.equal(infotech.status, 200, 'an entitled tenant stays writable');
+      const outside = await app.call('PATCH', `/api/admin/sessions/${LEGACY}/status?tenantId=pw-uk`, { status: 'follow_up_due' });
+      assert.equal(outside.status, 403);
+      assert.equal(outside.json.code, 'tenant_scope_mismatch');
+    } finally {
+      await app.close();
+    }
   }
 });
 

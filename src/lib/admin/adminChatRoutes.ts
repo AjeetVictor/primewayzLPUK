@@ -13,7 +13,7 @@
  */
 
 import type { Request, RequestHandler, Response } from 'express';
-import { SourceResolutionError } from '../platform/sourceResolver.ts';
+import { resolveStoredChatSessionTenantId, SourceResolutionError } from '../platform/sourceResolver.ts';
 import { getTenantById } from '../platform/tenantRegistry.ts';
 import { assertChatSessionIdShape, isPermittedAdminChatReplySender, PublicChatRequestError } from '../chat/publicChatGuards.ts';
 import { createTeamReply, type ChatConversationStore } from '../chat/chatConversationService.ts';
@@ -53,12 +53,42 @@ export type AdminChatStore = {
   countAttachmentsInSession(attachmentIds: number[], sessionId: string): Promise<number>;
 };
 
+export type OperationalChatAccessDecision = { allowed: boolean; basis: string };
+
+export type OperationalChatAccessResolver = (tenantId: string) => Promise<OperationalChatAccessDecision>;
+
 export type AdminChatRouteDeps = {
   store: AdminChatStore;
   conversations: ChatConversationStore;
   isDatabaseUnavailableError(err: unknown): boolean;
   logUnavailable(context: string, err: unknown): void;
+  /** Effective entitlement of the stored session, including a null pre-tenant row. */
+  resolveChatAccess: OperationalChatAccessResolver;
 };
+
+/**
+ * Stops a new chat write when the effective entitlement denies the session tenant.
+ * A null tenantId is resolved with resolveStoredChatSessionTenantId (Primewayz UK).
+ * Callers pass the stored session tenant, never a request-body tenant field.
+ * A thrown lookup is an unavailable store, never the no-row allow.
+ */
+export async function assertOperationalChatWriteAllowed(
+  tenantId: string | null,
+  resolve: OperationalChatAccessResolver,
+): Promise<void> {
+  const entitlementTenantId = resolveStoredChatSessionTenantId(tenantId);
+  let decision: OperationalChatAccessDecision;
+  try {
+    decision = await resolve(entitlementTenantId);
+  } catch {
+    decision = { allowed: false, basis: 'store_unavailable' };
+  }
+  if (decision.allowed) return;
+  if (decision.basis === 'store_unavailable') {
+    throw new AdminChatAccessError(503, 'chat_service_unavailable', 'Chat is temporarily unavailable.');
+  }
+  throw new AdminChatAccessError(403, 'chat_not_entitled', 'Chat is not enabled for this tenant.');
+}
 
 function adminPrincipal(req: Request & { adminUser?: AdminTenantPrincipal }): AdminTenantPrincipal {
   if (!req.adminUser) {
@@ -236,8 +266,9 @@ export function createAdminChatRouteHandlers(deps: AdminChatRouteDeps): {
       try {
         const input = validateAdminChatReplyInput(req.body);
         const typedRequest = req as Request & { adminUser?: AdminTenantPrincipal };
-        await loadAuthorisedSession(store, input.sessionId, requestedTenantFilter(typedRequest), adminPrincipal(typedRequest));
+        const session = await loadAuthorisedSession(store, input.sessionId, requestedTenantFilter(typedRequest), adminPrincipal(typedRequest));
         await assertAdminChatReferencesOwned(store, input);
+        await assertOperationalChatWriteAllowed(session.tenantId, deps.resolveChatAccess);
         const { message } = await deps.conversations.transaction(async (tx) => {
           const session = await tx.findSession(input.sessionId);
           if (!session) throw new AdminChatAccessError(404, 'chat_session_not_found', 'Chat session not found.');

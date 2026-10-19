@@ -1411,3 +1411,98 @@ model SchedulingWebhookEvent {
   @@index([status, receivedAt])
   @@index([connectionKey])
 }
+
+// --- Primewayz Chat Connect installation registry ---
+// Tenant identity stays in PLATFORM_TENANTS. These rows are installations, not tenants.
+// Historical registration and activation are nullable; migration provisioning uses provisionedAt.
+
+model ChatConnectInstallation {
+  id                          String    @id @db.VarChar(64)
+  tenantId                    String    @db.VarChar(32)
+  integrationTechnology       String    @db.VarChar(32)
+  integrationId               String?   @db.VarChar(64)
+  authorizationStatus         String    @db.VarChar(32)
+  frontendVisibility          String    @db.VarChar(16)
+  addonVersion                String?   @db.VarChar(32)
+  widgetVersion               String?   @db.VarChar(32)
+  legacyEnvBinding            Boolean   @default(false)
+  heartbeatProtocolAdopted    Boolean   @default(false)
+  credentialKeyId             String?   @unique @db.VarChar(64)
+  credentialHash              String?   @db.VarChar(64)
+  credentialIssuedAt          DateTime?
+  credentialRotatedAt         DateTime?
+  registeredAt                DateTime?
+  provisionedAt               DateTime?
+  authorizedAt                DateTime?
+  activatedAt                 DateTime?
+  lastVerifiedHeartbeatAt     DateTime?
+  lastAuthenticatedActivityAt DateTime?
+  suspendedAt                 DateTime?
+  revokedAt                   DateTime?
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+  auditLogs                   ChatConnectAuditLog[]
+  idempotencyKeys             ChatConnectIdempotencyKey[]
+
+  @@index([tenantId, authorizationStatus])
+  @@index([integrationId, tenantId, legacyEnvBinding], map: "ChatConnectInstallation_legacyBinding_idx")
+}
+
+model ChatConnectAuditLog {
+  id             Int                      @id @default(autoincrement())
+  installationId String                   @db.VarChar(64)
+  tenantId       String                   @db.VarChar(32)
+  actorUserId    Int?
+  action         String                   @db.VarChar(64)
+  details        Json
+  createdAt      DateTime                 @default(now())
+  installation   ChatConnectInstallation  @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  @@index([installationId, createdAt])
+  @@index([tenantId, createdAt])
+}
+
+model ChatConnectIdempotencyKey {
+  id             Int                     @id @default(autoincrement())
+  installationId String                  @db.VarChar(64)
+  action         String                  @db.VarChar(32)
+  clientActionId String                  @db.VarChar(64)
+  createdAt      DateTime                @default(now())
+  installation   ChatConnectInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  @@unique([installationId, action, clientActionId], map: "ChatConnectIdempotency_install_action_key")
+  @@index([createdAt])
+  @@index([action, createdAt])
+}
+
+// --- Central tenant chat entitlement ---
+// This is not installation authorization and not connector health.
+// No row means the tenant keeps its existing chat behavior.
+
+enum TenantChatEntitlementStatus {
+  entitled
+  suspended
+  revoked
+}
+
+model TenantChatEntitlement {
+  tenantId        String                       @id @db.VarChar(32)
+  status          TenantChatEntitlementStatus
+  reason          String                       @db.VarChar(512)
+  updatedByUserId Int?
+  createdAt       DateTime                     @default(now())
+  updatedAt       DateTime                     @updatedAt
+  auditLogs       TenantChatEntitlementAudit[]
+}
+
+model TenantChatEntitlementAudit {
+  id            Int                          @id @default(autoincrement())
+  tenantId      String                       @db.VarChar(32)
+  actorUserId   Int?
+  status        TenantChatEntitlementStatus
+  reason        String                       @db.VarChar(512)
+  createdAt     DateTime                     @default(now())
+  entitlement   TenantChatEntitlement        @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+}

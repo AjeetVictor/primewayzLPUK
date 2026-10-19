@@ -90,7 +90,7 @@ import { resolveAppointmentRequestTimezone } from './src/lib/platform/timeZone.t
 import { resolveOfflineAcknowledgement, resolveTenantBotReply, visitorMessageIsAnsweredByTenantBot } from './src/lib/chat/tenantBotReply.ts';
 import { UNANSWERED_VISITOR_MESSAGE_WHERE } from './src/lib/chat/chatOperationalSemantics.ts';
 import { createChatEmbedReleaseHandler, CHAT_EMBED_RELEASE_ROUTE } from './src/lib/chat/chatEmbedRelease.ts';
-import { buildPublicPlatformCapabilities } from './src/lib/platform/publicCapabilities.ts';
+import { applyEffectiveChatToCapabilities, buildPublicPlatformCapabilities } from './src/lib/platform/publicCapabilities.ts';
 import { publicPlatformApiCorsMiddleware } from './src/lib/platform/publicPlatformApiCors.ts';
 import { getAdminNotificationSummary } from './src/lib/admin/adminNotificationSummaryService.ts';
 import { createAdminRequestOriginMiddleware, getAdminAllowedOrigins } from './src/lib/admin/adminRequestOrigin.ts';
@@ -105,6 +105,27 @@ import {
   wordpressChatBodyErrorHandler,
   wordpressChatMethodNotAllowed,
 } from './src/lib/integrations/wordpressChatIntegration.ts';
+import { createPrismaChatConnectStore } from './src/lib/chatConnect/prismaStore.ts';
+import { createPrismaTenantChatEntitlementStore } from './src/lib/platform/tenantChatEntitlementPrisma.ts';
+import {
+  assertVisitorChatEntitlement,
+  resolveEffectiveTenantChat,
+  TenantChatEntitlementUnavailableError,
+} from './src/lib/platform/tenantChatEntitlement.ts';
+import {
+  createTenantChatEntitlementAdminHandlers,
+  TENANT_CHAT_ENTITLEMENT_ADMIN_PATH,
+} from './src/lib/platform/tenantChatEntitlementAdmin.ts';
+import { recordLegacyChatConnectActivity } from './src/lib/chatConnect/legacyActivity.ts';
+import {
+  CHAT_CONNECT_ACTIVATE_PATH,
+  CHAT_CONNECT_ADMIN_COLLECTION_PATH,
+  CHAT_CONNECT_HEARTBEAT_PATH,
+  chatConnectBodyErrorHandler,
+  chatConnectMethodNotAllowed,
+  createChatConnectAdminHandlers,
+  createChatConnectConnectorHandlers,
+} from './src/lib/chatConnect/http.ts';
 import { resolveChatPresence } from './src/lib/chat/chatPresence.ts';
 import {
   readOptionalTenantChatPresence,
@@ -112,7 +133,7 @@ import {
   recordTenantChatPresenceSetting,
   type TenantChatPresenceState,
 } from './src/lib/chat/tenantChatPresenceStore.ts';
-import { publicChatApiCorsMiddleware } from './src/lib/chat/publicChatApiCors.ts';
+import { createPublicChatApiCorsMiddleware } from './src/lib/chat/publicChatApiCors.ts';
 import { normalizeVisitorPhone } from './src/lib/chat/visitorIntelligence.ts';
 import {
   assertChatSessionIdShape,
@@ -213,6 +234,8 @@ const sharedAuditReportNoindexMiddleware = (req: express.Request, res: express.R
 app.use(adminNoindexMiddleware);
 app.use(sharedAuditReportNoindexMiddleware);
 const prisma = new PrismaClient();
+const chatConnectStore = createPrismaChatConnectStore(prisma);
+const tenantChatEntitlementStore = createPrismaTenantChatEntitlementStore(prisma);
 const __dirname = path.resolve();
 
 const allBlogPosts = getAllBlogPosts();
@@ -2162,6 +2185,7 @@ const adminChatHandlers = createAdminChatRouteHandlers({
   conversations: chatConversationStore,
   isDatabaseUnavailableError,
   logUnavailable: logChatDbFallback,
+  resolveChatAccess: resolveTenantChatAccess,
 });
 
 const adminChatMutationStore: AdminChatMutationStore = {
@@ -2186,6 +2210,7 @@ const adminChatMutationHandlers = createAdminChatMutationHandlers({
   store: adminChatMutationStore,
   isDatabaseUnavailableError,
   logUnavailable: logChatDbFallback,
+  resolveChatAccess: resolveTenantChatAccess,
 });
 
 app.get('/api/admin/chats', requireAdmin, requireRole(isOperationsRole), adminChatHandlers.listMessages);
@@ -2437,6 +2462,18 @@ app.get('/api/admin/access-audit', requireAdmin, requirePlatformOwner, async (_r
   });
   res.json(entries);
 });
+
+const chatConnectAdmin = createChatConnectAdminHandlers({ store: chatConnectStore });
+app.get(CHAT_CONNECT_ADMIN_COLLECTION_PATH, requireAdmin, chatConnectAdmin.list);
+app.post(CHAT_CONNECT_ADMIN_COLLECTION_PATH, requireAdmin, requirePlatformOwner, chatConnectAdmin.register);
+app.post(`${CHAT_CONNECT_ADMIN_COLLECTION_PATH}/:installationId/suspend`, requireAdmin, requirePlatformOwner, chatConnectAdmin.suspend);
+app.post(`${CHAT_CONNECT_ADMIN_COLLECTION_PATH}/:installationId/reactivate`, requireAdmin, requirePlatformOwner, chatConnectAdmin.reactivate);
+app.post(`${CHAT_CONNECT_ADMIN_COLLECTION_PATH}/:installationId/revoke`, requireAdmin, requirePlatformOwner, chatConnectAdmin.revoke);
+app.post(`${CHAT_CONNECT_ADMIN_COLLECTION_PATH}/:installationId/rotate-credentials`, requireAdmin, requirePlatformOwner, chatConnectAdmin.rotate);
+
+const tenantChatEntitlementAdmin = createTenantChatEntitlementAdminHandlers({ store: tenantChatEntitlementStore });
+app.get(TENANT_CHAT_ENTITLEMENT_ADMIN_PATH, requireAdmin, tenantChatEntitlementAdmin.list);
+app.post(`${TENANT_CHAT_ENTITLEMENT_ADMIN_PATH}/:tenantId`, requireAdmin, requirePlatformOwner, tenantChatEntitlementAdmin.set);
 
 /** Team presence is per entity: "All entities" is not a presence target and is rejected. */
 function resolveAdminPresenceTenantId(req: Request, res: Response): string | null {
@@ -2707,6 +2744,29 @@ function publicChatGuardFailure(res: Response, error: unknown): Response | null 
   return res.status(error.status).json(error.toResponseBody());
 }
 
+function tenantChatEntitlementFailure(res: Response, error: unknown): Response | null {
+  if (!(error instanceof TenantChatEntitlementUnavailableError)) return null;
+  return res.status(error.status).json({ error: error.message });
+}
+
+function lookupTenantChatEntitlement(tenantId: string) {
+  return tenantChatEntitlementStore.find(tenantId);
+}
+
+function resolveTenantChatAccess(tenantId: string) {
+  return resolveEffectiveTenantChat({
+    tenantId,
+    lookup: () => lookupTenantChatEntitlement(tenantId),
+  });
+}
+
+async function assertEffectivePublicTenantChat(source: SourceContext): Promise<void> {
+  await assertVisitorChatEntitlement(
+    source.tenantId,
+    () => lookupTenantChatEntitlement(source.tenantId),
+  );
+}
+
 app.options('/api/v1/website-audits', (req, res) => {
   if (!applyAuditApiCors(req, res)) return res.status(403).json({ error: 'Origin is not allowed.' });
   return res.status(204).end();
@@ -2838,14 +2898,18 @@ app.post('/api/tools/digital-visibility-check/lead', async (req, res) => {
 });
 
 // Visitor Chat CORS only (/api/chat/*). Does not apply to /api/admin/*.
-app.use(publicChatApiCorsMiddleware);
+app.use(createPublicChatApiCorsMiddleware(resolveTenantChatAccess));
 // Public platform + scheduling availability CORS (not webhooks).
 app.use(publicPlatformApiCorsMiddleware);
 
-app.get('/api/platform/capabilities', (req, res) => {
+app.get('/api/platform/capabilities', async (req, res) => {
   try {
     const sourceContext = resolveRequestSource(req, 'other');
-    return res.json(buildPublicPlatformCapabilities(sourceContext));
+    const decision = await resolveTenantChatAccess(sourceContext.tenantId);
+    if (decision.basis === 'store_unavailable') {
+      console.warn(`[tenant-chat-entitlement] store unavailable tenant=${sourceContext.tenantId}`);
+    }
+    return res.json(applyEffectiveChatToCapabilities(buildPublicPlatformCapabilities(sourceContext), decision));
   } catch (error) {
     return sourceResolutionFailure(res, error) ?? res.status(500).json({ error: 'Failed to resolve platform capabilities' });
   }
@@ -2912,10 +2976,12 @@ app.get('/api/chat/availability', async (req, res) => {
   try {
     const sourceContext = resolveRequestSource(req, 'chat');
     assertTenantCapability(sourceContext, 'chat');
+    await assertEffectivePublicTenantChat(sourceContext);
     enforceChatRateLimit(req, 'read', sourceContext);
     res.json(await getChatAvailabilityPayload(sourceContext));
   } catch (error) {
     return sourceResolutionFailure(res, error)
+      ?? tenantChatEntitlementFailure(res, error)
       ?? publicChatGuardFailure(res, error)
       ?? res.status(500).json({ error: 'Failed to load chat availability' });
   }
@@ -2928,6 +2994,7 @@ app.post('/api/chat/session', async (req, res) => {
   try {
     const sourceContext = resolveRequestSource(req, 'chat');
     assertTenantCapability(sourceContext, 'chat');
+    await assertEffectivePublicTenantChat(sourceContext);
     enforceChatRateLimit(req, 'session', sourceContext, sessionId);
     const { name, email } = validateChatSessionInput(req.body);
     const telemetry = buildPublicChatVisitorTelemetry(req.body, { userAgent: req.get('user-agent'), phoneField: 'phone' });
@@ -2993,6 +3060,8 @@ app.post('/api/chat/session', async (req, res) => {
   } catch (err) {
     const sourceFailure = sourceResolutionFailure(res, err);
     if (sourceFailure) return sourceFailure;
+    const entitlementFailure = tenantChatEntitlementFailure(res, err);
+    if (entitlementFailure) return entitlementFailure;
     const guardFailure = publicChatGuardFailure(res, err);
     if (guardFailure) return guardFailure;
     if (!isDatabaseUnavailableError(err)) throw err;
@@ -3008,6 +3077,7 @@ app.post('/api/chat/heartbeat', async (req, res) => {
   try {
     const sourceContext = resolveRequestSource(req, 'chat');
     assertTenantCapability(sourceContext, 'chat');
+    await assertEffectivePublicTenantChat(sourceContext);
     enforceChatRateLimit(req, 'heartbeat', sourceContext, sessionId);
     const { userName, userEmail } = validateChatHeartbeatInput(req.body);
     const telemetry = buildPublicChatVisitorTelemetry(req.body, { userAgent: req.get('user-agent'), phoneField: 'userPhone' });
@@ -3075,6 +3145,8 @@ app.post('/api/chat/heartbeat', async (req, res) => {
   } catch (err) {
     const sourceFailure = sourceResolutionFailure(res, err);
     if (sourceFailure) return sourceFailure;
+    const entitlementFailure = tenantChatEntitlementFailure(res, err);
+    if (entitlementFailure) return entitlementFailure;
     const guardFailure = publicChatGuardFailure(res, err);
     if (guardFailure) return guardFailure;
     if (!isDatabaseUnavailableError(err)) throw err;
@@ -3087,6 +3159,7 @@ app.get('/api/chat/:sessionId', async (req, res) => {
   try {
     const sourceContext = resolveRequestSource(req, 'chat');
     assertTenantCapability(sourceContext, 'chat');
+    await assertEffectivePublicTenantChat(sourceContext);
     enforceChatRateLimit(req, 'read', sourceContext, req.params.sessionId);
     await assertChatSessionSource(req.params.sessionId, sourceContext);
     const messages = await prisma.chatMessage.findMany({
@@ -3102,6 +3175,8 @@ app.get('/api/chat/:sessionId', async (req, res) => {
   } catch (err) {
     const sourceFailure = sourceResolutionFailure(res, err);
     if (sourceFailure) return sourceFailure;
+    const entitlementFailure = tenantChatEntitlementFailure(res, err);
+    if (entitlementFailure) return entitlementFailure;
     const guardFailure = publicChatGuardFailure(res, err);
     if (guardFailure) return guardFailure;
     if (!isDatabaseUnavailableError(err)) throw err;
@@ -3122,6 +3197,7 @@ app.post('/api/chat/respond', async (req, res) => {
   try {
     sourceContext = resolveRequestSource(req, 'chat');
     assertTenantCapability(sourceContext, 'chat');
+    await assertEffectivePublicTenantChat(sourceContext);
     enforceChatRateLimit(req, 'message', sourceContext, sessionId);
     const { userName, attachmentIds, replyToId, intentKey } = validateChatRespondInput(req.body);
     await assertChatSessionSource(sessionId, sourceContext);
@@ -3175,6 +3251,8 @@ app.post('/api/chat/respond', async (req, res) => {
   } catch (err) {
     const sourceFailure = sourceResolutionFailure(res, err);
     if (sourceFailure) return sourceFailure;
+    const entitlementFailure = tenantChatEntitlementFailure(res, err);
+    if (entitlementFailure) return entitlementFailure;
     const guardFailure = publicChatGuardFailure(res, err);
     if (guardFailure) return guardFailure;
     if (!isDatabaseUnavailableError(err)) throw err;
@@ -3194,6 +3272,7 @@ app.post('/api/chat/appointments', async (req, res) => {
   try {
     const sourceContext = resolveRequestSource(req, 'booking');
     assertTenantCapability(sourceContext, 'chat');
+    await assertEffectivePublicTenantChat(sourceContext);
     assertTenantCapability(sourceContext, 'scheduling');
     const scheduling = getSchedulingAvailability(sourceContext);
     if (!scheduling.canBookFromChat) {
@@ -3229,6 +3308,8 @@ app.post('/api/chat/appointments', async (req, res) => {
   } catch (err) {
     const sourceFailure = sourceResolutionFailure(res, err);
     if (sourceFailure) return sourceFailure;
+    const entitlementFailure = tenantChatEntitlementFailure(res, err);
+    if (entitlementFailure) return entitlementFailure;
     const guardFailure = publicChatGuardFailure(res, err);
     if (guardFailure) return guardFailure;
     if (!isDatabaseUnavailableError(err)) throw err;
@@ -3246,9 +3327,19 @@ app.post(WORDPRESS_CHAT_INTEGRATION_PATH, createWordPressChatIntegrationHandler(
   siteUrl,
   isDatabaseUnavailableError,
   getClientIp,
+  recordAuthenticatedActivity: (input) => recordLegacyChatConnectActivity(chatConnectStore, input),
+  resolveChatAccess: resolveTenantChatAccess,
 }));
 app.all(WORDPRESS_CHAT_INTEGRATION_PATH, wordpressChatMethodNotAllowed);
 app.use(WORDPRESS_CHAT_INTEGRATION_PATH, wordpressChatBodyErrorHandler);
+
+const chatConnectConnector = createChatConnectConnectorHandlers({ store: chatConnectStore, getClientIp });
+app.post(CHAT_CONNECT_ACTIVATE_PATH, chatConnectConnector.activate);
+app.post(CHAT_CONNECT_HEARTBEAT_PATH, chatConnectConnector.heartbeat);
+app.all(CHAT_CONNECT_ACTIVATE_PATH, chatConnectMethodNotAllowed);
+app.all(CHAT_CONNECT_HEARTBEAT_PATH, chatConnectMethodNotAllowed);
+app.use(CHAT_CONNECT_ACTIVATE_PATH, chatConnectBodyErrorHandler);
+app.use(CHAT_CONNECT_HEARTBEAT_PATH, chatConnectBodyErrorHandler);
 
 app.get('/api/blog/posts', async (_req, res) => {
   res.json(await getPublicBlogPosts());

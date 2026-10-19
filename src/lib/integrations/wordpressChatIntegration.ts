@@ -301,6 +301,17 @@ export type WordPressChatIntegrationDeps = {
   now?: () => number;
   log?: (entry: WordPressChatAuditLogEntry) => void;
   logError?: (message: string) => void;
+  /**
+   * Best-effort legacy activity stamp. Failures are swallowed so the operational
+   * response contract does not depend on the installation registry.
+   */
+  recordAuthenticatedActivity?: (input: { integrationId: string; tenantId: string; at: Date }) => Promise<void>;
+  /**
+   * Central chat entitlement. When omitted, chat follows the compile-time capability
+   * (no entitlement row). A thrown lookup is treated as an unavailable store and denies writes.
+   * Suspended or revoked still allows dashboard and conversation reads. Store failure does not.
+   */
+  resolveChatAccess?: (tenantId: string) => Promise<{ allowed: boolean; basis: string }>;
 };
 
 function defaultLog(entry: WordPressChatAuditLogEntry): void {
@@ -362,8 +373,25 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
   const log = deps.log ?? defaultLog;
   const logError = deps.logError ?? ((message: string) => console.error(message));
 
-  async function runDiagnostics(principal: IntegrationPrincipal, tenant: PlatformTenantConfig) {
-    const chatEnabled = tenantSupportsCapability(tenant.tenantId, 'chat');
+  async function resolveDecision(tenantId: string): Promise<{ allowed: boolean; basis: string }> {
+    if (!deps.resolveChatAccess) {
+      const allowed = tenantSupportsCapability(tenantId, 'chat');
+      return { allowed, basis: allowed ? 'allowed_existing' : 'capability_disabled' };
+    }
+    try {
+      return await deps.resolveChatAccess(tenantId);
+    } catch {
+      return { allowed: false, basis: 'store_unavailable' };
+    }
+  }
+
+  async function runDiagnostics(
+    principal: IntegrationPrincipal,
+    tenant: PlatformTenantConfig,
+    decision: { allowed: boolean; basis: string },
+  ) {
+    const chatEnabled = decision.allowed;
+    const entitlementUnavailable = decision.basis === 'store_unavailable';
     let databaseReachable = true;
     let team: OperationalTeamPresence | null = null;
     try {
@@ -375,7 +403,7 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
     }
     const canAcceptMessages = chatEnabled && Boolean(team?.canAcceptMessages);
     return {
-      status: (databaseReachable ? serviceStatus(chatEnabled, canAcceptMessages) : 'unavailable') as ServiceStatus,
+      status: (databaseReachable && !entitlementUnavailable ? serviceStatus(chatEnabled, canAcceptMessages) : 'unavailable') as ServiceStatus,
       api: { status: 'ok', version: WORDPRESS_CHAT_API_VERSION },
       authentication: { valid: true, integrationId: principal.integrationId, scopes: [...principal.scopes] },
       tenantBinding: { tenantId: tenant.tenantId, valid: true, active: isTenantActive(tenant) },
@@ -386,8 +414,7 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
     };
   }
 
-  async function runDashboard(tenant: PlatformTenantConfig) {
-    const chatEnabled = tenantSupportsCapability(tenant.tenantId, 'chat');
+  async function runDashboard(tenant: PlatformTenantConfig, chatEnabled: boolean) {
     const [team, dashboard] = await Promise.all([
       getOperationalTeamPresence(deps.store, tenant.tenantId, now()),
       getOperationalChatDashboard(deps.store, { tenantId: tenant.tenantId, limit: RECENT_CONVERSATIONS_DEFAULT_LIMIT, now: now() }),
@@ -473,15 +500,38 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
         throw new WordPressChatIntegrationError(403, 'integration_forbidden', 'The integration credential does not permit this action.');
       }
 
+      const decision = await resolveDecision(tenant.tenantId);
+      const historicalRead = input.action === 'dashboard' || input.action === 'conversation';
+      const knownDenial = !decision.allowed && decision.basis !== 'store_unavailable';
       let data: unknown;
-      if (input.action === 'dashboard') data = await runDashboard(tenant);
-      else if (input.action === 'diagnostics') data = await runDiagnostics(principal, tenant);
+      if (input.action === 'diagnostics') data = await runDiagnostics(principal, tenant, decision);
+      else if (!decision.allowed && !(knownDenial && historicalRead)) {
+        throw new WordPressChatIntegrationError(
+          decision.basis === 'store_unavailable' ? 503 : 403,
+          decision.basis === 'store_unavailable' ? 'chat_service_unavailable' : 'integration_forbidden',
+          decision.basis === 'store_unavailable'
+            ? 'The chat service is temporarily unavailable.'
+            : 'Chat is not enabled for this tenant.',
+        );
+      } else if (input.action === 'dashboard') data = await runDashboard(tenant, decision.allowed);
       else if (input.action === 'conversation') {
         data = await getOperationalConversation(deps.store, { tenantId: tenant.tenantId, sessionId: input.sessionId, now: now() });
       } else {
         const write = await runDelegatedWrite(principal, tenant, requestId, input);
         replayed = write.outcome.replayed;
         data = write.data;
+      }
+
+      if (deps.recordAuthenticatedActivity) {
+        try {
+          await deps.recordAuthenticatedActivity({
+            integrationId: principal.integrationId,
+            tenantId: principal.tenantId,
+            at: new Date(now()),
+          });
+        } catch {
+          logError(`[wp-chat-integration] requestId=${requestId} legacy activity tracking failed`);
+        }
       }
 
       res.status(200).json({

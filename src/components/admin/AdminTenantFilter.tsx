@@ -29,7 +29,7 @@ export function AdminTenantFilter({
       value={value}
       onChange={(event) => onChange(event.target.value)}
       aria-label="Filter by Primewayz entity"
-      className={className || 'rounded-xl border border-zinc-200 px-3 py-2 text-sm text-zinc-700'}
+      className={`${className || 'min-h-11 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700'} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900`}
     >
       {options.map((option) => (
         <option key={option.value} value={option.value}>
