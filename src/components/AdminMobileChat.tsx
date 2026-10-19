@@ -19,6 +19,7 @@ import { AdminTenantFilter } from './admin/AdminTenantFilter';
 import { matchesAdminChatStatusFilter } from '../lib/admin/adminChatAttention';
 import { getTenantDisplayName, type AdminTenantOption } from '../lib/platform/tenantRegistry';
 import { trackAdminChatReply, trackChatLeadConverted } from '../lib/analytics';
+import { readAdminReplyEntitlementFailure } from '../lib/admin/adminReplyEntitlementNotice';
 
 interface CurrentUser {
   id: number;
@@ -44,6 +45,7 @@ export const AdminMobileChat = () => {
   const [messages, setMessages] = useState<ChatMessageRecord[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [replyNotice, setReplyNotice] = useState('');
   const [statusFilter, setStatusFilter] = useState<ChatStatusFilterKey>('all');
   const [unreadBySession, setUnreadBySession] = useState<Record<string, number>>({});
   const [replyingToMessageId, setReplyingToMessageId] = useState<number | null>(null);
@@ -208,10 +210,14 @@ export const AdminMobileChat = () => {
           isQuickReply: options?.isQuickReply,
           conversationStatus: selectedSession?.status,
         });
+        setReplyNotice('');
         setReplyText('');
         setReplyingToMessageId(null);
         await fetchSessions();
+        return;
       }
+      const notice = await readAdminReplyEntitlementFailure(res);
+      setReplyNotice(notice ?? '');
     } finally {
       setIsSending(false);
     }
@@ -300,6 +306,7 @@ export const AdminMobileChat = () => {
               onClick={() => {
                 setSelectedSessionId(null);
                 setReplyText('');
+                setReplyNotice('');
                 setReplyingToMessageId(null);
               }}
               className="rounded-lg p-2 hover:bg-zinc-100"
@@ -380,10 +387,15 @@ export const AdminMobileChat = () => {
           {replyingToMessageId && (
             <p className="mb-2 text-xs text-zinc-500">Replying to message #{replyingToMessageId}</p>
           )}
+          {replyNotice && <p role="alert" className="mb-2 text-sm font-semibold text-red-800">{replyNotice}</p>}
           <div className="flex gap-2">
             <textarea
+              aria-label="Reply to visitor"
               value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
+              onChange={(e) => {
+                setReplyText(e.target.value);
+                setReplyNotice('');
+              }}
               rows={2}
               placeholder="Type a reply..."
               className="flex-1 rounded-xl border border-zinc-200 p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20"
@@ -392,7 +404,8 @@ export const AdminMobileChat = () => {
               type="button"
               disabled={!replyText.trim() || isSending}
               onClick={() => sendReply(replyText)}
-              className="self-end rounded-xl bg-emerald-600 p-3 text-white disabled:opacity-50"
+              aria-label="Send reply"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center self-end rounded-xl bg-emerald-800 p-3 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:opacity-50"
             >
               <Send className="h-5 w-5" />
             </button>
@@ -410,7 +423,7 @@ export const AdminMobileChat = () => {
             <h1 className="text-xl font-bold text-zinc-900">Chat Inbox</h1>
             <p className="text-xs text-zinc-500">{user?.email}</p>
           </div>
-          <button type="button" onClick={handleLogout} className="rounded-lg p-2 hover:bg-zinc-100">
+          <button type="button" onClick={handleLogout} aria-label="Sign out" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900">
             <LogOut className="h-5 w-5 text-zinc-500" />
           </button>
         </div>

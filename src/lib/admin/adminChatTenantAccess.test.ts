@@ -9,7 +9,12 @@ import {
   assertAdminCanAccessChatSession,
   createAdminChatRouteHandlers,
   type AdminChatStore,
+  type OperationalChatAccessResolver,
 } from './adminChatRoutes.ts';
+import {
+  describeAdminReplyEntitlementFailure,
+  readAdminReplyEntitlementFailure,
+} from './adminReplyEntitlementNotice.ts';
 import {
   advanceConversationStatus,
   resolveConversation,
@@ -191,13 +196,16 @@ function fakeRequireOperationsRole(req: TestAdminRequest, res: Response, next: N
   return res.status(403).json({ success: false, error: 'Forbidden' });
 }
 
-async function startAdminApp() {
+const allowExistingChat: OperationalChatAccessResolver = async () => ({ allowed: true, basis: 'allowed_existing' });
+
+async function startAdminApp(options: { resolveChatAccess?: OperationalChatAccessResolver } = {}) {
   const db = createDb();
   const handlers = createAdminChatRouteHandlers({
     store: db.store,
     conversations: db.conversations,
     isDatabaseUnavailableError: () => false,
     logUnavailable: () => undefined,
+    resolveChatAccess: options.resolveChatAccess ?? allowExistingChat,
   });
   const app = express();
   app.use(express.json());
@@ -384,6 +392,166 @@ test('admin reply guards: scope, unknown session, cross-session quote, spoofed s
   }
 });
 
+test('suspended and revoked entitlements block admin replies and leave history readable', async () => {
+  let lookups: string[] = [];
+  const app = await startAdminApp({
+    resolveChatAccess: async (tenantId) => {
+      lookups.push(tenantId);
+      return { allowed: false, basis: tenantId === 'pw-uk' ? 'revoked' : 'suspended' };
+    },
+  });
+  try {
+    const before = JSON.stringify(app.db.messages);
+    const history = await app.call('GET', `/api/admin/sessions/${INFOTECH_SESSION}/messages?tenantId=pw-infotech`, ops);
+    assert.equal(history.status, 200);
+    assert.deepEqual(history.json.map((message: MessageRow) => message.id), [2, 3]);
+    const sessions = await app.call('GET', '/api/admin/sessions?tenantId=pw-infotech', ops);
+    assert.equal(sessions.status, 200);
+    assert.equal(lookups.length, 0, 'historical reads do not consult entitlement');
+
+    const reply = await app.call('POST', '/api/chat?tenantId=pw-infotech', { ...ops, body: { sessionId: INFOTECH_SESSION, sender: 'admin', text: 'Should not send' } });
+    assert.equal(reply.status, 403);
+    assert.equal(reply.json.code, 'chat_not_entitled');
+    const note = await app.call('POST', '/api/chat?tenantId=pw-infotech', { ...ops, body: { sessionId: INFOTECH_SESSION, sender: 'admin', text: 'hidden', isInternalNote: true } });
+    assert.equal(note.status, 403);
+    assert.equal(note.json.code, 'chat_not_entitled');
+    const revoked = await app.call('POST', '/api/chat?tenantId=pw-uk', { ...ops, body: { sessionId: UK_SESSION, sender: 'admin', text: 'Should not send' } });
+    assert.equal(revoked.status, 403);
+    assert.equal(revoked.json.code, 'chat_not_entitled');
+    assert.deepEqual(lookups, ['pw-infotech', 'pw-infotech', 'pw-uk']);
+    assert.equal(JSON.stringify(app.db.messages), before);
+    assert.equal(app.db.sessions.get(INFOTECH_SESSION)!.status, 'bot_replied');
+    assert.equal(app.db.messages.find((message) => message.id === 2)!.answered, false);
+  } finally {
+    await app.close();
+  }
+});
+
+test('an entitlement store outage blocks admin replies and a missing row does not', async () => {
+  const down = await startAdminApp({
+    resolveChatAccess: async () => {
+      throw new Error('entitlement store down');
+    },
+  });
+  try {
+    const before = down.db.messages.length;
+    const reply = await down.call('POST', '/api/chat?tenantId=pw-uk', { ...ops, body: { sessionId: UK_SESSION, sender: 'admin', text: 'no' } });
+    assert.equal(reply.status, 503);
+    assert.equal(reply.json.code, 'chat_service_unavailable');
+    assert.equal(down.db.messages.length, before);
+    const history = await down.call('GET', `/api/admin/sessions/${UK_SESSION}/messages?tenantId=pw-uk`, ops);
+    assert.equal(history.status, 200);
+  } finally {
+    await down.close();
+  }
+
+  const lookups: string[] = [];
+  const open = await startAdminApp({
+    resolveChatAccess: async (tenantId) => {
+      lookups.push(tenantId);
+      return { allowed: true, basis: 'allowed_existing' };
+    },
+  });
+  try {
+    const reply = await open.call('POST', '/api/chat?tenantId=pw-infotech', { ...ops, body: { sessionId: INFOTECH_SESSION, sender: 'admin', text: 'Hello' } });
+    assert.equal(reply.status, 201);
+    const legacy = await open.call('POST', '/api/chat?tenantId=all', {
+      ...ops,
+      body: { sessionId: LEGACY_SESSION, sender: 'admin', text: 'Legacy still sends' },
+    });
+    assert.equal(legacy.status, 201, 'a missing Primewayz UK row still allows the legacy session');
+    assert.equal(open.db.sessions.get(LEGACY_SESSION)!.tenantId, null);
+    assert.deepEqual(lookups, ['pw-infotech', 'pw-uk']);
+  } finally {
+    await open.close();
+  }
+});
+
+test('legacy null-tenant replies follow Primewayz UK entitlement and ignore body tenant fields', async () => {
+  const cases = [
+    { basis: 'allowed_entitled', allowed: true, status: 201 },
+    { basis: 'suspended', allowed: false, status: 403 },
+    { basis: 'revoked', allowed: false, status: 403 },
+  ] as const;
+
+  for (const item of cases) {
+    const lookups: string[] = [];
+    const app = await startAdminApp({
+      resolveChatAccess: async (tenantId) => {
+        lookups.push(tenantId);
+        if (tenantId === 'pw-uk') return { allowed: item.allowed, basis: item.basis };
+        return { allowed: true, basis: 'allowed_entitled' };
+      },
+    });
+    try {
+      const before = app.db.messages.length;
+      const history = await app.call('GET', `/api/admin/sessions/${LEGACY_SESSION}/messages?tenantId=all`, ops);
+      assert.equal(history.status, 200, item.basis);
+      assert.equal(lookups.length, 0, 'historical reads do not consult entitlement');
+      const hidden = await app.call('GET', `/api/admin/sessions/${LEGACY_SESSION}/messages?tenantId=pw-uk`, ops);
+      assert.equal(hidden.status, 403, 'legacy rows stay outside the Primewayz UK filter');
+      const reply = await app.call('POST', '/api/chat?tenantId=all', {
+        ...ops,
+        body: {
+          sessionId: LEGACY_SESSION,
+          sender: 'admin',
+          text: 'Legacy reply',
+          tenantId: 'pw-infotech',
+          market: 'IN',
+          sourceSite: 'primewayz.com',
+        },
+      });
+      assert.equal(reply.status, item.status, item.basis);
+      assert.deepEqual(lookups, ['pw-uk'], item.basis);
+      assert.equal(app.db.sessions.get(LEGACY_SESSION)!.tenantId, null, 'the stored tenant stays null');
+      if (item.allowed) {
+        assert.equal(app.db.messages.length, before + 1);
+      } else {
+        assert.equal(reply.json.code, 'chat_not_entitled');
+        assert.equal(app.db.messages.length, before);
+        const infotech = await app.call('POST', '/api/chat?tenantId=pw-infotech', {
+          ...ops,
+          body: { sessionId: INFOTECH_SESSION, sender: 'admin', text: 'still open' },
+        });
+        assert.equal(infotech.status, 201, 'another entitled tenant is unchanged');
+        assert.deepEqual(lookups, ['pw-uk', 'pw-infotech']);
+      }
+    } finally {
+      await app.close();
+    }
+  }
+
+  const downLookups: string[] = [];
+  const down = await startAdminApp({
+    resolveChatAccess: async (tenantId) => {
+      downLookups.push(tenantId);
+      if (tenantId === 'pw-uk') throw new Error('entitlement store down');
+      return { allowed: true, basis: 'allowed_entitled' };
+    },
+  });
+  try {
+    const before = down.db.messages.length;
+    const history = await down.call('GET', `/api/admin/sessions/${LEGACY_SESSION}/messages?tenantId=all`, ops);
+    assert.equal(history.status, 200);
+    assert.equal(downLookups.length, 0);
+    const reply = await down.call('POST', '/api/chat?tenantId=all', {
+      ...ops,
+      body: { sessionId: LEGACY_SESSION, sender: 'admin', text: 'no', tenantId: 'pw-uk' },
+    });
+    assert.equal(reply.status, 503);
+    assert.equal(reply.json.code, 'chat_service_unavailable');
+    assert.equal(down.db.messages.length, before);
+    assert.deepEqual(downLookups, ['pw-uk']);
+    const infotech = await down.call('POST', '/api/chat?tenantId=pw-infotech', {
+      ...ops,
+      body: { sessionId: INFOTECH_SESSION, sender: 'admin', text: 'still open' },
+    });
+    assert.equal(infotech.status, 201);
+  } finally {
+    await down.close();
+  }
+});
+
 test('internal notes do not mark visitor messages answered', async () => {
   const app = await startAdminApp();
   try {
@@ -497,6 +665,8 @@ test('server mounts the admin history route behind admin auth and the operations
 test('admin chat code never resolves tenant from the request source', () => {
   const adminRoutes = read('src/lib/admin/adminChatRoutes.ts');
   assert.doesNotMatch(adminRoutes, /resolveSourceContext|resolveRequestSource/);
+  assert.doesNotMatch(adminRoutes, /body\.tenantId|req\.body\?\.tenantId/);
+  assert.match(adminRoutes, /resolveStoredChatSessionTenantId\(tenantId\)/);
   assert.match(adminRoutes, /requestedTenantFilter\(/);
   const storeStart = server.indexOf('const adminChatStore: AdminChatStore = {');
   const storeEnd = server.indexOf('const adminChatHandlers = createAdminChatRouteHandlers(');
@@ -662,6 +832,50 @@ test('needsAttention clears after an authorised reply or resolution and returns 
   } finally {
     await app.close();
   }
+});
+
+test('entitlement reply failures are named for the operator and other failures stay quiet', async () => {
+  assert.equal(
+    describeAdminReplyEntitlementFailure(403, { error: 'Chat is not enabled for this tenant.', code: 'chat_not_entitled' }),
+    'Chat is not enabled for this tenant.',
+  );
+  assert.equal(
+    describeAdminReplyEntitlementFailure(403, { error: 'This chat is outside the selected platform entity.', code: 'tenant_scope_mismatch' }),
+    null,
+  );
+  assert.equal(
+    describeAdminReplyEntitlementFailure(503, { error: 'Chat is temporarily unavailable.', code: 'chat_service_unavailable' }),
+    'Chat is temporarily unavailable.',
+  );
+  assert.equal(
+    describeAdminReplyEntitlementFailure(503, { error: 'Chat is temporarily unavailable', unavailable: true }),
+    'Chat is temporarily unavailable',
+  );
+  assert.equal(describeAdminReplyEntitlementFailure(403, { code: 'chat_not_entitled' }), 'Chat is not enabled for this tenant.');
+  assert.equal(describeAdminReplyEntitlementFailure(500, { error: 'Admin chat request failed' }), null);
+  const unread = await readAdminReplyEntitlementFailure({
+    ok: false,
+    status: 403,
+    json: async () => { throw new Error('not json'); },
+  });
+  assert.equal(unread, null, 'an unreadable 403 is not labelled as an entitlement denial');
+  const unavailable = await readAdminReplyEntitlementFailure({
+    ok: false,
+    status: 503,
+    json: async () => { throw new Error('not json'); },
+  });
+  assert.equal(unavailable, 'Chat is temporarily unavailable.');
+
+  const panel = read('src/components/AdminPanel.tsx');
+  const replyFn = panel.slice(panel.indexOf('const handleAdminReply'), panel.indexOf('const sendInternalNote'));
+  const success = replyFn.slice(replyFn.indexOf('if (res.ok)'), replyFn.indexOf('const notice'));
+  assert.match(success, /setReplyText\(''\)/);
+  assert.match(replyFn, /readAdminReplyEntitlementFailure\(res\)/);
+  assert.doesNotMatch(replyFn.slice(replyFn.indexOf('} catch')), /setReplyText|setAdminReplyAttachments\(\[\]\)/);
+  const mobile = read('src/components/AdminMobileChat.tsx');
+  const mobileReply = mobile.slice(mobile.indexOf('const sendReply'), mobile.indexOf('const updateStatus'));
+  assert.match(mobileReply.slice(mobileReply.indexOf('if (res.ok)'), mobileReply.indexOf('const notice')), /setReplyText\(''\)/);
+  assert.match(mobileReply, /readAdminReplyEntitlementFailure\(res\)/);
 });
 
 test('tenant options stay behind admin auth and acknowledgements do not create a second alert', () => {

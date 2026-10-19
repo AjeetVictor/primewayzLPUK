@@ -4,6 +4,7 @@
  */
 
 import type { TenantChatWidgetConfig } from '../chat/tenantChatWidget.ts';
+import type { EffectiveTenantChatDecision } from './tenantChatEntitlement.ts';
 import type { SourceContext } from './sourceContext.ts';
 import { getTenantById } from './tenantRegistry.ts';
 import {
@@ -67,4 +68,20 @@ export function buildPublicPlatformCapabilities(
 
 export function listCapabilityKeys(): readonly TenantCapability[] {
   return ALL_TENANT_CAPABILITIES;
+}
+
+/**
+ * Overlay the central chat decision onto the public capabilities DTO.
+ * An allow leaves the compile-time map unchanged. A deny clears chat only
+ * and drops tenant chat branding, matching the existing chatWidget rule.
+ */
+export function applyEffectiveChatToCapabilities(
+  response: PublicPlatformCapabilitiesResponse,
+  decision: EffectiveTenantChatDecision,
+): PublicPlatformCapabilitiesResponse {
+  if (decision.allowed) return response;
+  const capabilities = { ...response.capabilities, chat: false };
+  if (!response.chatWidget) return { ...response, capabilities };
+  const { chatWidget: _chatWidget, ...withoutWidget } = response;
+  return { ...withoutWidget, capabilities };
 }

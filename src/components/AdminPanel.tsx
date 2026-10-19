@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send, FileText, Save, UploadCloud, Archive, Star, Bell, BellOff, Paperclip, Image as ImageIcon, CalendarClock, StickyNote, Pencil, X, Check, Reply, Gauge, Bot } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, Trash2, RefreshCcw, Lock, User as UserIcon, Search, Users, UserPlus, Shield, Send, FileText, Save, UploadCloud, Archive, Star, Bell, BellOff, Paperclip, Image as ImageIcon, CalendarClock, StickyNote, Pencil, X, Check, Reply, Gauge, Bot, BadgeCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiUrl } from '../utils/apiUrl';
 import { PasswordInput } from './ui/PasswordInput';
@@ -12,8 +12,11 @@ import { RichBlogEditor } from './admin/RichBlogEditor';
 import { AdminAuditLeadsPanel } from './admin/AdminAuditLeadsPanel';
 import { AdminConversionDashboard } from './admin/AdminConversionDashboard';
 import { AdminTenantFilter } from './admin/AdminTenantFilter';
+import { AdminChatConnectInstallations } from './admin/AdminChatConnectInstallations';
+import { AdminTenantChatEntitlements } from './admin/AdminTenantChatEntitlements';
 import { ADMIN_TENANT_FILTER_OPTIONS, getTenantDisplayName, type AdminTenantOption } from '../lib/platform/tenantRegistry';
 import { conversationRequiresHumanAttention, matchesAdminChatStatusFilter } from '../lib/admin/adminChatAttention';
+import { readAdminReplyEntitlementFailure } from '../lib/admin/adminReplyEntitlementNotice';
 import { AutopilotPanel } from './admin/autopilot/AutopilotPanel';
 import { ChatConfirmDialog } from './admin/ChatConfirmDialog';
 import { sanitizeBlogHtml } from '../utils/sanitizeHtml';
@@ -537,6 +540,7 @@ const AdminPanelContent = () => {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyingToMessageId, setReplyingToMessageId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [adminReplyNotice, setAdminReplyNotice] = useState<{ sessionId: string; message: string } | null>(null);
   const [activeTab, setActiveTab] = useState('forms');
   const [chatStatusFilter, setChatStatusFilter] = useState<ChatStatusFilterKey>('all');
 
@@ -1140,13 +1144,17 @@ const AdminPanelContent = () => {
           isQuickReply: options?.isQuickReply,
           conversationStatus: sessionMeta?.status,
         });
+        setAdminReplyNotice(null);
         setReplyText('');
         setAdminReplyAttachments([]);
         setReplyingTo(null);
         setReplyingToMessageId(null);
         setIsInternalNoteMode(false);
         fetchData();
+        return;
       }
+      const notice = await readAdminReplyEntitlementFailure(res);
+      setAdminReplyNotice(notice ? { sessionId, message: notice } : null);
     } catch (error) {
       console.error('Admin reply failed:', error);
     }
@@ -1890,27 +1898,30 @@ const AdminPanelContent = () => {
           </div>
         )}
 
+        {activeTab !== 'tenant-management' && activeTab !== 'chat-connect' && (
         <div className="mb-8">
           <div className="relative max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" aria-hidden="true" />
             <input 
-              type="text"
+              type="search"
+              aria-label="Search form responses, leads, and chat records"
               placeholder="Search by name, email, or content..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3.5 bg-white border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all shadow-sm"
+              className="w-full pl-12 pr-4 py-3.5 bg-white border border-zinc-200 rounded-2xl shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
             />
           </div>
         </div>
+        )}
 
         <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <Tabs.List className="flex flex-wrap gap-2 p-1 bg-zinc-200/50 rounded-2xl w-fit">
+          <Tabs.List aria-label="Administration sections" className="flex max-w-full flex-wrap gap-2 rounded-2xl bg-zinc-200/50 p-1">
             {canViewOperations && (
               <>
                 {canViewForms && (
                 <Tabs.Trigger 
                   value="forms"
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
                 >
                   <ClipboardList className="w-4 h-4" />
                   Form Responses
@@ -1931,7 +1942,7 @@ const AdminPanelContent = () => {
                 {canViewAuditLeads && (
                 <Tabs.Trigger
                   value="audit-leads"
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
                 >
                   <Gauge className="w-4 h-4" />
                   Audit Leads
@@ -1949,7 +1960,7 @@ const AdminPanelContent = () => {
                 {canViewConversion && (
                 <Tabs.Trigger
                   value="conversion"
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
                 >
                   <LayoutDashboard className="w-4 h-4" />
                   Conversion
@@ -1967,7 +1978,7 @@ const AdminPanelContent = () => {
                 {canViewChatLeads && (
                 <Tabs.Trigger 
                   value="leads"
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
                 >
                   <Users className="w-4 h-4" />
                   Chat Leads
@@ -1979,7 +1990,7 @@ const AdminPanelContent = () => {
                 {canViewChatHistory && (
                 <Tabs.Trigger 
                   value="chats"
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
                 >
                   <MessageSquare className="w-4 h-4" />
                   Chat History
@@ -2002,7 +2013,7 @@ const AdminPanelContent = () => {
             {canViewBlogCms && (
               <Tabs.Trigger 
                 value="blog"
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
               >
                 <FileText className="w-4 h-4" />
                 Blog CMS
@@ -2028,7 +2039,7 @@ const AdminPanelContent = () => {
             {canViewAutopilot && (
               <Tabs.Trigger
                 value="autopilot"
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
               >
                 <Bot className="w-4 h-4" />
                 Autopilot
@@ -2051,7 +2062,7 @@ const AdminPanelContent = () => {
             {canViewBlogComments && (
               <Tabs.Trigger 
                 value="comments"
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
               >
                 <MessageSquare className="w-4 h-4" />
                 Blog Comments
@@ -2077,13 +2088,31 @@ const AdminPanelContent = () => {
             {user?.isPlatformOwner && userManagementScope.available && (
               <Tabs.Trigger 
                 value="users"
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-zinc-500"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
               >
                 <Users className="w-4 h-4" />
                 User Management
                 <span className="ml-1 max-w-[140px] truncate rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-zinc-500">
                   {userManagementScope.scopeBadge}
                 </span>
+              </Tabs.Trigger>
+            )}
+            {(canViewOperations || user?.isPlatformOwner) && (
+              <Tabs.Trigger
+                value="tenant-management"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+              >
+                <BadgeCheck className="w-4 h-4" />
+                Tenant Management
+              </Tabs.Trigger>
+            )}
+            {(canViewOperations || user?.isPlatformOwner) && (
+              <Tabs.Trigger
+                value="chat-connect"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-800 data-[state=active]:shadow-sm text-zinc-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+              >
+                <Shield className="w-4 h-4" />
+                Chat Connect
               </Tabs.Trigger>
             )}
           </Tabs.List>
@@ -2302,6 +2331,7 @@ const AdminPanelContent = () => {
                             setReplyingTo(session.id);
                             setSelectedConversationId(session.id);
                             setReplyText('');
+                            setAdminReplyNotice(null);
                           }}
                           className="text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors flex items-center gap-1"
                         >
@@ -2329,11 +2359,18 @@ const AdminPanelContent = () => {
                         animate={{ opacity: 1, height: 'auto' }}
                         className="mt-2 space-y-2"
                       >
+                        {adminReplyNotice?.sessionId === session.id && (
+                          <p role="alert" className="text-sm font-semibold text-red-800">{adminReplyNotice.message}</p>
+                        )}
                         <textarea 
+                          aria-label="Reply to visitor"
                           value={replyText}
-                          onChange={(e) => setReplyText(e.target.value)}
+                          onChange={(e) => {
+                            setReplyText(e.target.value);
+                            setAdminReplyNotice((current) => current?.sessionId === session.id ? null : current);
+                          }}
                           placeholder="Type your reply..."
-                          className="w-full p-3 text-sm rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 outline-none resize-none"
+                          className="w-full p-3 text-sm rounded-xl border border-zinc-200 resize-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
                           rows={2}
                         />
                         <div className="flex gap-2 justify-end">
@@ -2409,6 +2446,7 @@ const AdminPanelContent = () => {
           if (conversation.sessionId !== selectedConversationId) {
             setReplyText('');
             setAdminReplyAttachments([]);
+            setAdminReplyNotice(null);
           }
                           setSelectedConversationId(conversation.sessionId);
                           setReplyingTo(conversation.sessionId);
@@ -2759,6 +2797,9 @@ const AdminPanelContent = () => {
                         onChange={(event) => uploadAdminChatFile(event.target.files?.[0])}
                       />
                       {adminUploadError && <p className="mb-2 text-xs font-bold text-red-600">{adminUploadError}</p>}
+                      {adminReplyNotice?.sessionId === selectedConversation.sessionId && (
+                        <p role="alert" className="mb-2 text-sm font-semibold text-red-800">{adminReplyNotice.message}</p>
+                      )}
                       {isAdminUploading && <p className="mb-2 text-xs font-bold text-zinc-500">Uploading file...</p>}
                       {adminReplyAttachments.length > 0 && (
                         <div className="mb-3 flex flex-wrap gap-2">
@@ -2771,14 +2812,16 @@ const AdminPanelContent = () => {
                         </div>
                       )}
                       <textarea
+                        aria-label="Reply to visitor"
                         value={replyingTo === selectedConversation.sessionId ? replyText : ''}
                         onChange={(e) => {
                           setReplyingTo(selectedConversation.sessionId);
                           setReplyingToMessageId(null);
                           setReplyText(e.target.value);
+                          setAdminReplyNotice((current) => current?.sessionId === selectedConversation.sessionId ? null : current);
                         }}
                         placeholder="Type your reply to this conversation..."
-                        className="w-full rounded-xl border border-zinc-200 p-3 text-sm outline-none resize-none focus:ring-2 focus:ring-emerald-500/20"
+                        className="w-full rounded-xl border border-zinc-200 p-3 text-sm resize-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
                         rows={3}
                       />
                       <div className="mt-3 flex items-center justify-between gap-3">
@@ -3145,6 +3188,23 @@ const AdminPanelContent = () => {
               </div>
             </div>
           </Tabs.Content>
+          )}
+
+          {(canViewOperations || user?.isPlatformOwner) && (
+            <Tabs.Content value="tenant-management" className="outline-none">
+              <AdminTenantChatEntitlements
+                canManage={Boolean(user?.isPlatformOwner)}
+                request={adminRequest}
+              />
+            </Tabs.Content>
+          )}
+          {(canViewOperations || user?.isPlatformOwner) && (
+            <Tabs.Content value="chat-connect" className="outline-none">
+              <AdminChatConnectInstallations
+                canManage={Boolean(user?.isPlatformOwner)}
+                request={adminRequest}
+              />
+            </Tabs.Content>
           )}
 
           {user?.isPlatformOwner && userManagementScope.available && (

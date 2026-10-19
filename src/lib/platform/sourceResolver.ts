@@ -76,6 +76,14 @@ export function assertSourceOwnership(
 }
 
 /**
+ * Pre-tenant chat rows store a null tenantId. Visitor follow-ups already accept those
+ * rows only from Primewayz UK. Entitlement uses that same owner and never a request field.
+ */
+export function resolveStoredChatSessionTenantId(storedTenantId: string | null | undefined): string {
+  return storedTenantId == null ? 'pw-uk' : storedTenantId;
+}
+
+/**
  * Chat sessions stamp SourceContext once. Follow-up messages/appointments/attachments
  * inherit that ownership. Legacy (null tenant) sessions stay UK-conservative and cannot
  * be claimed by another active entity.
@@ -84,7 +92,7 @@ export function assertChatSessionTenantAccess(
   existingTenantId: string | null | undefined,
   source: SourceContext,
 ): void {
-  if (!existingTenantId && source.tenantId !== 'pw-uk') {
+  if (!existingTenantId && source.tenantId !== resolveStoredChatSessionTenantId(existingTenantId)) {
     throw new SourceResolutionError(
       'Legacy chat ownership cannot be reassigned to another platform entity.',
     );

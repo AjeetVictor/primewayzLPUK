@@ -370,6 +370,7 @@ async function startApp(options: {
   registry?: readonly IntegrationDefinition[];
   clock?: { now: number };
   writeHooks?: MemoryChatStoreHooks['before'];
+  resolveChatAccess?: (tenantId: string) => Promise<{ allowed: boolean; basis: string }>;
 } = {}) {
   resetWordPressChatRateLimitsForTests();
   const db = options.db ?? createDb();
@@ -396,6 +397,7 @@ async function startApp(options: {
     now: () => clock.now,
     log: (entry) => logs.push(entry),
     logError: (line) => errors.push(line),
+    resolveChatAccess: options.resolveChatAccess,
   }));
   app.all(WORDPRESS_CHAT_INTEGRATION_PATH, wordpressChatMethodNotAllowed);
   app.use(WORDPRESS_CHAT_INTEGRATION_PATH, wordpressChatBodyErrorHandler);
@@ -1752,11 +1754,79 @@ test('regression: read action response contracts are unchanged after writes are 
   }
 });
 
+test('entitlement: suspended chat is reported and enforced without changing the diagnostics contract', async () => {
+  const seen: string[] = [];
+  const app = await startApp({
+    resolveChatAccess: async (tenantId) => {
+      seen.push(tenantId);
+      return { allowed: false, basis: 'suspended' };
+    },
+  });
+  try {
+    const diagnostics = await app.call({ body: { action: 'diagnostics' } });
+    assert.equal(diagnostics.status, 200);
+    assert.deepEqual(Object.keys(diagnostics.json.data).sort(), ['api', 'authentication', 'chat', 'database', 'fullAdmin', 'status', 'team', 'tenantBinding']);
+    assert.equal(diagnostics.json.data.chat.enabled, false);
+    assert.equal(diagnostics.json.data.tenantBinding.active, true);
+    assert.equal(diagnostics.json.data.status, 'degraded');
+    const before = snapshot(app.db);
+    const dashboard = await app.call({ body: { action: 'dashboard' } });
+    assert.equal(dashboard.status, 200);
+    assert.equal(dashboard.json.data.service.chatEnabled, false);
+    assert.equal(dashboard.json.data.service.canAcceptMessages, false);
+    assert.deepEqual(Object.keys(dashboard.json.data).sort(), ['attention', 'fullAdmin', 'limits', 'recentConversations', 'service', 'team']);
+    const conversation = await app.call({ body: { action: 'conversation', sessionId: 'inf-1' } });
+    assert.equal(conversation.status, 200);
+    assert.equal(conversation.json.data.messages.length > 0, true);
+    const reply = await app.call({ body: replyBody('inf-1', 'Should not send') });
+    assert.equal(reply.status, 403);
+    assert.equal(reply.json.error.code, 'integration_forbidden');
+    const resolve = await app.call({ body: statusBody('resolve', 'inf-5') });
+    assert.equal(resolve.status, 403);
+    assert.equal(resolve.json.error.code, 'integration_forbidden');
+    const reopen = await app.call({ body: statusBody('reopen', 'inf-3') });
+    assert.equal(reopen.status, 403);
+    assert.equal(snapshot(app.db), before);
+    assert.deepEqual(seen, ['pw-infotech', 'pw-infotech', 'pw-infotech', 'pw-infotech', 'pw-infotech', 'pw-infotech']);
+  } finally {
+    await app.close();
+  }
+});
+
+test('entitlement: an unavailable store denies WordPress chat writes and does not report chat as enabled', async () => {
+  const app = await startApp({
+    resolveChatAccess: async () => {
+      throw new Error('entitlement store down');
+    },
+  });
+  try {
+    const diagnostics = await app.call({ body: { action: 'diagnostics' } });
+    assert.equal(diagnostics.status, 200);
+    assert.equal(diagnostics.json.data.status, 'unavailable');
+    assert.equal(diagnostics.json.data.chat.enabled, false);
+    assert.equal(diagnostics.json.data.database.status, 'reachable');
+    const before = snapshot(app.db);
+    const dashboard = await app.call({ body: { action: 'dashboard' } });
+    assert.equal(dashboard.status, 503);
+    assert.equal(dashboard.json.error.code, 'chat_service_unavailable');
+    const conversation = await app.call({ body: { action: 'conversation', sessionId: 'inf-1' } });
+    assert.equal(conversation.status, 503);
+    const reply = await app.call({ body: replyBody('inf-1', 'Should not send') });
+    assert.equal(reply.status, 503);
+    assert.equal(reply.json.error.code, 'chat_service_unavailable');
+    assert.equal(reply.json.ok, false);
+    assert.equal(snapshot(app.db), before);
+  } finally {
+    await app.close();
+  }
+});
+
 test('wiring: one endpoint, delegated writes use the shared conversation store and service', () => {
   const server = read('server.ts');
   const route = server.indexOf('app.post(WORDPRESS_CHAT_INTEGRATION_PATH, createWordPressChatIntegrationHandler({');
   const block = server.slice(route, server.indexOf('}));', route));
   assert.match(block, /writes: chatConversationStore,/);
+  assert.match(block, /resolveChatAccess:/);
   assert.equal((server.match(/WORDPRESS_CHAT_INTEGRATION_PATH, createWordPressChatIntegrationHandler/g) ?? []).length, 1);
   const adapter = read('src/lib/integrations/wordpressChatDelegatedActions.ts');
   assert.match(adapter, /createTeamReply\(tx, \{[\s\S]*?isInternalNote: false,[\s\S]*?replyToId: null,[\s\S]*?terminalPolicy: 'reject'/);

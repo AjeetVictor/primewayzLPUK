@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { assertSourceOwnership, resolveSourceContext, SourceResolutionError } from './sourceResolver.ts';
+import {
+  assertChatSessionTenantAccess,
+  assertSourceOwnership,
+  resolveSourceContext,
+  resolveStoredChatSessionTenantId,
+  SourceResolutionError,
+} from './sourceResolver.ts';
 
 test('resolves exact UK, Infotech, and RentReadBuy origins', () => {
   assert.equal(resolveSourceContext({ origin: 'https://uk.primewayz.com', sourceChannel: 'chat' }).tenantId, 'pw-uk');
@@ -66,6 +72,19 @@ test('inactive future markets cannot activate through browser input', () => {
       body: { tenantId: 'pw-us', market: 'US' },
     }),
     /controlled by the server/,
+  );
+});
+
+test('a null chat session resolves to the Primewayz UK owner the visitor guard already accepts', () => {
+  assert.equal(resolveStoredChatSessionTenantId(null), 'pw-uk');
+  assert.equal(resolveStoredChatSessionTenantId(undefined), 'pw-uk');
+  assert.equal(resolveStoredChatSessionTenantId('pw-infotech'), 'pw-infotech');
+  const uk = resolveSourceContext({ origin: 'https://uk.primewayz.com', sourceChannel: 'chat' });
+  assert.equal(uk.tenantId, resolveStoredChatSessionTenantId(null));
+  assert.doesNotThrow(() => assertChatSessionTenantAccess(null, uk));
+  assert.throws(
+    () => assertChatSessionTenantAccess(null, resolveSourceContext({ origin: 'https://primewayz.com', sourceChannel: 'chat' })),
+    /Legacy chat ownership/,
   );
 });
 

@@ -1,4 +1,4 @@
-import { AppConfirmDialog } from '../ui/AppConfirmDialog';
+import { AppConfirmDialog, type AppConfirmVariant } from '../ui/AppConfirmDialog';
 
 type ChatConfirmDialogProps = {
   open: boolean;
@@ -6,6 +6,7 @@ type ChatConfirmDialogProps = {
   body: string;
   cancelLabel?: string;
   confirmLabel?: string;
+  variant?: AppConfirmVariant;
   onCancel: () => void;
   onConfirm: () => void;
   isConfirming?: boolean;
@@ -17,6 +18,7 @@ export function ChatConfirmDialog({
   body,
   cancelLabel = 'Cancel',
   confirmLabel = 'Confirm',
+  variant = 'danger',
   onCancel,
   onConfirm,
   isConfirming = false,
@@ -28,7 +30,7 @@ export function ChatConfirmDialog({
       body={body}
       cancelLabel={cancelLabel}
       confirmLabel={confirmLabel}
-      variant="danger"
+      variant={variant}
       isProcessing={isConfirming}
       onCancel={onCancel}
       onConfirm={onConfirm}
