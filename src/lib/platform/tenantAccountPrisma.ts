@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
 import {
   accountChatGate,
+  isMissingTenantRegistryError,
   isTenantLifecycle,
   parseCapabilityMap,
   type OriginVerificationMethod,
@@ -16,9 +17,7 @@ import {
 import type { TenantAccountStore } from './tenantAccountStore.ts';
 
 function isMissingTable(err: unknown): boolean {
-  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2021') return true;
-  const message = err instanceof Error ? err.message : '';
-  return /does not exist|doesn't exist/i.test(message);
+  return isMissingTenantRegistryError(err);
 }
 
 function asCapabilities(value: unknown) {
@@ -114,8 +113,13 @@ export function createPrismaTenantAccountStore(prisma: PrismaClient): TenantAcco
       return row ? asOrigin(row) : null;
     },
     async findOriginByValue(origin) {
-      const row = await prisma.platformTenantOrigin.findUnique({ where: { origin } });
-      return row ? asOrigin(row) : null;
+      try {
+        const row = await prisma.platformTenantOrigin.findUnique({ where: { origin } });
+        return row ? asOrigin(row) : null;
+      } catch (err) {
+        if (isMissingTable(err)) return null;
+        throw err;
+      }
     },
     async insertOrigin(record) {
       await prisma.platformTenantOrigin.create({ data: record });

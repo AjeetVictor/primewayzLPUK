@@ -24,6 +24,7 @@ import {
   openCommercialRecord,
   registerDatabaseTenant,
   TenantAccountError,
+  updateTenantAccount,
   verifySiteOrigin,
   type TenantAccountPrincipal,
 } from './tenantAccountService.ts';
@@ -156,6 +157,37 @@ test('typing an origin does not authorize it, and another tenant cannot claim it
     () => addSiteOrigin(store, OWNER, beta.id, { origin: 'https://uk.primewayz.com' }, at, env),
     (error: unknown) => error instanceof TenantAccountError && error.code === 'origin_collision',
   );
+});
+
+test('operators cannot change lifecycle, claim an origin, or edit capabilities', async () => {
+  const store = createMemoryTenantAccountStore();
+  await registerDatabaseTenant(store, OWNER, {
+    tenantId: 'acme-uk',
+    displayName: 'Acme UK',
+    brand: 'Customer',
+    market: 'UK',
+    organizationName: 'Acme Ltd',
+    primaryContactName: 'Ada',
+    primaryContactEmail: 'ada@acme.test',
+  }, at);
+  const site = await addTenantSite(store, OWNER, 'acme-uk', { displayName: 'Acme site', technology: 'wordpress' }, at);
+  const operator: TenantAccountPrincipal = { ...OPERATOR, tenantIds: ['acme-uk'] };
+  await assert.rejects(
+    () => changeTenantLifecycle(store, operator, 'acme-uk', 'activate', at, {}),
+    (error: unknown) => error instanceof TenantAccountError && error.status === 403,
+  );
+  await assert.rejects(
+    () => addSiteOrigin(store, operator, site.id, { origin: 'https://acme.example' }, at, { NODE_ENV: 'test' }),
+    (error: unknown) => error instanceof TenantAccountError && error.status === 403,
+  );
+  const before = await store.findAccount('acme-uk');
+  await assert.rejects(
+    () => updateTenantAccount(store, operator, 'acme-uk', {
+      capabilities: { audit: false, forms: false, chat: false, conversion: false, scheduling: false },
+    }, at),
+    (error: unknown) => error instanceof TenantAccountError && error.status === 403,
+  );
+  assert.equal((await store.findAccount('acme-uk'))?.capabilities.chat, before?.capabilities.chat);
 });
 
 test('operators cannot suspend another tenant and archived catalog tenants do not fall open', async () => {

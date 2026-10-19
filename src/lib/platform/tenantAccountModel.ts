@@ -29,6 +29,13 @@ export const TENANT_ACCOUNT_MARKETS = ['UK', 'IN', 'US', 'UAE', 'MX', 'OTHER'] a
 
 export const TENANT_ID_PATTERN = /^[a-z][a-z0-9-]{1,31}$/;
 
+/** Missing commercial-registry tables are the pre-migration path. Other read failures are not. */
+export function isMissingTenantRegistryError(err: unknown): boolean {
+  if (typeof err === 'object' && err !== null && 'code' in err && (err as { code?: unknown }).code === 'P2021') return true;
+  const message = err instanceof Error ? err.message : '';
+  return /does not exist|doesn't exist/i.test(message);
+}
+
 export type TenantAccountRecord = {
   tenantId: string;
   displayName: string;

@@ -39,10 +39,21 @@ export type PublicPlatformCapabilitiesResponse = {
 export function buildPublicPlatformCapabilities(
   source: SourceContext,
   env: NodeJS.ProcessEnv = process.env,
+  presentation?: { displayName: string; capabilities: TenantCapabilityMap },
 ): PublicPlatformCapabilitiesResponse {
   const tenant = getTenantById(source.tenantId);
   if (!tenant) {
-    throw new Error(`Unknown tenant ${source.tenantId}`);
+    if (!presentation) throw new Error(`Unknown tenant ${source.tenantId}`);
+    return {
+      tenant: {
+        key: source.tenantId,
+        displayName: presentation.displayName,
+        market: source.market,
+        brand: source.brand,
+      },
+      capabilities: presentation.capabilities,
+      scheduling: toPublicSchedulingDto(getSchedulingAvailability(source, env)),
+    };
   }
   const capabilities = getTenantCapabilities(source.tenantId) ?? {
     audit: false,

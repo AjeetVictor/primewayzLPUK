@@ -361,8 +361,16 @@ test('migration is additive and server wiring keeps visitor, capabilities, CORS,
   const server = fs.readFileSync(path.join(process.cwd(), 'server.ts'), 'utf8');
   assert.match(server, /function resolveTenantChatAccess\(tenantId: string\) \{\s*return resolveEffectiveTenantChat\(\{/);
   assert.match(server, /createPublicChatApiCorsMiddleware\(resolveTenantChatAccess/);
-  assert.match(server, /applyEffectiveChatToCapabilities\(buildPublicPlatformCapabilities/);
+  assert.match(server, /createPublicPlatformApiCorsMiddleware\(resolveVerifiedChatOrigin\)/);
+  assert.match(server, /lookupVerifiedTenantOrigin\(tenantAccountStore/);
+  assert.match(server, /applyEffectiveChatToCapabilities\(\s*buildPublicPlatformCapabilities/);
   assert.match(server, /const decision = await resolveTenantChatAccess\(sourceContext\.tenantId\)/);
+  const visitorGateFn = server.slice(
+    server.indexOf('async function assertEffectivePublicTenantChat'),
+    server.indexOf("app.options('/api/v1/website-audits'"),
+  );
+  assert.match(visitorGateFn, /resolveTenantChatAccess\(source\.tenantId\)/);
+  assert.equal(visitorGateFn.includes('assertVisitorChatEntitlement'), false);
   assert.equal((server.match(/resolveChatAccess: resolveTenantChatAccess/g) ?? []).length, 3);
   assert.equal((server.match(/tenantChatEntitlementStore\.find/g) ?? []).length, 1);
   assert.equal((server.match(/await assertEffectivePublicTenantChat\(sourceContext\)/g) ?? []).length, 6);

@@ -81,17 +81,17 @@ import {
 } from './src/lib/serverRouteClassification.ts';
 import type { NextFunction, Request, Response } from 'express';
 import { resolveSourceContext, SourceResolutionError, assertTenantCapability } from './src/lib/platform/sourceResolver.ts';
-import { toPersistedSourceContext, type PrimewayzMarket, type PrimewayzSourceChannel, type SourceContext } from './src/lib/platform/sourceContext.ts';
+import { toPersistedSourceContext, type PrimewayzSourceChannel, type SourceContext } from './src/lib/platform/sourceContext.ts';
 import { resolveAuthorizedAdminTenantFilter, AdminTenantAccessError, assertAdminTenantAccess, validateTenantGrants, type AdminTenantPrincipal } from './src/lib/admin/adminTenantAccess.ts';
 import { createAdminTenantOptionsHandler } from './src/lib/admin/adminTenantOptionsRoute.ts';
 import { accessSnapshot, runSerializableAccessTransaction } from './src/lib/admin/adminAccessMutation.ts';
-import { getTenantDisplayName, resolveTenantChatPresentation } from './src/lib/platform/tenantRegistry.ts';
+import { getTenantById, getTenantDisplayName, resolveTenantChatPresentation } from './src/lib/platform/tenantRegistry.ts';
 import { resolveAppointmentRequestTimezone } from './src/lib/platform/timeZone.ts';
 import { resolveOfflineAcknowledgement, resolveTenantBotReply, visitorMessageIsAnsweredByTenantBot } from './src/lib/chat/tenantBotReply.ts';
 import { UNANSWERED_VISITOR_MESSAGE_WHERE } from './src/lib/chat/chatOperationalSemantics.ts';
 import { createChatEmbedReleaseHandler, CHAT_EMBED_RELEASE_ROUTE } from './src/lib/chat/chatEmbedRelease.ts';
 import { applyEffectiveChatToCapabilities, buildPublicPlatformCapabilities } from './src/lib/platform/publicCapabilities.ts';
-import { publicPlatformApiCorsMiddleware } from './src/lib/platform/publicPlatformApiCors.ts';
+import { createPublicPlatformApiCorsMiddleware } from './src/lib/platform/publicPlatformApiCors.ts';
 import { getAdminNotificationSummary } from './src/lib/admin/adminNotificationSummaryService.ts';
 import { createAdminRequestOriginMiddleware, getAdminAllowedOrigins } from './src/lib/admin/adminRequestOrigin.ts';
 import { createAdminChatRouteHandlers, type AdminChatStore } from './src/lib/admin/adminChatRoutes.ts';
@@ -109,10 +109,9 @@ import { createPrismaChatConnectStore } from './src/lib/chatConnect/prismaStore.
 import { createPrismaTenantChatEntitlementStore } from './src/lib/platform/tenantChatEntitlementPrisma.ts';
 import { createPrismaTenantAccountStore } from './src/lib/platform/tenantAccountPrisma.ts';
 import { createChatPlatformAdminHandlers, CHAT_PLATFORM_ADMIN_PREFIX } from './src/lib/platform/tenantAccountAdmin.ts';
-import { parseExactOrigin } from './src/lib/platform/tenantAccountModel.ts';
+import { lookupVerifiedTenantOrigin, resolvePublicTenantSource } from './src/lib/platform/verifiedOriginResolution.ts';
 import { rememberRuntimeTenantCapabilities } from './src/lib/platform/tenantCapabilities.ts';
 import {
-  assertVisitorChatEntitlement,
   resolveEffectiveTenantChat,
   TenantChatEntitlementUnavailableError,
 } from './src/lib/platform/tenantChatEntitlement.ts';
@@ -260,49 +259,22 @@ function resolveRequestSource(req: Request, sourceChannel: PrimewayzSourceChanne
 }
 
 async function resolveVerifiedChatOrigin(origin: string) {
-  const exact = parseExactOrigin(origin, !isProd);
-  if (!exact) return null;
-  try {
-    const row = await tenantAccountStore.findOriginByValue(exact);
-    if (!row || row.verificationStatus !== 'verified') return null;
-    const gate = await tenantAccountStore.gate(row.tenantId);
-    if (gate.availability === 'unavailable') return { availability: 'unavailable' as const };
-    if (gate.availability !== 'ready' || gate.lifecycle !== 'active' || !gate.chatCapability) return null;
-    const account = await tenantAccountStore.findAccount(row.tenantId);
-    if (account) rememberRuntimeTenantCapabilities(account.tenantId, account.capabilities);
-    return { availability: 'ready' as const, tenantId: row.tenantId };
-  } catch {
-    return { availability: 'unavailable' as const };
-  }
+  const verified = await lookupVerifiedTenantOrigin(tenantAccountStore, origin, { allowLocalHttp: !isProd });
+  if (!verified || verified.availability === 'unavailable') return verified;
+  rememberRuntimeTenantCapabilities(verified.account.tenantId, verified.account.capabilities);
+  return { availability: 'ready' as const, tenantId: verified.tenantId };
 }
 
 async function resolveChatRequestSource(req: Request, sourceChannel: PrimewayzSourceChannel): Promise<SourceContext> {
-  try {
-    return resolveRequestSource(req, sourceChannel);
-  } catch (error) {
-    if (!(error instanceof SourceResolutionError) || error.message.includes('controlled by the server')) throw error;
-    const origin = req.get('origin')?.trim().replace(/\/$/, '');
-    if (!origin) throw error;
-    const verified = await resolveVerifiedChatOrigin(origin);
-    if (!verified) throw error;
-    if (verified.availability === 'unavailable') throw new TenantChatEntitlementUnavailableError();
-    const account = await tenantAccountStore.findAccount(verified.tenantId);
-    if (!account) throw error;
-    const markets: readonly PrimewayzMarket[] = ['UK', 'IN', 'US', 'UAE', 'MX', 'OTHER'];
-    const market = markets.find((entry) => entry === account.market) ?? 'OTHER';
-    const brand = account.brand === 'Primewayz' || account.brand === 'RentReadBuy' || account.brand === 'Customer'
-      ? account.brand
-      : 'Customer';
-    return {
-      tenantId: account.tenantId,
-      brand,
-      market,
-      sourceSite: new URL(origin).host,
-      sourceOrigin: origin,
-      sourceChannel,
-      campaignId: typeof req.body?.campaignId === 'string' ? req.body.campaignId : undefined,
-    };
-  }
+  return resolvePublicTenantSource({
+    origin: req.get('origin'),
+    host: req.get('host'),
+    sourceChannel,
+    body: req.body,
+    allowLocalDevelopment: !isProd,
+    campaignId: typeof req.body?.campaignId === 'string' ? req.body.campaignId : undefined,
+    store: tenantAccountStore,
+  });
 }
 
 function sourceResolutionFailure(res: Response, error: unknown): Response | null {
@@ -2839,10 +2811,11 @@ function resolveTenantChatAccess(tenantId: string) {
 }
 
 async function assertEffectivePublicTenantChat(source: SourceContext): Promise<void> {
-  await assertVisitorChatEntitlement(
-    source.tenantId,
-    () => lookupTenantChatEntitlement(source.tenantId),
-  );
+  const decision = await resolveTenantChatAccess(source.tenantId);
+  if (decision.basis === 'store_unavailable') throw new TenantChatEntitlementUnavailableError();
+  if (!decision.allowed) {
+    throw new SourceResolutionError('Capability "chat" is not enabled for this tenant.');
+  }
 }
 
 app.options('/api/v1/website-audits', (req, res) => {
@@ -2978,18 +2951,31 @@ app.post('/api/tools/digital-visibility-check/lead', async (req, res) => {
 // Visitor Chat CORS only (/api/chat/*). Does not apply to /api/admin/*.
 app.use(createPublicChatApiCorsMiddleware(resolveTenantChatAccess, resolveVerifiedChatOrigin));
 // Public platform + scheduling availability CORS (not webhooks).
-app.use(publicPlatformApiCorsMiddleware);
+app.use(createPublicPlatformApiCorsMiddleware(resolveVerifiedChatOrigin));
 
 app.get('/api/platform/capabilities', async (req, res) => {
   try {
-    const sourceContext = resolveRequestSource(req, 'other');
+    const sourceContext = await resolveChatRequestSource(req, 'other');
     const decision = await resolveTenantChatAccess(sourceContext.tenantId);
     if (decision.basis === 'store_unavailable') {
       console.warn(`[tenant-chat-entitlement] store unavailable tenant=${sourceContext.tenantId}`);
     }
-    return res.json(applyEffectiveChatToCapabilities(buildPublicPlatformCapabilities(sourceContext), decision));
+    const compiled = getTenantById(sourceContext.tenantId);
+    const account = compiled ? null : await tenantAccountStore.findAccount(sourceContext.tenantId);
+    if (!compiled && !account) {
+      throw new SourceResolutionError('Request source is not a registered platform property.');
+    }
+    return res.json(applyEffectiveChatToCapabilities(
+      buildPublicPlatformCapabilities(sourceContext, process.env, account ? {
+        displayName: account.displayName,
+        capabilities: account.capabilities,
+      } : undefined),
+      decision,
+    ));
   } catch (error) {
-    return sourceResolutionFailure(res, error) ?? res.status(500).json({ error: 'Failed to resolve platform capabilities' });
+    return sourceResolutionFailure(res, error)
+      ?? tenantChatEntitlementFailure(res, error)
+      ?? res.status(500).json({ error: 'Failed to resolve platform capabilities' });
   }
 });
 
