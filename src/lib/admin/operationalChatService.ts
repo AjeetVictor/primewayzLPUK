@@ -42,6 +42,8 @@ export const RECENT_CONVERSATIONS_DEFAULT_LIMIT = 20;
 export const RECENT_CONVERSATIONS_MAX_LIMIT = 50;
 export const TRANSCRIPT_MESSAGE_LIMIT = 100;
 
+export type OperationalInbox = 'active' | 'archived';
+
 export type OperationalSessionRow = {
   id: string;
   tenantId: string | null;
@@ -52,6 +54,8 @@ export type OperationalSessionRow = {
   currentPageUrl: string | null;
   visitorLastSeenAt: Date | null;
   createdAt: Date;
+  archivedAt?: Date | null;
+  purgedAt?: Date | null;
 };
 
 /** Visible (non-internal) message as read from storage. */
@@ -74,7 +78,7 @@ export type OperationalChatStore = {
   /** Latest presence rows of exactly this tenant; null/null when it has none (no cross-tenant fallback). */
   readTeamPresence(tenantId: string): Promise<{ mode: string | null; latestAdminSeenAt: Date | null }>;
   /** Sessions of the tenant ordered by latest visible message, newest first. */
-  listRecentActivity(input: { tenantId: string; limit: number }): Promise<OperationalSessionActivity[]>;
+  listRecentActivity(input: { tenantId: string; limit: number; inbox?: OperationalInbox }): Promise<OperationalSessionActivity[]>;
   findSessions(input: { tenantId: string; sessionIds: string[] }): Promise<OperationalSessionRow[]>;
   findSessionOwnership(sessionId: string): Promise<AdminChatSessionOwnership | null>;
   findSession(input: { tenantId: string; sessionId: string }): Promise<OperationalSessionRow | null>;
@@ -145,6 +149,7 @@ export type OperationalConversationSummary = {
   status: OperationalConversationStatus;
   needsAttention: boolean;
   messageCount: number;
+  lifecycle: 'active' | 'archived';
 };
 
 export type OperationalTranscriptMessage = {
@@ -181,7 +186,13 @@ function summarise(input: {
     status: toOperationalConversationStatus({ status: session.status, needsAttention, lastActor }),
     needsAttention,
     messageCount: input.messageCount,
+    lifecycle: session.archivedAt ? 'archived' : 'active',
   };
+}
+
+export function sessionMatchesInbox(session: OperationalSessionRow, inbox: OperationalInbox): boolean {
+  if (session.purgedAt) return false;
+  return inbox === 'archived' ? Boolean(session.archivedAt) : !session.archivedAt;
 }
 
 function newestPerSession(messages: OperationalMessageRow[]): Map<string, OperationalMessageRow> {
@@ -217,14 +228,15 @@ export type OperationalDashboardConversation = OperationalConversationSummary & 
  */
 export async function getOperationalChatDashboard(
   store: OperationalChatStore,
-  input: { tenantId: string; limit?: number; now?: number },
+  input: { tenantId: string; limit?: number; now?: number; inbox?: OperationalInbox },
 ): Promise<{ attention: { count: number }; recentConversations: OperationalDashboardConversation[] }> {
   const { tenantId } = input;
   const now = input.now ?? Date.now();
+  const inbox = input.inbox ?? 'active';
   const limit = clampRecentConversationLimit(input.limit);
 
   const [activity, attentionCount] = await Promise.all([
-    store.listRecentActivity({ tenantId, limit }),
+    store.listRecentActivity({ tenantId, limit, inbox }),
     store.countSessionsNeedingAttention(tenantId),
   ]);
   const bounded = activity.slice(0, limit);
@@ -243,7 +255,7 @@ export async function getOperationalChatDashboard(
 
   const recentConversations = bounded.flatMap((entry): OperationalDashboardConversation[] => {
     const session = sessionById.get(entry.sessionId);
-    if (!session) return [];
+    if (!session || !sessionMatchesInbox(session, inbox)) return [];
     return [{
       ...summarise({
         session,
@@ -269,7 +281,7 @@ async function loadTenantSession(store: OperationalChatStore, tenantId: string, 
     throw err;
   }
   const session = await store.findSession({ tenantId, sessionId });
-  if (!session || session.tenantId !== tenantId) throw new OperationalChatNotFoundError();
+  if (!session || session.tenantId !== tenantId || session.purgedAt) throw new OperationalChatNotFoundError();
   return session;
 }
 

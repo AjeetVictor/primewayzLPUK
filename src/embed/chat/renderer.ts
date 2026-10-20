@@ -188,6 +188,9 @@ export function setTone(node: HTMLElement, tone: PwChatTone): void {
   node.classList.add(`pw-chat-tone-${tone}`);
 }
 
+/** Sentinel for the optional free-text path; never sent as intentKey. */
+export const SOMETHING_ELSE_INTENT_KEY = '__something_else__';
+
 export function renderIntents(
   doc: Document,
   container: HTMLElement,
@@ -197,6 +200,9 @@ export function renderIntents(
 ): void {
   container.replaceChildren();
   container.hidden = intents.length === 0;
+  if (intents.length === 0) return;
+  container.setAttribute('role', 'group');
+  container.setAttribute('aria-label', 'Suggested topics');
   for (const intent of intents) {
     const button = el(doc, 'button', 'pw-chat-intent', intent.label);
     button.type = 'button';
@@ -204,6 +210,11 @@ export function renderIntents(
     button.addEventListener('click', () => onSelect(intent));
     container.append(button);
   }
+  const other = el(doc, 'button', 'pw-chat-intent pw-chat-intent--other', 'Something else');
+  other.type = 'button';
+  other.setAttribute('aria-pressed', selectedKey === SOMETHING_ELSE_INTENT_KEY ? 'true' : 'false');
+  other.addEventListener('click', () => onSelect({ key: SOMETHING_ELSE_INTENT_KEY, label: '' }));
+  container.append(other);
 }
 
 export type PwChatSenderLabels = { assistant: string; team: string; humanJoinedNotice: string };

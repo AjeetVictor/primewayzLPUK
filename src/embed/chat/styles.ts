@@ -106,13 +106,19 @@ button { cursor: pointer; }
 .pw-chat-intro-greeting { margin: 0 0 4px; font-size: 17px; font-weight: 800; color: var(--pw-chat-navy); }
 .pw-chat-intro-text { margin: 0 0 10px; color: var(--pw-chat-muted); }
 .pw-chat-expectation { margin: 0 0 10px; font-size: 13px; color: var(--pw-chat-muted); }
-.pw-chat-intents { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.pw-chat-intents {
+  display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 4px;
+}
 .pw-chat-intent {
-  text-align: left; padding: 9px 12px; min-height: 40px;
-  border: 1px solid var(--pw-chat-border); border-radius: 8px; background: #ffffff;
+  text-align: left; padding: 6px 10px; min-height: 32px;
+  border: 1px solid var(--pw-chat-border); border-radius: 999px; background: #ffffff;
+  font-size: 13px; line-height: 1.3; max-width: 100%;
 }
 .pw-chat-intent:hover, .pw-chat-intent[aria-pressed="true"] {
   border-color: var(--pw-chat-action); color: var(--pw-chat-action);
+}
+.pw-chat-intent--other {
+  border-style: dashed; color: var(--pw-chat-muted);
 }
 
 .pw-chat-msg { max-width: 86%; display: flex; flex-direction: column; gap: 3px; }

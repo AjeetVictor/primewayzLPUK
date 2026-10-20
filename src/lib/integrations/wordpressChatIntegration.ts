@@ -4,14 +4,15 @@
  * The single server-to-server operational endpoint used by the Primewayz Integration
  * WordPress plugin (PHP only, never browser JavaScript).
  * Read: dashboard, conversation, diagnostics.
- * Delegated write: reply (text only), resolve, reopen — idempotent per clientActionId and
- * attributed to the WordPress operator for audit (wordpressChatDelegatedActions).
+ * Delegated write: reply (text only), resolve, reopen, archive, restore, delete — idempotent
+ * per clientActionId and attributed to the WordPress operator for audit.
  *
  * Authority comes only from the bearer credential, which maps server-side to one
  * integration, one tenant (pw-infotech) and fixed scopes. Tenant / source fields in
  * the body are rejected, query strings are rejected, no CORS headers are emitted and
- * every response is no-store. Presence is read-only; notes, edits, deletes, spam,
- * assignment, attachments and appointments are not exposed.
+ * every response is no-store. Presence is read-only; notes, message edits, spam,
+ * assignment, attachments and appointments are not exposed. Conversation archive,
+ * restore and permanent delete are granted only when the credential includes those scopes.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -37,7 +38,8 @@ import {
   type OperationalTeamPresence,
 } from '../admin/operationalChatService.ts';
 import { toVisitorReference } from '../chat/chatOperationalSemantics.ts';
-import { ChatConversationConflictError, type ChatConversationStore } from '../chat/chatConversationService.ts';
+import { ChatConversationConflictError, ChatLifecycleNotFoundError, type ChatConversationStore } from '../chat/chatConversationService.ts';
+import type { OperationalInbox } from '../admin/operationalChatService.ts';
 import { CHAT_SESSION_ID_MAX_LENGTH, PUBLIC_CHAT_INPUT_LIMITS } from '../chat/publicChatGuards.ts';
 import { getTenantById, isTenantActive, type PlatformTenantConfig } from '../platform/tenantRegistry.ts';
 import { tenantSupportsCapability } from '../platform/tenantCapabilities.ts';
@@ -63,18 +65,30 @@ const ACTION_SCOPES: Readonly<Record<WordPressChatAction, IntegrationScope>> = {
   reply: 'chat:reply',
   resolve: 'chat:resolve',
   reopen: 'chat:reopen',
+  archive: 'chat:archive',
+  restore: 'chat:archive',
+  delete: 'chat:delete',
 };
 
 const WRITE_FIELDS = ['action', 'sessionId', 'clientActionId', 'actor'] as const;
 
 const ACTION_FIELDS: Readonly<Record<WordPressChatAction, readonly string[]>> = {
-  dashboard: ['action'],
+  dashboard: ['action', 'inbox'],
   conversation: ['action', 'sessionId'],
   diagnostics: ['action'],
   reply: [...WRITE_FIELDS, 'text'],
   resolve: WRITE_FIELDS,
   reopen: WRITE_FIELDS,
+  archive: WRITE_FIELDS,
+  restore: WRITE_FIELDS,
+  delete: WRITE_FIELDS,
 };
+
+function parseInbox(value: unknown): OperationalInbox {
+  if (value === undefined) return 'active';
+  if (value === 'active' || value === 'archived') return value;
+  throw invalidRequest('inbox must be active or archived.');
+}
 
 /** Admin-only reply features that delegated replies do not support in this phase. */
 const UNSUPPORTED_REPLY_FIELDS = ['attachmentIds', 'replyToId', 'isInternalNote', 'sender'] as const;
@@ -124,6 +138,9 @@ export const WORDPRESS_CHAT_RATE_LIMITS = {
   reply: { limit: 30, windowMs: MINUTE_MS },
   resolve: { limit: 30, windowMs: MINUTE_MS },
   reopen: { limit: 30, windowMs: MINUTE_MS },
+  archive: { limit: 30, windowMs: MINUTE_MS },
+  restore: { limit: 30, windowMs: MINUTE_MS },
+  delete: { limit: 30, windowMs: MINUTE_MS },
   /** Failed credential attempts per client IP. */
   invalidCredential: { limit: 30, windowMs: MINUTE_MS },
 } as const satisfies Record<string, RateLimitRule>;
@@ -171,7 +188,7 @@ function enforceRateLimit(key: string, rule: RateLimitRule, now: number): void {
 }
 
 export type WordPressChatRequest =
-  | { action: 'dashboard' }
+  | { action: 'dashboard'; inbox: OperationalInbox }
   | { action: 'diagnostics' }
   | { action: 'conversation'; sessionId: string }
   | DelegatedChatWriteRequest;
@@ -255,6 +272,7 @@ export function parseWordPressChatRequest(rawBody: unknown): WordPressChatReques
   const unexpected = keys.filter((key) => !ACTION_FIELDS[typedAction].includes(key));
   if (unexpected.length > 0) throw invalidRequest('Request contains unsupported fields.');
 
+  if (typedAction === 'dashboard') return { action: 'dashboard', inbox: parseInbox(body.inbox) };
   if (typedAction === 'conversation') return { action: 'conversation', sessionId: parseSessionId(body.sessionId) };
   if (isDelegatedWriteAction(typedAction)) {
     const base = {
@@ -312,6 +330,8 @@ export type WordPressChatIntegrationDeps = {
    * Suspended or revoked still allows dashboard and conversation reads. Store failure does not.
    */
   resolveChatAccess?: (tenantId: string) => Promise<{ allowed: boolean; basis: string }>;
+  /** Unlink purged attachment files after a successful permanent delete. Failures are logged only. */
+  removeUploads?: (urls: readonly string[]) => Promise<number>;
 };
 
 function defaultLog(entry: WordPressChatAuditLogEntry): void {
@@ -353,7 +373,7 @@ function serviceStatus(chatEnabled: boolean, canAcceptMessages: boolean): Servic
 
 function classifyFailure(err: unknown, deps: WordPressChatIntegrationDeps): WordPressChatIntegrationError {
   if (err instanceof WordPressChatIntegrationError) return err;
-  if (err instanceof OperationalChatNotFoundError) {
+  if (err instanceof OperationalChatNotFoundError || err instanceof ChatLifecycleNotFoundError) {
     return new WordPressChatIntegrationError(404, 'conversation_not_found', 'Conversation not found.');
   }
   if (err instanceof ChatConversationConflictError || err instanceof DelegatedChatActionError) {
@@ -414,15 +434,28 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
     };
   }
 
-  async function runDashboard(tenant: PlatformTenantConfig, chatEnabled: boolean) {
+  async function runDashboard(
+    principal: IntegrationPrincipal,
+    tenant: PlatformTenantConfig,
+    chatEnabled: boolean,
+    inbox: OperationalInbox,
+  ) {
     const [team, dashboard] = await Promise.all([
       getOperationalTeamPresence(deps.store, tenant.tenantId, now()),
-      getOperationalChatDashboard(deps.store, { tenantId: tenant.tenantId, limit: RECENT_CONVERSATIONS_DEFAULT_LIMIT, now: now() }),
+      getOperationalChatDashboard(deps.store, { tenantId: tenant.tenantId, limit: RECENT_CONVERSATIONS_DEFAULT_LIMIT, now: now(), inbox }),
     ]);
     const canAcceptMessages = chatEnabled && team.canAcceptMessages;
     return {
       service: { status: serviceStatus(chatEnabled, canAcceptMessages), chatEnabled, canAcceptMessages },
       team,
+      inbox,
+      operator: {
+        canReply: integrationHasScope(principal, 'chat:reply'),
+        canResolve: integrationHasScope(principal, 'chat:resolve'),
+        canReopen: integrationHasScope(principal, 'chat:reopen'),
+        canArchive: integrationHasScope(principal, 'chat:archive'),
+        canDelete: integrationHasScope(principal, 'chat:delete'),
+      },
       attention: dashboard.attention,
       recentConversations: dashboard.recentConversations,
       limits: { recentConversations: RECENT_CONVERSATIONS_DEFAULT_LIMIT, transcriptMessages: TRANSCRIPT_MESSAGE_LIMIT },
@@ -443,10 +476,19 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
       request,
       now: new Date(now()),
     });
-    const conversation = await getOperationalConversationSummary(deps.store, {
-      tenantId: tenant.tenantId,
-      sessionId: request.sessionId,
-    });
+    if (outcome.action === 'delete' && outcome.attachmentUrls?.length && deps.removeUploads) {
+      try {
+        await deps.removeUploads(outcome.attachmentUrls);
+      } catch (err) {
+        logError(`[wp-chat-integration] requestId=${requestId} purge upload cleanup failed cause=${err instanceof Error ? err.name : typeof err}`);
+      }
+    }
+    const conversation = outcome.action === 'delete'
+      ? null
+      : await getOperationalConversationSummary(deps.store, {
+        tenantId: tenant.tenantId,
+        sessionId: request.sessionId,
+      });
     return {
       outcome,
       data: {
@@ -513,7 +555,7 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
             ? 'The chat service is temporarily unavailable.'
             : 'Chat is not enabled for this tenant.',
         );
-      } else if (input.action === 'dashboard') data = await runDashboard(tenant, decision.allowed);
+      } else if (input.action === 'dashboard') data = await runDashboard(principal, tenant, decision.allowed, input.inbox);
       else if (input.action === 'conversation') {
         data = await getOperationalConversation(deps.store, { tenantId: tenant.tenantId, sessionId: input.sessionId, now: now() });
       } else {

@@ -864,7 +864,13 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
 
   function selectIntent(intent: PwChatIntentConfig) {
     selectedIntent = intent.key;
-    if (!dom.textarea.value.trim()) dom.textarea.value = intent.label;
+    // "Something else" clears the draft so the visitor can type freely.
+    // Topic chips only prefill when the composer is empty (never overwrite typed text).
+    if (!intent.label) {
+      dom.textarea.value = '';
+    } else if (!dom.textarea.value.trim()) {
+      dom.textarea.value = intent.label;
+    }
     render();
     dom.textarea.focus();
   }

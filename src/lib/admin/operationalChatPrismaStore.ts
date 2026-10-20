@@ -21,6 +21,8 @@ const sessionSelect = {
   currentPageUrl: true,
   visitorLastSeenAt: true,
   createdAt: true,
+  archivedAt: true,
+  purgedAt: true,
 } as const;
 
 /** Allow-list: never select referrer, UTM, source authority or any raw client context. */
@@ -93,17 +95,25 @@ export function createPrismaOperationalChatStore(prisma: PrismaClient): Operatio
       return { mode: setting?.mode ?? null, latestAdminSeenAt };
     },
 
-    async listRecentActivity({ tenantId, limit }) {
+    async listRecentActivity({ tenantId, limit, inbox = 'active' }) {
       const rows = await prisma.chatMessage.groupBy({
         by: ['sessionId'],
-        where: { isInternalNote: false, session: { tenantId } },
+        where: {
+          isInternalNote: false,
+          session: {
+            tenantId,
+            purgedAt: null,
+            archivedAt: inbox === 'archived' ? { not: null } : null,
+          },
+        },
         _max: { timestamp: true },
         orderBy: { _max: { timestamp: 'desc' } },
         take: limit,
       });
-      return rows
-        .filter((row) => row._max.timestamp)
-        .map((row) => ({ sessionId: row.sessionId, lastActivityAt: row._max.timestamp as Date }));
+      return rows.flatMap((row) => {
+        const timestamp = row._max?.timestamp;
+        return timestamp ? [{ sessionId: row.sessionId, lastActivityAt: timestamp }] : [];
+      });
     },
 
     findSessions: ({ tenantId, sessionIds }) =>
@@ -153,6 +163,8 @@ export function createPrismaOperationalChatStore(prisma: PrismaClient): Operatio
       prisma.chatSession.count({
         where: {
           tenantId,
+          archivedAt: null,
+          purgedAt: null,
           status: { notIn: [...ATTENTION_EXCLUDED_STATUSES] },
           messages: { some: { ...UNANSWERED_VISITOR_MESSAGE_WHERE } },
         },

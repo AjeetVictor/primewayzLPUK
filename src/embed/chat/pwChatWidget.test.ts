@@ -767,7 +767,7 @@ test('branding: campaign tenant renders RentReadBuy title, greeting, intents and
   assert.match(q(handle, '.pw-chat-intro-text')!.textContent ?? '', /₹899 for 3 months/);
   assert.deepEqual(
     Array.from(handle.shadow.querySelectorAll('.pw-chat-intent')).map((n) => n.textContent),
-    RRB_SILVER_CHAT_WIDGET.intents.map((intent) => intent.label),
+    [...RRB_SILVER_CHAT_WIDGET.intents.map((intent) => intent.label), 'Something else'],
   );
   assert.equal(q(handle, '.pw-chat-lead-title')!.textContent, 'Leave your details so the RentReadBuy team can follow up.');
   assert.match(q(handle, '.pw-chat-launcher')!.getAttribute('aria-label') ?? '', /^Open RentReadBuy Reading Assistant\./);
@@ -783,7 +783,7 @@ test('branding: tenant intents are used when the host config sends none', async 
   const { handle } = await boot(win, silverBackend());
   handle!.open();
   await flush();
-  assert.equal(handle!.shadow.querySelectorAll('.pw-chat-intent').length, 6);
+  assert.equal(handle!.shadow.querySelectorAll('.pw-chat-intent').length, 7);
 });
 
 test('branding: a branded tenant does not render on a host with a different siteKey', async () => {
@@ -845,6 +845,38 @@ test('branding: unavailable availability falls back to RentReadBuy wording, not 
 });
 
 // --- Intents and approved answers ---
+
+test('composer: free-text is available immediately without selecting a topic', async () => {
+  const win = silverWindow();
+  const { handle, backend } = await boot(win, silverBackend());
+  handle!.open();
+  await flush();
+  const textarea = q<HTMLTextAreaElement>(handle!, '.pw-chat-textarea')!;
+  assert.equal(textarea.disabled, false);
+  assert.equal(textarea.placeholder, 'Type your message');
+  await sendText(handle!, 'Can I pause membership for a month?');
+  const [first] = posts(backend.calls, '/api/chat/respond');
+  assert.deepEqual(first!.body, { sessionId: first!.body!.sessionId, message: 'Can I pause membership for a month?' });
+  assert.equal('intentKey' in first!.body!, false);
+});
+
+test('intents: Something else clears the field and never sends an intentKey', async () => {
+  const win = silverWindow();
+  const { handle, backend } = await boot(win, silverBackend());
+  handle!.open();
+  await flush();
+  const intentButtons = () => Array.from(handle!.shadow.querySelectorAll<HTMLButtonElement>('.pw-chat-intent'));
+  intentButtons()[0]!.click();
+  const textarea = q<HTMLTextAreaElement>(handle!, '.pw-chat-textarea')!;
+  assert.equal(textarea.value, 'How does Silver Membership work?');
+  intentButtons().at(-1)!.click();
+  assert.equal(textarea.value, '');
+  assert.equal(intentButtons().at(-1)!.getAttribute('aria-pressed'), 'true');
+  await sendText(handle!, 'I have a billing question');
+  const [first] = posts(backend.calls, '/api/chat/respond');
+  assert.equal(first!.body!.message, 'I have a billing question');
+  assert.equal('intentKey' in first!.body!, false);
+});
 
 test('intents: an unedited intent question sends its intentKey; edited text and free text do not', async () => {
   const win = silverWindow();
