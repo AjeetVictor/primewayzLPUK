@@ -85,6 +85,14 @@ import { toPersistedSourceContext, type PrimewayzSourceChannel, type SourceConte
 import { resolveAuthorizedAdminTenantFilter, AdminTenantAccessError, assertAdminTenantAccess, validateTenantGrants, type AdminTenantPrincipal } from './src/lib/admin/adminTenantAccess.ts';
 import { createAdminTenantOptionsHandler } from './src/lib/admin/adminTenantOptionsRoute.ts';
 import { accessSnapshot, runSerializableAccessTransaction } from './src/lib/admin/adminAccessMutation.ts';
+import {
+  assertAdminTenantChatAccess,
+  buildTenantGrantCreates,
+  isTenantChatRole,
+  mergeTenantChatGrantsForUpdate,
+  validateTenantChatGrants,
+  type TenantChatGrantRecord,
+} from './src/lib/admin/tenantChatRole.ts';
 import { getTenantById, getTenantDisplayName, resolveTenantChatPresentation } from './src/lib/platform/tenantRegistry.ts';
 import { resolveAppointmentRequestTimezone } from './src/lib/platform/timeZone.ts';
 import { resolveOfflineAcknowledgement, resolveTenantBotReply, visitorMessageIsAnsweredByTenantBot } from './src/lib/chat/tenantBotReply.ts';
@@ -131,7 +139,11 @@ import {
   createChatConnectAdminHandlers,
   createChatConnectConnectorHandlers,
 } from './src/lib/chatConnect/http.ts';
-import { resolveChatPresence } from './src/lib/chat/chatPresence.ts';
+import {
+  ADMIN_PRESENCE_ACTIVE_WINDOW_MS,
+  persistChatPresenceMode,
+  resolveChatPresence,
+} from './src/lib/chat/chatPresence.ts';
 import {
   readOptionalTenantChatPresence,
   recordTenantAdminHeartbeat,
@@ -320,8 +332,25 @@ type AdminRequest = Request & {
     role: string;
     isPlatformOwner: boolean;
     tenantIds: string[];
+    tenantChatGrants: TenantChatGrantRecord[];
   };
 };
+
+const TENANT_GRANT_SELECT = {
+  tenantId: true,
+  chatRole: true,
+  chatRoleExplicit: true,
+} as const;
+
+function mapTenantChatGrants(
+  grants: Array<{ tenantId: string; chatRole?: string | null; chatRoleExplicit?: boolean | null }>,
+): TenantChatGrantRecord[] {
+  return grants.map((grant) => ({
+    tenantId: grant.tenantId,
+    chatRole: isTenantChatRole(grant.chatRole) ? grant.chatRole : 'none',
+    chatRoleExplicit: grant.chatRoleExplicit === true,
+  }));
+}
 
 const isSuperAdmin = (role?: string) => role === 'super_admin' || role === 'admin';
 const isBlogAuthor = (role?: string) =>
@@ -417,16 +446,18 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
 
     const user = await prisma.user.findUnique({
       where: { email: decoded.email },
-      include: { tenantGrants: { select: { tenantId: true } } },
+      include: { tenantGrants: { select: TENANT_GRANT_SELECT } },
     });
     if (!user) return res.status(401).json({ success: false, error: 'Invalid session' });
 
+    const tenantChatGrants = mapTenantChatGrants(user.tenantGrants);
     (req as AdminRequest).adminUser = {
       id: user.id,
       email: user.email,
       role: normalizeRole(user.role),
       isPlatformOwner: user.isPlatformOwner,
-      tenantIds: user.tenantGrants.map((grant) => grant.tenantId),
+      tenantIds: tenantChatGrants.map((grant) => grant.tenantId),
+      tenantChatGrants,
     };
     return next();
   } catch {
@@ -547,14 +578,16 @@ function publicUser(user: {
   role: string;
   createdAt?: Date;
   isPlatformOwner?: boolean;
-  tenantGrants?: Array<{ tenantId: string }>;
+  tenantGrants?: Array<{ tenantId: string; chatRole?: string | null; chatRoleExplicit?: boolean | null }>;
 }) {
+  const tenantChatGrants = mapTenantChatGrants(user.tenantGrants ?? []);
   return {
     id: user.id,
     email: user.email,
     role: normalizeRole(user.role),
     isPlatformOwner: user.isPlatformOwner === true,
-    tenantIds: user.tenantGrants?.map((grant) => grant.tenantId) ?? [],
+    tenantIds: tenantChatGrants.map((grant) => grant.tenantId),
+    tenantChatGrants,
     ...(user.createdAt ? { createdAt: user.createdAt } : {}),
   };
 }
@@ -564,6 +597,16 @@ function adminTenantAccessFailure(res: Response, error: unknown): Response | nul
     return res.status(error.status).json({ error: error.message, code: error.code });
   }
   return sourceResolutionFailure(res, error);
+}
+
+function requireAdminTenantChatAccess(req: AdminRequest, res: Response, tenantId: string): boolean {
+  try {
+    assertAdminTenantChatAccess(tenantId, req.adminUser);
+    return true;
+  } catch (error) {
+    adminTenantAccessFailure(res, error);
+    return false;
+  }
 }
 
 function stripHtml(value: string) {
@@ -1861,7 +1904,7 @@ app.post('/api/admin/login', async (req, res) => {
 
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { tenantGrants: { select: { tenantId: true } } },
+      include: { tenantGrants: { select: TENANT_GRANT_SELECT } },
     });
     if (!user || !bcrypt.compareSync(password, user.password))
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
@@ -1896,7 +1939,7 @@ app.get('/api/admin/check-auth', async (req, res) => {
 
     const user = await prisma.user.findUnique({
       where: { email: decoded.email },
-      include: { tenantGrants: { select: { tenantId: true } } },
+      include: { tenantGrants: { select: TENANT_GRANT_SELECT } },
     });
     if (!user) return res.status(401).json({ success: false, authenticated: false, error: 'Invalid session' });
 
@@ -2367,7 +2410,7 @@ app.delete('/api/admin/blog-posts/:id', requireAdmin, requireRole(isBlogAuthor),
 app.get('/api/admin/users', requireAdmin, requirePlatformOwner, async (_req, res) => {
   const users = await prisma.user.findMany({
     orderBy: { createdAt: 'desc' },
-    include: { tenantGrants: { select: { tenantId: true } } },
+    include: { tenantGrants: { select: TENANT_GRANT_SELECT } },
   });
   res.json(users.map(publicUser));
 });
@@ -2376,10 +2419,18 @@ app.post('/api/admin/users', requireAdmin, requirePlatformOwner, async (req: Adm
   const { email, password, role } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
   let tenantIds: string[] = [];
+  let tenantChatGrants: TenantChatGrantRecord[] | undefined;
   try {
     if (req.body.tenantIds !== undefined) tenantIds = validateTenantGrants(req.body.tenantIds);
+    if (req.body.tenantChatGrants !== undefined) tenantChatGrants = validateTenantChatGrants(req.body.tenantChatGrants);
   } catch (error) {
     return adminTenantAccessFailure(res, error);
+  }
+  if (tenantChatGrants) {
+    const granted = new Set(tenantIds);
+    if (tenantChatGrants.some((grant) => !granted.has(grant.tenantId))) {
+      return res.status(400).json({ error: 'tenantChatGrants must reference tenants included in tenantIds', code: 'invalid_tenant_chat_grants' });
+    }
   }
   const user = await prisma.$transaction(async (tx) => {
     const created = await tx.user.create({
@@ -2388,9 +2439,9 @@ app.post('/api/admin/users', requireAdmin, requirePlatformOwner, async (req: Adm
         password: bcrypt.hashSync(password, 12),
         role: normalizeRole(role),
         isPlatformOwner: req.body.isPlatformOwner === true,
-        tenantGrants: { create: tenantIds.map((tenantId) => ({ tenantId })) },
+        tenantGrants: { create: buildTenantGrantCreates(tenantIds, tenantChatGrants) },
       },
-      include: { tenantGrants: { select: { tenantId: true } } },
+      include: { tenantGrants: { select: TENANT_GRANT_SELECT } },
     });
     await tx.adminAccessAuditLog.create({
       data: {
@@ -2411,10 +2462,14 @@ app.patch('/api/admin/users/:id', requireAdmin, requirePlatformOwner, async (req
   if (req.body.isPlatformOwner !== undefined && typeof req.body.isPlatformOwner !== 'boolean') {
     return res.status(400).json({ error: 'isPlatformOwner must be a boolean' });
   }
-  const accessUpdate = req.body.tenantIds !== undefined || req.body.isPlatformOwner !== undefined;
+  const accessUpdate = req.body.tenantIds !== undefined
+    || req.body.tenantChatGrants !== undefined
+    || req.body.isPlatformOwner !== undefined;
   let tenantIds: string[] | undefined;
+  let tenantChatGrants: TenantChatGrantRecord[] | undefined;
   try {
     if (req.body.tenantIds !== undefined) tenantIds = validateTenantGrants(req.body.tenantIds);
+    if (req.body.tenantChatGrants !== undefined) tenantChatGrants = validateTenantChatGrants(req.body.tenantChatGrants);
   } catch (error) {
     return adminTenantAccessFailure(res, error);
   }
@@ -2424,40 +2479,65 @@ app.patch('/api/admin/users/:id', requireAdmin, requirePlatformOwner, async (req
   if (id === req.adminUser!.id && req.body.isPlatformOwner === false) {
     return res.status(400).json({ error: 'You cannot remove your own platform administrator access' });
   }
-  const update = await runSerializableAccessTransaction(prisma, async (tx) => {
-    const previous = await tx.user.findUnique({
-      where: { id },
-      include: { tenantGrants: { select: { tenantId: true } } },
-    });
-    if (!previous) return null;
-    const nextOwner = req.body.isPlatformOwner === undefined ? previous.isPlatformOwner : req.body.isPlatformOwner === true;
-    if (previous.isPlatformOwner && !nextOwner && await tx.user.count({ where: { isPlatformOwner: true } }) <= 1) {
-      return 'last_owner' as const;
-    }
-    const updated = await tx.user.update({
-      where: { id },
-      data: {
-        role: req.body.role === undefined ? undefined : normalizeRole(req.body.role),
-        isPlatformOwner: req.body.isPlatformOwner === undefined ? undefined : nextOwner,
-        tenantGrants: tenantIds === undefined
-          ? undefined
-          : { deleteMany: {}, create: tenantIds.map((tenantId) => ({ tenantId })) },
-      },
-      include: { tenantGrants: { select: { tenantId: true } } },
-    });
-    await tx.adminAccessAuditLog.create({
-      data: {
-        actorUserId: req.adminUser!.id,
-        targetUserId: id,
-        action: 'user_access_updated',
-        details: {
-          before: accessSnapshot(previous),
-          after: accessSnapshot(updated),
+  let update: Awaited<ReturnType<typeof prisma.user.findUnique>> | 'last_owner' | null;
+  try {
+    update = await runSerializableAccessTransaction(prisma, async (tx) => {
+      const previous = await tx.user.findUnique({
+        where: { id },
+        include: { tenantGrants: { select: TENANT_GRANT_SELECT } },
+      });
+      if (!previous) return null;
+      const nextOwner = req.body.isPlatformOwner === undefined ? previous.isPlatformOwner : req.body.isPlatformOwner === true;
+      if (previous.isPlatformOwner && !nextOwner && await tx.user.count({ where: { isPlatformOwner: true } }) <= 1) {
+        return 'last_owner' as const;
+      }
+      const nextTenantIds = tenantIds ?? previous.tenantGrants.map((grant) => grant.tenantId);
+      if (tenantChatGrants) {
+        const granted = new Set(nextTenantIds);
+        if (tenantChatGrants.some((grant) => !granted.has(grant.tenantId))) {
+          throw new AdminTenantAccessError(400, 'invalid_tenant_chat_grants', 'tenantChatGrants must reference assigned tenants.');
+        }
+      }
+      const replaceGrants = tenantIds !== undefined || tenantChatGrants !== undefined;
+      const preservedRoles = mapTenantChatGrants(previous.tenantGrants);
+      const updated = await tx.user.update({
+        where: { id },
+        data: {
+          role: req.body.role === undefined ? undefined : normalizeRole(req.body.role),
+          isPlatformOwner: req.body.isPlatformOwner === undefined ? undefined : nextOwner,
+          tenantGrants: replaceGrants
+            ? {
+                deleteMany: {},
+                create: buildTenantGrantCreates(
+                  nextTenantIds,
+                  mergeTenantChatGrantsForUpdate({
+                    tenantIds: nextTenantIds,
+                    nextExplicit: tenantChatGrants,
+                    previous: preservedRoles,
+                  }),
+                ),
+              }
+            : undefined,
         },
-      },
+        include: { tenantGrants: { select: TENANT_GRANT_SELECT } },
+      });
+      await tx.adminAccessAuditLog.create({
+        data: {
+          actorUserId: req.adminUser!.id,
+          targetUserId: id,
+          action: 'user_access_updated',
+          details: {
+            before: accessSnapshot(previous),
+            after: accessSnapshot(updated),
+          },
+        },
+      });
+      return updated;
     });
-    return updated;
-  });
+  } catch (error) {
+    if (adminTenantAccessFailure(res, error)) return;
+    throw error;
+  }
   if (!update) return res.status(404).json({ error: 'User not found' });
   if (update === 'last_owner') return res.status(400).json({ error: 'At least one platform Host/Owner must remain' });
   res.json(publicUser(update));
@@ -2470,7 +2550,7 @@ app.delete('/api/admin/users/:id', requireAdmin, requirePlatformOwner, async (re
   const result = await runSerializableAccessTransaction(prisma, async (tx) => {
     const target = await tx.user.findUnique({
       where: { id },
-      include: { tenantGrants: { select: { tenantId: true } } },
+      include: { tenantGrants: { select: TENANT_GRANT_SELECT } },
     });
     if (!target) return 'missing' as const;
     if (target.isPlatformOwner && await tx.user.count({ where: { isPlatformOwner: true } }) <= 1) {
@@ -2554,30 +2634,54 @@ function resolveAdminPresenceTenantId(req: Request, res: Response): string | nul
   return tenantId;
 }
 
-app.get('/api/admin/chat/availability', requireAdmin, requireRole(isOperationsRole), async (req, res) => {
+app.get('/api/admin/chat/availability', requireAdmin, requireRole(isOperationsRole), async (req: AdminRequest, res) => {
   const tenantId = resolveAdminPresenceTenantId(req, res);
   if (!tenantId) return;
-  res.json(await getChatAvailabilityPayload(undefined, tenantId));
+  if (!requireAdminTenantChatAccess(req, res, tenantId)) return;
+  const payload = await getChatAvailabilityPayload(undefined, tenantId);
+  res.json({
+    ...payload,
+    teamStatus: resolveChatPresence({
+      mode: payload.mode,
+      latestAdminSeenAt: payload.latestAdminSeenAt ? new Date(payload.latestAdminSeenAt) : null,
+    }).teamStatus,
+  });
 });
 
 app.patch('/api/admin/chat/availability', requireAdmin, requireRole(isOperationsRole), async (req: AdminRequest, res) => {
   const tenantId = resolveAdminPresenceTenantId(req, res);
   if (!tenantId) return;
-  const mode = ['auto', 'online', 'away', 'offline'].includes(req.body.mode) ? req.body.mode : 'auto';
+  if (!requireAdminTenantChatAccess(req, res, tenantId)) return;
+  // Explicit per-tenant Available / Away / Offline (plus auto). Legacy `online` maps to available.
+  const mode = persistChatPresenceMode(
+    ['auto', 'online', 'available', 'away', 'offline'].includes(req.body.mode) ? req.body.mode : 'auto',
+  );
   await recordTenantChatPresenceSetting(prisma, {
     tenantId,
     mode,
     message: typeof req.body.message === 'string' ? req.body.message : null,
     updatedById: req.adminUser!.id,
   });
-  res.json(await getChatAvailabilityPayload(undefined, tenantId));
+  const payload = await getChatAvailabilityPayload(undefined, tenantId);
+  res.json({
+    ...payload,
+    teamStatus: resolveChatPresence({
+      mode: payload.mode,
+      latestAdminSeenAt: payload.latestAdminSeenAt ? new Date(payload.latestAdminSeenAt) : null,
+    }).teamStatus,
+  });
 });
 
 app.post('/api/admin/presence/heartbeat', requireAdmin, requireRole(isOperationsRole), async (req: AdminRequest, res) => {
   const tenantId = resolveAdminPresenceTenantId(req, res);
   if (!tenantId) return;
+  if (!requireAdminTenantChatAccess(req, res, tenantId)) return;
   await recordTenantAdminHeartbeat(prisma, { tenantId, userId: req.adminUser!.id });
-  res.json({ success: true });
+  res.json({
+    success: true,
+    tenantId,
+    expiresInMs: ADMIN_PRESENCE_ACTIVE_WINDOW_MS,
+  });
 });
 
 app.get('/api/admin/notifications/summary', requireAdmin, requireRole(isOperationsRole), async (req, res) => {

@@ -469,13 +469,18 @@ model User {
 }
 
 model UserTenantGrant {
-  userId    Int
-  tenantId  String   @db.VarChar(32)
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId           Int
+  tenantId         String   @db.VarChar(32)
+  /// Per-tenant chat operator role. Default none; Host may set agent. See Docs/chat-admin-tenant-presence-phase1.md.
+  chatRole         String   @default("none") @db.VarChar(16)
+  /// When true, chatRole is authoritative (compatibility path disabled for this grant).
+  chatRoleExplicit Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, tenantId])
   @@index([tenantId, userId])
+  @@index([tenantId, chatRole])
 }
 
 model AdminAccessAuditLog {

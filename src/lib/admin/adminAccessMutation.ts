@@ -8,13 +8,22 @@ export type SerializableTransactionClient<TTx> = {
 export type AccessSnapshotInput = {
   role: string;
   isPlatformOwner: boolean;
-  tenantGrants?: ReadonlyArray<{ tenantId: string }>;
+  tenantGrants?: ReadonlyArray<{
+    tenantId: string;
+    chatRole?: string;
+    chatRoleExplicit?: boolean;
+  }>;
 };
 
 export type AccessSnapshot = {
   role: string;
   isPlatformOwner: boolean;
   tenantIds: string[];
+  tenantChatGrants: Array<{
+    tenantId: string;
+    chatRole: string;
+    chatRoleExplicit: boolean;
+  }>;
 };
 
 /** Whitelist audit fields so credentials and reset tokens can never enter access-audit details. */
@@ -23,6 +32,11 @@ export function accessSnapshot(user: AccessSnapshotInput): AccessSnapshot {
     role: user.role,
     isPlatformOwner: user.isPlatformOwner,
     tenantIds: user.tenantGrants?.map((grant) => grant.tenantId) ?? [],
+    tenantChatGrants: user.tenantGrants?.map((grant) => ({
+      tenantId: grant.tenantId,
+      chatRole: typeof grant.chatRole === 'string' ? grant.chatRole : 'none',
+      chatRoleExplicit: grant.chatRoleExplicit === true,
+    })) ?? [],
   };
 }
 

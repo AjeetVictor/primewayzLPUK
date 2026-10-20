@@ -130,7 +130,12 @@ test('public availability: rrb with no presence rows defaults safely', async () 
   assert.equal(rrbSource.tenantId, 'rrb');
   assert.deepEqual(await readTenantChatPresence(db.prisma, 'rrb'), { setting: null, latestAdminSeenAt: null });
   assert.deepEqual(await resolvedFor(db.prisma, rrbSource.tenantId), {
-    mode: 'auto', hasActiveAdmin: false, computedStatus: 'assistant', status: 'assistant', canAcceptMessages: true,
+    mode: 'auto',
+    hasActiveAdmin: false,
+    computedStatus: 'assistant',
+    status: 'assistant',
+    teamStatus: 'not_online',
+    canAcceptMessages: true,
   });
 });
 

@@ -115,13 +115,6 @@ export type OperationalTeamPresence = {
   canAcceptMessages: boolean;
 };
 
-const PRESENCE_STATUS_LABELS = {
-  online: 'available',
-  away: 'away',
-  offline: 'offline',
-  assistant: 'not_online',
-} as const;
-
 export async function getOperationalTeamPresence(
   store: OperationalChatStore,
   tenantId: string,
@@ -131,8 +124,8 @@ export async function getOperationalTeamPresence(
   const presence = resolveChatPresence({ mode: raw.mode, latestAdminSeenAt: raw.latestAdminSeenAt, now });
   return {
     presenceScope: CHAT_PRESENCE_SCOPE,
-    status: PRESENCE_STATUS_LABELS[presence.status] ?? 'not_online',
-    mode: presence.mode,
+    status: presence.teamStatus,
+    mode: presence.mode === 'available' ? 'online' : presence.mode,
     teamMemberRecentlyActive: presence.hasActiveAdmin,
     canAcceptMessages: presence.canAcceptMessages,
   };
