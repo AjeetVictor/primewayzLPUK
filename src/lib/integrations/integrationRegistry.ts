@@ -12,7 +12,8 @@ import type { PlatformTenantId } from '../platform/sourceContext.ts';
 
 /**
  * Read: chat:dashboard, chat:read, chat:diagnostics.
- * Delegated write: chat:reply, chat:resolve, chat:reopen (text replies and close / reopen only).
+ * Delegated write: chat:reply, chat:resolve, chat:reopen, chat:archive (archive and restore),
+ * chat:delete (permanent deletion of message content; lead identity is retained on the tombstone).
  */
 export type IntegrationScope =
   | 'chat:dashboard'
@@ -20,7 +21,9 @@ export type IntegrationScope =
   | 'chat:diagnostics'
   | 'chat:reply'
   | 'chat:resolve'
-  | 'chat:reopen';
+  | 'chat:reopen'
+  | 'chat:archive'
+  | 'chat:delete';
 
 export type IntegrationDefinition = {
   integrationId: string;
@@ -43,7 +46,7 @@ export const INTEGRATION_REGISTRY: readonly IntegrationDefinition[] = [
   {
     integrationId: 'primewayz-wordpress',
     tenantId: 'pw-infotech',
-    scopes: ['chat:dashboard', 'chat:read', 'chat:diagnostics', 'chat:reply', 'chat:resolve', 'chat:reopen'],
+    scopes: ['chat:dashboard', 'chat:read', 'chat:diagnostics', 'chat:reply', 'chat:resolve', 'chat:reopen', 'chat:archive', 'chat:delete'],
     tokenEnv: 'WORDPRESS_CHAT_INTEGRATION_TOKEN',
     previousTokenEnv: 'WORDPRESS_CHAT_INTEGRATION_TOKEN_PREVIOUS',
   },

@@ -154,6 +154,18 @@ function createDb() {
     async updateOperatorAction() {
       throw new Error('UK Admin replies never create delegated operator actions');
     },
+    async findLifecycleSession() {
+      return null;
+    },
+    async setSessionArchived() {
+      return 0;
+    },
+    async purgeSessionContent() {
+      return null;
+    },
+    async recordLifecycleAudit() {
+      return undefined;
+    },
   };
   const conversations: ChatConversationStore = { ...tx, transaction: (fn) => fn(tx) };
 

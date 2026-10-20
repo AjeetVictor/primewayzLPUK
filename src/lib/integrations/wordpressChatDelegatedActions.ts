@@ -1,5 +1,5 @@
 /**
- * Delegated WordPress operator writes: reply, resolve, reopen.
+ * Delegated WordPress operator writes: reply, resolve, reopen, archive, restore, delete.
  *
  * Each action runs in one transaction that claims the idempotency key
  * (integrationId + clientActionId) by inserting a ChatOperatorAction row, applies the shared
@@ -18,8 +18,11 @@ import {
   type OperationalTranscriptMessage,
 } from '../admin/operationalChatService.ts';
 import {
+  archiveConversation,
   createTeamReply,
+  purgeConversation,
   reopenConversation,
+  restoreConversation,
   resolveConversation,
   type ChatConversationSessionRow,
   type ChatConversationStore,
@@ -28,7 +31,7 @@ import {
   type ChatStoredMessage,
 } from '../chat/chatConversationService.ts';
 
-export const DELEGATED_CHAT_WRITE_ACTIONS = ['reply', 'resolve', 'reopen'] as const;
+export const DELEGATED_CHAT_WRITE_ACTIONS = ['reply', 'resolve', 'reopen', 'archive', 'restore', 'delete'] as const;
 export type DelegatedChatWriteAction = (typeof DELEGATED_CHAT_WRITE_ACTIONS)[number];
 
 export const OPERATOR_ACTION_SOURCE = 'wordpress_integration';
@@ -37,7 +40,7 @@ export type DelegatedActor = { externalUserId: string; displayName: string | nul
 
 export type DelegatedChatWriteRequest =
   | { action: 'reply'; sessionId: string; clientActionId: string; actor: DelegatedActor; text: string }
-  | { action: 'resolve' | 'reopen'; sessionId: string; clientActionId: string; actor: DelegatedActor };
+  | { action: 'resolve' | 'reopen' | 'archive' | 'restore' | 'delete'; sessionId: string; clientActionId: string; actor: DelegatedActor };
 
 export type DelegatedChatActionOutcome = {
   action: DelegatedChatWriteAction;
@@ -45,6 +48,8 @@ export type DelegatedChatActionOutcome = {
   replayed: boolean;
   changed: boolean;
   message: OperationalTranscriptMessage | null;
+  /** Present only for a committed delete. The HTTP layer unlinks files and does not return the URLs. */
+  attachmentUrls?: string[];
 };
 
 export class DelegatedChatActionError extends Error {
@@ -179,9 +184,18 @@ export async function executeDelegatedChatAction(
       };
     }
 
-    const result = request.action === 'resolve'
-      ? await resolveConversation(tx, { session, now: input.now })
-      : await reopenConversation(tx, { session });
+    const actor = { actorKind: 'wordpress_integration' as const, actorId: request.actor.externalUserId };
+    let attachmentUrls: string[] | undefined;
+    let result: { changed: boolean; fromStatus: string; toStatus: string };
+    if (request.action === 'resolve') result = await resolveConversation(tx, { session, now: input.now });
+    else if (request.action === 'reopen') result = await reopenConversation(tx, { session });
+    else if (request.action === 'archive') result = await archiveConversation(tx, { session, ...actor, now: input.now });
+    else if (request.action === 'restore') result = await restoreConversation(tx, { session, ...actor });
+    else {
+      const purged = await purgeConversation(tx, { session, ...actor, now: input.now });
+      result = purged;
+      attachmentUrls = purged.snapshot.attachmentUrls;
+    }
     await tx.updateOperatorAction(claimed.id, {
       fromStatus: result.fromStatus,
       toStatus: result.toStatus,
@@ -193,6 +207,7 @@ export async function executeDelegatedChatAction(
       replayed: false,
       changed: result.changed,
       message: null,
+      attachmentUrls,
     };
   });
 

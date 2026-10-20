@@ -4,13 +4,17 @@ import path from 'node:path';
 import test from 'node:test';
 import {
   advanceConversationStatus,
+  archiveConversation,
   ChatConversationConflictError,
+  ChatLifecycleNotFoundError,
   conversationStatusData,
   createTeamReply,
   CONVERSATION_STATUSES,
   isValidConversationStatus,
+  purgeConversation,
   reopenConversation,
   resolveConversation,
+  restoreConversation,
 } from './chatConversationService.ts';
 import {
   createMemoryChatConversationStore,
@@ -176,6 +180,74 @@ test('reopen: closed -> admin_needed, repeat is a no-op, spam and open states ar
     await assert.rejects(inTx(state, async (tx) => reopenConversation(tx, { session: (await tx.findSession('s1'))! })), conflictCode('invalid_transition'), status);
     assert.equal(state.sessions[0].status, status);
   }
+});
+
+test('archive and restore: keep messages, audit without bodies, restore clears archive', async () => {
+  const state = createState('admin_replied');
+  state.sessions[0].name = 'Lead';
+  state.sessions[0].email = 'lead@example.com';
+  const now = new Date('2026-10-19T12:00:00Z');
+  const archived = await inTx<Awaited<ReturnType<typeof archiveConversation>>>(state, async (tx) =>
+    archiveConversation(tx, { session: (await tx.findSession('s1'))!, actorKind: 'admin', actorId: '7', archivedById: 7, now }));
+  assert.equal(archived.changed, true);
+  assert.deepEqual([state.sessions[0].archivedAt, state.sessions[0].archivedById], [now, 7]);
+  assert.equal(state.messages.length, 2);
+  assert.equal(state.lifecycleAudits?.at(-1)?.action, 'archive');
+  assert.equal(state.lifecycleAudits?.at(-1)?.messageCount, null);
+
+  const repeat = await inTx<Awaited<ReturnType<typeof archiveConversation>>>(state, async (tx) =>
+    archiveConversation(tx, { session: (await tx.findSession('s1'))!, actorKind: 'admin', actorId: '7' }));
+  assert.equal(repeat.changed, false);
+
+  const restored = await inTx<Awaited<ReturnType<typeof restoreConversation>>>(state, async (tx) =>
+    restoreConversation(tx, { session: (await tx.findSession('s1'))!, actorKind: 'wordpress_integration', actorId: 'wp:1' }));
+  assert.equal(restored.changed, true);
+  assert.deepEqual([state.sessions[0].archivedAt, state.sessions[0].archivedById], [null, null]);
+  assert.equal(state.lifecycleAudits?.at(-1)?.action, 'restore');
+});
+
+test('purge: removes message content, retains lead identity, rejects cross-tenant and already-purged', async () => {
+  const state = createState('closed');
+  state.sessions[0].name = 'Lead';
+  state.sessions[0].email = 'lead@example.com';
+  state.sessions[0].phone = '+440000';
+  state.attachments = [{ id: 1, sessionId: 's1', url: '/uploads/chat/a.png' }];
+  state.appointments = [{ id: 1, sessionId: 's1', message: 'please call', name: 'Lead', email: 'lead@example.com' }];
+  const now = new Date('2026-10-19T13:00:00Z');
+  const purged = await inTx<Awaited<ReturnType<typeof purgeConversation>>>(state, async (tx) =>
+    purgeConversation(tx, { session: (await tx.findSession('s1'))!, actorKind: 'admin', actorId: '1', now }));
+  assert.equal(purged.changed, true);
+  assert.equal(purged.toStatus, 'purged');
+  assert.deepEqual(purged.snapshot, {
+    messageCount: 2,
+    attachmentCount: 1,
+    appointmentCount: 1,
+    leadRetained: true,
+    attachmentUrls: ['/uploads/chat/a.png'],
+  });
+  assert.equal(state.messages.length, 0);
+  assert.equal(state.attachments?.length, 0);
+  assert.equal(state.appointments?.[0].message, null);
+  assert.deepEqual([state.sessions[0].name, state.sessions[0].email, state.sessions[0].phone, state.sessions[0].purgedAt], ['Lead', 'lead@example.com', '+440000', now]);
+  assert.equal(state.lifecycleAudits?.at(-1)?.action, 'delete');
+  assert.equal(state.lifecycleAudits?.at(-1)?.messageCount, 2);
+
+  await assert.rejects(
+    inTx(state, async (tx) => purgeConversation(tx, { session: (await tx.findSession('s1'))!, actorKind: 'admin', actorId: '1' })),
+    (err: unknown) => err instanceof ChatLifecycleNotFoundError,
+  );
+
+  const foreign = createState('admin_replied');
+  foreign.sessions[0].tenantId = 'pw-uk';
+  await assert.rejects(
+    inTx(foreign, async (tx) => purgeConversation(tx, {
+      session: { ...(await tx.findSession('s1'))!, tenantId: 'pw-infotech' },
+      actorKind: 'admin',
+      actorId: '1',
+    })),
+    (err: unknown) => err instanceof ChatLifecycleNotFoundError,
+  );
+  assert.equal(foreign.messages.length, 2);
 });
 
 // --- server.ts wiring ---

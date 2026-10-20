@@ -6,7 +6,9 @@
 import type {
   ChatConversationStore,
   ChatConversationTx,
+  ChatLifecycleAuditWrite,
   ChatOperatorActionRecord,
+  ChatPurgeSnapshot,
   ChatStoredMessage,
 } from '../chatConversationService.ts';
 
@@ -16,6 +18,22 @@ export type MemorySessionRow = {
   status: string;
   closedAt?: Date | null;
   closedById?: number | null;
+  archivedAt?: Date | null;
+  archivedById?: number | null;
+  purgedAt?: Date | null;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+};
+
+export type MemoryAttachmentRow = { id: number; sessionId: string; url: string };
+export type MemoryAppointmentRow = {
+  id: number;
+  sessionId: string;
+  message: string | null;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
 };
 
 export type MemoryMessageRow = {
@@ -35,6 +53,9 @@ export type MemoryChatState = {
   sessions: MemorySessionRow[];
   messages: MemoryMessageRow[];
   operatorActions: ChatOperatorActionRecord[];
+  attachments?: MemoryAttachmentRow[];
+  appointments?: MemoryAppointmentRow[];
+  lifecycleAudits?: ChatLifecycleAuditWrite[];
 };
 
 type TxMethod = keyof ChatConversationTx;
@@ -136,6 +157,63 @@ export function createMemoryChatConversationStore(state: MemoryChatState, hooks:
       if (!record) throw new Error('operator action not found');
       Object.assign(record, data);
     },
+    async findLifecycleSession(sessionId) {
+      const session = state.sessions.find((row) => row.id === sessionId);
+      if (!session) return null;
+      return {
+        id: session.id,
+        tenantId: session.tenantId,
+        status: session.status,
+        archivedAt: session.archivedAt ?? null,
+        purgedAt: session.purgedAt ?? null,
+        name: session.name ?? null,
+        email: session.email ?? null,
+        phone: session.phone ?? null,
+      };
+    },
+    async setSessionArchived({ sessionId, tenantId, archivedAt, archivedById }) {
+      const session = state.sessions.find((row) => row.id === sessionId);
+      if (!session || session.tenantId !== tenantId || session.purgedAt) return 0;
+      const currentlyArchived = Boolean(session.archivedAt);
+      if (Boolean(archivedAt) === currentlyArchived) return 0;
+      session.archivedAt = archivedAt;
+      session.archivedById = archivedById;
+      return 1;
+    },
+    async purgeSessionContent({ sessionId, tenantId, purgedAt }): Promise<ChatPurgeSnapshot | null> {
+      const session = state.sessions.find((row) => row.id === sessionId);
+      if (!session || session.tenantId !== tenantId || session.purgedAt) return null;
+      const messages = state.messages.filter((row) => row.sessionId === sessionId);
+      const attachments = (state.attachments ?? []).filter((row) => row.sessionId === sessionId);
+      const appointments = (state.appointments ?? []).filter((row) => row.sessionId === sessionId);
+      const leadRetained = Boolean(
+        session.name || session.email || session.phone
+        || appointments.some((row) => row.name || row.email || row.phone),
+      );
+      for (let index = state.messages.length - 1; index >= 0; index -= 1) {
+        if (state.messages[index]?.sessionId === sessionId) state.messages.splice(index, 1);
+      }
+      if (state.attachments) {
+        for (let index = state.attachments.length - 1; index >= 0; index -= 1) {
+          if (state.attachments[index]?.sessionId === sessionId) state.attachments.splice(index, 1);
+        }
+      }
+      for (const appointment of appointments) appointment.message = null;
+      session.purgedAt = purgedAt;
+      session.archivedAt = null;
+      session.archivedById = null;
+      return {
+        messageCount: messages.length,
+        attachmentCount: attachments.length,
+        appointmentCount: appointments.length,
+        leadRetained,
+        attachmentUrls: attachments.map((row) => row.url),
+      };
+    },
+    async recordLifecycleAudit(input) {
+      state.lifecycleAudits ??= [];
+      state.lifecycleAudits.push({ ...input });
+    },
   };
 
   const tx = Object.fromEntries(
@@ -160,6 +238,24 @@ export function createMemoryChatConversationStore(state: MemoryChatState, hooks:
           restore(state.sessions, saved.sessions);
           restore(state.messages, saved.messages);
           restore(state.operatorActions, saved.operatorActions);
+          if (saved.attachments) {
+            state.attachments ??= [];
+            restore(state.attachments, saved.attachments);
+          } else {
+            delete state.attachments;
+          }
+          if (saved.appointments) {
+            state.appointments ??= [];
+            restore(state.appointments, saved.appointments);
+          } else {
+            delete state.appointments;
+          }
+          if (saved.lifecycleAudits) {
+            state.lifecycleAudits ??= [];
+            restore(state.lifecycleAudits, saved.lifecycleAudits);
+          } else {
+            delete state.lifecycleAudits;
+          }
           throw err;
         } finally {
           activeSnapshot = null;

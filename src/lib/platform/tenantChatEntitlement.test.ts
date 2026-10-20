@@ -371,7 +371,7 @@ test('migration is additive and server wiring keeps visitor, capabilities, CORS,
   );
   assert.match(visitorGateFn, /resolveTenantChatAccess\(source\.tenantId\)/);
   assert.equal(visitorGateFn.includes('assertVisitorChatEntitlement'), false);
-  assert.equal((server.match(/resolveChatAccess: resolveTenantChatAccess/g) ?? []).length, 3);
+  assert.equal((server.match(/resolveChatAccess: resolveTenantChatAccess/g) ?? []).length, 4);
   assert.equal((server.match(/tenantChatEntitlementStore\.find/g) ?? []).length, 1);
   assert.equal((server.match(/await assertEffectivePublicTenantChat\(sourceContext\)/g) ?? []).length, 6);
   const respond = server.slice(server.indexOf("app.post('/api/chat/respond'"), server.indexOf("app.post('/api/chat/uploads'"));

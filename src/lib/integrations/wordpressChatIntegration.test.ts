@@ -517,14 +517,14 @@ test('rotation: the _PREVIOUS secret is accepted alongside the current secret, a
   assert.equal(parseBearerToken(`Bearer ${TOKEN} extra`), null);
 });
 
-test('registry: the WordPress integration is bound to pw-infotech with read scopes plus reply / resolve / reopen only', () => {
+test('registry: the WordPress integration is bound to pw-infotech with reply / resolve / reopen / archive / delete scopes', () => {
   assert.equal(INTEGRATION_REGISTRY.length, 1);
   const [definition] = INTEGRATION_REGISTRY;
   assert.equal(definition.tenantId, 'pw-infotech');
   assert.deepEqual([...definition.scopes].sort(), [
-    'chat:dashboard', 'chat:diagnostics', 'chat:read', 'chat:reopen', 'chat:reply', 'chat:resolve',
+    'chat:archive', 'chat:dashboard', 'chat:delete', 'chat:diagnostics', 'chat:read', 'chat:reopen', 'chat:reply', 'chat:resolve',
   ]);
-  assert.ok(definition.scopes.every((scope) => !/assign|delete|manage|edit|note|spam|presence|availability|attach|appointment|tenant|user/.test(scope)));
+  assert.ok(definition.scopes.every((scope) => !/assign|manage|edit|note|spam|presence|availability|attach|appointment|tenant|user/.test(scope)));
 });
 
 test('scopes: a valid credential without the required scope returns 403 integration_forbidden', async () => {
@@ -636,9 +636,10 @@ test('dashboard: only pw-infotech conversations, newest first, no transcripts', 
     assert.ok(!res.text.includes('UK ONLY TEXT') && !res.text.includes('RRB ONLY TEXT') && !res.text.includes('LEGACY ONLY TEXT'));
     assert.ok(rows.every((r: Record<string, unknown>) => !('messages' in r)));
     assert.deepEqual(Object.keys(rows[0]).sort(), [
-      'intent', 'lastActivityAt', 'lastActor', 'lastMessagePreview', 'lastSeenAt', 'messageCount', 'needsAttention',
+      'intent', 'lastActivityAt', 'lastActor', 'lastMessagePreview', 'lastSeenAt', 'lifecycle', 'messageCount', 'needsAttention',
       'originatingPage', 'sessionId', 'status', 'visitorLabel', 'visitorPresence',
     ]);
+    assert.ok(rows.every((r: { lifecycle: string }) => r.lifecycle === 'active'));
   } finally {
     await app.close();
   }
@@ -1743,7 +1744,15 @@ test('regression: read action response contracts are unchanged after writes are 
   const app = await startApp();
   try {
     const dashboard = (await app.call({ body: { action: 'dashboard' } })).json.data;
-    assert.deepEqual(Object.keys(dashboard).sort(), ['attention', 'fullAdmin', 'limits', 'recentConversations', 'service', 'team']);
+    assert.deepEqual(Object.keys(dashboard).sort(), ['attention', 'fullAdmin', 'inbox', 'limits', 'operator', 'recentConversations', 'service', 'team']);
+    assert.equal(dashboard.inbox, 'active');
+    assert.deepEqual(dashboard.operator, {
+      canReply: true,
+      canResolve: true,
+      canReopen: true,
+      canArchive: true,
+      canDelete: true,
+    });
     const conversation = (await app.call({ body: { action: 'conversation', sessionId: 'inf-2' } })).json.data;
     assert.deepEqual(Object.keys(conversation).sort(), ['conversation', 'hasMore', 'messageLimit', 'messages', 'session', 'visitor']);
     const diagnostics = (await app.call({ body: { action: 'diagnostics' } })).json.data;
@@ -1774,7 +1783,7 @@ test('entitlement: suspended chat is reported and enforced without changing the 
     assert.equal(dashboard.status, 200);
     assert.equal(dashboard.json.data.service.chatEnabled, false);
     assert.equal(dashboard.json.data.service.canAcceptMessages, false);
-    assert.deepEqual(Object.keys(dashboard.json.data).sort(), ['attention', 'fullAdmin', 'limits', 'recentConversations', 'service', 'team']);
+    assert.deepEqual(Object.keys(dashboard.json.data).sort(), ['attention', 'fullAdmin', 'inbox', 'limits', 'operator', 'recentConversations', 'service', 'team']);
     const conversation = await app.call({ body: { action: 'conversation', sessionId: 'inf-1' } });
     assert.equal(conversation.status, 200);
     assert.equal(conversation.json.data.messages.length > 0, true);

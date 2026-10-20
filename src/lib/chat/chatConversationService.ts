@@ -54,6 +54,57 @@ export function conversationStatusData(
 
 export type ChatConversationSessionRow = { id: string; tenantId: string | null; status: string };
 
+/**
+ * Permanent deletion retention. Archive and restore do not use this policy:
+ * they only set or clear archivedAt and leave messages, attachments, leads and appointments in place.
+ */
+export const CHAT_PURGE_RETENTION = {
+  messages: 'delete_rows',
+  attachments: 'delete_rows_and_local_files',
+  appointmentMessage: 'clear_text',
+  appointmentLead: 'retain_contact_and_schedule',
+  sessionLead: 'retain_name_email_phone_on_tombstone',
+  operatorActions: 'retain_without_message_content',
+  lifecycleAudit: 'retain_counts_only',
+} as const;
+
+export type ChatLifecycleSessionRow = ChatConversationSessionRow & {
+  archivedAt: Date | null;
+  purgedAt: Date | null;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+};
+
+export type ChatPurgeSnapshot = {
+  messageCount: number;
+  attachmentCount: number;
+  appointmentCount: number;
+  leadRetained: boolean;
+  attachmentUrls: string[];
+};
+
+export type ChatLifecycleAuditWrite = {
+  tenantId: string;
+  sessionId: string;
+  action: 'archive' | 'restore' | 'delete';
+  actorKind: 'admin' | 'wordpress_integration';
+  actorId: string;
+  messageCount: number | null;
+  attachmentCount: number | null;
+  appointmentCount: number | null;
+  leadRetained: boolean;
+};
+
+export class ChatLifecycleNotFoundError extends Error {
+  readonly code = 'conversation_not_found' as const;
+
+  constructor() {
+    super('Conversation not found.');
+    this.name = 'ChatLifecycleNotFoundError';
+  }
+}
+
 export type ChatTeamMessageInput = {
   sessionId: string;
   text: string;
@@ -116,6 +167,29 @@ export type ChatConversationTx = {
     id: string,
     data: Partial<Pick<ChatOperatorActionRecord, 'messageId' | 'fromStatus' | 'toStatus' | 'changed'>>,
   ): Promise<void>;
+  findLifecycleSession(sessionId: string): Promise<ChatLifecycleSessionRow | null>;
+  /**
+   * Sets or clears archivedAt. tenantId null matches legacy rows only.
+   * Returns 0 when the session is missing, belongs to another tenant, is purged,
+   * or is already in the requested archive state.
+   */
+  setSessionArchived(input: {
+    sessionId: string;
+    tenantId: string | null;
+    archivedAt: Date | null;
+    archivedById: number | null;
+  }): Promise<number>;
+  /**
+   * Deletes message and attachment rows for one tenant session, clears appointment message text,
+   * and stamps purgedAt. Returns null when the session is missing, cross-tenant, or already purged.
+   * The snapshot carries counts and local attachment URLs. It never carries message text.
+   */
+  purgeSessionContent(input: {
+    sessionId: string;
+    tenantId: string | null;
+    purgedAt: Date;
+  }): Promise<ChatPurgeSnapshot | null>;
+  recordLifecycleAudit(input: ChatLifecycleAuditWrite): Promise<void>;
 };
 
 export type ChatConversationStore = ChatConversationTx & {
@@ -262,4 +336,131 @@ export async function reopenConversation(
     return { changed: false, fromStatus: REOPEN_TARGET_STATUS, toStatus: REOPEN_TARGET_STATUS };
   }
   throw invalidTransition('Only closed conversations can be reopened.');
+}
+
+function auditTenantId(tenantId: string | null): string {
+  return tenantId && tenantId.length > 0 ? tenantId : 'legacy';
+}
+
+async function requireLiveLifecycle(
+  tx: ChatConversationTx,
+  session: ChatConversationSessionRow,
+): Promise<ChatLifecycleSessionRow> {
+  const row = await tx.findLifecycleSession(session.id);
+  if (!row || row.tenantId !== session.tenantId) throw new ChatLifecycleNotFoundError();
+  if (row.purgedAt) throw new ChatLifecycleNotFoundError();
+  return row;
+}
+
+/** Hide a conversation from the active inbox. Messages, attachments and leads stay. */
+export async function archiveConversation(
+  tx: ChatConversationTx,
+  input: {
+    session: ChatConversationSessionRow;
+    actorKind: ChatLifecycleAuditWrite['actorKind'];
+    actorId: string;
+    archivedById?: number | null;
+    now?: Date;
+  },
+): Promise<StatusTransitionResult> {
+  const row = await requireLiveLifecycle(tx, input.session);
+  if (row.archivedAt) return { changed: false, fromStatus: row.status, toStatus: row.status };
+  const changed = await tx.setSessionArchived({
+    sessionId: row.id,
+    tenantId: row.tenantId,
+    archivedAt: input.now ?? new Date(),
+    archivedById: input.archivedById ?? null,
+  });
+  if (changed === 0) {
+    const current = await tx.findLifecycleSession(row.id);
+    if (current?.archivedAt && !current.purgedAt) return { changed: false, fromStatus: row.status, toStatus: row.status };
+    throw new ChatLifecycleNotFoundError();
+  }
+  await tx.recordLifecycleAudit({
+    tenantId: auditTenantId(row.tenantId),
+    sessionId: row.id,
+    action: 'archive',
+    actorKind: input.actorKind,
+    actorId: input.actorId,
+    messageCount: null,
+    attachmentCount: null,
+    appointmentCount: null,
+    leadRetained: false,
+  });
+  return { changed: true, fromStatus: row.status, toStatus: row.status };
+}
+
+/** Return an archived conversation to the active inbox. A purged conversation cannot be restored. */
+export async function restoreConversation(
+  tx: ChatConversationTx,
+  input: {
+    session: ChatConversationSessionRow;
+    actorKind: ChatLifecycleAuditWrite['actorKind'];
+    actorId: string;
+  },
+): Promise<StatusTransitionResult> {
+  const row = await requireLiveLifecycle(tx, input.session);
+  if (!row.archivedAt) return { changed: false, fromStatus: row.status, toStatus: row.status };
+  const changed = await tx.setSessionArchived({
+    sessionId: row.id,
+    tenantId: row.tenantId,
+    archivedAt: null,
+    archivedById: null,
+  });
+  if (changed === 0) {
+    const current = await tx.findLifecycleSession(row.id);
+    if (current && !current.archivedAt && !current.purgedAt) return { changed: false, fromStatus: row.status, toStatus: row.status };
+    throw new ChatLifecycleNotFoundError();
+  }
+  await tx.recordLifecycleAudit({
+    tenantId: auditTenantId(row.tenantId),
+    sessionId: row.id,
+    action: 'restore',
+    actorKind: input.actorKind,
+    actorId: input.actorId,
+    messageCount: null,
+    attachmentCount: null,
+    appointmentCount: null,
+    leadRetained: false,
+  });
+  return { changed: true, fromStatus: row.status, toStatus: row.status };
+}
+
+export type PurgeConversationResult = StatusTransitionResult & {
+  snapshot: ChatPurgeSnapshot;
+};
+
+/**
+ * Permanently delete conversation content for one tenant.
+ * The audit row records counts and whether lead identity was kept. It does not record message text.
+ */
+export async function purgeConversation(
+  tx: ChatConversationTx,
+  input: {
+    session: ChatConversationSessionRow;
+    actorKind: ChatLifecycleAuditWrite['actorKind'];
+    actorId: string;
+    now?: Date;
+  },
+): Promise<PurgeConversationResult> {
+  const row = await tx.findLifecycleSession(input.session.id);
+  if (!row || row.tenantId !== input.session.tenantId || row.purgedAt) throw new ChatLifecycleNotFoundError();
+  const snapshot = await tx.purgeSessionContent({
+    sessionId: row.id,
+    tenantId: row.tenantId,
+    purgedAt: input.now ?? new Date(),
+  });
+  if (!snapshot) throw new ChatLifecycleNotFoundError();
+  await tx.recordLifecycleAudit({
+    tenantId: auditTenantId(row.tenantId),
+    sessionId: row.id,
+    action: 'delete',
+    actorKind: input.actorKind,
+    actorId: input.actorId,
+    messageCount: snapshot.messageCount,
+    attachmentCount: snapshot.attachmentCount,
+    appointmentCount: snapshot.appointmentCount,
+    leadRetained: snapshot.leadRetained,
+  });
+  return { changed: true, fromStatus: row.status, toStatus: 'purged', snapshot };
 }

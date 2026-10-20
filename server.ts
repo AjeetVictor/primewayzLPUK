@@ -99,6 +99,8 @@ import { createAdminChatMutationHandlers, type AdminChatMutationStore } from './
 import { createPrismaOperationalChatStore } from './src/lib/admin/operationalChatPrismaStore.ts';
 import { advanceConversationStatus, type ConversationStatus } from './src/lib/chat/chatConversationService.ts';
 import { createPrismaChatConversationStore } from './src/lib/chat/chatConversationPrismaStore.ts';
+import { createAdminChatLifecycleHandlers } from './src/lib/admin/adminChatLifecycleRoutes.ts';
+import { removePurgedChatUploads } from './src/lib/chat/chatUploadRetention.ts';
 import {
   createWordPressChatIntegrationHandler,
   WORDPRESS_CHAT_INTEGRATION_PATH,
@@ -2176,7 +2178,7 @@ const adminChatStore: AdminChatStore = {
     }),
   listSessions: ({ tenantId }) =>
     prisma.chatSession.findMany({
-      where: tenantId ? { tenantId } : {},
+      where: { ...(tenantId ? { tenantId } : {}), purgedAt: null },
       orderBy: { createdAt: 'desc' },
       include: {
         messages: {
@@ -2244,6 +2246,18 @@ app.get('/api/admin/sessions', requireAdmin, requireRole(isOperationsRole), admi
 app.get('/api/admin/sessions/:sessionId/messages', requireAdmin, requireRole(isOperationsRole), adminChatHandlers.sessionHistory);
 
 app.patch('/api/admin/sessions/:sessionId/status', requireAdmin, requireRole(isOperationsRole), adminChatMutationHandlers.updateSessionStatus);
+
+const adminChatLifecycleHandlers = createAdminChatLifecycleHandlers({
+  conversations: chatConversationStore,
+  isDatabaseUnavailableError,
+  logUnavailable: logChatDbFallback,
+  resolveChatAccess: resolveTenantChatAccess,
+  removeUploads: removePurgedChatUploads,
+});
+
+app.post('/api/admin/sessions/:sessionId/archive', requireAdmin, requireRole(isOperationsRole), adminChatLifecycleHandlers.archive);
+app.post('/api/admin/sessions/:sessionId/restore', requireAdmin, requireRole(isOperationsRole), adminChatLifecycleHandlers.restore);
+app.delete('/api/admin/sessions/:sessionId', requireAdmin, requireRole(isOperationsRole), adminChatLifecycleHandlers.purge);
 
 app.patch('/api/admin/chat/messages/:id', requireAdmin, requireRole(isOperationsRole), adminChatMutationHandlers.editMessage);
 
@@ -3383,7 +3397,7 @@ app.post('/api/chat/appointments', async (req, res) => {
 });
 
 // WordPress operational chat API (server-to-server). Credential-bound to pw-infotech; reads plus
-// delegated reply / resolve / reopen through the shared conversation store. No admin cookie,
+// delegated reply / resolve / reopen / archive / restore / delete through the shared conversation store. No admin cookie,
 // no CORS, no tenant from the request.
 app.post(WORDPRESS_CHAT_INTEGRATION_PATH, createWordPressChatIntegrationHandler({
   store: createPrismaOperationalChatStore(prisma),
@@ -3393,6 +3407,7 @@ app.post(WORDPRESS_CHAT_INTEGRATION_PATH, createWordPressChatIntegrationHandler(
   getClientIp,
   recordAuthenticatedActivity: (input) => recordLegacyChatConnectActivity(chatConnectStore, input),
   resolveChatAccess: resolveTenantChatAccess,
+  removeUploads: removePurgedChatUploads,
 }));
 app.all(WORDPRESS_CHAT_INTEGRATION_PATH, wordpressChatMethodNotAllowed);
 app.use(WORDPRESS_CHAT_INTEGRATION_PATH, wordpressChatBodyErrorHandler);
