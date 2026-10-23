@@ -8,14 +8,9 @@ Backend presence is already tenant-scoped (`ChatPresenceSetting` / `AdminPresenc
 
 When the Admin UI omits `tenantId`, `resolveAuthorizedAdminTenantFilter` defaults a Host/Owner to **`pw-uk`**.
 
-`AdminPanel` still calls:
+Phase 1 deferred UI forwarding. **PW-CHAT-PRESENCE-01** repaired `AdminPanel` so availability GET/PATCH and presence heartbeats use `adminTenantPath` (selected `adminTenantFilter`), and retarget when the entity changes. Explicit logout also clears that operator’s `AdminPresence` rows so auto-mode does not linger until the 5-minute TTL.
 
-- `GET/PATCH /api/admin/chat/availability` without the selected entity
-- `POST /api/admin/presence/heartbeat` without the selected entity
-
-while other operations use `adminTenantPath` / `adminTenantQuery`. Heartbeats and mode changes therefore land on Primewayz UK even when the operator is viewing Primewayz Infotech. Infotech visitors then resolve `auto` with no recent Infotech heartbeat (`assistant` / `not_online`) while UK can show online.
-
-UI forwarding of the selected `tenantId` is deferred past Phase 1. Backend now also requires per-tenant chat authorization on those routes.
+Full audit: `Docs/chat-admin-presence-sync-audit.md`. Backend still requires per-tenant chat authorization on presence routes.
 
 ## Authorization and compatibility strategy
 
