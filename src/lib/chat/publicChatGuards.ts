@@ -434,15 +434,34 @@ export async function assertPublicChatReferencesOwned(
 /** Public heartbeat / session response: no visitor PII or attribution echoed back. */
 export function toPublicChatSessionResponse(
   session: { id: string; status: string },
-  options: { unavailable?: boolean } = {},
-): { ok: true; id: string; sessionId: string; status: string; unavailable?: true } {
+  options: { unavailable?: boolean; leadCaptured?: boolean } = {},
+): {
+  ok: true;
+  id: string;
+  sessionId: string;
+  status: string;
+  unavailable?: true;
+  /** True only when this request newly persisted a contactable email for the session. */
+  leadCaptured?: true;
+} {
   return {
     ok: true,
     id: session.id,
     sessionId: session.id,
     status: session.status,
     ...(options.unavailable ? { unavailable: true as const } : {}),
+    ...(options.leadCaptured ? { leadCaptured: true as const } : {}),
   };
+}
+
+/** Contactable lead = non-empty email. Name alone is not enough for chat_lead_captured. */
+export function isNewChatLeadCapture(params: {
+  previousEmail?: string | null;
+  nextEmail?: string | null;
+}): boolean {
+  const previous = typeof params.previousEmail === 'string' ? params.previousEmail.trim() : '';
+  const next = typeof params.nextEmail === 'string' ? params.nextEmail.trim() : '';
+  return Boolean(next) && !previous;
 }
 
 // --- Admin reply endpoint ---

@@ -133,6 +133,9 @@ export const LiveChat = () => {
     if (typeof window === 'undefined') return false;
     return window.sessionStorage.getItem('primewayz_chat_open_tracked') === 'true';
   });
+  const leadCaptureTrackedRef = useRef(
+    typeof window !== 'undefined' ? Boolean(window.localStorage.getItem('chat_user_email')) : false,
+  );
   const [isMinimized, setIsMinimized] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<VisitorChatMessage[]>([]);
@@ -811,6 +814,14 @@ export const LiveChat = () => {
         return;
       }
 
+      let newlyCapturedLead = false;
+      try {
+        const payload = await res.clone().json() as { leadCaptured?: unknown };
+        newlyCapturedLead = payload?.leadCaptured === true;
+      } catch {
+        newlyCapturedLead = false;
+      }
+
       localStorage.setItem('chat_user_name', userName);
       localStorage.setItem('chat_user_email', userEmail);
       setApiAvailable(true);
@@ -820,10 +831,13 @@ export const LiveChat = () => {
       setLeadSavedNotice(true);
       setShowAwayFollowUp(true);
       announceStatus(VISITOR_CHAT_MESSAGE_SAVED);
-      trackChatLeadCaptured({
-        chatStatus: availability.status,
-        ctaLocation: 'chat_lead_form',
-      });
+      if (newlyCapturedLead && !leadCaptureTrackedRef.current) {
+        leadCaptureTrackedRef.current = true;
+        trackChatLeadCaptured({
+          chatStatus: availability.status,
+          ctaLocation: 'chat_lead_form',
+        });
+      }
       trackVisitorChatEvent('chat_human_handoff_requested', {
         route: location.pathname,
         intentKey: selectedIntent?.key,

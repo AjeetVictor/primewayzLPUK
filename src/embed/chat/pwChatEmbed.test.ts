@@ -19,6 +19,7 @@ import {
   createDefaultPwChatAnalyticsSink,
   createPwChatTracker,
   PW_CHAT_EMBED_ANALYTICS_EVENTS,
+  resolvePwChatAnalyticsConsent,
 } from './analytics.ts';
 import {
   parseRetryAfterSeconds,
@@ -241,7 +242,7 @@ test('analytics: default sink prefers PWSCTrackEvent, then gtag, then dataLayer'
   assert.doesNotThrow(() => createDefaultPwChatAnalyticsSink({ PWSCTrackEvent: () => { throw new Error('x'); } } as unknown as Window, () => true)('chat_open', {}));
 });
 
-test('analytics: embedded chat emits nothing until analytics consent', () => {
+test('analytics: embedded chat emits nothing when consent check denies', () => {
   const calls: string[] = [];
   const sink = createDefaultPwChatAnalyticsSink(
     {
@@ -255,6 +256,58 @@ test('analytics: embedded chat emits nothing until analytics consent', () => {
   assert.deepEqual(calls, []);
 });
 
+test('analytics: explicit consent false blocks even when host transports exist', () => {
+  const calls: string[] = [];
+  const sink = createDefaultPwChatAnalyticsSink({
+    __PRIMEWAYZ_ANALYTICS_CONSENT__: false,
+    gtag: () => calls.push('gtag'),
+    dataLayer: [],
+  } as unknown as Window);
+  sink('chat_open', {});
+  assert.deepEqual(calls, []);
+});
+
+test('analytics: host-owned consent allows gtag when Primewayz flag is unset', () => {
+  const calls: string[] = [];
+  const sink = createDefaultPwChatAnalyticsSink({
+    gtag: (...args: unknown[]) => calls.push(`gtag:${String(args[1])}`),
+  } as unknown as Window);
+  sink('chat_open', { placement: 'chat_widget' });
+  assert.deepEqual(calls, ['gtag:chat_open']);
+});
+
+test('analytics: no host transport and unset consent emits nothing', () => {
+  const calls: string[] = [];
+  createDefaultPwChatAnalyticsSink({} as unknown as Window)('chat_open', {});
+  assert.deepEqual(calls, []);
+  assert.equal(resolvePwChatAnalyticsConsent({} as unknown as Window), false);
+});
+
+test('analytics: tenant analyticsEnabled false disables all transports', () => {
+  const calls: string[] = [];
+  const sink = createDefaultPwChatAnalyticsSink(
+    {
+      __PRIMEWAYZ_ANALYTICS_CONSENT__: true,
+      gtag: () => calls.push('gtag'),
+    } as unknown as Window,
+    undefined,
+    { analyticsEnabled: false },
+  );
+  sink('chat_message_sent', {});
+  assert.deepEqual(calls, []);
+});
+
+test('analytics: gtag preference does not also push dataLayer', () => {
+  const dataLayer: unknown[] = [];
+  const calls: string[] = [];
+  createDefaultPwChatAnalyticsSink({
+    gtag: (...args: unknown[]) => calls.push(String(args[1])),
+    dataLayer,
+  } as unknown as Window)('chat_open', { placement: 'chat_widget' });
+  assert.deepEqual(calls, ['chat_open']);
+  assert.deepEqual(dataLayer, []);
+});
+
 test('analytics: tracker only emits the six supported events', () => {
   assert.deepEqual([...PW_CHAT_EMBED_ANALYTICS_EVENTS], [
     'chat_open', 'chat_message_sent', 'chat_lead_captured',
@@ -263,6 +316,17 @@ test('analytics: tracker only emits the six supported events', () => {
   const seen: Array<[string, Record<string, unknown>]> = [];
   createPwChatTracker((name, params) => seen.push([name, params]))('chat_message_send_failed', { failureReason: 'rate_limited' });
   assert.deepEqual(seen, [['chat_message_send_failed', { placement: 'chat_widget', failure_reason: 'rate_limited' }]]);
+});
+
+test('config: analyticsEnabled defaults true and accepts explicit false', () => {
+  const enabled = parsePwChatConfig({ apiBaseUrl: 'https://uk.primewayz.com', siteKey: 'primewayz-infotech' });
+  const disabled = parsePwChatConfig({
+    apiBaseUrl: 'https://uk.primewayz.com',
+    siteKey: 'primewayz-infotech',
+    analyticsEnabled: false,
+  });
+  assert.equal(enabled?.analyticsEnabled, true);
+  assert.equal(disabled?.analyticsEnabled, false);
 });
 
 // --- Booking gate ---
@@ -292,8 +356,8 @@ test('attribution: page URL keeps origin, path and utm_* only', () => {
   assert.equal(toAttributionPageUrl('https://primewayz.com/'), 'https://primewayz.com/');
 });
 
-test('version: current embed artifact is 1.3.0', () => {
-  assert.equal(PW_CHAT_EMBED_VERSION, '1.3.0');
+test('version: current embed artifact is 1.3.1', () => {
+  assert.equal(PW_CHAT_EMBED_VERSION, '1.3.1');
 });
 
 test('deep link query: only the exact value open is accepted', () => {

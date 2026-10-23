@@ -159,6 +159,7 @@ import {
   buildPublicChatVisitorTelemetry,
   enforcePublicChatRateLimit,
   PublicChatRequestError,
+  isNewChatLeadCapture,
   toPublicChatSessionResponse,
   validateChatAppointmentInput,
   validateChatHeartbeatInput,
@@ -3187,6 +3188,7 @@ app.post('/api/chat/session', async (req, res) => {
       select: {
         visitorLastSeenAt: true,
         visitStartedAt: true,
+        email: true,
       },
     });
     const visitStartedAt = resolveVisitStartedAt({
@@ -3196,6 +3198,10 @@ app.post('/api/chat/session', async (req, res) => {
     });
     const approximateLocation = resolveApproximateVisitorLocation(getClientIp(req));
     const sourceData = buildPublicChatSessionSourceData(req.body);
+    const leadCaptured = isNewChatLeadCapture({
+      previousEmail: existingVisit?.email,
+      nextEmail: email,
+    });
     const session = await prisma.chatSession.upsert({
       where: { id: sessionId },
       update: {
@@ -3238,7 +3244,7 @@ app.post('/api/chat/session', async (req, res) => {
       },
     });
 
-    return res.json(toPublicChatSessionResponse(session));
+    return res.json(toPublicChatSessionResponse(session, { leadCaptured }));
   } catch (err) {
     const sourceFailure = sourceResolutionFailure(res, err);
     if (sourceFailure) return sourceFailure;
