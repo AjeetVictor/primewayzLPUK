@@ -45,6 +45,10 @@ import {
   shouldLeaveCapabilityDisabledAdminTab,
   shouldLeaveUkOnlyAdminTab,
 } from '../lib/admin/adminModuleScope';
+import {
+  formatAdminAvailabilityLabel,
+  resolveAdminAvailabilityDotClass,
+} from '../lib/chat/chatPresenceColors';
 
 interface FormResponse {
   id: number;
@@ -1602,14 +1606,8 @@ const AdminPanelContent = () => {
     canViewOperations &&
     schedulingScope.available &&
     schedulingScope.configurationActive === false;
-  const availabilityDotClass = chatAvailability?.status === 'online'
-    ? 'bg-emerald-500'
-    : chatAvailability?.status === 'away'
-      ? 'bg-amber-400'
-      : chatAvailability?.status === 'assistant'
-        ? 'bg-indigo-400'
-        : 'bg-zinc-400';
-  const availabilityLabel = chatAvailability?.status || 'loading';
+  const availabilityDotClass = resolveAdminAvailabilityDotClass(chatAvailability?.status);
+  const availabilityLabel = formatAdminAvailabilityLabel(chatAvailability?.status);
 
 
   const updateChatAlertStatus = async (alertId: number, status: 'reviewed' | 'resolved') => {
@@ -1713,9 +1711,14 @@ const AdminPanelContent = () => {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <span className={`h-2.5 w-2.5 rounded-full ${availabilityDotClass}`} />
+                <span
+                  className={`inline-block h-3.5 w-3.5 shrink-0 rounded-full ring-2 ring-white shadow-sm ${availabilityDotClass}`}
+                  aria-hidden="true"
+                  data-testid="admin-chat-availability-dot"
+                />
                 <p className="text-sm font-bold text-zinc-900">
-                  Chat availability: <span className="capitalize">{availabilityLabel}</span>
+                  Chat availability:{' '}
+                  <span data-testid="admin-chat-availability-label">{availabilityLabel}</span>
                 </p>
                 {chatAvailability?.mode === 'auto' && (
                   <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
