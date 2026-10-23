@@ -56,7 +56,8 @@ export type VisitorHeaderStatus =
   | 'unavailable';
 
 export const VISITOR_HEADER_STATUS_LABELS: Record<VisitorHeaderStatus, string> = {
-  team_online: 'Team online',
+  // "Available" (not "online") — presence, not a guaranteed immediate reply.
+  team_online: 'Team available',
   team_away: 'Team currently away',
   team_offline: 'Team offline',
   automated_guidance: 'Automated guidance available',
@@ -73,7 +74,7 @@ export type VisitorPresenceTone =
   | 'unavailable';
 
 export const VISITOR_PRESENCE_STATUS_LABELS: Record<VisitorPresenceTone, string> = {
-  online: 'Team online',
+  online: 'Team available',
   away: 'Team away',
   offline: 'Team offline',
   automated: 'Automated guidance available',
@@ -82,7 +83,7 @@ export const VISITOR_PRESENCE_STATUS_LABELS: Record<VisitorPresenceTone, string>
 
 /**
  * Presence colours must not use `emerald-*`: this project's theme remaps
- * emerald to brand blue, which made "Team online" / "Online" appear blue.
+ * emerald to brand blue, which made "Team available" / "Online" appear blue.
  * Shared hex map: src/lib/chat/chatPresenceColors.ts (PW-CHAT-PRESENCE-02).
  */
 export const VISITOR_PRESENCE_DOT_CLASS: Record<VisitorPresenceTone, string> = {
@@ -133,6 +134,18 @@ export function resolveVisitorHeaderStatus(params: {
   if (params.availabilityStatus === 'assistant') return 'automated_guidance';
   if (params.availabilityStatus === 'offline') return 'team_offline';
   return 'team_away';
+}
+
+/**
+ * Maps expanded-header status to the same semantic tone as the launcher /
+ * VISITOR_HEADER_STATUS_DOT_CLASS (green / amber / grey / blue / red).
+ */
+export function resolveVisitorHeaderTone(status: VisitorHeaderStatus): VisitorPresenceTone {
+  if (status === 'team_online' || status === 'human_response_received') return 'online';
+  if (status === 'automated_guidance') return 'automated';
+  if (status === 'team_offline') return 'offline';
+  if (status === 'unavailable') return 'unavailable';
+  return 'away';
 }
 
 export function formatVisitorUnreadBadge(unreadCount: number): string | null {

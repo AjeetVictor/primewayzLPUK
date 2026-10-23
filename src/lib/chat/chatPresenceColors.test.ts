@@ -19,6 +19,7 @@ import {
 } from './chatPresenceColors.ts';
 import {
   resolveVisitorHeaderStatus,
+  resolveVisitorHeaderTone,
   resolveVisitorPresenceTone,
   VISITOR_HEADER_STATUS_DOT_CLASS,
   VISITOR_HEADER_STATUS_LABELS,
@@ -165,5 +166,56 @@ describe('PW-CHAT-PRESENCE-02 embed CSS alignment', () => {
     assert.match(styles, /\.pw-chat-tone-offline\s*\{\s*background:\s*#94A3B8\s*;/);
     assert.match(styles, /\.pw-chat-tone-automated\s*\{\s*background:\s*#0284C7\s*;/);
     assert.match(styles, /\.pw-chat-tone-unavailable\s*\{\s*background:\s*#DC2626\s*;/);
+  });
+
+  test('PW-CHAT-PRESENCE-03: tone rules follow status-dot so expanded header is not stuck grey', () => {
+    const styles = read('src/embed/chat/styles.ts');
+    const launcherDot = styles.indexOf('.pw-chat-launcher-dot');
+    const statusDot = styles.indexOf('.pw-chat-status-dot');
+    const toneOnline = styles.indexOf('.pw-chat-tone-online');
+    assert.ok(launcherDot >= 0 && statusDot >= 0 && toneOnline >= 0);
+    assert.ok(
+      toneOnline > launcherDot && toneOnline > statusDot,
+      'tone classes must follow both dots (equal specificity cascade)',
+    );
+  });
+});
+
+describe('PW-CHAT-PRESENCE-03 visitor header/launcher tone parity', () => {
+  test('header tone matches launcher presence for each availability status', () => {
+    const cases: Array<{
+      availabilityStatus: 'online' | 'away' | 'offline' | 'assistant';
+      presence: 'online' | 'away' | 'offline' | 'automated';
+      header: 'team_online' | 'team_away' | 'team_offline' | 'automated_guidance';
+    }> = [
+      { availabilityStatus: 'online', presence: 'online', header: 'team_online' },
+      { availabilityStatus: 'away', presence: 'away', header: 'team_away' },
+      { availabilityStatus: 'offline', presence: 'offline', header: 'team_offline' },
+      { availabilityStatus: 'assistant', presence: 'automated', header: 'automated_guidance' },
+    ];
+    for (const row of cases) {
+      const presence = resolveVisitorPresenceTone({
+        availabilityStatus: row.availabilityStatus,
+        serviceAvailable: true,
+      });
+      const headerStatus = resolveVisitorHeaderStatus({
+        availabilityStatus: row.availabilityStatus,
+        hasAdminReply: false,
+        waitingForTeam: false,
+        serviceAvailable: true,
+      });
+      assert.equal(presence, row.presence);
+      assert.equal(headerStatus, row.header);
+      assert.equal(resolveVisitorHeaderTone(headerStatus), presence);
+      assert.equal(
+        VISITOR_PRESENCE_DOT_CLASS[presence],
+        VISITOR_HEADER_STATUS_DOT_CLASS[headerStatus],
+      );
+      assert.equal(VISITOR_PRESENCE_DOT_CLASS[presence], CHAT_PRESENCE_DOT_CLASS[presence]);
+    }
+    assert.equal(VISITOR_HEADER_STATUS_LABELS.team_online, 'Team available');
+    assert.equal(VISITOR_PRESENCE_STATUS_LABELS.online, 'Team available');
+    assert.equal(ADMIN_AVAILABILITY_LABELS.online, 'Online');
+    assert.equal(OPERATIONAL_TEAM_PRESENCE_LABELS.available, 'Online');
   });
 });

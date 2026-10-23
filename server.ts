@@ -513,9 +513,11 @@ async function getChatAvailabilityPayload(source?: SourceContext, adminPresenceT
 
   return {
     status,
-    title: status === 'online' ? 'We are online' : status === 'away' ? 'We are away' : status === 'offline' ? 'Chat offline' : 'AI assistant available',
-    subtitle: setting?.message || (status === 'online' ? 'A team member is available now.' : 'Leave a message and we will follow up.'),
-    responseExpectation: status === 'online' ? 'Usually replies shortly.' : 'We usually respond within one business day.',
+    title: status === 'online' ? 'We are available' : status === 'away' ? 'We are away' : status === 'offline' ? 'Chat offline' : 'AI assistant available',
+    subtitle: setting?.message || (status === 'online' ? 'A team member is available.' : 'Leave a message and we will follow up.'),
+    responseExpectation: status === 'online'
+      ? 'A team member is available. Reply times may vary.'
+      : 'We usually respond within one business day.',
     businessHours: resolveTenantChatPresentation(presenceTenantId).businessHours,
     canAcceptMessages,
     canBookCall: scheduling.canBookFromChat,

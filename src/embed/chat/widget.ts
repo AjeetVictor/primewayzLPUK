@@ -45,10 +45,10 @@ import {
   buildVisitorLauncherAriaLabel,
   formatVisitorUnreadBadge,
   resolveVisitorHeaderStatus,
+  resolveVisitorHeaderTone,
   resolveVisitorPresenceTone,
   VISITOR_CHAT_MESSAGE_SAVED,
   VISITOR_HEADER_STATUS_LABELS,
-  type VisitorHeaderStatus,
 } from '../../lib/chat/visitorChatUi.ts';
 import {
   createDefaultPwChatAnalyticsSink,
@@ -79,7 +79,6 @@ import {
   renderIntents,
   renderMessages,
   setTone,
-  type PwChatTone,
 } from './renderer.ts';
 import { createPwChatStorage } from './storage.ts';
 import { PW_CHAT_EMBED_VERSION } from './version.ts';
@@ -172,14 +171,6 @@ export function resolvePwChatBookingUrl(availability: ChatAvailability | null): 
   } catch {
     return null;
   }
-}
-
-function headerTone(status: VisitorHeaderStatus): PwChatTone {
-  if (status === 'team_online' || status === 'human_response_received') return 'online';
-  if (status === 'automated_guidance') return 'automated';
-  if (status === 'team_offline') return 'offline';
-  if (status === 'unavailable') return 'unavailable';
-  return 'away';
 }
 
 /** Page URL for backend attribution: origin + path, keeping only utm_* query parameters. */
@@ -418,7 +409,7 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
     dom.statusText.textContent = headerStatus === 'waiting_for_team'
       ? branding.waitingForTeamLabel
       : VISITOR_HEADER_STATUS_LABELS[headerStatus];
-    setTone(dom.statusDot, headerTone(headerStatus));
+    setTone(dom.statusDot, resolveVisitorHeaderTone(headerStatus));
 
     dom.introGreeting.textContent = intro.greeting;
     dom.introText.textContent = intro.supportingText;

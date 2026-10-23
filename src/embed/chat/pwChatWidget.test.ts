@@ -9,7 +9,9 @@ import { PW_CHAT_EMBED_ANALYTICS_EVENTS } from './analytics.ts';
 import { PW_CHAT_FORBIDDEN_PAYLOAD_KEYS } from './apiClient.ts';
 import { installPrimewayzChat } from './install.ts';
 import { PW_CHAT_EMBED_VERSION } from './version.ts';
-import type { PwChatWidgetHandle } from './widget.ts';
+import { PW_CHAT_AVAILABILITY_REFRESH_MS, type PwChatWidgetHandle } from './widget.ts';
+import { CHAT_PRESENCE_COLORS } from '../../lib/chat/chatPresenceColors.ts';
+import { VISITOR_HEADER_STATUS_LABELS } from '../../lib/chat/visitorChatUi.ts';
 
 type HostWindow = Window & typeof globalThis;
 type Call = { method: string; path: string; body: Record<string, unknown> | null; init: RequestInit };
@@ -1435,4 +1437,63 @@ test('branding: tenants without chatWidget keep the existing Primewayz widget un
   assert.equal(q(handle!, '.pw-chat-root')!.getAttribute('style')?.includes('--pw-chat-launcher-bg') ?? false, false);
   await sendText(handle!, 'Hello');
   assert.equal('intentKey' in posts(backend.calls, '/api/chat/respond')[0]!.body!, false);
+});
+
+test('PW-CHAT-PRESENCE-03: collapsed and expanded status stay consistent across availability transitions', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  let availabilityStatus = 'assistant';
+  const backend = createBackend({
+    'GET /api/chat/availability': () => ({
+      status: 200,
+      body: availability({
+        status: availabilityStatus,
+        responseExpectation: availabilityStatus === 'online'
+          ? 'A team member is available. Reply times may vary.'
+          : 'We usually respond within one business day.',
+      }),
+    }),
+  });
+  const win = createWindow();
+  const { handle } = await boot(win, backend);
+  assert.ok(handle);
+
+  const launcherDot = q(handle!, '.pw-chat-launcher-dot')!;
+  const statusDot = q(handle!, '.pw-chat-status-dot')!;
+  const statusText = () => q(handle!, '.pw-chat-status')!.textContent ?? '';
+  const styleText = handle!.shadow.querySelector('style')!.textContent ?? '';
+
+  assert.ok(
+    styleText.indexOf('.pw-chat-status-dot') < styleText.indexOf('.pw-chat-tone-online'),
+    'injected CSS must not let status-dot grey override tone classes',
+  );
+  assert.ok(launcherDot.classList.contains('pw-chat-tone-automated'));
+
+  handle!.open();
+  await flush();
+  assert.ok(statusDot.classList.contains('pw-chat-tone-automated'));
+  assert.equal(statusText(), VISITOR_HEADER_STATUS_LABELS.automated_guidance);
+  assert.equal(
+    launcherDot.classList.contains('pw-chat-tone-automated'),
+    statusDot.classList.contains('pw-chat-tone-automated'),
+  );
+
+  availabilityStatus = 'online';
+  await advance(PW_CHAT_AVAILABILITY_REFRESH_MS);
+  assert.ok(launcherDot.classList.contains('pw-chat-tone-online'));
+  assert.ok(statusDot.classList.contains('pw-chat-tone-online'));
+  assert.equal(statusText(), VISITOR_HEADER_STATUS_LABELS.team_online);
+  assert.match(q(handle!, '.pw-chat-expectation')!.textContent ?? '', /Reply times may vary/);
+  assert.equal(CHAT_PRESENCE_COLORS.online, '#16A34A');
+
+  availabilityStatus = 'away';
+  await advance(PW_CHAT_AVAILABILITY_REFRESH_MS);
+  assert.ok(launcherDot.classList.contains('pw-chat-tone-away'));
+  assert.ok(statusDot.classList.contains('pw-chat-tone-away'));
+  assert.equal(statusText(), VISITOR_HEADER_STATUS_LABELS.team_away);
+
+  availabilityStatus = 'offline';
+  await advance(PW_CHAT_AVAILABILITY_REFRESH_MS);
+  assert.ok(launcherDot.classList.contains('pw-chat-tone-offline'));
+  assert.ok(statusDot.classList.contains('pw-chat-tone-offline'));
+  assert.equal(statusText(), VISITOR_HEADER_STATUS_LABELS.team_offline);
 });
