@@ -66,18 +66,52 @@ type AnalyticsWindow = Window & {
   dataLayer?: unknown[];
 };
 
+export type PwChatAnalyticsSinkOptions = {
+  /** Explicit tenant/host kill-switch from embed config. */
+  analyticsEnabled?: boolean;
+};
+
+/**
+ * Consent model for multi-tenant embeds:
+ * - `analyticsEnabled === false` → never emit
+ * - custom `consentCheck` → caller owns the decision
+ * - `__PRIMEWAYZ_ANALYTICS_CONSENT__ === false` → denied (UK banner / explicit deny)
+ * - `__PRIMEWAYZ_ANALYTICS_CONSENT__ === true` → allowed
+ * - unset consent → host-owned: allow only when a host analytics transport is already present
+ *   (gtag / dataLayer / PWSCTrackEvent). Hosts that load those after their own consent gate
+ *   do not need the Primewayz UK consent flag.
+ */
+export function resolvePwChatAnalyticsConsent(
+  win: Window,
+  consentCheck?: () => boolean,
+  options: PwChatAnalyticsSinkOptions = {},
+): boolean {
+  if (options.analyticsEnabled === false) return false;
+  if (consentCheck) return consentCheck();
+  const host = win as AnalyticsWindow;
+  if (host.__PRIMEWAYZ_ANALYTICS_CONSENT__ === false) return false;
+  if (host.__PRIMEWAYZ_ANALYTICS_CONSENT__ === true) return true;
+  return (
+    typeof host.PWSCTrackEvent === 'function'
+    || typeof host.gtag === 'function'
+    || Array.isArray(host.dataLayer)
+  );
+}
+
 /** Uses the first available host transport: Site Controls, then gtag, then dataLayer. */
 export function createDefaultPwChatAnalyticsSink(
   win: Window,
   consentCheck?: () => boolean,
+  options: PwChatAnalyticsSinkOptions = {},
 ): VisitorChatAnalyticsSink {
   return (eventName, params) => {
+    if (!resolvePwChatAnalyticsConsent(win, consentCheck, options)) return;
     const host = win as AnalyticsWindow;
-    if (!(consentCheck?.() ?? host.__PRIMEWAYZ_ANALYTICS_CONSENT__ === true)) return;
     try {
       if (typeof host.PWSCTrackEvent === 'function') {
         host.PWSCTrackEvent(eventName, params);
       } else if (typeof host.gtag === 'function') {
+        // Prefer gtag alone so GTM-backed gtag does not also get a raw dataLayer push.
         host.gtag('event', eventName, params);
       } else if (Array.isArray(host.dataLayer)) {
         host.dataLayer.push({ event: eventName, ...params });
@@ -96,6 +130,10 @@ export function createPwChatTracker(sink: VisitorChatAnalyticsSink) {
     } catch {
       return;
     }
-    sink(eventName, payload);
+    try {
+      sink(eventName, payload);
+    } catch {
+      // Host analytics adapters must never interrupt chat.
+    }
   };
 }

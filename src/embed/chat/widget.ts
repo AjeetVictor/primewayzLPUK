@@ -221,7 +221,10 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
     clearTimeout: (id) => win.clearTimeout(id as number),
   };
   const api = createPwChatApiClient({ apiBaseUrl: config.apiBaseUrl, fetchImpl: deps.fetchImpl });
-  const track = createPwChatTracker(deps.analyticsSink ?? createDefaultPwChatAnalyticsSink(win));
+  const track = createPwChatTracker(
+    deps.analyticsSink
+      ?? createDefaultPwChatAnalyticsSink(win, undefined, { analyticsEnabled: config.analyticsEnabled }),
+  );
   const storage = createPwChatStorage(win, config.storageKeys);
 
   const capabilities = await api.get('/api/platform/capabilities');
@@ -270,6 +273,8 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
   let showLeadForm = false;
   let leadDismissed = false;
   let leadSaving = false;
+  /** In-memory only: suppress duplicate chat_lead_captured for this widget instance. */
+  let leadCaptureTracked = Boolean(contact.email);
   let selectedIntent: string | null = null;
   let documentVisible = doc.visibilityState !== 'hidden';
   let isMobile = isPwChatMobileViewport(win.innerWidth);
@@ -813,7 +818,11 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
       contact = { name, email };
       showLeadForm = false;
       announce(VISITOR_CHAT_MESSAGE_SAVED);
-      track('chat_lead_captured', analyticsBase());
+      const newlyCaptured = isObject(result.body) && result.body.leadCaptured === true;
+      if (newlyCaptured && !leadCaptureTracked) {
+        leadCaptureTracked = true;
+        track('chat_lead_captured', analyticsBase());
+      }
       track('chat_human_handoff_requested', analyticsBase());
       render();
       dom.textarea.focus();
