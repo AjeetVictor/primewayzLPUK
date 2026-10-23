@@ -2,6 +2,7 @@
  * Shared visitor chat UI copy and status helpers (Phase 2F-1 / 2F-1.1).
  */
 
+import { CHAT_PRESENCE_DOT_CLASS } from './chatPresenceColors.ts';
 import type { ChatAvailabilityStatus } from './visitorChatTypes.ts';
 import {
   VISITOR_CHAT_ASSISTANT_NAME,
@@ -48,6 +49,7 @@ export const VISITOR_CHAT_REGION_NAME = 'Primewayz Assistant';
 export type VisitorHeaderStatus =
   | 'team_online'
   | 'team_away'
+  | 'team_offline'
   | 'automated_guidance'
   | 'human_response_received'
   | 'waiting_for_team'
@@ -56,39 +58,49 @@ export type VisitorHeaderStatus =
 export const VISITOR_HEADER_STATUS_LABELS: Record<VisitorHeaderStatus, string> = {
   team_online: 'Team online',
   team_away: 'Team currently away',
+  team_offline: 'Team offline',
   automated_guidance: 'Automated guidance available',
   human_response_received: 'Human response received',
   waiting_for_team: 'Waiting for the Primewayz team',
   unavailable: 'Chat temporarily unavailable',
 };
 
-export type VisitorPresenceTone = 'online' | 'away' | 'automated' | 'unavailable';
+export type VisitorPresenceTone =
+  | 'online'
+  | 'away'
+  | 'offline'
+  | 'automated'
+  | 'unavailable';
 
 export const VISITOR_PRESENCE_STATUS_LABELS: Record<VisitorPresenceTone, string> = {
   online: 'Team online',
   away: 'Team away',
+  offline: 'Team offline',
   automated: 'Automated guidance available',
   unavailable: 'Chat temporarily unavailable',
 };
 
 /**
  * Presence colours must not use `emerald-*`: this project's theme remaps
- * emerald to brand blue, which made "Team online" appear blue on device.
+ * emerald to brand blue, which made "Team online" / "Online" appear blue.
+ * Shared hex map: src/lib/chat/chatPresenceColors.ts (PW-CHAT-PRESENCE-02).
  */
 export const VISITOR_PRESENCE_DOT_CLASS: Record<VisitorPresenceTone, string> = {
-  online: 'bg-green-500',
-  away: 'bg-amber-500',
-  automated: 'bg-slate-400',
-  unavailable: 'bg-red-500',
+  online: CHAT_PRESENCE_DOT_CLASS.online,
+  away: CHAT_PRESENCE_DOT_CLASS.away,
+  offline: CHAT_PRESENCE_DOT_CLASS.offline,
+  automated: CHAT_PRESENCE_DOT_CLASS.automated,
+  unavailable: CHAT_PRESENCE_DOT_CLASS.unavailable,
 };
 
 export const VISITOR_HEADER_STATUS_DOT_CLASS: Record<VisitorHeaderStatus, string> = {
-  team_online: 'bg-green-500',
-  team_away: 'bg-amber-500',
-  automated_guidance: 'bg-slate-400',
-  human_response_received: 'bg-green-500',
-  waiting_for_team: 'bg-amber-500',
-  unavailable: 'bg-red-500',
+  team_online: CHAT_PRESENCE_DOT_CLASS.online,
+  team_away: CHAT_PRESENCE_DOT_CLASS.away,
+  team_offline: CHAT_PRESENCE_DOT_CLASS.offline,
+  automated_guidance: CHAT_PRESENCE_DOT_CLASS.automated,
+  human_response_received: CHAT_PRESENCE_DOT_CLASS.online,
+  waiting_for_team: CHAT_PRESENCE_DOT_CLASS.away,
+  unavailable: CHAT_PRESENCE_DOT_CLASS.unavailable,
 };
 
 /**
@@ -102,9 +114,9 @@ export function resolveVisitorPresenceTone(params: {
   if (!params.serviceAvailable) return 'unavailable';
   if (params.availabilityStatus === 'online') return 'online';
   if (params.availabilityStatus === 'away') return 'away';
+  if (params.availabilityStatus === 'offline') return 'offline';
   if (params.availabilityStatus === 'assistant') return 'automated';
-  // offline / unknown → away (amber), not error-red
-  return 'away';
+  return 'offline';
 }
 
 export function resolveVisitorHeaderStatus(params: {
@@ -119,6 +131,7 @@ export function resolveVisitorHeaderStatus(params: {
   if (params.waitingForTeam) return 'waiting_for_team';
   if (params.availabilityStatus === 'online') return 'team_online';
   if (params.availabilityStatus === 'assistant') return 'automated_guidance';
+  if (params.availabilityStatus === 'offline') return 'team_offline';
   return 'team_away';
 }
 

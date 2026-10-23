@@ -43,4 +43,4 @@ WordPress and other tenant sites that load GA only after their own consent banne
 
 Ship analytics fixes as a new immutable embed semver under `/embed/chat/<version>/pw-chat.js`. Do not rewrite previously published version folders. WordPress Chat Connect should vendor the matching `assets/chat/pw-chat.js` and `BUILD_INFO.json`.
 
-Current analytics-capable embed: **1.3.1**.
+Current analytics-capable embed: **1.3.2** (retains the 1.3.1 GA4/GTM event contract).

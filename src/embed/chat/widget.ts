@@ -177,6 +177,7 @@ export function resolvePwChatBookingUrl(availability: ChatAvailability | null): 
 function headerTone(status: VisitorHeaderStatus): PwChatTone {
   if (status === 'team_online' || status === 'human_response_received') return 'online';
   if (status === 'automated_guidance') return 'automated';
+  if (status === 'team_offline') return 'offline';
   if (status === 'unavailable') return 'unavailable';
   return 'away';
 }

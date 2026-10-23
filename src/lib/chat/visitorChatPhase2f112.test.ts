@@ -200,12 +200,14 @@ describe('Phase 2F-1.1.2 presence colour semantics', () => {
       resolveVisitorPresenceTone({ availabilityStatus: 'online', serviceAvailable: true }),
       'online',
     );
-    assert.match(VISITOR_PRESENCE_DOT_CLASS.online, /green/);
-    assert.doesNotMatch(VISITOR_PRESENCE_DOT_CLASS.online, /emerald|brand-blue|blue/);
-    assert.match(VISITOR_HEADER_STATUS_DOT_CLASS.team_online, /green/);
-    assert.match(VISITOR_PRESENCE_DOT_CLASS.away, /amber/);
-    assert.match(VISITOR_PRESENCE_DOT_CLASS.automated, /slate|gray|grey/i);
-    assert.match(VISITOR_PRESENCE_DOT_CLASS.unavailable, /red/);
+    assert.match(VISITOR_PRESENCE_DOT_CLASS.online, /#16A34A|green/);
+    assert.doesNotMatch(VISITOR_PRESENCE_DOT_CLASS.online, /emerald|brand-blue|1B59A7/);
+    assert.match(VISITOR_HEADER_STATUS_DOT_CLASS.team_online, /#16A34A|green/);
+    assert.match(VISITOR_PRESENCE_DOT_CLASS.away, /#F59E0B|amber/);
+    // PW-CHAT-PRESENCE-02: automated assistance = blue (not grey).
+    assert.match(VISITOR_PRESENCE_DOT_CLASS.automated, /#0284C7/);
+    assert.match(VISITOR_PRESENCE_DOT_CLASS.unavailable, /#DC2626|red/);
+    assert.match(VISITOR_PRESENCE_DOT_CLASS.offline, /#94A3B8/);
 
     const theme = read('src/index.css');
     assert.match(theme, /--color-emerald-500:\s*#1B59A7/);
