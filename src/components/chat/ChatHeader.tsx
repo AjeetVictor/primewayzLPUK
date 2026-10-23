@@ -33,7 +33,11 @@ export function ChatHeader({
           {title}
         </h2>
         <p className="mt-1 inline-flex max-w-full items-center gap-1.5 text-[12px] font-medium text-white/85 max-[479px]:mt-1 max-[479px]:text-[12px] sm:mt-2 sm:text-[11px]">
-          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusDot}`} aria-hidden="true" />
+          <span
+            className={`h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-white/40 ${statusDot}`}
+            aria-hidden="true"
+            data-testid="chat-header-presence-dot"
+          />
           <span className="min-w-0 truncate">{statusLabel}</span>
         </p>
       </div>

@@ -356,8 +356,8 @@ test('attribution: page URL keeps origin, path and utm_* only', () => {
   assert.equal(toAttributionPageUrl('https://primewayz.com/'), 'https://primewayz.com/');
 });
 
-test('version: current embed artifact is 1.3.1', () => {
-  assert.equal(PW_CHAT_EMBED_VERSION, '1.3.1');
+test('version: current embed artifact is 1.3.2', () => {
+  assert.equal(PW_CHAT_EMBED_VERSION, '1.3.2');
 });
 
 test('deep link query: only the exact value open is accepted', () => {

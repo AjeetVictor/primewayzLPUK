@@ -62,10 +62,12 @@ button { cursor: pointer; }
   font-size: 12px; font-weight: 700; line-height: 20px; text-align: center;
 }
 .pw-chat-badge[hidden] { display: none; }
-.pw-chat-tone-online { background: #16a34a; }
-.pw-chat-tone-away { background: #d97706; }
-.pw-chat-tone-automated { background: var(--pw-chat-accent); }
-.pw-chat-tone-unavailable { background: var(--pw-chat-error); }
+/* PW-CHAT-PRESENCE-02 — keep in sync with src/lib/chat/chatPresenceColors.ts */
+.pw-chat-tone-online { background: #16A34A; }
+.pw-chat-tone-away { background: #F59E0B; }
+.pw-chat-tone-offline { background: #94A3B8; }
+.pw-chat-tone-automated { background: #0284C7; }
+.pw-chat-tone-unavailable { background: #DC2626; }
 
 .pw-chat-panel {
   position: fixed; right: 18px; bottom: var(--pw-chat-bottom); z-index: var(--pw-chat-z);

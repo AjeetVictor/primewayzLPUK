@@ -287,8 +287,8 @@ test('visitor-facing mapping: online / away / assistant / offline stay distinct'
   );
   assert.equal(
     resolveVisitorPresenceTone({ availabilityStatus: 'offline', serviceAvailable: true }),
-    'away',
-    'offline availability uses amber away tone, not service-error red',
+    'offline',
+    'offline availability uses grey offline tone, distinct from away amber and service-error red',
   );
   assert.equal(
     resolveVisitorPresenceTone({ availabilityStatus: 'online', serviceAvailable: false }),
