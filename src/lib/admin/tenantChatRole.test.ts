@@ -152,24 +152,20 @@ test('explicit Available/Away/Offline persistence and heartbeat expiry', () => {
   assert.equal(stale.hasActiveAdmin, false);
 });
 
-test('UK versus Infotech root cause: Admin presence calls omit selected tenantId', () => {
+test('Admin presence calls forward the selected tenantId (UK versus Infotech fix)', () => {
   const adminPanel = fs.readFileSync(path.join(process.cwd(), 'src/components/AdminPanel.tsx'), 'utf8');
-  assert.match(adminPanel, /adminRequest\('\/api\/admin\/chat\/availability'\)/);
-  assert.match(adminPanel, /adminRequest\('\/api\/admin\/presence\/heartbeat'/);
-  assert.doesNotMatch(
-    adminPanel,
-    /adminTenantPath\('\/api\/admin\/chat\/availability'\)|adminTenantQuery\('\/api\/admin\/chat\/availability'\)/,
-  );
-  assert.doesNotMatch(
-    adminPanel,
-    /adminTenantPath\('\/api\/admin\/presence\/heartbeat'\)|adminTenantQuery\('\/api\/admin\/presence\/heartbeat'\)/,
-  );
+  assert.match(adminPanel, /adminTenantPath\('\/api\/admin\/chat\/availability'\)/);
+  assert.match(adminPanel, /adminTenantPath\('\/api\/admin\/presence\/heartbeat'\)/);
+  assert.match(adminPanel, /\[isAuthenticated, user, adminTenantFilter\]/);
+  assert.doesNotMatch(adminPanel, /adminRequest\('\/api\/admin\/chat\/availability'\)/);
+  assert.doesNotMatch(adminPanel, /adminRequest\('\/api\/admin\/presence\/heartbeat'/);
 
   const server = fs.readFileSync(path.join(process.cwd(), 'server.ts'), 'utf8');
   assert.match(server, /function resolveAdminPresenceTenantId/);
   assert.match(server, /requireAdminTenantChatAccess\(req, res, tenantId\)/);
   assert.match(server, /persistChatPresenceMode/);
   assert.match(server, /expiresInMs: ADMIN_PRESENCE_ACTIVE_WINDOW_MS/);
+  assert.match(server, /clearAdminPresenceForUser\(prisma, \{ userId: decoded\.id \}\)/);
 });
 
 test('additive migration introduces chatRole default none without seeding agent access', () => {

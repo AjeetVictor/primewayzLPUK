@@ -584,6 +584,10 @@ const AdminPanelContent = () => {
   const adminFileInputRef = useRef<HTMLInputElement | null>(null);
   const lastHeartbeatAtRef = useRef(0);
 
+  const adminTenantPath = (path: string) =>
+    `${path}${path.includes('?') ? '&' : '?'}tenantId=${encodeURIComponent(adminTenantFilter)}`;
+  const adminTenantQuery = (path: string) => apiUrl(adminTenantPath(path));
+
   const loadTenantOptions = async () => {
     try {
       const res = await fetch(apiUrl('/api/admin/tenant-options'), { credentials: 'include' });
@@ -608,7 +612,7 @@ const AdminPanelContent = () => {
         setActiveTab(getDefaultAdminTab(data.user?.role));
         loadTenantOptions();
         fetchData(false, data.user);
-        fetchChatAvailability();
+        // Availability + heartbeat retarget when adminTenantFilter settles (see presence effect).
         fetchNotificationSummary();
       }
     } catch (error) {
@@ -690,8 +694,9 @@ const AdminPanelContent = () => {
   };
 
   const fetchChatAvailability = async (syncForm = true) => {
+    if (!adminTenantFilter || adminTenantFilter === 'all') return;
     try {
-      const res = await adminRequest('/api/admin/chat/availability');
+      const res = await adminRequest(adminTenantPath('/api/admin/chat/availability'));
       if (!res.ok) return;
       const data = await res.json();
       setChatAvailability(data);
@@ -706,12 +711,13 @@ const AdminPanelContent = () => {
 
   const sendPresenceHeartbeat = async (force = false) => {
     if (!isAuthenticated || !user) return;
+    if (!adminTenantFilter || adminTenantFilter === 'all') return;
     const now = Date.now();
     if (!force && now - lastHeartbeatAtRef.current < 30000) return;
     lastHeartbeatAtRef.current = now;
 
     try {
-      await adminRequest('/api/admin/presence/heartbeat', {
+      await adminRequest(adminTenantPath('/api/admin/presence/heartbeat'), {
         method: 'POST',
       });
       fetchChatAvailability(false);
@@ -720,9 +726,13 @@ const AdminPanelContent = () => {
     }
   };
 
+  // Heartbeats and availability reads follow the selected entity (not Host default pw-uk).
   useEffect(() => {
     if (!isAuthenticated || !user) return;
+    if (!adminTenantFilter || adminTenantFilter === 'all') return;
 
+    lastHeartbeatAtRef.current = 0;
+    fetchChatAvailability(true);
     sendPresenceHeartbeat(true);
     const interval = setInterval(() => sendPresenceHeartbeat(true), 60000);
     const activityHandler = () => sendPresenceHeartbeat(false);
@@ -737,14 +747,18 @@ const AdminPanelContent = () => {
       window.removeEventListener('click', activityHandler);
       window.removeEventListener('keydown', activityHandler);
     };
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, adminTenantFilter]);
 
   const saveChatAvailability = async () => {
+    if (!adminTenantFilter || adminTenantFilter === 'all') {
+      setAvailabilityError('Select a specific entity to manage team availability.');
+      return;
+    }
     setAvailabilityError('');
     setIsSavingAvailability(true);
 
     try {
-      const res = await adminRequest('/api/admin/chat/availability', {
+      const res = await adminRequest(adminTenantPath('/api/admin/chat/availability'), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: availabilityMode, message: availabilityMessage }),
@@ -791,10 +805,6 @@ const AdminPanelContent = () => {
       return next;
     });
   };
-
-  const adminTenantPath = (path: string) =>
-    `${path}${path.includes('?') ? '&' : '?'}tenantId=${encodeURIComponent(adminTenantFilter)}`;
-  const adminTenantQuery = (path: string) => apiUrl(adminTenantPath(path));
 
   const fetchData = async (silent = false, currentUser = user) => {
     if (!silent) setLoading(true);
@@ -880,10 +890,13 @@ const AdminPanelContent = () => {
       if (data.success) {
         setIsAuthenticated(true);
         setUser(data.user);
+        setAdminTenantFilter(
+          data.user?.isPlatformOwner ? 'pw-uk' : data.user?.tenantIds?.[0] ?? '',
+        );
         setActiveTab(getDefaultAdminTab(data.user?.role));
         loadTenantOptions();
         fetchData(false, data.user);
-        fetchChatAvailability();
+        // Availability + heartbeat retarget when adminTenantFilter settles (see presence effect).
       } else {
         setLoginError(data.error || 'Invalid credentials');
       }

@@ -145,6 +145,7 @@ import {
   resolveChatPresence,
 } from './src/lib/chat/chatPresence.ts';
 import {
+  clearAdminPresenceForUser,
   readOptionalTenantChatPresence,
   recordTenantAdminHeartbeat,
   recordTenantChatPresenceSetting,
@@ -1953,7 +1954,21 @@ app.get('/api/admin/check-auth', async (req, res) => {
   }
 });
 
-app.post('/api/admin/logout', (_req, res) => {
+app.post('/api/admin/logout', async (req, res) => {
+  // Clear this operator's heartbeats before dropping the cookie so auto-mode
+  // team availability does not remain "online" until ADMIN_PRESENCE_ACTIVE_WINDOW_MS.
+  // Forced ChatPresenceSetting modes are unchanged (product rule: mode ≠ session).
+  try {
+    const token = req.cookies?.[adminCookieName];
+    if (token) {
+      const decoded = jwt.verify(token, getJwtSecret()) as { id?: number };
+      if (typeof decoded.id === 'number' && Number.isFinite(decoded.id)) {
+        await clearAdminPresenceForUser(prisma, { userId: decoded.id });
+      }
+    }
+  } catch {
+    // Invalid/expired session — still clear the cookie below.
+  }
   res.clearCookie(adminCookieName, getClearCookieOptions());
   return res.json({ success: true });
 });
