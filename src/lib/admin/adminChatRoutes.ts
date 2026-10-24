@@ -19,6 +19,7 @@ import { assertChatSessionIdShape, isPermittedAdminChatReplySender, PublicChatRe
 import { createTeamReply, type ChatConversationStore } from '../chat/chatConversationService.ts';
 import { annotateAdminSessionsWithAttention } from './adminChatAttention.ts';
 import { AdminTenantAccessError, assertAdminTenantAccess, resolveAuthorizedAdminTenantFilter, type AdminTenantPrincipal } from './adminTenantAccess.ts';
+import { assertAdminTenantChatAccess } from './tenantChatRole.ts';
 
 export class AdminChatAccessError extends Error {
   readonly status: number;
@@ -117,6 +118,7 @@ export function assertAdminCanAccessChatSession(
   }
   if (principal) {
     assertAdminTenantAccess(session.tenantId, principal);
+    assertAdminTenantChatAccess(session.tenantId, principal);
   } else if (!tenantFilter) {
     throw new AdminChatAccessError(403, 'platform_owner_required', 'All-tenant chat access requires an authorized platform Host/Owner.');
   }
@@ -233,7 +235,11 @@ export function createAdminChatRouteHandlers(deps: AdminChatRouteDeps): {
   return {
     listMessages: async (req, res) => {
       try {
-        res.json(await store.listMessages({ tenantId: requestedTenantFilter(req) }));
+        const typedRequest = req as Request & { adminUser?: AdminTenantPrincipal };
+        const tenantId = requestedTenantFilter(typedRequest);
+        // Concrete tenant lists require chat role; "All entities" is Host-only and checked per session on open/reply.
+        if (tenantId) assertAdminTenantChatAccess(tenantId, adminPrincipal(typedRequest));
+        res.json(await store.listMessages({ tenantId }));
       } catch (err) {
         fail(res, err, 'Admin chat list unavailable', { error: 'Chat is temporarily unavailable', unavailable: true });
       }
@@ -241,7 +247,9 @@ export function createAdminChatRouteHandlers(deps: AdminChatRouteDeps): {
 
     listSessions: async (req, res) => {
       try {
-        const tenantId = requestedTenantFilter(req);
+        const typedRequest = req as Request & { adminUser?: AdminTenantPrincipal };
+        const tenantId = requestedTenantFilter(typedRequest);
+        if (tenantId) assertAdminTenantChatAccess(tenantId, adminPrincipal(typedRequest));
         const [sessions, unanswered] = await Promise.all([
           store.listSessions({ tenantId }),
           store.countUnansweredVisitorMessages({ tenantId }),

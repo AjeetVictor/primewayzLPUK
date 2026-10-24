@@ -45,6 +45,8 @@ export type PwChatEmbedConfig = {
   pageUrl: string | null;
   pageType: string | null;
   isFrontPage: boolean;
+  /** When false, the widget never dispatches host analytics events. Default: enabled. */
+  analyticsEnabled: boolean;
   storageKeys: PwChatStorageKeys;
   pageContext: PwChatPageContext | null;
   contexts: VisitorChatRouteContextConfig[];
@@ -206,6 +208,8 @@ export function parsePwChatConfig(raw: unknown): PwChatEmbedConfig | null {
     pageUrl: normalizePageUrl(raw.pageUrl),
     pageType,
     isFrontPage: raw.isFrontPage === true,
+    // Explicit false disables; any other value (including omitted) keeps analytics on.
+    analyticsEnabled: raw.analyticsEnabled !== false,
     storageKeys: parseStorageKeys(raw.storageKeys),
     pageContext: parsePageContext(raw.pageContext),
     contexts: parseContexts(raw.contexts),

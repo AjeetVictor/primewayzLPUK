@@ -8,6 +8,7 @@ import {
   resolveChatPresence,
 } from './chatPresence.ts';
 import {
+  clearAdminPresenceForUser,
   readOptionalTenantChatPresence,
   readTenantChatPresence,
   recordTenantAdminHeartbeat,
@@ -65,6 +66,19 @@ function createPresenceDb() {
         const row = { id: heartbeats.length + 1, ...create };
         heartbeats.push(row);
         return row;
+      },
+      async deleteMany({ where }) {
+        queries.push({ table: 'adminPresence', where });
+        const before = heartbeats.length;
+        const keep = heartbeats.filter((h) => {
+          if ('tenantId' in where && typeof where.tenantId === 'string') {
+            return !(h.tenantId === where.tenantId && h.userId === where.userId);
+          }
+          return h.userId !== where.userId;
+        });
+        heartbeats.length = 0;
+        heartbeats.push(...keep);
+        return { count: before - keep.length };
       },
     },
   };
@@ -130,7 +144,12 @@ test('public availability: rrb with no presence rows defaults safely', async () 
   assert.equal(rrbSource.tenantId, 'rrb');
   assert.deepEqual(await readTenantChatPresence(db.prisma, 'rrb'), { setting: null, latestAdminSeenAt: null });
   assert.deepEqual(await resolvedFor(db.prisma, rrbSource.tenantId), {
-    mode: 'auto', hasActiveAdmin: false, computedStatus: 'assistant', status: 'assistant', canAcceptMessages: true,
+    mode: 'auto',
+    hasActiveAdmin: false,
+    computedStatus: 'assistant',
+    status: 'assistant',
+    teamStatus: 'not_online',
+    canAcceptMessages: true,
   });
 });
 
@@ -225,6 +244,45 @@ test('admin heartbeat: the same user keeps independent pw-uk and pw-infotech row
 
   assert.equal((await resolvedFor(db.prisma, 'pw-uk')).status, 'online');
   assert.equal((await resolvedFor(db.prisma, 'pw-infotech')).status, 'assistant');
+});
+
+test('logout clear: removing one operator heartbeats does not touch other admins or modes', async () => {
+  const db = createPresenceDb();
+  await recordTenantChatPresenceSetting(db.prisma, {
+    tenantId: 'pw-uk',
+    mode: 'auto',
+    message: null,
+    updatedById: 1,
+  });
+  await recordTenantAdminHeartbeat(db.prisma, { tenantId: 'pw-uk', userId: 1, now: ago(1_000) });
+  await recordTenantAdminHeartbeat(db.prisma, { tenantId: 'pw-uk', userId: 2, now: ago(2_000) });
+  await recordTenantAdminHeartbeat(db.prisma, { tenantId: 'pw-infotech', userId: 1, now: ago(3_000) });
+
+  assert.equal(await clearAdminPresenceForUser(db.prisma, { userId: 1 }), 2);
+  assert.equal(db.heartbeats.length, 1);
+  assert.equal(db.heartbeats[0].userId, 2);
+  assert.equal((await resolvedFor(db.prisma, 'pw-uk')).status, 'online', 'remaining admin keeps UK online');
+  assert.equal((await resolvedFor(db.prisma, 'pw-infotech')).status, 'assistant');
+
+  await recordTenantChatPresenceSetting(db.prisma, {
+    tenantId: 'pw-infotech',
+    mode: 'available',
+    message: null,
+    updatedById: 9,
+  });
+  assert.equal(
+    (await resolvedFor(db.prisma, 'pw-infotech')).status,
+    'online',
+    'forced available survives heartbeat clear',
+  );
+});
+
+test('logout wiring: admin logout clears operator heartbeats before cookie drop', () => {
+  const server = read('server.ts');
+  const logout = server.slice(server.indexOf("app.post('/api/admin/logout'"), server.indexOf("app.get('/api/admin/forms'"));
+  assert.match(logout, /clearAdminPresenceForUser\(prisma, \{ userId: decoded\.id \}\)/);
+  assert.match(logout, /res\.clearCookie\(adminCookieName/);
+  assert.match(read('src/lib/chat/tenantChatPresenceStore.ts'), /export async function clearAdminPresenceForUser/);
 });
 
 // --- H. Presence semantics unchanged ---

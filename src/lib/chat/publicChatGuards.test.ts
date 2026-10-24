@@ -13,6 +13,7 @@ import {
   PUBLIC_CHAT_RATE_LIMITS,
   PublicChatRequestError,
   resetPublicChatRateLimitsForTests,
+  isNewChatLeadCapture,
   toPublicChatSessionResponse,
   validateChatAppointmentInput,
   validateChatHeartbeatInput,
@@ -426,6 +427,13 @@ test('heartbeat / session responses do not echo visitor PII or attribution', () 
     sessionId: STRONG_ID,
     status: 'bot_replied',
   });
+  assert.deepEqual(toPublicChatSessionResponse(fullRow, { leadCaptured: true }), {
+    ok: true,
+    id: STRONG_ID,
+    sessionId: STRONG_ID,
+    status: 'bot_replied',
+    leadCaptured: true,
+  });
   assert.deepEqual(toPublicChatSessionResponse({ id: LEGACY_ID, status: 'new' }, { unavailable: true }), {
     ok: true,
     id: LEGACY_ID,
@@ -433,6 +441,16 @@ test('heartbeat / session responses do not echo visitor PII or attribution', () 
     status: 'new',
     unavailable: true,
   });
+});
+
+test('isNewChatLeadCapture requires a newly persisted contactable email', () => {
+  assert.equal(isNewChatLeadCapture({ previousEmail: null, nextEmail: 'a@b.com' }), true);
+  assert.equal(isNewChatLeadCapture({ previousEmail: '', nextEmail: 'a@b.com' }), true);
+  assert.equal(isNewChatLeadCapture({ previousEmail: 'a@b.com', nextEmail: 'a@b.com' }), false);
+  assert.equal(isNewChatLeadCapture({ previousEmail: 'a@b.com', nextEmail: 'other@b.com' }), false);
+  assert.equal(isNewChatLeadCapture({ previousEmail: null, nextEmail: '' }), false);
+  assert.equal(isNewChatLeadCapture({ previousEmail: null, nextEmail: '   ' }), false);
+  assert.equal(isNewChatLeadCapture({ previousEmail: null, nextEmail: undefined }), false);
 });
 
 // --- Admin reply sender ---

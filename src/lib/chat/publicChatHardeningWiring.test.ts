@@ -134,9 +134,11 @@ test('every visitor route validates session ids through the shared helper', () =
 test('heartbeat and session responses no longer return the full ChatSession row', () => {
   for (const route of [heartbeatRoute, sessionRoute]) {
     assert.doesNotMatch(route, /res\.json\(session\)/);
-    assert.match(route, /res\.json\(toPublicChatSessionResponse\(session\)\)/);
     assert.match(route, /toPublicChatSessionResponse\(\{ id: sessionId, status: 'new' \}, \{ unavailable: true \}\)/);
   }
+  assert.match(heartbeatRoute, /res\.json\(toPublicChatSessionResponse\(session\)\)/);
+  assert.match(sessionRoute, /res\.json\(toPublicChatSessionResponse\(session, \{ leadCaptured \}\)\)/);
+  assert.match(sessionRoute, /isNewChatLeadCapture\(/);
 });
 
 test('source identity is still server-derived for public chat routes', () => {

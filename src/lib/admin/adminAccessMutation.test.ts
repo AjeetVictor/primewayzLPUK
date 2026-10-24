@@ -26,6 +26,10 @@ test('access audit snapshots whitelist permission fields and exclude credentials
     role: 'editor',
     isPlatformOwner: false,
     tenantIds: ['pw-uk', 'rrb'],
+    tenantChatGrants: [
+      { tenantId: 'pw-uk', chatRole: 'none', chatRoleExplicit: false },
+      { tenantId: 'rrb', chatRole: 'none', chatRoleExplicit: false },
+    ],
   });
   assert.doesNotMatch(JSON.stringify(snapshot), /password|token|must-not-leak/i);
 });
@@ -71,7 +75,7 @@ test('user access routes keep audit writes inside transactions and protect Host-
   const server = fs.readFileSync(path.join(process.cwd(), 'server.ts'), 'utf8');
   assert.ok(server.includes("app.get('/api/admin/users', requireAdmin, requirePlatformOwner"));
   assert.ok(server.includes("app.get('/api/admin/access-audit', requireAdmin, requirePlatformOwner"));
-  assert.ok(server.includes('const update = await runSerializableAccessTransaction(prisma'));
+  assert.ok(server.includes('update = await runSerializableAccessTransaction(prisma'));
   assert.ok(server.includes('const result = await runSerializableAccessTransaction(prisma'));
   assert.ok(server.indexOf("action: 'user_created'") < server.indexOf('details: accessSnapshot(created)'));
   assert.ok(server.includes('before: accessSnapshot(previous)'));

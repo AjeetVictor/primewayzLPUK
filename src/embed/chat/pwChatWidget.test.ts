@@ -9,7 +9,9 @@ import { PW_CHAT_EMBED_ANALYTICS_EVENTS } from './analytics.ts';
 import { PW_CHAT_FORBIDDEN_PAYLOAD_KEYS } from './apiClient.ts';
 import { installPrimewayzChat } from './install.ts';
 import { PW_CHAT_EMBED_VERSION } from './version.ts';
-import type { PwChatWidgetHandle } from './widget.ts';
+import { PW_CHAT_AVAILABILITY_REFRESH_MS, type PwChatWidgetHandle } from './widget.ts';
+import { CHAT_PRESENCE_COLORS } from '../../lib/chat/chatPresenceColors.ts';
+import { VISITOR_HEADER_STATUS_LABELS } from '../../lib/chat/visitorChatUi.ts';
 
 type HostWindow = Window & typeof globalThis;
 type Call = { method: string; path: string; body: Record<string, unknown> | null; init: RequestInit };
@@ -58,7 +60,7 @@ function createBackend(routes: Partial<Record<string, (call: Call) => FakeRespon
       'GET /api/chat/availability': () => ({ status: 200, body: availability() }),
       history: () => ({ status: 200, body: [] }),
       'POST /api/chat/heartbeat': () => ({ status: 200, body: { ok: true } }),
-      'POST /api/chat/session': () => ({ status: 200, body: { ok: true } }),
+      'POST /api/chat/session': () => ({ status: 200, body: { ok: true, leadCaptured: true } }),
       'POST /api/chat/respond': (() => {
         let n = 100;
         return () => {
@@ -616,6 +618,166 @@ test('analytics: no PII, message text, session id or tenant id in any event', as
     }
     assert.equal(params.route, '/services/');
   }
+});
+
+test('analytics: widget loads and chats when no analytics sink is installed', async () => {
+  const win = createWindow();
+  const { handle, backend } = await boot(win, createBackend(), undefined);
+  // Override with an undefined sink by re-using default no-op from boot; assert chat still works.
+  assert.ok(handle);
+  handle!.open();
+  await flush();
+  await sendText(handle!, 'Hello without analytics');
+  assert.equal(posts(backend.calls, '/api/chat/respond').length, 1);
+  assert.equal(q(handle!, '.pw-chat-msg--user')!.textContent?.includes('Hello without analytics'), true);
+});
+
+test('analytics: open emits one chat_open; load alone emits none', async () => {
+  const win = createWindow();
+  const events: string[] = [];
+  const { handle } = await boot(win, createBackend(), (name) => events.push(name));
+  await flush();
+  assert.deepEqual(events, []);
+  handle!.open();
+  await flush();
+  assert.deepEqual(events, ['chat_open']);
+  handle!.close();
+  handle!.open();
+  await flush();
+  assert.deepEqual(events, ['chat_open']);
+});
+
+test('analytics: one successful visitor message emits one chat_message_sent', async () => {
+  const win = createWindow();
+  const events: string[] = [];
+  const { handle } = await boot(win, createBackend(), (name) => events.push(name));
+  handle!.open();
+  await flush();
+  await sendText(handle!, 'First');
+  await sendText(handle!, 'Second');
+  assert.deepEqual(
+    events.filter((name) => name === 'chat_message_sent'),
+    ['chat_message_sent', 'chat_message_sent'],
+  );
+  assert.equal(events.filter((name) => name === 'chat_open').length, 1);
+});
+
+test('analytics: failed message submission emits no chat_message_sent', async () => {
+  const win = createWindow();
+  const events: string[] = [];
+  const backend = createBackend({
+    'POST /api/chat/respond': () => ({ status: 500, body: null }),
+  });
+  const { handle } = await boot(win, backend, (name) => events.push(name));
+  handle!.open();
+  await flush();
+  await sendText(handle!, 'Will fail');
+  assert.equal(events.includes('chat_message_sent'), false);
+  assert.ok(events.includes('chat_message_send_failed'));
+});
+
+test('analytics: bot and admin history messages do not emit chat_message_sent', async () => {
+  const win = createWindow({ storage: { primewayz_chat_session_id: STRONG_ID } });
+  const events: string[] = [];
+  const backend = createBackend({
+    history: () => ({
+      status: 200,
+      body: [
+        { id: 1, text: 'Bot hello', sender: 'bot', timestamp: new Date().toISOString() },
+        { id: 2, text: 'Admin hello', sender: 'admin', timestamp: new Date().toISOString() },
+      ],
+    }),
+  });
+  const { handle } = await boot(win, backend, (name) => events.push(name));
+  handle!.open();
+  await flush();
+  assert.equal(events.includes('chat_message_sent'), false);
+  assert.deepEqual(events, ['chat_open']);
+});
+
+test('analytics: first successful lead capture emits one conversion; repeats do not', async () => {
+  const win = createWindow();
+  const events: string[] = [];
+  let leadCalls = 0;
+  const backend = createBackend({
+    'POST /api/chat/session': () => {
+      leadCalls += 1;
+      return {
+        status: 200,
+        body: { ok: true, leadCaptured: leadCalls === 1 },
+      };
+    },
+  });
+  const { handle } = await boot(win, backend, (name) => events.push(name));
+  handle!.open();
+  await flush();
+  await sendText(handle!, 'Need help');
+  const form = q<HTMLFormElement>(handle!, '.pw-chat-lead')!;
+  q<HTMLInputElement>(handle!, '.pw-chat-lead input[type="text"]')!.value = 'Jane';
+  q<HTMLInputElement>(handle!, '.pw-chat-lead input[type="email"]')!.value = 'jane@example.com';
+  form.dispatchEvent(new win.Event('submit', { cancelable: true }));
+  await flush();
+  assert.equal(events.filter((name) => name === 'chat_lead_captured').length, 1);
+
+  // Simulate a second successful session write that is not a new lead.
+  form.hidden = false;
+  form.dispatchEvent(new win.Event('submit', { cancelable: true }));
+  await flush();
+  assert.equal(events.filter((name) => name === 'chat_lead_captured').length, 1);
+});
+
+test('analytics: returning visitor with stored email does not emit chat_lead_captured', async () => {
+  const win = createWindow({
+    storage: {
+      primewayz_chat_session_id: STRONG_ID,
+      primewayz_chat_visitor_name: 'Returning',
+      primewayz_chat_visitor_email: 'returning@example.com',
+    },
+  });
+  const events: string[] = [];
+  const backend = createBackend({
+    'POST /api/chat/session': () => ({ status: 200, body: { ok: true, leadCaptured: false } }),
+  });
+  const { handle } = await boot(win, backend, (name) => events.push(name));
+  handle!.open();
+  await flush();
+  await sendText(handle!, 'Hello again');
+  assert.equal(q(handle!, '.pw-chat-lead')!.hidden, true);
+  assert.equal(events.includes('chat_lead_captured'), false);
+});
+
+test('analytics: analyticsEnabled false produces no events while chat still works', async () => {
+  const win = createWindow({
+    config: { apiBaseUrl: API, siteKey: 'primewayz-infotech', analyticsEnabled: false },
+  });
+  // Use real default sink (no override) so analyticsEnabled is applied.
+  const handle = await installPrimewayzChat(win, {
+    fetchImpl: createBackend().fetchImpl,
+    timers: nodeTimers,
+  });
+  await flush();
+  assert.ok(handle);
+  liveHandles.push(handle!);
+  const gtagCalls: unknown[] = [];
+  (win as HostWindow & { gtag?: (...args: unknown[]) => void }).gtag = (...args) => gtagCalls.push(args);
+  handle!.open();
+  await flush();
+  await sendText(handle!, 'Still works');
+  assert.deepEqual(gtagCalls, []);
+  assert.ok(q(handle!, '.pw-chat-msg--user'));
+});
+
+test('analytics: throwing sink never interrupts chat send', async () => {
+  const win = createWindow();
+  const backend = createBackend();
+  const { handle } = await boot(win, backend, () => {
+    throw new Error('analytics boom');
+  });
+  handle!.open();
+  await flush();
+  await sendText(handle!, 'Must still send');
+  assert.equal(posts(backend.calls, '/api/chat/respond').length, 1);
+  assert.ok(q(handle!, '.pw-chat-msg--user'));
 });
 
 // --- Security ---
@@ -1275,4 +1437,63 @@ test('branding: tenants without chatWidget keep the existing Primewayz widget un
   assert.equal(q(handle!, '.pw-chat-root')!.getAttribute('style')?.includes('--pw-chat-launcher-bg') ?? false, false);
   await sendText(handle!, 'Hello');
   assert.equal('intentKey' in posts(backend.calls, '/api/chat/respond')[0]!.body!, false);
+});
+
+test('PW-CHAT-PRESENCE-03: collapsed and expanded status stay consistent across availability transitions', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  let availabilityStatus = 'assistant';
+  const backend = createBackend({
+    'GET /api/chat/availability': () => ({
+      status: 200,
+      body: availability({
+        status: availabilityStatus,
+        responseExpectation: availabilityStatus === 'online'
+          ? 'A team member is available. Reply times may vary.'
+          : 'We usually respond within one business day.',
+      }),
+    }),
+  });
+  const win = createWindow();
+  const { handle } = await boot(win, backend);
+  assert.ok(handle);
+
+  const launcherDot = q(handle!, '.pw-chat-launcher-dot')!;
+  const statusDot = q(handle!, '.pw-chat-status-dot')!;
+  const statusText = () => q(handle!, '.pw-chat-status')!.textContent ?? '';
+  const styleText = handle!.shadow.querySelector('style')!.textContent ?? '';
+
+  assert.ok(
+    styleText.indexOf('.pw-chat-status-dot') < styleText.indexOf('.pw-chat-tone-online'),
+    'injected CSS must not let status-dot grey override tone classes',
+  );
+  assert.ok(launcherDot.classList.contains('pw-chat-tone-automated'));
+
+  handle!.open();
+  await flush();
+  assert.ok(statusDot.classList.contains('pw-chat-tone-automated'));
+  assert.equal(statusText(), VISITOR_HEADER_STATUS_LABELS.automated_guidance);
+  assert.equal(
+    launcherDot.classList.contains('pw-chat-tone-automated'),
+    statusDot.classList.contains('pw-chat-tone-automated'),
+  );
+
+  availabilityStatus = 'online';
+  await advance(PW_CHAT_AVAILABILITY_REFRESH_MS);
+  assert.ok(launcherDot.classList.contains('pw-chat-tone-online'));
+  assert.ok(statusDot.classList.contains('pw-chat-tone-online'));
+  assert.equal(statusText(), VISITOR_HEADER_STATUS_LABELS.team_online);
+  assert.match(q(handle!, '.pw-chat-expectation')!.textContent ?? '', /Reply times may vary/);
+  assert.equal(CHAT_PRESENCE_COLORS.online, '#16A34A');
+
+  availabilityStatus = 'away';
+  await advance(PW_CHAT_AVAILABILITY_REFRESH_MS);
+  assert.ok(launcherDot.classList.contains('pw-chat-tone-away'));
+  assert.ok(statusDot.classList.contains('pw-chat-tone-away'));
+  assert.equal(statusText(), VISITOR_HEADER_STATUS_LABELS.team_away);
+
+  availabilityStatus = 'offline';
+  await advance(PW_CHAT_AVAILABILITY_REFRESH_MS);
+  assert.ok(launcherDot.classList.contains('pw-chat-tone-offline'));
+  assert.ok(statusDot.classList.contains('pw-chat-tone-offline'));
+  assert.equal(statusText(), VISITOR_HEADER_STATUS_LABELS.team_offline);
 });

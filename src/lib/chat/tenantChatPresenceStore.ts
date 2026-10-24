@@ -28,6 +28,9 @@ export type TenantChatPresencePrisma = {
       update: { lastSeenAt: Date };
       create: { tenantId: string; userId: number; lastSeenAt: Date };
     }) => Promise<unknown>;
+    deleteMany: (args: {
+      where: { userId: number } | { tenantId: string; userId: number };
+    }) => Promise<{ count: number }>;
   };
 };
 
@@ -95,4 +98,21 @@ export async function recordTenantAdminHeartbeat(
     update: { lastSeenAt },
     create: { tenantId: input.tenantId, userId: input.userId, lastSeenAt },
   });
+}
+
+/**
+ * Drop heartbeat rows for one administrator (all tenants, or one concrete tenant).
+ * Used on explicit logout so auto-mode team availability does not linger until TTL.
+ * Does not change ChatPresenceSetting — forced available/away/offline modes stay as set.
+ */
+export async function clearAdminPresenceForUser(
+  prisma: Pick<TenantChatPresencePrisma, 'adminPresence'>,
+  input: { userId: number; tenantId?: string },
+): Promise<number> {
+  const where =
+    typeof input.tenantId === 'string' && input.tenantId.length > 0
+      ? { tenantId: input.tenantId, userId: input.userId }
+      : { userId: input.userId };
+  const result = await prisma.adminPresence.deleteMany({ where });
+  return result.count;
 }
