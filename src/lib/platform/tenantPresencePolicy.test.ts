@@ -15,14 +15,22 @@ import {
 import {
   createOperatorPresenceIngestionHandlers,
   OPERATOR_PRESENCE_HEARTBEAT_PATH,
+  OPERATOR_PRESENCE_OFFLINE_PATH,
   OPERATOR_PRESENCE_INGESTION_CONTRACT,
   OPERATOR_PRESENCE_WRITE_SCOPE,
   parseOperatorPresenceHeartbeatBody,
   assertPresenceWriteAuthorized,
+  resolveOperatorPresenceIdentity,
+  syntheticPresenceUserId,
   OperatorPresenceIngestionError,
 } from '../chat/operatorPresenceIngestion.ts';
 import { createMemoryTenantPresenceEventStore } from '../chat/tenantPresenceEventsMemory.ts';
 import { createMemoryPresenceIdempotencyStore } from '../chat/tenantPresenceIdempotency.ts';
+import {
+  TENANT_PRESENCE_RETENTION,
+  pruneTenantPresenceArtifacts,
+  resetTenantPresencePruneForTests,
+} from '../chat/tenantPresenceRetention.ts';
 import {
   countActiveTenantOperators,
   recordTenantAdminHeartbeat,
@@ -39,8 +47,10 @@ import {
 import { createMemoryTenantPresencePolicyStore } from './tenantPresencePolicyMemory.ts';
 import {
   DEFAULT_TENANT_PRESENCE_POLICY,
+  FAIL_CLOSED_PRESENCE_POLICY,
   effectivePresencePolicy,
   lookupEffectivePresencePolicy,
+  lookupPresencePolicy,
 } from './tenantPresencePolicy.ts';
 
 const NOW = Date.parse('2026-10-24T12:00:00.000Z');
@@ -143,6 +153,49 @@ test('default-disabled policy: missing row keeps legacy_forced_online', async ()
   assert.equal(effectivePresencePolicy(null), 'legacy_forced_online');
   assert.equal(await lookupEffectivePresencePolicy(store, 'pw-uk'), 'legacy_forced_online');
   assert.equal(await lookupEffectivePresencePolicy(store, null), 'legacy_forced_online');
+  const missing = await lookupPresencePolicy(store, 'pw-uk');
+  assert.equal(missing.source, 'default_missing');
+  assert.equal(missing.storeReadable, true);
+});
+
+test('policy-store outage fail-closes: never manufactures Online after activation', async () => {
+  const failingStore = {
+    async find() {
+      throw new Error('simulated database outage');
+    },
+  };
+  const lookup = await lookupPresencePolicy(failingStore, 'pw-uk');
+  assert.equal(lookup.storeReadable, false);
+  assert.equal(lookup.source, 'fail_closed_unavailable');
+  assert.equal(lookup.policy, FAIL_CLOSED_PRESENCE_POLICY);
+  assert.equal(await lookupEffectivePresencePolicy(failingStore, 'pw-uk'), 'heartbeat_required_online');
+
+  // Activated tenant must not silently become forced Online when the store throws.
+  const resolved = resolveChatPresence({
+    mode: 'available',
+    latestAdminSeenAt: null,
+    now: NOW,
+    presencePolicy: await lookupEffectivePresencePolicy(failingStore, 'pw-uk'),
+  });
+  assert.equal(resolved.status, 'assistant');
+  assert.equal(resolved.teamStatus, 'not_online');
+  assert.equal(resolved.hasActiveAdmin, false);
+
+  // Missing vs activated cannot be distinguished during outage — both fail-closed.
+  // When the store recovers, a missing row resumes legacy; an activated row resumes Option 1.
+  const recovered = createMemoryTenantPresencePolicyStore();
+  assert.equal((await lookupPresencePolicy(recovered, 'pw-uk')).source, 'default_missing');
+  await recovered.set({
+    tenantId: 'pw-uk',
+    policy: 'heartbeat_required_online',
+    reason: 'UK soak',
+    actorUserId: 11,
+    at: T0,
+  });
+  const activated = await lookupPresencePolicy(recovered, 'pw-uk');
+  assert.equal(activated.source, 'row');
+  assert.equal(activated.policy, 'heartbeat_required_online');
+  assert.equal(activated.storeReadable, true);
 });
 
 test('existing behaviour unchanged under legacy policy (forced Online without heartbeat)', () => {
@@ -416,7 +469,10 @@ test('Host/Owner read-only reporting; tenant-scoped reporting access', async () 
 test('ingestion contract: replay protection, scope gate, no tenant override, no frontend secrets', async () => {
   assert.equal(OPERATOR_PRESENCE_INGESTION_CONTRACT.version, 'v1');
   assert.equal(OPERATOR_PRESENCE_INGESTION_CONTRACT.requiredScope, OPERATOR_PRESENCE_WRITE_SCOPE);
+  assert.equal(OPERATOR_PRESENCE_INGESTION_CONTRACT.paths.offline.status, 'reserved');
+  assert.equal(OPERATOR_PRESENCE_INGESTION_CONTRACT.paths.heartbeat.status, 'available');
   assert.ok(OPERATOR_PRESENCE_INGESTION_CONTRACT.notes.some((n) => /frontend JavaScript/i.test(n)));
+  assert.ok(OPERATOR_PRESENCE_INGESTION_CONTRACT.heartbeat.rejectedFields.includes('operatorUserId'));
 
   for (const entry of INTEGRATION_REGISTRY) {
     assert.equal(entry.scopes.includes(OPERATOR_PRESENCE_WRITE_SCOPE), false);
@@ -425,6 +481,10 @@ test('ingestion contract: replay protection, scope gate, no tenant override, no 
   assert.throws(
     () => parseOperatorPresenceHeartbeatBody({ clientActionId: 'a', operatorRef: 'op-1', tenantId: 'pw-uk' }),
     (err: unknown) => err instanceof OperatorPresenceIngestionError && err.code === 'tenant_mismatch',
+  );
+  assert.throws(
+    () => parseOperatorPresenceHeartbeatBody({ clientActionId: 'a', operatorRef: 'op-1', operatorUserId: 99 }),
+    (err: unknown) => err instanceof OperatorPresenceIngestionError && err.code === 'invalid_request',
   );
   assert.throws(
     () => assertPresenceWriteAuthorized({
@@ -461,6 +521,7 @@ test('ingestion contract: replay protection, scope gate, no tenant override, no 
   const app = express();
   app.use(express.json());
   app.post(OPERATOR_PRESENCE_HEARTBEAT_PATH, handlers.heartbeat);
+  app.post(OPERATOR_PRESENCE_OFFLINE_PATH, handlers.offline);
   const server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address() as AddressInfo;
@@ -476,6 +537,10 @@ test('ingestion contract: replay protection, scope gate, no tenant override, no 
     assert.equal(first.duplicated, false);
     assert.equal(first.expiresInMs, ADMIN_PRESENCE_ACTIVE_WINDOW_MS);
     assert.equal(heartbeats, 1);
+    assert.equal(
+      db.heartbeats[0]?.userId,
+      syntheticPresenceUserId('pw-infotech', 'future-wp-adapter', 'wp-admin-9'),
+    );
 
     const replay = await fetch(`http://127.0.0.1:${port}${OPERATOR_PRESENCE_HEARTBEAT_PATH}`, {
       method: 'POST',
@@ -487,16 +552,304 @@ test('ingestion contract: replay protection, scope gate, no tenant override, no 
 
     const events = await eventStore.list({ tenantId: 'pw-infotech', limit: 10 });
     assert.equal(events.filter((e) => e.eventType === 'presence_available').length, 1);
+    assert.equal(events[0]?.actorUserId, null, 'synthetic adapter ids are not stored as central User ids');
+
+    const offline = await fetch(`http://127.0.0.1:${port}${OPERATOR_PRESENCE_OFFLINE_PATH}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    assert.equal(offline.status, 501);
+    const offlineBody = await offline.json();
+    assert.equal(offlineBody.code, 'reserved');
   } finally {
     await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
   }
 });
 
-test('server wiring: policy/reporting/ingestion routes present; no Option 1 activation', () => {
+test('operator identity: no impersonation, credential-bound synthetic ids, cross-tenant isolation', () => {
+  const admin = resolveOperatorPresenceIdentity(
+    { kind: 'admin', tenantId: 'pw-uk', adminUserId: 42, scopes: [OPERATOR_PRESENCE_WRITE_SCOPE] },
+    { operatorRef: 'ignored-for-id' },
+  );
+  assert.equal(admin.userId, 42);
+  assert.equal(admin.binding, 'admin_session');
+  assert.equal(admin.synthetic, false);
+
+  const wpA = resolveOperatorPresenceIdentity(
+    {
+      kind: 'integration',
+      tenantId: 'pw-infotech',
+      integrationId: 'wp-site-a',
+      scopes: [OPERATOR_PRESENCE_WRITE_SCOPE],
+    },
+    { operatorRef: 'op-1' },
+  );
+  const wpB = resolveOperatorPresenceIdentity(
+    {
+      kind: 'integration',
+      tenantId: 'pw-infotech',
+      integrationId: 'wp-site-b',
+      scopes: [OPERATOR_PRESENCE_WRITE_SCOPE],
+    },
+    { operatorRef: 'op-1' },
+  );
+  const otherTenant = resolveOperatorPresenceIdentity(
+    {
+      kind: 'integration',
+      tenantId: 'pw-uk',
+      integrationId: 'wp-site-a',
+      scopes: [OPERATOR_PRESENCE_WRITE_SCOPE],
+    },
+    { operatorRef: 'op-1' },
+  );
+  const otherOp = resolveOperatorPresenceIdentity(
+    {
+      kind: 'integration',
+      tenantId: 'pw-infotech',
+      integrationId: 'wp-site-a',
+      scopes: [OPERATOR_PRESENCE_WRITE_SCOPE],
+    },
+    { operatorRef: 'op-2' },
+  );
+
+  assert.equal(wpA.synthetic, true);
+  assert.ok(wpA.userId < 0);
+  assert.notEqual(wpA.userId, wpB.userId, 'different installations must not share operator identity');
+  assert.notEqual(wpA.userId, otherTenant.userId, 'same operatorRef must not collide across tenants');
+  assert.notEqual(wpA.userId, otherOp.userId, 'operators within a tenant remain distinct');
+  assert.notEqual(wpA.userId, 42, 'synthetic ids stay outside the positive User id space');
+});
+
+test('idempotency: claim released after write failure so retries succeed', async () => {
+  const policyStore = createMemoryTenantPresencePolicyStore();
+  const eventStore = createMemoryTenantPresenceEventStore();
+  const idempotency = createMemoryPresenceIdempotencyStore();
+  const db = createPresenceDb();
+  let failNext = true;
+  let heartbeats = 0;
+
+  const handlers = createOperatorPresenceIngestionHandlers({
+    policyStore,
+    eventStore,
+    idempotency,
+    recordHeartbeat: async (input) => {
+      if (failNext) {
+        failNext = false;
+        throw new Error('simulated write interruption');
+      }
+      heartbeats += 1;
+      return recordTenantAdminHeartbeat(db.prisma, input);
+    },
+    resolvePrincipal: async () => ({
+      kind: 'integration',
+      tenantId: 'pw-infotech',
+      integrationId: 'future-wp-adapter',
+      scopes: [OPERATOR_PRESENCE_WRITE_SCOPE],
+    }),
+    now: () => T0,
+  });
+
+  const app = express();
+  app.use(express.json());
+  app.post(OPERATOR_PRESENCE_HEARTBEAT_PATH, handlers.heartbeat);
+  const server = http.createServer(app);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+  const body = { clientActionId: 'retry-1', operatorRef: 'wp-admin-9' };
+
+  try {
+    const failed = await fetch(`http://127.0.0.1:${port}${OPERATOR_PRESENCE_HEARTBEAT_PATH}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    assert.equal(failed.status, 503);
+    assert.equal(heartbeats, 0);
+
+    const retry = await fetch(`http://127.0.0.1:${port}${OPERATOR_PRESENCE_HEARTBEAT_PATH}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then((r) => r.json());
+    assert.equal(retry.success, true);
+    assert.equal(retry.duplicated, false);
+    assert.equal(heartbeats, 1);
+
+    const duplicate = await fetch(`http://127.0.0.1:${port}${OPERATOR_PRESENCE_HEARTBEAT_PATH}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then((r) => r.json());
+    assert.equal(duplicate.duplicated, true);
+    assert.equal(heartbeats, 1);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+  }
+});
+
+test('idempotency: partial event-write failure does not suppress a recorded heartbeat', async () => {
+  const policyStore = createMemoryTenantPresencePolicyStore();
+  const baseEvents = createMemoryTenantPresenceEventStore();
+  const eventStore = {
+    ...baseEvents,
+    async append(input: Parameters<typeof baseEvents.append>[0]) {
+      throw new Error('event store interrupted');
+    },
+    list: baseEvents.list.bind(baseEvents),
+    prune: baseEvents.prune.bind(baseEvents),
+  };
+  const idempotency = createMemoryPresenceIdempotencyStore();
+  const db = createPresenceDb();
+  let heartbeats = 0;
+
+  const handlers = createOperatorPresenceIngestionHandlers({
+    policyStore,
+    eventStore,
+    idempotency,
+    recordHeartbeat: async (input) => {
+      heartbeats += 1;
+      return recordTenantAdminHeartbeat(db.prisma, input);
+    },
+    resolvePrincipal: async () => ({
+      kind: 'integration',
+      tenantId: 'pw-infotech',
+      integrationId: 'future-wp-adapter',
+      scopes: [OPERATOR_PRESENCE_WRITE_SCOPE],
+    }),
+    now: () => T0,
+  });
+
+  const app = express();
+  app.use(express.json());
+  app.post(OPERATOR_PRESENCE_HEARTBEAT_PATH, handlers.heartbeat);
+  const server = http.createServer(app);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+  const body = { clientActionId: 'event-fail-1', operatorRef: 'wp-admin-9' };
+
+  try {
+    const first = await fetch(`http://127.0.0.1:${port}${OPERATOR_PRESENCE_HEARTBEAT_PATH}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then((r) => r.json());
+    assert.equal(first.success, true);
+    assert.equal(heartbeats, 1);
+    assert.equal(db.heartbeats.length, 1);
+
+    const replay = await fetch(`http://127.0.0.1:${port}${OPERATOR_PRESENCE_HEARTBEAT_PATH}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then((r) => r.json());
+    assert.equal(replay.duplicated, true);
+    assert.equal(heartbeats, 1);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+  }
+});
+
+test('Host governance: policy activation cannot impersonate operators or mutate availability via reporting', async () => {
+  const policyStore = createMemoryTenantPresencePolicyStore();
+  const eventStore = createMemoryTenantPresenceEventStore();
+  const db = createPresenceDb();
+  await recordTenantAdminHeartbeat(db.prisma, { tenantId: 'pw-uk', userId: 7, now: ago(1_000) });
+  const before = db.heartbeats.map((row) => ({ ...row }));
+
+  const handlers = createTenantPresencePolicyAdminHandlers({
+    policyStore,
+    eventStore,
+    presencePrisma: db.prisma,
+    now: () => T0,
+  });
+
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    (req as express.Request & { adminUser?: TenantPresenceAdminPrincipal }).adminUser = OWNER;
+    next();
+  });
+  app.get('/api/admin/presence-reporting', handlers.listReporting);
+  app.post('/api/admin/presence-reporting', (_req, res) => {
+    res.status(405).json({ success: false, error: 'Reporting is read-only.' });
+  });
+  app.post('/api/admin/presence-policy/:tenantId', handlers.setPolicy);
+
+  const server = http.createServer(app);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+
+  try {
+    await setTenantPresencePolicy(
+      policyStore,
+      eventStore,
+      OWNER,
+      'pw-uk',
+      'heartbeat_required_online',
+      'Validated UK adapter',
+      T0,
+    );
+    assert.deepEqual(
+      db.heartbeats.map((row) => ({ tenantId: row.tenantId, userId: row.userId, lastSeenAt: row.lastSeenAt.toISOString() })),
+      before.map((row) => ({ tenantId: row.tenantId, userId: row.userId, lastSeenAt: row.lastSeenAt.toISOString() })),
+      'policy activation must not manufacture heartbeats',
+    );
+
+    const report = await fetch(`http://127.0.0.1:${port}/api/admin/presence-reporting`).then((r) => r.json());
+    assert.equal(report.reportingOnly, true);
+    assert.equal(report.canManageAvailability, false);
+
+    const mutate = await fetch(`http://127.0.0.1:${port}/api/admin/presence-reporting`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ tenantId: 'pw-uk', userId: 7, mode: 'available' }),
+    });
+    assert.equal(mutate.status, 405);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+  }
+});
+
+test('retention constants and opportunistic prune ownership', async () => {
+  assert.equal(TENANT_PRESENCE_RETENTION.eventsRetentionMs, 90 * 24 * 60 * 60 * 1000);
+  assert.equal(TENANT_PRESENCE_RETENTION.eventsMaxPerTenant, 5_000);
+  assert.equal(TENANT_PRESENCE_RETENTION.idempotencyTtlMs, 24 * 60 * 60 * 1000);
+  assert.equal(TENANT_PRESENCE_RETENTION.ownership, 'opportunistic_on_presence_write');
+
+  resetTenantPresencePruneForTests();
+  const events = createMemoryTenantPresenceEventStore();
+  const idempotency = createMemoryPresenceIdempotencyStore();
+  await events.append({
+    tenantId: 'pw-uk',
+    eventType: 'presence_expired',
+    correlationId: 'ancient',
+    at: new Date(NOW - 120 * 24 * 60 * 60 * 1000),
+  });
+  await idempotency.claim({
+    tenantId: 'pw-uk',
+    action: 'heartbeat',
+    clientActionId: 'old-key',
+    at: new Date(NOW - 48 * 60 * 60 * 1000),
+  });
+  await pruneTenantPresenceArtifacts({ events, idempotency }, new Date(NOW));
+  const remaining = await events.list({ tenantId: 'pw-uk', limit: 20 });
+  assert.equal(remaining.some((row) => row.correlationId === 'ancient'), false);
+  assert.equal(await idempotency.claim({
+    tenantId: 'pw-uk',
+    action: 'heartbeat',
+    clientActionId: 'old-key',
+    at: new Date(NOW),
+  }), 'claimed', 'expired idempotency key was pruned and can be reclaimed');
+});
+
+test('server wiring: policy/reporting/ingestion routes present; offline reserved; no Option 1 activation', () => {
   const server = read('server.ts');
   assert.match(server, /TENANT_PRESENCE_POLICY_ADMIN_PATH/);
   assert.match(server, /TENANT_PRESENCE_REPORTING_ADMIN_PATH/);
   assert.match(server, /OPERATOR_PRESENCE_HEARTBEAT_PATH/);
+  assert.match(server, /OPERATOR_PRESENCE_OFFLINE_PATH/);
+  assert.match(server, /pruneTenantPresenceArtifacts/);
   assert.match(server, /lookupEffectivePresencePolicy/);
   assert.doesNotMatch(server, /heartbeat_required_online['"]\s*,\s*reason:/);
   assert.doesNotMatch(

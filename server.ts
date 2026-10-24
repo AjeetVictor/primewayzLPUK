@@ -142,9 +142,11 @@ import { createPrismaPresenceIdempotencyStore } from './src/lib/chat/tenantPrese
 import {
   createOperatorPresenceIngestionHandlers,
   OPERATOR_PRESENCE_HEARTBEAT_PATH,
+  OPERATOR_PRESENCE_OFFLINE_PATH,
   OPERATOR_PRESENCE_WRITE_SCOPE,
   type OperatorPresenceIngestionPrincipal,
 } from './src/lib/chat/operatorPresenceIngestion.ts';
+import { pruneTenantPresenceArtifacts } from './src/lib/chat/tenantPresenceRetention.ts';
 import { parseBearerToken, resolveIntegrationPrincipal } from './src/lib/integrations/integrationRegistry.ts';
 import { authenticateInstallationCredential } from './src/lib/chatConnect/lifecycle.ts';
 import { parseInstallationBearer } from './src/lib/chatConnect/credentials.ts';
@@ -2748,6 +2750,16 @@ const operatorPresenceIngestion = createOperatorPresenceIngestionHandlers({
   },
 });
 app.post(OPERATOR_PRESENCE_HEARTBEAT_PATH, operatorPresenceIngestion.heartbeat);
+/** Reserved for WS-2/3/4 — returns 501; WS-1 offline is heartbeat TTL expiry. */
+app.post(OPERATOR_PRESENCE_OFFLINE_PATH, operatorPresenceIngestion.offline);
+app.all(OPERATOR_PRESENCE_OFFLINE_PATH, (_req, res) => {
+  res.status(501).json({
+    success: false,
+    code: 'reserved',
+    error:
+      'POST /api/v1/operator-presence/offline is reserved for WS-2/WS-3/WS-4. In WS-1, presence expires when heartbeats stop.',
+  });
+});
 
 /** Team presence is per entity: "All entities" is not a presence target and is rejected. */
 function resolveAdminPresenceTenantId(req: Request, res: Response): string | null {
@@ -2831,6 +2843,7 @@ app.post('/api/admin/presence/heartbeat', requireAdmin, requireRole(isOperations
   const tenantId = resolveAdminPresenceTenantId(req, res);
   if (!tenantId) return;
   if (!requireAdminTenantChatAccess(req, res, tenantId)) return;
+  // Session-bound only — never accept a client-supplied operator/user id for presence writes.
   const heartbeat = await recordTenantAdminHeartbeat(prisma, { tenantId, userId: req.adminUser!.id });
   if (heartbeat.becameActive) {
     try {
@@ -2846,6 +2859,10 @@ app.post('/api/admin/presence/heartbeat', requireAdmin, requireRole(isOperations
       // Heartbeat already recorded.
     }
   }
+  void pruneTenantPresenceArtifacts({
+    events: tenantPresenceEventStore,
+    idempotency: tenantPresenceIdempotencyStore,
+  });
   res.json({
     success: true,
     tenantId,

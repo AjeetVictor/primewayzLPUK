@@ -4,15 +4,22 @@ import {
   type PresenceIdempotencyStore,
 } from './operatorPresenceIngestion.ts';
 
+function idempotencyKey(input: { tenantId: string; action: string; clientActionId: string }): string {
+  return `${input.tenantId}:${input.action}:${input.clientActionId}`;
+}
+
 export function createMemoryPresenceIdempotencyStore(): PresenceIdempotencyStore {
   const keys = new Map<string, Date>();
 
   return {
     async claim(input) {
-      const key = `${input.tenantId}:${input.action}:${input.clientActionId}`;
+      const key = idempotencyKey(input);
       if (keys.has(key)) return 'duplicate';
       keys.set(key, input.at);
       return 'claimed';
+    },
+    async release(input) {
+      keys.delete(idempotencyKey(input));
     },
     async prune(now = new Date()) {
       const cutoff = now.getTime() - OPERATOR_PRESENCE_IDEMPOTENCY_TTL_MS;
@@ -52,6 +59,15 @@ export function createPrismaPresenceIdempotencyStore(prisma: PrismaClient): Pres
         }
         throw err;
       }
+    },
+    async release(input) {
+      await prisma.tenantPresenceIdempotencyKey.deleteMany({
+        where: {
+          tenantId: input.tenantId,
+          action: input.action,
+          clientActionId: input.clientActionId,
+        },
+      });
     },
     async prune(now = new Date()) {
       const cutoff = new Date(now.getTime() - OPERATOR_PRESENCE_IDEMPOTENCY_TTL_MS);
