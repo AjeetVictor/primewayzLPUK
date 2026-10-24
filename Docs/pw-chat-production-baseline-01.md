@@ -9,7 +9,8 @@ Canonical Primewayz UK production-ready **source** baseline. Integration only �
 | Branch | `integrate/pw-chat-production-baseline-01` |
 | Base | `origin/main` @ `5e5d926` (includes Silver central PR **#13**) |
 | Integrated tip | `origin/fix/pw-chat-presence-03-expanded-header-status` (PR **#11**, inherits **#8** / **#10** / merged **#12**) |
-| Merge commit | `d179540` — ort auto-merge; `server.ts` + WordPress integration tests combined without discarding Silver |
+| Integration merge | `d179540` — ort auto-merge; `server.ts` + WordPress integration tests combined without discarding Silver |
+| Evidence docs | Committed on this branch as `Docs/pw-chat-production-baseline-01.md` (see branch tip) |
 
 ## What this baseline contains
 
@@ -91,12 +92,11 @@ Rollback sketch (only after approved reverse deploy of app code that no longer r
 | `npm run typecheck` / `lint` | pass (requires `dist/server/entry-server.js` present; satisfied after `npm run build`) |
 | `npm run test:platform` | **425** pass / 0 fail |
 | `npm run test:chat-embed` | **117** pass / 0 fail |
+| `npm test` (full package script) | **1519** pass / 0 fail |
 | `node --test scripts/verify-chat-connect-zip.test.mjs` | pass |
 | `npm run build` (client + SSR) | pass |
 | `npm audit --omit=dev` | **17** advisories (4 moderate, 12 high, 1 critical) — **same lockfile as main**; not introduced by this integration. Nodemailer / proxy-addr / qs / react-router / vite / source-map-js. Track separately; do not `audit fix --force` in this PR. |
 | Sibling 1.3.4 visitor-mode tests | **11** pass / 0 fail |
-
-Full `npm test` run may be attached in the PR checks; platform + embed cover the chat/Silver/WordPress surface for this baseline.
 
 ## Deployment / rollback (operator — not executed here)
 
