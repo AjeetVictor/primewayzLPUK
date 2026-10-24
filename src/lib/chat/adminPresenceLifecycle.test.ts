@@ -337,10 +337,13 @@ test('AdminPanel and logout wiring enforce tenant-scoped presence lifecycle', ()
   const adminPanel = read('src/components/AdminPanel.tsx');
   assert.match(adminPanel, /adminTenantPath\('\/api\/admin\/chat\/availability'\)/);
   assert.match(adminPanel, /adminTenantPath\('\/api\/admin\/presence\/heartbeat'\)/);
+  assert.match(adminPanel, /\/api\/admin\/presence\/offline/);
+  assert.match(adminPanel, /pagehide/);
   assert.match(adminPanel, /\[isAuthenticated, user, adminTenantFilter\]/);
 
   const server = read('server.ts');
   assert.match(server, /clearAdminPresenceForUser\(prisma, \{ userId: decoded\.id \}\)/);
+  assert.match(server, /UK_ADMIN_PRESENCE_OFFLINE_PATH/);
   assert.doesNotMatch(
     server.slice(server.indexOf("app.get('/api/chat/availability'"), server.indexOf("app.get('/api/chat/availability'") + 800),
     /req\.(query|body)\.tenantId/,

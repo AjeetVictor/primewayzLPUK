@@ -469,7 +469,7 @@ test('Host/Owner read-only reporting; tenant-scoped reporting access', async () 
 test('ingestion contract: replay protection, scope gate, no tenant override, no frontend secrets', async () => {
   assert.equal(OPERATOR_PRESENCE_INGESTION_CONTRACT.version, 'v1');
   assert.equal(OPERATOR_PRESENCE_INGESTION_CONTRACT.requiredScope, OPERATOR_PRESENCE_WRITE_SCOPE);
-  assert.equal(OPERATOR_PRESENCE_INGESTION_CONTRACT.paths.offline.status, 'reserved');
+  assert.equal(OPERATOR_PRESENCE_INGESTION_CONTRACT.paths.offline.status, 'admin_only');
   assert.equal(OPERATOR_PRESENCE_INGESTION_CONTRACT.paths.heartbeat.status, 'available');
   assert.ok(OPERATOR_PRESENCE_INGESTION_CONTRACT.notes.some((n) => /frontend JavaScript/i.test(n)));
   assert.ok(OPERATOR_PRESENCE_INGESTION_CONTRACT.heartbeat.rejectedFields.includes('operatorUserId'));
@@ -843,12 +843,13 @@ test('retention constants and opportunistic prune ownership', async () => {
   }), 'claimed', 'expired idempotency key was pruned and can be reclaimed');
 });
 
-test('server wiring: policy/reporting/ingestion routes present; offline reserved; no Option 1 activation', () => {
+test('server wiring: policy/reporting/ingestion routes present; offline admin-only; no Option 1 activation', () => {
   const server = read('server.ts');
   assert.match(server, /TENANT_PRESENCE_POLICY_ADMIN_PATH/);
   assert.match(server, /TENANT_PRESENCE_REPORTING_ADMIN_PATH/);
   assert.match(server, /OPERATOR_PRESENCE_HEARTBEAT_PATH/);
   assert.match(server, /OPERATOR_PRESENCE_OFFLINE_PATH/);
+  assert.match(server, /attachAdminSessionIfPresent/);
   assert.match(server, /pruneTenantPresenceArtifacts/);
   assert.match(server, /lookupEffectivePresencePolicy/);
   assert.doesNotMatch(server, /heartbeat_required_online['"]\s*,\s*reason:/);

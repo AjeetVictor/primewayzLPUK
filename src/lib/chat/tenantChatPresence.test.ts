@@ -347,12 +347,17 @@ test('wiring: server presence reads and writes are tenant-scoped with no global 
   assert.match(publicRoute, /getChatAvailabilityPayload\(sourceContext\)/);
   assert.doesNotMatch(publicRoute, /req\.(query|body)\.tenantId/);
 
-  const adminBlock = server.slice(server.indexOf("app.get('/api/admin/chat/availability'"), server.indexOf("app.get('/api/admin/notifications/summary'"));
+  const adminBlock = server.slice(
+    server.indexOf('async function buildAdminChatAvailabilityResponse'),
+    server.indexOf("app.get('/api/admin/notifications/summary'"),
+  );
   assert.match(adminBlock, /app\.get\('\/api\/admin\/chat\/availability', requireAdmin, requireRole\(isOperationsRole\)/);
   assert.match(adminBlock, /app\.patch\('\/api\/admin\/chat\/availability', requireAdmin, requireRole\(isOperationsRole\)/);
   assert.match(adminBlock, /app\.post\('\/api\/admin\/presence\/heartbeat', requireAdmin, requireRole\(isOperationsRole\)/);
-  assert.equal((adminBlock.match(/resolveAdminPresenceTenantId\(req, res\)/g) ?? []).length, 3);
-  assert.equal((adminBlock.match(/getChatAvailabilityPayload\(undefined, tenantId\)/g) ?? []).length, 2);
+  assert.match(adminBlock, /UK_ADMIN_PRESENCE_OFFLINE_PATH/);
+  assert.equal((adminBlock.match(/resolveAdminPresenceTenantId\(req, res\)/g) ?? []).length, 4);
+  assert.match(adminBlock, /getChatAvailabilityPayload\(undefined, tenantId\)/);
+  assert.match(adminBlock, /buildUkAdminPresenceDashboardView/);
   assert.match(adminBlock, /recordTenantChatPresenceSetting\(prisma, \{\s*tenantId,/);
   assert.match(adminBlock, /recordTenantAdminHeartbeat\(prisma, \{ tenantId, userId: req\.adminUser!\.id \}\)/);
   assert.doesNotMatch(adminBlock, /req\.body\.tenantId/);

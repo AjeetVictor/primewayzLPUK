@@ -32,7 +32,11 @@ import {
 export const OPERATOR_PRESENCE_INGESTION_VERSION = 'v1' as const;
 
 export const OPERATOR_PRESENCE_HEARTBEAT_PATH = '/api/v1/operator-presence/heartbeat';
-/** Reserved for WS-2/3/4 — not a functional offline contract in WS-1. */
+/**
+ * Explicit offline / session invalidation.
+ * WS-2: authenticated Admin (UK) principals only.
+ * WP / Silver installation & integration principals remain deferred (WS-3 / WS-4).
+ */
 export const OPERATOR_PRESENCE_OFFLINE_PATH = '/api/v1/operator-presence/offline';
 
 /** Scope required for integration-credential presence writes. Not granted to WP/Silver yet. */
@@ -252,6 +256,21 @@ export function assertPresenceWriteAuthorized(principal: OperatorPresenceIngesti
   }
 }
 
+export type OperatorPresenceOfflineRequest = {
+  clientActionId: string;
+  operatorRef: string;
+  correlationId?: string;
+};
+
+export type OperatorPresenceOfflineResponse = {
+  success: true;
+  version: typeof OPERATOR_PRESENCE_INGESTION_VERSION;
+  tenantId: string;
+  operatorRef: string;
+  cleared: number;
+  duplicated: boolean;
+};
+
 export type OperatorPresenceIngestionDeps = {
   policyStore: TenantPresencePolicyStore;
   eventStore: TenantPresenceEventStore;
@@ -261,6 +280,11 @@ export type OperatorPresenceIngestionDeps = {
     userId: number;
     now?: Date;
   }) => Promise<{ previousLastSeenAt: Date | null; becameActive: boolean } | void>;
+  /** WS-2+: clear one operator's heartbeat for the principal's tenant. */
+  clearOperatorPresence?: (input: {
+    tenantId: string;
+    userId: number;
+  }) => Promise<number>;
   resolvePrincipal: (req: Parameters<RequestHandler>[0]) => Promise<OperatorPresenceIngestionPrincipal | null>;
   now?: () => Date;
 };
@@ -360,14 +384,108 @@ export function createOperatorPresenceIngestionHandlers(deps: OperatorPresenceIn
     }
   };
 
-  /** Explicit offline is deferred — heartbeat TTL expiry is the WS-1 operational fallback. */
-  const offline: RequestHandler = async (_req, res) => {
-    res.status(501).json({
-      success: false,
-      code: 'reserved',
-      error:
-        'POST /api/v1/operator-presence/offline is reserved for WS-2/WS-3/WS-4 (authenticated tenant-bound session invalidation). In WS-1, operator presence expires when heartbeats stop (see expiresInMs / ADMIN_PRESENCE_ACTIVE_WINDOW_MS).',
-    });
+  /**
+   * Explicit offline for authenticated Admin principals (UK WS-2).
+   * Integration / installation adapters stay reserved until WS-3 / WS-4 grant presence write.
+   */
+  const offline: RequestHandler = async (req, res) => {
+    try {
+      const principal = await deps.resolvePrincipal(req);
+      if (!principal) {
+        throw new OperatorPresenceIngestionError(401, 'unauthorized', 'Valid presence credentials are required.');
+      }
+      if (principal.kind !== 'admin') {
+        throw new OperatorPresenceIngestionError(
+          501,
+          'reserved',
+          'Explicit offline for integration/installation adapters is reserved for WS-3/WS-4. UK Admin sessions use the Admin offline path or this endpoint with an Admin session.',
+        );
+      }
+      assertPresenceWriteAuthorized(principal);
+      if (!deps.clearOperatorPresence) {
+        throw new OperatorPresenceIngestionError(
+          501,
+          'reserved',
+          'Operator presence clear is not configured on this host.',
+        );
+      }
+      const body = parseOperatorPresenceHeartbeatBody(req.body) as OperatorPresenceOfflineRequest;
+      const at = now();
+      const claimInput = {
+        tenantId: principal.tenantId,
+        action: 'offline',
+        clientActionId: body.clientActionId,
+        at,
+      };
+      let claim: 'claimed' | 'duplicate';
+      try {
+        claim = await deps.idempotency.claim(claimInput);
+      } catch {
+        throw new OperatorPresenceIngestionError(503, 'store_unavailable', 'Presence ingestion is temporarily unavailable.');
+      }
+      const duplicated = claim === 'duplicate';
+      let cleared = 0;
+      if (!duplicated) {
+        try {
+          const identity = resolveOperatorPresenceIdentity(principal, body);
+          if (identity.synthetic || identity.userId !== principal.adminUserId) {
+            throw new OperatorPresenceIngestionError(
+              403,
+              'forbidden_scope',
+              'Admin offline may only clear the authenticated operator session.',
+            );
+          }
+          cleared = await deps.clearOperatorPresence({
+            tenantId: principal.tenantId,
+            userId: identity.userId,
+          });
+          try {
+            await deps.eventStore.append({
+              tenantId: principal.tenantId,
+              eventType: 'operator_session_ended',
+              actorRef: body.operatorRef,
+              actorUserId: identity.userId,
+              correlationId: body.correlationId ?? body.clientActionId,
+              details: { source: 'admin_offline_v1', cleared },
+              at,
+            });
+          } catch {
+            // Clear already applied.
+          }
+          void pruneTenantPresenceArtifacts(
+            { events: deps.eventStore, idempotency: deps.idempotency },
+            at,
+          );
+        } catch (err) {
+          try {
+            await deps.idempotency.release({
+              tenantId: claimInput.tenantId,
+              action: claimInput.action,
+              clientActionId: claimInput.clientActionId,
+            });
+          } catch {
+            // best-effort
+          }
+          if (err instanceof OperatorPresenceIngestionError) throw err;
+          throw new OperatorPresenceIngestionError(503, 'store_unavailable', 'Presence ingestion is temporarily unavailable.');
+        }
+      }
+      const payload: OperatorPresenceOfflineResponse = {
+        success: true,
+        version: OPERATOR_PRESENCE_INGESTION_VERSION,
+        tenantId: principal.tenantId,
+        operatorRef: body.operatorRef,
+        cleared,
+        duplicated,
+      };
+      res.setHeader('Cache-Control', 'no-store');
+      res.json(payload);
+    } catch (err) {
+      const error = err instanceof OperatorPresenceIngestionError
+        ? err
+        : new OperatorPresenceIngestionError(503, 'store_unavailable', 'Presence ingestion is temporarily unavailable.');
+      res.status(error.status).json({ success: false, error: error.message, code: error.code });
+    }
   };
 
   return { heartbeat, offline };
@@ -383,9 +501,10 @@ export const OPERATOR_PRESENCE_INGESTION_CONTRACT = {
     },
     offline: {
       path: OPERATOR_PRESENCE_OFFLINE_PATH,
-      status: 'reserved' as const,
-      deferredTo: ['WS-2', 'WS-3', 'WS-4'] as const,
-      ws1Fallback: 'Heartbeat TTL expiry (ADMIN_PRESENCE_ACTIVE_WINDOW_MS)',
+      status: 'admin_only' as const,
+      availableFor: ['admin'] as const,
+      deferredAdapters: ['WS-3', 'WS-4'] as const,
+      ttlFallback: 'Heartbeat TTL expiry (ADMIN_PRESENCE_ACTIVE_WINDOW_MS)',
     },
   },
   auth: {
@@ -412,7 +531,8 @@ export const OPERATOR_PRESENCE_INGESTION_CONTRACT = {
     'Existing WordPress and Silver API contracts are unchanged until adapters grant chat:presence:write.',
     'Heartbeats refresh AdminPresence TTL; permanent audit events are transitions only.',
     'Idempotency keys are released if the heartbeat write fails after claim, so retries remain safe.',
-    'Explicit offline is reserved; operational offline is heartbeat expiry until WS-2/3/4.',
+    'WS-2: Admin cookie offline clears the authenticated operator heartbeat for the bound tenant.',
+    'WS-3/WS-4: integration/installation offline remains reserved until those adapters ship.',
   ],
 } as const;
 

@@ -171,9 +171,9 @@ test('Admin presence calls forward the selected tenantId (UK versus Infotech fix
 test('Admin warns when forced Online has no active operator heartbeat (availability logic unchanged)', () => {
   const adminPanel = fs.readFileSync(path.join(process.cwd(), 'src/components/AdminPanel.tsx'), 'utf8');
   assert.match(adminPanel, /data-testid="forced-online-heartbeat-warning"/);
-  assert.match(adminPanel, /!chatAvailability\.hasActiveAdmin/);
-  assert.match(adminPanel, /Forced Online still advertises human availability/);
-  assert.match(adminPanel, /Public\s+behaviour is unchanged in this release/);
+  assert.match(adminPanel, /!chatAvailability\.verifiedHumanOnline/);
+  assert.match(adminPanel, /Forced Online can still advertise visitor Online/);
+  assert.match(adminPanel, /Option 1 stays Host-disabled/);
   // Default (legacy) forced-online semantics remain; Option 1 is policy-gated only.
   const presence = fs.readFileSync(path.join(process.cwd(), 'src/lib/chat/chatPresence.ts'), 'utf8');
   assert.match(presence, /forcedOnline = mode === 'online' \|\| mode === 'available'/);

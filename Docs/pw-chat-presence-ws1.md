@@ -135,7 +135,7 @@ Reverting a single tenant: Host sets `legacy_forced_online` with an audited reas
 
 ## Deferred to WS-2 / WS-3 / WS-4
 
-- Explicit `offline` ingestion with authenticated tenant-bound session invalidation + replay protection.
-- UK / WordPress / Silver operator-presence adapters (grant `chat:presence:write`, map verified operator sessions).
-- Stronger operator session↔heartbeat coupling beyond adapter-asserted `operatorRef`.
+- Explicit `offline` ingestion with authenticated tenant-bound session invalidation + replay protection. **(WS-2: Admin/UK offline shipped; WP/Silver still reserved — see `Docs/pw-chat-presence-ws2.md`.)**
+- UK / WordPress / Silver operator-presence adapters (grant `chat:presence:write`, map verified operator sessions). **(WS-2: UK Admin path hardened without granting WP/Silver write scope.)**
+- Stronger operator session↔heartbeat coupling beyond adapter-asserted `operatorRef`. **(WS-2: UK Admin session↔heartbeat + disconnect.)**
 - Optional transactional claim+heartbeat in a single DB transaction where adapters require it (WS-1 uses claim/release semantics compatible with Prisma unique constraints).

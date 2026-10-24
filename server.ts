@@ -169,10 +169,17 @@ import {
   clearAdminPresenceForUser,
   listAdminPresenceTenantIdsForUser,
   readOptionalTenantChatPresence,
+  readTenantChatPresence,
   recordTenantAdminHeartbeat,
   recordTenantChatPresenceSetting,
   type TenantChatPresenceState,
 } from './src/lib/chat/tenantChatPresenceStore.ts';
+import {
+  assertUkAdminPresenceBodyClean,
+  buildUkAdminPresenceDashboardView,
+  clearUkAdminOperatorPresenceForTenant,
+  UK_ADMIN_PRESENCE_OFFLINE_PATH,
+} from './src/lib/chat/ukAdminPresence.ts';
 import { createPublicChatApiCorsMiddleware } from './src/lib/chat/publicChatApiCors.ts';
 import { normalizeVisitorPhone } from './src/lib/chat/visitorIntelligence.ts';
 import {
@@ -463,33 +470,49 @@ async function autoUpdateConversationStatus(sessionId: string, status: Conversat
   await advanceConversationStatus(chatConversationStore, sessionId, status);
 }
 
+async function loadAdminUserFromCookie(req: Request): Promise<AdminRequest['adminUser'] | null> {
+  const token = req.cookies?.[adminCookieName];
+  if (!token) return null;
+  const decoded = jwt.verify(token, getJwtSecret()) as { email?: string };
+  if (!decoded.email) return null;
+  const user = await prisma.user.findUnique({
+    where: { email: decoded.email },
+    include: { tenantGrants: { select: TENANT_GRANT_SELECT } },
+  });
+  if (!user) return null;
+  const tenantChatGrants = mapTenantChatGrants(user.tenantGrants);
+  return {
+    id: user.id,
+    email: user.email,
+    role: normalizeRole(user.role),
+    isPlatformOwner: user.isPlatformOwner,
+    tenantIds: tenantChatGrants.map((grant) => grant.tenantId),
+    tenantChatGrants,
+  };
+}
+
 async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   try {
-    const token = req.cookies?.[adminCookieName];
-    if (!token) return res.status(401).json({ success: false, error: 'Not authenticated' });
-
-    const decoded = jwt.verify(token, getJwtSecret()) as { email?: string };
-    if (!decoded.email) return res.status(401).json({ success: false, error: 'Invalid session' });
-
-    const user = await prisma.user.findUnique({
-      where: { email: decoded.email },
-      include: { tenantGrants: { select: TENANT_GRANT_SELECT } },
-    });
-    if (!user) return res.status(401).json({ success: false, error: 'Invalid session' });
-
-    const tenantChatGrants = mapTenantChatGrants(user.tenantGrants);
-    (req as AdminRequest).adminUser = {
-      id: user.id,
-      email: user.email,
-      role: normalizeRole(user.role),
-      isPlatformOwner: user.isPlatformOwner,
-      tenantIds: tenantChatGrants.map((grant) => grant.tenantId),
-      tenantChatGrants,
-    };
+    const adminUser = await loadAdminUserFromCookie(req);
+    if (!adminUser) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    (req as AdminRequest).adminUser = adminUser;
     return next();
   } catch {
     return res.status(401).json({ success: false, error: 'Invalid session' });
   }
+}
+
+/** Attach Admin session when a cookie is present; never 401 (Bearer adapters may also call the route). */
+async function attachAdminSessionIfPresent(req: Request, _res: Response, next: NextFunction) {
+  try {
+    if (!(req as AdminRequest).adminUser) {
+      const adminUser = await loadAdminUserFromCookie(req);
+      if (adminUser) (req as AdminRequest).adminUser = adminUser;
+    }
+  } catch {
+    // Invalid cookie — leave principal resolution to Bearer / fail closed later.
+  }
+  return next();
 }
 
 function requireRole(canAccess: (role?: string) => boolean) {
@@ -2709,6 +2732,7 @@ const operatorPresenceIngestion = createOperatorPresenceIngestionHandlers({
   eventStore: tenantPresenceEventStore,
   idempotency: tenantPresenceIdempotencyStore,
   recordHeartbeat: (input) => recordTenantAdminHeartbeat(prisma, input),
+  clearOperatorPresence: (input) => clearAdminPresenceForUser(prisma, input),
   resolvePrincipal: async (req): Promise<OperatorPresenceIngestionPrincipal | null> => {
     const integration = resolveIntegrationPrincipal(parseBearerToken(req.get('authorization')));
     if (integration) {
@@ -2739,6 +2763,11 @@ const operatorPresenceIngestion = createOperatorPresenceIngestionHandlers({
     if (admin && Number.isInteger(admin.id)) {
       const tenantId = typeof req.query.tenantId === 'string' ? req.query.tenantId : '';
       if (!tenantId || tenantId === 'all') return null;
+      try {
+        assertAdminTenantChatAccess(tenantId, admin);
+      } catch {
+        return null;
+      }
       return {
         kind: 'admin',
         tenantId,
@@ -2749,17 +2778,17 @@ const operatorPresenceIngestion = createOperatorPresenceIngestionHandlers({
     return null;
   },
 });
-app.post(OPERATOR_PRESENCE_HEARTBEAT_PATH, operatorPresenceIngestion.heartbeat);
-/** Reserved for WS-2/3/4 — returns 501; WS-1 offline is heartbeat TTL expiry. */
-app.post(OPERATOR_PRESENCE_OFFLINE_PATH, operatorPresenceIngestion.offline);
-app.all(OPERATOR_PRESENCE_OFFLINE_PATH, (_req, res) => {
-  res.status(501).json({
-    success: false,
-    code: 'reserved',
-    error:
-      'POST /api/v1/operator-presence/offline is reserved for WS-2/WS-3/WS-4. In WS-1, presence expires when heartbeats stop.',
-  });
-});
+app.post(
+  OPERATOR_PRESENCE_HEARTBEAT_PATH,
+  attachAdminSessionIfPresent,
+  operatorPresenceIngestion.heartbeat,
+);
+/** WS-2: Admin (UK) offline supported; WP/Silver integration/installation stay 501 reserved. */
+app.post(
+  OPERATOR_PRESENCE_OFFLINE_PATH,
+  attachAdminSessionIfPresent,
+  operatorPresenceIngestion.offline,
+);
 
 /** Team presence is per entity: "All entities" is not a presence target and is rejected. */
 function resolveAdminPresenceTenantId(req: Request, res: Response): string | null {
@@ -2777,19 +2806,37 @@ function resolveAdminPresenceTenantId(req: Request, res: Response): string | nul
   return tenantId;
 }
 
+async function buildAdminChatAvailabilityResponse(req: AdminRequest, tenantId: string) {
+  const payload = await getChatAvailabilityPayload(undefined, tenantId);
+  const state = await readTenantChatPresence(prisma, tenantId);
+  const uk = await buildUkAdminPresenceDashboardView({
+    presencePrisma: prisma,
+    tenantId,
+    principal: req.adminUser!,
+    state,
+    presencePolicy: payload.presencePolicy,
+  });
+  return {
+    ...payload,
+    // Shared resolver fields — identical source as public GET /api/chat/availability for this tenant.
+    teamStatus: uk.teamStatus,
+    visitorStatus: uk.visitorStatus,
+    verifiedHumanOnline: uk.verifiedHumanOnline,
+    activeOperatorCount: uk.activeOperatorCount,
+    presenceExpiresAt: uk.presenceExpiresAt,
+    heartbeatWindowMs: uk.heartbeatWindowMs,
+    operatorSession: uk.operatorSession,
+    option1Activated: uk.option1Activated,
+    automatedRepliesDoNotCreateHumanOnline: uk.automatedRepliesDoNotCreateHumanOnline,
+  };
+}
+
 app.get('/api/admin/chat/availability', requireAdmin, requireRole(isOperationsRole), async (req: AdminRequest, res) => {
   const tenantId = resolveAdminPresenceTenantId(req, res);
   if (!tenantId) return;
   if (!requireAdminTenantChatAccess(req, res, tenantId)) return;
-  const payload = await getChatAvailabilityPayload(undefined, tenantId);
-  res.json({
-    ...payload,
-    teamStatus: resolveChatPresence({
-      mode: payload.mode,
-      latestAdminSeenAt: payload.latestAdminSeenAt ? new Date(payload.latestAdminSeenAt) : null,
-      presencePolicy: payload.presencePolicy,
-    }).teamStatus,
-  });
+  res.setHeader('Cache-Control', 'no-store');
+  res.json(await buildAdminChatAvailabilityResponse(req, tenantId));
 });
 
 app.patch('/api/admin/chat/availability', requireAdmin, requireRole(isOperationsRole), async (req: AdminRequest, res) => {
@@ -2797,6 +2844,7 @@ app.patch('/api/admin/chat/availability', requireAdmin, requireRole(isOperations
   if (!tenantId) return;
   if (!requireAdminTenantChatAccess(req, res, tenantId)) return;
   // Explicit per-tenant Available / Away / Offline (plus auto). Legacy `online` maps to available.
+  // Mode changes never invent AdminPresence heartbeats — automated replies also never write presence.
   const mode = persistChatPresenceMode(
     ['auto', 'online', 'available', 'away', 'offline'].includes(req.body.mode) ? req.body.mode : 'auto',
   );
@@ -2828,22 +2876,24 @@ app.patch('/api/admin/chat/availability', requireAdmin, requireRole(isOperations
       // Mode write already committed.
     }
   }
-  const payload = await getChatAvailabilityPayload(undefined, tenantId);
-  res.json({
-    ...payload,
-    teamStatus: resolveChatPresence({
-      mode: payload.mode,
-      latestAdminSeenAt: payload.latestAdminSeenAt ? new Date(payload.latestAdminSeenAt) : null,
-      presencePolicy: payload.presencePolicy,
-    }).teamStatus,
-  });
+  res.setHeader('Cache-Control', 'no-store');
+  res.json(await buildAdminChatAvailabilityResponse(req, tenantId));
 });
 
 app.post('/api/admin/presence/heartbeat', requireAdmin, requireRole(isOperationsRole), async (req: AdminRequest, res) => {
   const tenantId = resolveAdminPresenceTenantId(req, res);
   if (!tenantId) return;
   if (!requireAdminTenantChatAccess(req, res, tenantId)) return;
-  // Session-bound only — never accept a client-supplied operator/user id for presence writes.
+  try {
+    assertUkAdminPresenceBodyClean(req.body);
+  } catch {
+    return res.status(400).json({
+      success: false,
+      error: 'Heartbeat rejects client-supplied tenant or operator identity fields.',
+      code: 'invalid_request',
+    });
+  }
+  // Session-bound chat-agent only — never accept a client-supplied operator/user id for presence writes.
   const heartbeat = await recordTenantAdminHeartbeat(prisma, { tenantId, userId: req.adminUser!.id });
   if (heartbeat.becameActive) {
     try {
@@ -2863,10 +2913,63 @@ app.post('/api/admin/presence/heartbeat', requireAdmin, requireRole(isOperations
     events: tenantPresenceEventStore,
     idempotency: tenantPresenceIdempotencyStore,
   });
+  const availability = await buildAdminChatAvailabilityResponse(req, tenantId);
+  res.setHeader('Cache-Control', 'no-store');
   res.json({
     success: true,
     tenantId,
     expiresInMs: ADMIN_PRESENCE_ACTIVE_WINDOW_MS,
+    becameActive: heartbeat.becameActive,
+    activeOperatorCount: availability.activeOperatorCount,
+    presenceExpiresAt: availability.presenceExpiresAt,
+    operatorSession: availability.operatorSession,
+    verifiedHumanOnline: availability.verifiedHumanOnline,
+    visitorStatus: availability.visitorStatus,
+  });
+});
+
+app.post(UK_ADMIN_PRESENCE_OFFLINE_PATH, requireAdmin, requireRole(isOperationsRole), async (req: AdminRequest, res) => {
+  const tenantId = resolveAdminPresenceTenantId(req, res);
+  if (!tenantId) return;
+  if (!requireAdminTenantChatAccess(req, res, tenantId)) return;
+  try {
+    assertUkAdminPresenceBodyClean(req.body);
+  } catch {
+    return res.status(400).json({
+      success: false,
+      error: 'Offline rejects client-supplied tenant or operator identity fields.',
+      code: 'invalid_request',
+    });
+  }
+  const result = await clearUkAdminOperatorPresenceForTenant(
+    (input) => clearAdminPresenceForUser(prisma, input),
+    { userId: req.adminUser!.id, tenantId },
+  );
+  try {
+    await tenantPresenceEventStore.append({
+      tenantId,
+      eventType: 'operator_session_ended',
+      actorUserId: req.adminUser!.id,
+      actorRef: `user:${req.adminUser!.id}`,
+      correlationId: `admin-offline:${tenantId}:${req.adminUser!.id}:${Date.now()}`,
+      details: { source: 'admin_presence_offline', cleared: result.cleared },
+    });
+  } catch {
+    // Clear already applied.
+  }
+  void pruneTenantPresenceArtifacts({
+    events: tenantPresenceEventStore,
+    idempotency: tenantPresenceIdempotencyStore,
+  });
+  const availability = await buildAdminChatAvailabilityResponse(req, tenantId);
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({
+    success: true,
+    ...result,
+    activeOperatorCount: availability.activeOperatorCount,
+    verifiedHumanOnline: availability.verifiedHumanOnline,
+    visitorStatus: availability.visitorStatus,
+    operatorSession: availability.operatorSession,
   });
 });
 
