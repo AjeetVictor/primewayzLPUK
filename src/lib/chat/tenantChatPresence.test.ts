@@ -52,9 +52,29 @@ function createPresenceDb() {
       async findFirst({ where }) {
         queries.push({ table: 'adminPresence', where });
         const row = heartbeats
-          .filter((h) => h.tenantId === where.tenantId)
+          .filter((h) => {
+            if (h.tenantId !== where.tenantId) return false;
+            if ('userId' in where && typeof where.userId === 'number') return h.userId === where.userId;
+            return true;
+          })
           .sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime())[0];
-        return row ? { lastSeenAt: row.lastSeenAt } : null;
+        return row ? { lastSeenAt: row.lastSeenAt, userId: row.userId } : null;
+      },
+      async findMany({ where, select }: {
+        where: { tenantId?: string; userId?: number; lastSeenAt?: { gte: Date } };
+        select: Record<string, true>;
+      }) {
+        queries.push({ table: 'adminPresence', where });
+        const matched = heartbeats.filter((h) => {
+          if (typeof where.userId === 'number' && h.userId !== where.userId) return false;
+          if (typeof where.tenantId === 'string' && h.tenantId !== where.tenantId) return false;
+          if (where.lastSeenAt && 'gte' in where.lastSeenAt) {
+            return h.lastSeenAt.getTime() >= where.lastSeenAt.gte.getTime();
+          }
+          return true;
+        });
+        if (select.tenantId) return matched.map((h) => ({ tenantId: h.tenantId }));
+        return matched.map((h) => ({ userId: h.userId, lastSeenAt: h.lastSeenAt }));
       },
       async upsert({ where, update, create }) {
         const key = where.tenantId_userId;

@@ -18,6 +18,13 @@ export type ChatPresenceStatus = 'online' | 'assistant' | 'away' | 'offline';
 /** Explicit per-tenant operator availability shown to Admin / WordPress team surfaces. */
 export type ExplicitTeamPresenceStatus = 'available' | 'away' | 'offline';
 
+/**
+ * Per-tenant presence policy (WS-1). Omit / null / legacy_forced_online keeps today's
+ * forced Available/Online behaviour. heartbeat_required_online is Option 1 (dark until Host activates).
+ */
+export type ChatPresencePolicy = 'legacy_forced_online' | 'heartbeat_required_online';
+export const DEFAULT_CHAT_PRESENCE_POLICY: ChatPresencePolicy = 'legacy_forced_online';
+
 export const CHAT_PRESENCE_SCOPE = 'tenant' as const;
 
 export const EXPLICIT_TEAM_PRESENCE_STATUSES = ['available', 'away', 'offline'] as const;
@@ -58,17 +65,24 @@ export function resolveChatPresence(input: {
   mode: string | null | undefined;
   latestAdminSeenAt: Date | null | undefined;
   now?: number;
+  /**
+   * When omitted or legacy_forced_online, forced available/online still yields visitor online
+   * without a heartbeat (current production behaviour). When heartbeat_required_online,
+   * forced Online cannot bypass the fresh authorised heartbeat requirement.
+   */
+  presencePolicy?: ChatPresencePolicy | null;
 }): ResolvedChatPresence {
   const now = input.now ?? Date.now();
   const hasActiveAdmin = !isAdminPresenceExpired(input.latestAdminSeenAt, now);
   const mode = normalizeChatPresenceMode(input.mode);
+  const policy = input.presencePolicy ?? DEFAULT_CHAT_PRESENCE_POLICY;
   const computedStatus = hasActiveAdmin ? 'online' : 'assistant';
   const forcedOnline = mode === 'online' || mode === 'available';
   const status = (
     mode === 'auto'
       ? computedStatus
       : forcedOnline
-        ? 'online'
+        ? (policy === 'heartbeat_required_online' && !hasActiveAdmin ? 'assistant' : 'online')
         : mode
   ) as ChatPresenceStatus;
   const teamStatus: ExplicitTeamPresenceStatus | 'not_online' =

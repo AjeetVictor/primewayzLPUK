@@ -17,7 +17,12 @@ import {
   assertAdminCanAccessChatSession,
   type AdminChatSessionOwnership,
 } from './adminChatRoutes.ts';
-import { CHAT_PRESENCE_SCOPE, resolveChatPresence, type ChatPresenceMode } from '../chat/chatPresence.ts';
+import {
+  CHAT_PRESENCE_SCOPE,
+  resolveChatPresence,
+  type ChatPresenceMode,
+  type ChatPresencePolicy,
+} from '../chat/chatPresence.ts';
 import {
   conversationNeedsAttention,
   toChatActor,
@@ -119,9 +124,15 @@ export async function getOperationalTeamPresence(
   store: OperationalChatStore,
   tenantId: string,
   now: number = Date.now(),
+  presencePolicy?: ChatPresencePolicy | null,
 ): Promise<OperationalTeamPresence> {
   const raw = await store.readTeamPresence(tenantId);
-  const presence = resolveChatPresence({ mode: raw.mode, latestAdminSeenAt: raw.latestAdminSeenAt, now });
+  const presence = resolveChatPresence({
+    mode: raw.mode,
+    latestAdminSeenAt: raw.latestAdminSeenAt,
+    now,
+    presencePolicy,
+  });
   return {
     presenceScope: CHAT_PRESENCE_SCOPE,
     status: presence.teamStatus,

@@ -174,10 +174,14 @@ test('Admin warns when forced Online has no active operator heartbeat (availabil
   assert.match(adminPanel, /!chatAvailability\.hasActiveAdmin/);
   assert.match(adminPanel, /Forced Online still advertises human availability/);
   assert.match(adminPanel, /Public\s+behaviour is unchanged in this release/);
-  // Must not alter resolveChatPresence forced-online semantics in this PR.
+  // Default (legacy) forced-online semantics remain; Option 1 is policy-gated only.
   const presence = fs.readFileSync(path.join(process.cwd(), 'src/lib/chat/chatPresence.ts'), 'utf8');
   assert.match(presence, /forcedOnline = mode === 'online' \|\| mode === 'available'/);
-  assert.match(presence, /forcedOnline\s*\?\s*'online'/);
+  assert.match(presence, /DEFAULT_CHAT_PRESENCE_POLICY: ChatPresencePolicy = 'legacy_forced_online'/);
+  assert.equal(
+    resolveChatPresence({ mode: 'online', latestAdminSeenAt: null }).status,
+    'online',
+  );
 });
 
 test('additive migration introduces chatRole default none without seeding agent access', () => {

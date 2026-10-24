@@ -14,6 +14,8 @@ import type { PlatformTenantId } from '../platform/sourceContext.ts';
  * Read: chat:dashboard, chat:read, chat:diagnostics.
  * Delegated write: chat:reply, chat:resolve, chat:reopen, chat:archive (archive and restore),
  * chat:delete (permanent deletion of message content; lead identity is retained on the tombstone).
+ * Presence write (WS-1 contract / WS-3–4 adapters): chat:presence:write — not granted to
+ * existing WordPress or Silver credentials until those adapters ship.
  */
 export type IntegrationScope =
   | 'chat:dashboard'
@@ -23,7 +25,8 @@ export type IntegrationScope =
   | 'chat:resolve'
   | 'chat:reopen'
   | 'chat:archive'
-  | 'chat:delete';
+  | 'chat:delete'
+  | 'chat:presence:write';
 
 export type IntegrationDefinition = {
   integrationId: string;
