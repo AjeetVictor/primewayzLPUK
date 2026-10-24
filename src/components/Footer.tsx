@@ -16,6 +16,7 @@ import { CANONICAL_ROUTES } from '../constants/canonicalRoutes';
 import { AUDIT_CHECKER_PATH } from '../constants/navigation';
 import { apiUrl } from '../utils/apiUrl';
 import { SelfAuditCta } from './SelfAuditCta';
+import { openAnalyticsSettings } from '../lib/analyticsConsent';
 import { getFirstUtmParams, getLatestUtmParams } from '../lib/utm';
 import { submissionIdForPayload, type SubmissionIdentity } from '../lib/submissionId';
 
@@ -348,6 +349,15 @@ export const Footer = () => {
             >
               Cookies Policy
             </TrackedLink>
+            <span className="hidden h-4 w-px bg-slate-300 sm:block" aria-hidden />
+            <button
+              type="button"
+              onClick={() => openAnalyticsSettings()}
+              className="hover:text-brand-navy underline-offset-2 hover:underline"
+              data-testid="footer-cookie-settings"
+            >
+              Cookie settings
+            </button>
           </div>
 
           <div className="flex items-center gap-3">

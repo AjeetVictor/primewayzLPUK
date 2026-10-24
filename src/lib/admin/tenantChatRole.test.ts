@@ -168,6 +168,18 @@ test('Admin presence calls forward the selected tenantId (UK versus Infotech fix
   assert.match(server, /clearAdminPresenceForUser\(prisma, \{ userId: decoded\.id \}\)/);
 });
 
+test('Admin warns when forced Online has no active operator heartbeat (availability logic unchanged)', () => {
+  const adminPanel = fs.readFileSync(path.join(process.cwd(), 'src/components/AdminPanel.tsx'), 'utf8');
+  assert.match(adminPanel, /data-testid="forced-online-heartbeat-warning"/);
+  assert.match(adminPanel, /!chatAvailability\.hasActiveAdmin/);
+  assert.match(adminPanel, /Forced Online still advertises human availability/);
+  assert.match(adminPanel, /Public\s+behaviour is unchanged in this release/);
+  // Must not alter resolveChatPresence forced-online semantics in this PR.
+  const presence = fs.readFileSync(path.join(process.cwd(), 'src/lib/chat/chatPresence.ts'), 'utf8');
+  assert.match(presence, /forcedOnline = mode === 'online' \|\| mode === 'available'/);
+  assert.match(presence, /forcedOnline\s*\?\s*'online'/);
+});
+
 test('additive migration introduces chatRole default none without seeding agent access', () => {
   const migration = fs.readFileSync(
     path.join(process.cwd(), 'prisma/migrations/20261020180000_tenant_chat_role_presence_authz/migration.sql'),

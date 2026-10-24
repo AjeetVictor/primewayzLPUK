@@ -2,6 +2,26 @@
 
 To host the Primewayz application on an Apache server, follow these steps:
 
+## 0. Public asset permissions preflight (required before restart)
+
+A previous production regression left `dist/client/assets` at mode `700` and JS/CSS at `600`, so Apache returned HTTP 403 for static assets.
+
+After `npm run build` on the Linux deploy host, and **before** restarting Node/PM2:
+
+```bash
+npm run preflight:assets
+```
+
+If it fails, apply **only** narrow fixes under the public build tree (never chmod the whole repo or shared server):
+
+```bash
+find dist/client -type d -exec chmod 755 {} +
+find dist/client -type f -exec chmod 644 {} +
+npm run preflight:assets
+```
+
+Confirm public JS, CSS, and images are readable by the Apache user, and that no secret files (for example `.env`) appear under `dist/client`.
+
 ## 1. Static File Hosting (SPA Support)
 
 The built application is located in the `dist` folder. When serving this folder with Apache, ensure `mod_rewrite` is enabled.

@@ -189,7 +189,7 @@ const pageContent = {
       {
         title: '7. Cookie consent',
         body:
-          'You can accept, reject, or manage optional analytics using Cookie settings. You can change or withdraw your choice at any time using the persistent Cookie settings control. Enquiry and booking forms remain available when analytics are rejected.',
+          'You can accept, reject, or manage optional analytics using Cookie settings. You can change or withdraw your choice at any time using the Cookie settings link in the site footer. Enquiry and booking forms remain available when analytics are rejected.',
       },
       {
         title: '8. Managing cookies in your browser',
