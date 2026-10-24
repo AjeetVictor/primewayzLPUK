@@ -479,7 +479,10 @@ test('ingestion contract: replay protection, scope gate, no tenant override, no 
   const silver = INTEGRATION_REGISTRY.find((entry) => entry.integrationId === 'rrb-silver-campaign-next')!;
   assert.equal(wordpress.scopes.includes(OPERATOR_PRESENCE_WRITE_SCOPE), true, 'WS-3 grants WP presence write');
   assert.equal(wordpress.tenantId, 'pw-infotech');
-  assert.equal(silver.scopes.includes(OPERATOR_PRESENCE_WRITE_SCOPE), false, 'Silver stays without presence write');
+  assert.equal(silver.scopes.includes(OPERATOR_PRESENCE_WRITE_SCOPE), true, 'WS-4 grants Silver presence write');
+  assert.equal(silver.tenantId, 'rrb-silver-campaign');
+  assert.equal(silver.scopes.includes('chat:archive'), false);
+  assert.equal(silver.scopes.includes('chat:delete'), false);
 
   assert.throws(
     () => parseOperatorPresenceHeartbeatBody({ clientActionId: 'a', operatorRef: 'op-1', tenantId: 'pw-uk' }),
@@ -847,7 +850,7 @@ test('retention constants and opportunistic prune ownership', async () => {
   }), 'claimed', 'expired idempotency key was pruned and can be reclaimed');
 });
 
-test('server wiring: policy/reporting/ingestion routes present; WP presence write only; no Option 1 activation', () => {
+test('server wiring: policy/reporting/ingestion routes present; WP+Silver presence write; no Option 1 activation', () => {
   const server = read('server.ts');
   assert.match(server, /TENANT_PRESENCE_POLICY_ADMIN_PATH/);
   assert.match(server, /TENANT_PRESENCE_REPORTING_ADMIN_PATH/);
@@ -859,10 +862,9 @@ test('server wiring: policy/reporting/ingestion routes present; WP presence writ
   assert.doesNotMatch(server, /heartbeat_required_online['"]\s*,\s*reason:/);
   const registry = read('src/lib/integrations/integrationRegistry.ts');
   assert.match(registry, /integrationId: 'primewayz-wordpress'[\s\S]*?chat:presence:write/);
-  assert.doesNotMatch(
-    registry,
-    /integrationId: 'rrb-silver-campaign-next'[\s\S]*?chat:presence:write/,
-  );
+  assert.match(registry, /integrationId: 'rrb-silver-campaign-next'[\s\S]*?chat:presence:write/);
+  assert.doesNotMatch(registry, /integrationId: 'rrb-silver-campaign-next'[\s\S]*?chat:archive/);
+  assert.doesNotMatch(registry, /integrationId: 'rrb-silver-campaign-next'[\s\S]*?chat:delete/);
 });
 
 test('migration is additive and does not seed policies', () => {

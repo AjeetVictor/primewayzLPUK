@@ -74,6 +74,7 @@ const NOW = Date.parse('2026-10-04T09:00:00.000Z');
 const SILVER_SCOPES = [
   'chat:dashboard',
   'chat:diagnostics',
+  'chat:presence:write',
   'chat:read',
   'chat:reopen',
   'chat:reply',
@@ -573,7 +574,7 @@ test('registry: the WordPress integration is bound to pw-infotech with ops + WS-
     ),
   );
   const silver = INTEGRATION_REGISTRY.find((entry) => entry.integrationId === 'rrb-silver-campaign-next')!;
-  assert.equal(silver.scopes.includes('chat:presence:write'), false, 'Silver must not receive presence write in WS-3');
+  assert.ok(silver.scopes.includes('chat:presence:write'), 'WS-4 grants Silver presence write');
 });
 
 test('registry: Silver campaign ops are bound to rrb-silver-campaign without archive / delete scopes', () => {

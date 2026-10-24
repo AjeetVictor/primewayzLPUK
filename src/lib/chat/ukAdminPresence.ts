@@ -4,7 +4,7 @@
  * Couples authenticated UK Admin chat-agent sessions to tenant heartbeats.
  * Dashboard and visitor availability share resolveChatPresence (same store).
  * Does not activate Option 1 (presencePolicy stays Host-controlled / default legacy).
- * Does not grant WordPress / Silver presence-write scopes.
+ * Does not change WordPress / Silver integration presence-write scopes (those are registry-owned).
  */
 
 import {

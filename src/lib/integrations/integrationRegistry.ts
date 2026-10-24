@@ -15,7 +15,7 @@ import type { PlatformTenantId } from '../platform/sourceContext.ts';
  * Delegated write: chat:reply, chat:resolve, chat:reopen, chat:archive (archive and restore),
  * chat:delete (permanent deletion of message content; lead identity is retained on the tombstone).
  * Presence write (WS-1 contract): chat:presence:write.
- * WS-3 grants it only to primewayz-wordpress (pw-infotech). Silver remains without it (WS-4).
+ * WS-3: primewayz-wordpress (pw-infotech). WS-4: rrb-silver-campaign-next (rrb-silver-campaign).
  */
 export type IntegrationScope =
   | 'chat:dashboard'
@@ -74,6 +74,8 @@ export const INTEGRATION_REGISTRY: readonly IntegrationDefinition[] = [
       'chat:reply',
       'chat:resolve',
       'chat:reopen',
+      // WS-4: Silver campaign operator console presence only (not archive/delete).
+      'chat:presence:write',
     ],
     tokenEnv: 'RRB_SILVER_CHAT_INTEGRATION_TOKEN',
     previousTokenEnv: 'RRB_SILVER_CHAT_INTEGRATION_TOKEN_PREVIOUS',
