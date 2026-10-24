@@ -46,6 +46,11 @@ export const OPERATOR_PRESENCE_OPERATOR_REF_MAX = 64;
 export const OPERATOR_PRESENCE_CORRELATION_ID_MAX = 64;
 export const OPERATOR_PRESENCE_IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
 export const OPERATOR_PRESENCE_HEARTBEAT_EXPIRES_MS = ADMIN_PRESENCE_ACTIVE_WINDOW_MS;
+/**
+ * Client clocks may run slightly ahead. Stamps beyond this skew are rejected so a
+ * delayed Offline cannot use a far-future notAfterMs to wipe newer heartbeats.
+ */
+export const OPERATOR_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS = 2 * 60 * 1000;
 
 export type OperatorPresenceIngestionPrincipal = {
   kind: 'integration' | 'installation' | 'admin';
@@ -339,6 +344,25 @@ export function parseOperatorPresenceOfflineBody(body: unknown): OperatorPresenc
   return { ...base, ...(notAfterMs !== undefined ? { notAfterMs } : {}) };
 }
 
+/**
+ * Reject far-future Offline stamps. Honest clients send Date.now() at disconnect;
+ * a delayed request with a year-ahead stamp must not clear heartbeats written later.
+ */
+export function assertOperatorPresenceNotAfterMsAllowed(
+  notAfterMs: number | undefined,
+  now: Date = new Date(),
+): void {
+  if (notAfterMs === undefined) return;
+  const maxAllowed = now.getTime() + OPERATOR_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS;
+  if (notAfterMs > maxAllowed) {
+    throw new OperatorPresenceIngestionError(
+      400,
+      'invalid_request',
+      'notAfterMs cannot be substantially in the future.',
+    );
+  }
+}
+
 export function createOperatorPresenceIngestionHandlers(deps: OperatorPresenceIngestionDeps) {
   const now = () => deps.now?.() ?? new Date();
 
@@ -461,6 +485,7 @@ export function createOperatorPresenceIngestionHandlers(deps: OperatorPresenceIn
       }
       const body = parseOperatorPresenceOfflineBody(req.body);
       const at = now();
+      assertOperatorPresenceNotAfterMsAllowed(body.notAfterMs, at);
       const claimInput = {
         tenantId: principal.tenantId,
         action: 'offline',
@@ -594,7 +619,7 @@ export const OPERATOR_PRESENCE_INGESTION_CONTRACT = {
       clientActionId: 'string (1..64) — replay protection',
       operatorRef: 'string (1..64) — same session ref as heartbeat',
       correlationId: 'optional string (1..64)',
-      notAfterMs: 'optional finite epoch ms — stale Offline must not wipe a newer beat',
+      notAfterMs: 'optional finite epoch ms — stale Offline must not wipe a newer beat; far-future stamps rejected (2m skew)',
     },
     rejectedFields: ['tenantId', 'operatorUserId', 'token', 'password', 'secret'],
   },

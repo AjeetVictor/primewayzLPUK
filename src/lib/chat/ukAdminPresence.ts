@@ -170,16 +170,27 @@ export type UkAdminPresenceClearResult = {
   userId: number;
 };
 
+/** Align with operator-presence ingestion: allow small clock skew, reject far-future stamps. */
+export const UK_ADMIN_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS = 2 * 60 * 1000;
+
 /**
  * Parse optional `notAfterMs` from an Offline body.
  * Used so a delayed Offline cannot clear a heartbeat written after this session ended.
+ * Far-future stamps are rejected (optional `now` for tests).
  */
-export function parseUkAdminPresenceNotAfterMs(body: unknown): Date | undefined {
+export function parseUkAdminPresenceNotAfterMs(
+  body: unknown,
+  now: Date = new Date(),
+): Date | undefined {
   if (body == null || typeof body !== 'object' || Array.isArray(body)) return undefined;
   const raw = (body as Record<string, unknown>).notAfterMs;
   if (typeof raw !== 'number' || !Number.isFinite(raw)) return undefined;
   const date = new Date(raw);
-  return Number.isNaN(date.getTime()) ? undefined : date;
+  if (Number.isNaN(date.getTime())) return undefined;
+  if (raw > now.getTime() + UK_ADMIN_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS) {
+    throw new Error('notAfterMs_too_far_future');
+  }
+  return date;
 }
 
 /**

@@ -10,10 +10,12 @@ import test from 'node:test';
 import express from 'express';
 import { ADMIN_PRESENCE_ACTIVE_WINDOW_MS, resolveChatPresence } from './chatPresence.ts';
 import {
+  assertOperatorPresenceNotAfterMsAllowed,
   assertPresenceWriteAuthorized,
   createOperatorPresenceIngestionHandlers,
   OPERATOR_PRESENCE_HEARTBEAT_PATH,
   OPERATOR_PRESENCE_INGESTION_CONTRACT,
+  OPERATOR_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS,
   OPERATOR_PRESENCE_OFFLINE_PATH,
   OPERATOR_PRESENCE_WRITE_SCOPE,
   OperatorPresenceIngestionError,
@@ -191,6 +193,14 @@ test('WS-3 delayed Offline with notAfterMs does not wipe a newer heartbeat', asy
   });
   assert.equal(body.notAfterMs, NOW - 10_000);
 
+  assert.doesNotThrow(() =>
+    assertOperatorPresenceNotAfterMsAllowed(NOW + OPERATOR_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS, new Date(NOW)),
+  );
+  assert.throws(
+    () => assertOperatorPresenceNotAfterMsAllowed(NOW + OPERATOR_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS + 1, new Date(NOW)),
+    (err: unknown) => err instanceof OperatorPresenceIngestionError && err.code === 'invalid_request',
+  );
+
   assert.throws(
     () => parseOperatorPresenceOfflineBody({ clientActionId: 'x', operatorRef: 'y', tenantId: 'pw-infotech' }),
     (err: unknown) => err instanceof OperatorPresenceIngestionError && err.code === 'tenant_mismatch',
@@ -245,6 +255,20 @@ test('WS-3 delayed Offline with notAfterMs does not wipe a newer heartbeat', asy
     }).then((r) => r.json());
     assert.equal(fresh.cleared, 1);
     assert.equal(db.heartbeats.length, 0);
+
+    await recordTenantAdminHeartbeat(db.prisma, { tenantId: 'pw-infotech', userId, now: new Date(NOW) });
+    const future = await fetch(`http://127.0.0.1:${port}${OPERATOR_PRESENCE_OFFLINE_PATH}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        clientActionId: 'off-future',
+        operatorRef: ref,
+        notAfterMs: NOW + OPERATOR_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS + 60_000,
+      }),
+    }).then(async (r) => ({ status: r.status, body: await r.json() }));
+    assert.equal(future.status, 400);
+    assert.equal(future.body.code, 'invalid_request');
+    assert.equal(db.heartbeats.length, 1, 'far-future Offline must not clear');
   } finally {
     await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
   }

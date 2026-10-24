@@ -13,7 +13,7 @@
 |---|---|
 | Scope grant | `chat:presence:write` on `primewayz-wordpress` → `pw-infotech` only |
 | Silver | Still **without** presence write |
-| Integration Offline | `POST /api/v1/operator-presence/offline` for principals with write scope + optional `notAfterMs` |
+| Integration Offline | `POST /api/v1/operator-presence/offline` for principals with write scope + optional `notAfterMs` (far-future stamps rejected; 2‑minute skew) |
 | Installation Offline | Still `501 reserved` (connection health ≠ human Online) |
 | WP adapter | Console AJAX → PHP → central heartbeat/offline; Bearer stays server-side |
 | Multi-tab | Distinct opaque `operatorRef` per console instance; Offline clears only that session |

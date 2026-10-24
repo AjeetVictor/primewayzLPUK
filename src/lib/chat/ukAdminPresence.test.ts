@@ -27,6 +27,7 @@ import {
   isVerifiedHumanOnline,
   parseUkAdminPresenceNotAfterMs,
   presenceExpiresAtFromLatest,
+  UK_ADMIN_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS,
   UK_ADMIN_PRESENCE_OFFLINE_PATH,
 } from './ukAdminPresence.ts';
 import {
@@ -212,8 +213,26 @@ test('stale Offline notAfter does not clear a newer heartbeat', async () => {
   );
   assert.equal(cleared.cleared, 1);
   assert.equal(db.heartbeats.length, 0);
-  assert.equal(parseUkAdminPresenceNotAfterMs({ notAfterMs: older.getTime() })?.getTime(), older.getTime());
-  assert.equal(parseUkAdminPresenceNotAfterMs({}), undefined);
+  assert.equal(
+    parseUkAdminPresenceNotAfterMs({ notAfterMs: older.getTime() }, new Date(NOW))?.getTime(),
+    older.getTime(),
+  );
+  assert.equal(parseUkAdminPresenceNotAfterMs({}, new Date(NOW)), undefined);
+  assert.equal(
+    parseUkAdminPresenceNotAfterMs(
+      { notAfterMs: NOW + UK_ADMIN_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS },
+      new Date(NOW),
+    )?.getTime(),
+    NOW + UK_ADMIN_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS,
+  );
+  assert.throws(
+    () =>
+      parseUkAdminPresenceNotAfterMs(
+        { notAfterMs: NOW + UK_ADMIN_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS + 1 },
+        new Date(NOW),
+      ),
+    /notAfterMs_too_far_future/,
+  );
 });
 
 test('authenticated UK agent heartbeat yields verified human Online and operator count', async () => {
