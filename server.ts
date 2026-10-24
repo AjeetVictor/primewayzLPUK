@@ -130,6 +130,24 @@ import {
   createTenantChatEntitlementAdminHandlers,
   TENANT_CHAT_ENTITLEMENT_ADMIN_PATH,
 } from './src/lib/platform/tenantChatEntitlementAdmin.ts';
+import { createPrismaTenantPresencePolicyStore } from './src/lib/platform/tenantPresencePolicyPrisma.ts';
+import { lookupEffectivePresencePolicy } from './src/lib/platform/tenantPresencePolicy.ts';
+import {
+  createTenantPresencePolicyAdminHandlers,
+  TENANT_PRESENCE_POLICY_ADMIN_PATH,
+  TENANT_PRESENCE_REPORTING_ADMIN_PATH,
+} from './src/lib/platform/tenantPresencePolicyAdmin.ts';
+import { createPrismaTenantPresenceEventStore } from './src/lib/chat/tenantPresenceEventsPrisma.ts';
+import { createPrismaPresenceIdempotencyStore } from './src/lib/chat/tenantPresenceIdempotency.ts';
+import {
+  createOperatorPresenceIngestionHandlers,
+  OPERATOR_PRESENCE_HEARTBEAT_PATH,
+  OPERATOR_PRESENCE_WRITE_SCOPE,
+  type OperatorPresenceIngestionPrincipal,
+} from './src/lib/chat/operatorPresenceIngestion.ts';
+import { parseBearerToken, resolveIntegrationPrincipal } from './src/lib/integrations/integrationRegistry.ts';
+import { authenticateInstallationCredential } from './src/lib/chatConnect/lifecycle.ts';
+import { parseInstallationBearer } from './src/lib/chatConnect/credentials.ts';
 import { recordLegacyChatConnectActivity } from './src/lib/chatConnect/legacyActivity.ts';
 import {
   CHAT_CONNECT_ACTIVATE_PATH,
@@ -147,6 +165,7 @@ import {
 } from './src/lib/chat/chatPresence.ts';
 import {
   clearAdminPresenceForUser,
+  listAdminPresenceTenantIdsForUser,
   readOptionalTenantChatPresence,
   recordTenantAdminHeartbeat,
   recordTenantChatPresenceSetting,
@@ -257,6 +276,9 @@ const prisma = new PrismaClient();
 const chatConnectStore = createPrismaChatConnectStore(prisma);
 const tenantChatEntitlementStore = createPrismaTenantChatEntitlementStore(prisma);
 const tenantAccountStore = createPrismaTenantAccountStore(prisma);
+const tenantPresencePolicyStore = createPrismaTenantPresencePolicyStore(prisma);
+const tenantPresenceEventStore = createPrismaTenantPresenceEventStore(prisma);
+const tenantPresenceIdempotencyStore = createPrismaPresenceIdempotencyStore(prisma);
 const __dirname = path.resolve();
 
 const allBlogPosts = getAllBlogPosts();
@@ -497,9 +519,11 @@ async function getChatAvailabilityPayload(source?: SourceContext, adminPresenceT
   } catch (err) {
     console.warn('[local-safe] Falling back to default chat availability:', err instanceof Error ? err.message : err);
   }
+  const presencePolicy = await lookupEffectivePresencePolicy(tenantPresencePolicyStore, presenceTenantId);
   const { mode, hasActiveAdmin, computedStatus, status, canAcceptMessages } = resolveChatPresence({
     mode: setting?.mode,
     latestAdminSeenAt,
+    presencePolicy,
   });
   // Admin presence endpoints may omit source — never default canBookCall true (tenant leak risk).
   const scheduling = source
@@ -533,6 +557,7 @@ async function getChatAvailabilityPayload(source?: SourceContext, adminPresenceT
     mode,
     computedStatus,
     hasActiveAdmin,
+    presencePolicy,
     latestAdminSeenAt: latestAdminSeenAt?.toISOString() || null,
     customMessage: setting?.message || '',
   };
@@ -1967,7 +1992,27 @@ app.post('/api/admin/logout', async (req, res) => {
     if (token) {
       const decoded = jwt.verify(token, getJwtSecret()) as { id?: number };
       if (typeof decoded.id === 'number' && Number.isFinite(decoded.id)) {
+        let presenceTenantIds: string[] = [];
+        try {
+          presenceTenantIds = await listAdminPresenceTenantIdsForUser(prisma, decoded.id);
+        } catch {
+          presenceTenantIds = [];
+        }
         await clearAdminPresenceForUser(prisma, { userId: decoded.id });
+        for (const tenantId of presenceTenantIds) {
+          try {
+            await tenantPresenceEventStore.append({
+              tenantId,
+              eventType: 'operator_session_ended',
+              actorUserId: decoded.id,
+              actorRef: `user:${decoded.id}`,
+              correlationId: `logout:${tenantId}:${decoded.id}:${Date.now()}`,
+              details: { source: 'admin_logout' },
+            });
+          } catch {
+            // Observability must not block logout.
+          }
+        }
       }
     }
   } catch {
@@ -2637,6 +2682,73 @@ app.get(`${CHAT_PLATFORM_ADMIN_PREFIX}/audit`, requireAdmin, chatPlatformAdmin.a
 app.get(TENANT_CHAT_ENTITLEMENT_ADMIN_PATH, requireAdmin, tenantChatEntitlementAdmin.list);
 app.post(`${TENANT_CHAT_ENTITLEMENT_ADMIN_PATH}/:tenantId`, requireAdmin, requirePlatformOwner, tenantChatEntitlementAdmin.set);
 
+const tenantPresencePolicyAdmin = createTenantPresencePolicyAdminHandlers({
+  policyStore: tenantPresencePolicyStore,
+  eventStore: tenantPresenceEventStore,
+  presencePrisma: prisma,
+  accounts: tenantAccountStore,
+});
+app.get(TENANT_PRESENCE_POLICY_ADMIN_PATH, requireAdmin, tenantPresencePolicyAdmin.listPolicies);
+app.post(
+  `${TENANT_PRESENCE_POLICY_ADMIN_PATH}/:tenantId`,
+  requireAdmin,
+  requirePlatformOwner,
+  tenantPresencePolicyAdmin.setPolicy,
+);
+app.get(TENANT_PRESENCE_REPORTING_ADMIN_PATH, requireAdmin, tenantPresencePolicyAdmin.listReporting);
+app.get(
+  `${TENANT_PRESENCE_REPORTING_ADMIN_PATH}/:tenantId/events`,
+  requireAdmin,
+  tenantPresencePolicyAdmin.listEvents,
+);
+
+const operatorPresenceIngestion = createOperatorPresenceIngestionHandlers({
+  policyStore: tenantPresencePolicyStore,
+  eventStore: tenantPresenceEventStore,
+  idempotency: tenantPresenceIdempotencyStore,
+  recordHeartbeat: (input) => recordTenantAdminHeartbeat(prisma, input),
+  resolvePrincipal: async (req): Promise<OperatorPresenceIngestionPrincipal | null> => {
+    const integration = resolveIntegrationPrincipal(parseBearerToken(req.get('authorization')));
+    if (integration) {
+      return {
+        kind: 'integration',
+        tenantId: integration.tenantId,
+        integrationId: integration.integrationId,
+        scopes: integration.scopes,
+      };
+    }
+    const installationBearer = parseInstallationBearer(req.get('authorization'));
+    if (installationBearer) {
+      try {
+        const installation = await authenticateInstallationCredential(chatConnectStore, installationBearer);
+        if (!installation) return null;
+        // Installation credentials do not receive presence write until Chat Connect adapters grant it.
+        return {
+          kind: 'installation',
+          tenantId: installation.tenantId,
+          installationId: installation.id,
+          scopes: [],
+        };
+      } catch {
+        return null;
+      }
+    }
+    const admin = (req as AdminRequest).adminUser;
+    if (admin && Number.isInteger(admin.id)) {
+      const tenantId = typeof req.query.tenantId === 'string' ? req.query.tenantId : '';
+      if (!tenantId || tenantId === 'all') return null;
+      return {
+        kind: 'admin',
+        tenantId,
+        adminUserId: admin.id,
+        scopes: [OPERATOR_PRESENCE_WRITE_SCOPE],
+      };
+    }
+    return null;
+  },
+});
+app.post(OPERATOR_PRESENCE_HEARTBEAT_PATH, operatorPresenceIngestion.heartbeat);
+
 /** Team presence is per entity: "All entities" is not a presence target and is rejected. */
 function resolveAdminPresenceTenantId(req: Request, res: Response): string | null {
   let tenantId: string | undefined;
@@ -2663,6 +2775,7 @@ app.get('/api/admin/chat/availability', requireAdmin, requireRole(isOperationsRo
     teamStatus: resolveChatPresence({
       mode: payload.mode,
       latestAdminSeenAt: payload.latestAdminSeenAt ? new Date(payload.latestAdminSeenAt) : null,
+      presencePolicy: payload.presencePolicy,
     }).teamStatus,
   });
 });
@@ -2681,12 +2794,35 @@ app.patch('/api/admin/chat/availability', requireAdmin, requireRole(isOperations
     message: typeof req.body.message === 'string' ? req.body.message : null,
     updatedById: req.adminUser!.id,
   });
+  const eventType =
+    mode === 'available' || mode === 'online'
+      ? 'presence_available'
+      : mode === 'away'
+        ? 'presence_away'
+        : mode === 'offline'
+          ? 'presence_offline'
+          : null;
+  if (eventType) {
+    try {
+      await tenantPresenceEventStore.append({
+        tenantId,
+        eventType,
+        actorUserId: req.adminUser!.id,
+        actorRef: `user:${req.adminUser!.id}`,
+        correlationId: `mode:${tenantId}:${mode}:${Date.now()}`,
+        details: { mode, source: 'admin_availability_patch' },
+      });
+    } catch {
+      // Mode write already committed.
+    }
+  }
   const payload = await getChatAvailabilityPayload(undefined, tenantId);
   res.json({
     ...payload,
     teamStatus: resolveChatPresence({
       mode: payload.mode,
       latestAdminSeenAt: payload.latestAdminSeenAt ? new Date(payload.latestAdminSeenAt) : null,
+      presencePolicy: payload.presencePolicy,
     }).teamStatus,
   });
 });
@@ -2695,7 +2831,21 @@ app.post('/api/admin/presence/heartbeat', requireAdmin, requireRole(isOperations
   const tenantId = resolveAdminPresenceTenantId(req, res);
   if (!tenantId) return;
   if (!requireAdminTenantChatAccess(req, res, tenantId)) return;
-  await recordTenantAdminHeartbeat(prisma, { tenantId, userId: req.adminUser!.id });
+  const heartbeat = await recordTenantAdminHeartbeat(prisma, { tenantId, userId: req.adminUser!.id });
+  if (heartbeat.becameActive) {
+    try {
+      await tenantPresenceEventStore.append({
+        tenantId,
+        eventType: 'presence_available',
+        actorUserId: req.adminUser!.id,
+        actorRef: `user:${req.adminUser!.id}`,
+        correlationId: `admin-heartbeat:${tenantId}:${req.adminUser!.id}:${Date.now()}`,
+        details: { source: 'admin_heartbeat' },
+      });
+    } catch {
+      // Heartbeat already recorded.
+    }
+  }
   res.json({
     success: true,
     tenantId,

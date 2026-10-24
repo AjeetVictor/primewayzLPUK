@@ -1627,3 +1627,62 @@ model PlatformTenantSiteInstallation {
   @@unique([installationId])
   @@index([tenantId])
 }
+
+// --- Central tenant presence policy & operational events (WS-1) ---
+// No TenantPresencePolicy row ⇒ legacy_forced_online (existing behaviour preserved).
+// Host/Owner may activate heartbeat_required_online per tenant after adapters are ready.
+// TenantPresenceEvent stores significant transitions only — never one row per heartbeat.
+
+enum TenantPresencePolicyMode {
+  legacy_forced_online
+  heartbeat_required_online
+}
+
+model TenantPresencePolicy {
+  tenantId        String                   @id @db.VarChar(32)
+  policy          TenantPresencePolicyMode @default(legacy_forced_online)
+  reason          String                   @db.VarChar(512)
+  updatedByUserId Int?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  audits          TenantPresencePolicyAudit[]
+}
+
+model TenantPresencePolicyAudit {
+  id            Int                      @id @default(autoincrement())
+  tenantId      String                   @db.VarChar(32)
+  actorUserId   Int?
+  policy        TenantPresencePolicyMode
+  reason        String                   @db.VarChar(512)
+  createdAt     DateTime                 @default(now())
+  policyRow     TenantPresencePolicy     @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+}
+
+model TenantPresenceEvent {
+  id            Int      @id @default(autoincrement())
+  tenantId      String   @db.VarChar(32)
+  eventType     String   @db.VarChar(64)
+  actorRef      String?  @db.VarChar(64)
+  actorUserId   Int?
+  correlationId String?  @db.VarChar(64)
+  dedupeKey     String   @db.VarChar(128)
+  details       Json
+  createdAt     DateTime @default(now())
+
+  @@unique([tenantId, eventType, dedupeKey], map: "TenantPresenceEvent_tenant_type_dedupe_key")
+  @@index([tenantId, createdAt])
+  @@index([createdAt])
+}
+
+model TenantPresenceIdempotencyKey {
+  id             Int      @id @default(autoincrement())
+  tenantId       String   @db.VarChar(32)
+  action         String   @db.VarChar(32)
+  clientActionId String   @db.VarChar(64)
+  createdAt      DateTime @default(now())
+
+  @@unique([tenantId, action, clientActionId], map: "TenantPresenceIdempotency_tenant_action_key")
+  @@index([createdAt])
+}

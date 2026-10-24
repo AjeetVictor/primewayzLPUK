@@ -6,6 +6,8 @@
  * There is no global or cross-tenant fallback: a tenant with no rows reads as null/null.
  */
 
+import { ADMIN_PRESENCE_ACTIVE_WINDOW_MS, isAdminPresenceExpired } from './chatPresence.ts';
+
 export type TenantChatPresencePrisma = {
   chatPresenceSetting: {
     findFirst: (args: {
@@ -19,10 +21,15 @@ export type TenantChatPresencePrisma = {
   };
   adminPresence: {
     findFirst: (args: {
-      where: { tenantId: string };
-      orderBy: { lastSeenAt: 'desc' };
-      select: { lastSeenAt: true };
-    }) => Promise<{ lastSeenAt: Date } | null>;
+      where: { tenantId: string } | { tenantId: string; userId: number };
+      orderBy?: { lastSeenAt: 'desc' };
+      select: { lastSeenAt: true; userId?: true };
+    }) => Promise<{ lastSeenAt: Date; userId?: number } | null>;
+    findMany: (args: {
+      where: { tenantId?: string; userId?: number; lastSeenAt?: { gte: Date } };
+      select: { userId?: true; lastSeenAt?: true; tenantId?: true };
+      orderBy?: { lastSeenAt: 'desc' };
+    }) => Promise<Array<{ userId?: number; lastSeenAt?: Date; tenantId?: string }>>;
     upsert: (args: {
       where: { tenantId_userId: { tenantId: string; userId: number } };
       update: { lastSeenAt: Date };
@@ -36,7 +43,7 @@ export type TenantChatPresencePrisma = {
 
 export type TenantChatPresenceReadPrisma = {
   chatPresenceSetting: Pick<TenantChatPresencePrisma['chatPresenceSetting'], 'findFirst'>;
-  adminPresence: Pick<TenantChatPresencePrisma['adminPresence'], 'findFirst'>;
+  adminPresence: Pick<TenantChatPresencePrisma['adminPresence'], 'findFirst' | 'findMany'>;
 };
 
 export type TenantChatPresenceState = {
@@ -91,13 +98,59 @@ export async function recordTenantChatPresenceSetting(
 export async function recordTenantAdminHeartbeat(
   prisma: Pick<TenantChatPresencePrisma, 'adminPresence'>,
   input: { tenantId: string; userId: number; now?: Date },
-): Promise<void> {
+): Promise<{ previousLastSeenAt: Date | null; becameActive: boolean }> {
   const lastSeenAt = input.now ?? new Date();
+  const previous = await prisma.adminPresence.findFirst({
+    where: { tenantId: input.tenantId, userId: input.userId },
+    select: { lastSeenAt: true },
+  });
+  const previousLastSeenAt = previous?.lastSeenAt ?? null;
+  const wasActive = !isAdminPresenceExpired(previousLastSeenAt, lastSeenAt.getTime());
   await prisma.adminPresence.upsert({
     where: { tenantId_userId: { tenantId: input.tenantId, userId: input.userId } },
     update: { lastSeenAt },
     create: { tenantId: input.tenantId, userId: input.userId, lastSeenAt },
   });
+  return { previousLastSeenAt, becameActive: !wasActive };
+}
+
+type AdminPresenceReader = Pick<TenantChatPresencePrisma['adminPresence'], 'findMany'>;
+
+/** Count operators with a fresh heartbeat for one concrete tenant (no cross-tenant fallback). */
+export async function countActiveTenantOperators(
+  adminPresence: AdminPresenceReader,
+  tenantId: string,
+  now: Date = new Date(),
+  windowMs: number = ADMIN_PRESENCE_ACTIVE_WINDOW_MS,
+): Promise<number> {
+  const cutoff = new Date(now.getTime() - windowMs);
+  const rows = await adminPresence.findMany({
+    where: { tenantId, lastSeenAt: { gte: cutoff } },
+    select: { userId: true, lastSeenAt: true },
+  });
+  return rows.filter((row) => typeof row.userId === 'number').length;
+}
+
+export async function listActiveTenantOperators(
+  adminPresence: AdminPresenceReader,
+  tenantId: string,
+  now: Date = new Date(),
+  windowMs: number = ADMIN_PRESENCE_ACTIVE_WINDOW_MS,
+): Promise<Array<{ userId: number; lastSeenAt: Date; expiresAt: Date }>> {
+  const cutoff = new Date(now.getTime() - windowMs);
+  const rows = await adminPresence.findMany({
+    where: { tenantId, lastSeenAt: { gte: cutoff } },
+    select: { userId: true, lastSeenAt: true },
+    orderBy: { lastSeenAt: 'desc' },
+  });
+  return rows
+    .filter((row): row is { userId: number; lastSeenAt: Date } =>
+      typeof row.userId === 'number' && row.lastSeenAt instanceof Date)
+    .map((row) => ({
+      userId: row.userId,
+      lastSeenAt: row.lastSeenAt,
+      expiresAt: new Date(row.lastSeenAt.getTime() + windowMs),
+    }));
 }
 
 /**
@@ -115,4 +168,21 @@ export async function clearAdminPresenceForUser(
       : { userId: input.userId };
   const result = await prisma.adminPresence.deleteMany({ where });
   return result.count;
+}
+
+/**
+ * Tenant ids that currently have a heartbeat row for this operator.
+ * Used on logout so operational events stay tenant-scoped (no cross-tenant fallback).
+ */
+export async function listAdminPresenceTenantIdsForUser(
+  prisma: Pick<TenantChatPresencePrisma, 'adminPresence'>,
+  userId: number,
+): Promise<string[]> {
+  const rows = await prisma.adminPresence.findMany({
+    where: { userId },
+    select: { tenantId: true },
+  });
+  return rows
+    .map((row) => row.tenantId)
+    .filter((tenantId): tenantId is string => typeof tenantId === 'string' && tenantId.length > 0);
 }

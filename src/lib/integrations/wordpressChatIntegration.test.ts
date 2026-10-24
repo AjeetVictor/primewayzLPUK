@@ -1026,8 +1026,18 @@ test('presence helper preserves the existing availability semantics', () => {
   assert.equal(resolveChatPresence({ mode: 'online', latestAdminSeenAt: null, now: NOW }).status, 'online');
   assert.equal(resolveChatPresence({ mode: 'away', latestAdminSeenAt: recent, now: NOW }).status, 'away');
   assert.equal(resolveChatPresence({ mode: 'offline', latestAdminSeenAt: recent, now: NOW }).canAcceptMessages, false);
+  // Default policy remains legacy; Option 1 is opt-in per tenant and does not change WP semantics yet.
+  assert.equal(
+    resolveChatPresence({
+      mode: 'online',
+      latestAdminSeenAt: null,
+      now: NOW,
+      presencePolicy: 'legacy_forced_online',
+    }).status,
+    'online',
+  );
   const server = fs.readFileSync(path.join(process.cwd(), 'server.ts'), 'utf8');
-  assert.match(server, /resolveChatPresence\(\{\s*mode: setting\?\.mode,\s*latestAdminSeenAt,\s*\}\)/);
+  assert.match(server, /resolveChatPresence\(\{\s*mode: setting\?\.mode,\s*latestAdminSeenAt,\s*presencePolicy,/);
 });
 
 // --- Actor terminology and semantics ---
