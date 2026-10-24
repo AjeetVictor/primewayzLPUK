@@ -102,6 +102,7 @@ import { createPrismaChatConversationStore } from './src/lib/chat/chatConversati
 import { createAdminChatLifecycleHandlers } from './src/lib/admin/adminChatLifecycleRoutes.ts';
 import { removePurgedChatUploads } from './src/lib/chat/chatUploadRetention.ts';
 import {
+  CHAT_OPS_INTEGRATION_PATH,
   createWordPressChatIntegrationHandler,
   WORDPRESS_CHAT_INTEGRATION_PATH,
   wordpressChatBodyErrorHandler,
@@ -3396,10 +3397,10 @@ app.post('/api/chat/appointments', async (req, res) => {
   }
 });
 
-// WordPress operational chat API (server-to-server). Credential-bound to pw-infotech; reads plus
-// delegated reply / resolve / reopen / archive / restore / delete through the shared conversation store. No admin cookie,
-// no CORS, no tenant from the request.
-app.post(WORDPRESS_CHAT_INTEGRATION_PATH, createWordPressChatIntegrationHandler({
+// Operational chat API (server-to-server). Credential-bound via INTEGRATION_REGISTRY (WordPress Infotech
+// and Silver campaign). Reads plus delegated writes through the shared conversation store. No admin cookie,
+// no CORS, no tenant from the request. WordPress path kept; provider-neutral alias for non-WP connectors.
+const chatOpsIntegrationHandler = createWordPressChatIntegrationHandler({
   store: createPrismaOperationalChatStore(prisma),
   writes: chatConversationStore,
   siteUrl,
@@ -3408,9 +3409,13 @@ app.post(WORDPRESS_CHAT_INTEGRATION_PATH, createWordPressChatIntegrationHandler(
   recordAuthenticatedActivity: (input) => recordLegacyChatConnectActivity(chatConnectStore, input),
   resolveChatAccess: resolveTenantChatAccess,
   removeUploads: removePurgedChatUploads,
-}));
+});
+app.post(WORDPRESS_CHAT_INTEGRATION_PATH, chatOpsIntegrationHandler);
+app.post(CHAT_OPS_INTEGRATION_PATH, chatOpsIntegrationHandler);
 app.all(WORDPRESS_CHAT_INTEGRATION_PATH, wordpressChatMethodNotAllowed);
+app.all(CHAT_OPS_INTEGRATION_PATH, wordpressChatMethodNotAllowed);
 app.use(WORDPRESS_CHAT_INTEGRATION_PATH, wordpressChatBodyErrorHandler);
+app.use(CHAT_OPS_INTEGRATION_PATH, wordpressChatBodyErrorHandler);
 
 const chatConnectConnector = createChatConnectConnectorHandlers({ store: chatConnectStore, getClientIp });
 app.post(CHAT_CONNECT_ACTIVATE_PATH, chatConnectConnector.activate);

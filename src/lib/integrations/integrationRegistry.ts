@@ -50,6 +50,20 @@ export const INTEGRATION_REGISTRY: readonly IntegrationDefinition[] = [
     tokenEnv: 'WORDPRESS_CHAT_INTEGRATION_TOKEN',
     previousTokenEnv: 'WORDPRESS_CHAT_INTEGRATION_TOKEN_PREVIOUS',
   },
+  {
+    integrationId: 'rrb-silver-campaign-next',
+    tenantId: 'rrb-silver-campaign',
+    scopes: [
+      'chat:dashboard',
+      'chat:read',
+      'chat:diagnostics',
+      'chat:reply',
+      'chat:resolve',
+      'chat:reopen',
+    ],
+    tokenEnv: 'RRB_SILVER_CHAT_INTEGRATION_TOKEN',
+    previousTokenEnv: 'RRB_SILVER_CHAT_INTEGRATION_TOKEN_PREVIOUS',
+  },
 ] as const;
 
 const BEARER_PATTERN = /^Bearer[ \t]+([A-Za-z0-9._~+/=-]+)[ \t]*$/i;

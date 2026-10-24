@@ -53,6 +53,8 @@ import {
 } from './wordpressChatDelegatedActions.ts';
 
 export const WORDPRESS_CHAT_INTEGRATION_PATH = '/api/integrations/wordpress/chat';
+/** Provider-neutral alias for the same ops handler (non-WordPress connectors). */
+export const CHAT_OPS_INTEGRATION_PATH = '/api/integrations/chat/ops';
 export const WORDPRESS_CHAT_API_VERSION = '1';
 
 export const WORDPRESS_CHAT_ACTIONS = ['dashboard', 'conversation', 'diagnostics', ...DELEGATED_CHAT_WRITE_ACTIONS] as const;
@@ -426,7 +428,11 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
       status: (databaseReachable && !entitlementUnavailable ? serviceStatus(chatEnabled, canAcceptMessages) : 'unavailable') as ServiceStatus,
       api: { status: 'ok', version: WORDPRESS_CHAT_API_VERSION },
       authentication: { valid: true, integrationId: principal.integrationId, scopes: [...principal.scopes] },
-      tenantBinding: { tenantId: tenant.tenantId, valid: true, active: isTenantActive(tenant) },
+      tenantBinding: {
+        tenantId: tenant.tenantId,
+        valid: true,
+        active: isTenantActive(tenant, deps.env ?? process.env),
+      },
       chat: { enabled: chatEnabled, canAcceptMessages },
       team,
       database: { status: databaseReachable ? 'reachable' : 'unreachable' },
@@ -527,8 +533,9 @@ export function createWordPressChatIntegrationHandler(deps: WordPressChatIntegra
         throw new WordPressChatIntegrationError(401, 'integration_unauthorized', 'Missing or invalid integration credential.');
       }
 
+      const runtimeEnv = deps.env ?? process.env;
       const tenant = getTenantById(principal.tenantId);
-      if (!tenant || !isTenantActive(tenant)) {
+      if (!tenant || !isTenantActive(tenant, runtimeEnv)) {
         throw new WordPressChatIntegrationError(503, 'tenant_unavailable', 'The bound tenant is not available.');
       }
 

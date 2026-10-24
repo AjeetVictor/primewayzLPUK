@@ -34,7 +34,13 @@ import {
 export const DELEGATED_CHAT_WRITE_ACTIONS = ['reply', 'resolve', 'reopen', 'archive', 'restore', 'delete'] as const;
 export type DelegatedChatWriteAction = (typeof DELEGATED_CHAT_WRITE_ACTIONS)[number];
 
+/** Legacy audit source for Infotech WordPress; kept for continuity of existing rows and filters. */
 export const OPERATOR_ACTION_SOURCE = 'wordpress_integration';
+
+/** Audit source for a ChatOperatorAction: WordPress keeps the legacy string; other connectors use integrationId. */
+export function operatorActionSourceFor(integrationId: string): string {
+  return integrationId === 'primewayz-wordpress' ? OPERATOR_ACTION_SOURCE : integrationId;
+}
 
 export type DelegatedActor = { externalUserId: string; displayName: string | null };
 
@@ -149,7 +155,7 @@ export async function executeDelegatedChatAction(
       clientActionId: request.clientActionId,
       requestHash,
       requestId: input.requestId,
-      source: OPERATOR_ACTION_SOURCE,
+      source: operatorActionSourceFor(integrationId),
       tenantId,
       sessionId: session.id,
       action: request.action,
