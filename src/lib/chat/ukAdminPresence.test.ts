@@ -23,7 +23,9 @@ import {
   assertUkAdminPresenceBodyClean,
   buildUkAdminPresenceDashboardView,
   clearUkAdminOperatorPresenceForTenant,
+  isOption1Activated,
   isVerifiedHumanOnline,
+  parseUkAdminPresenceNotAfterMs,
   presenceExpiresAtFromLatest,
   UK_ADMIN_PRESENCE_OFFLINE_PATH,
 } from './ukAdminPresence.ts';
@@ -104,10 +106,16 @@ function createPresenceDb() {
       async deleteMany({ where }) {
         const before = heartbeats.length;
         const keep = heartbeats.filter((h) => {
-          if ('tenantId' in where && typeof where.tenantId === 'string') {
-            return !(h.tenantId === where.tenantId && h.userId === where.userId);
+          const tenantMatch =
+            'tenantId' in where && typeof where.tenantId === 'string'
+              ? h.tenantId === where.tenantId
+              : true;
+          const userMatch = h.userId === where.userId;
+          if (!tenantMatch || !userMatch) return true;
+          if (where.lastSeenAt && 'lte' in where.lastSeenAt) {
+            return h.lastSeenAt.getTime() > where.lastSeenAt.lte.getTime();
           }
-          return h.userId !== where.userId;
+          return false;
         });
         heartbeats.length = 0;
         heartbeats.push(...keep);
@@ -150,6 +158,61 @@ test('auth is not availability: session without heartbeat is not verified human 
   assert.equal(view.visitorStatus, 'assistant');
   assert.equal(view.activeOperatorCount, 0);
   assert.equal(view.option1Activated, false);
+  assert.equal(isOption1Activated('legacy_forced_online'), false);
+});
+
+test('option1Activated mirrors effective presence policy (not a fixed false)', async () => {
+  const db = createPresenceDb();
+  await recordTenantChatPresenceSetting(db.prisma, {
+    tenantId: 'pw-uk',
+    mode: 'auto',
+    message: null,
+    updatedById: 11,
+  });
+  const legacy = await buildUkAdminPresenceDashboardView({
+    presencePrisma: db.prisma,
+    tenantId: 'pw-uk',
+    principal: ukAgent,
+    state: { setting: { mode: 'auto', message: null }, latestAdminSeenAt: null },
+    presencePolicy: 'legacy_forced_online',
+    now: new Date(NOW),
+  });
+  assert.equal(legacy.option1Activated, false);
+  assert.equal(legacy.presencePolicy, 'legacy_forced_online');
+
+  const option1 = await buildUkAdminPresenceDashboardView({
+    presencePrisma: db.prisma,
+    tenantId: 'pw-uk',
+    principal: ukAgent,
+    state: { setting: { mode: 'auto', message: null }, latestAdminSeenAt: ago(1_000) },
+    presencePolicy: 'heartbeat_required_online',
+    now: new Date(NOW),
+  });
+  assert.equal(isOption1Activated('heartbeat_required_online'), true);
+  assert.equal(option1.option1Activated, true);
+  assert.equal(option1.presencePolicy, 'heartbeat_required_online');
+});
+
+test('stale Offline notAfter does not clear a newer heartbeat', async () => {
+  const db = createPresenceDb();
+  const older = ago(30_000);
+  const newer = ago(1_000);
+  await recordTenantAdminHeartbeat(db.prisma, { tenantId: 'pw-uk', userId: 11, now: newer });
+  const skipped = await clearUkAdminOperatorPresenceForTenant(
+    (input) => clearAdminPresenceForUser(db.prisma, input),
+    { userId: 11, tenantId: 'pw-uk', notAfter: older },
+  );
+  assert.equal(skipped.cleared, 0);
+  assert.equal(db.heartbeats.length, 1);
+
+  const cleared = await clearUkAdminOperatorPresenceForTenant(
+    (input) => clearAdminPresenceForUser(db.prisma, input),
+    { userId: 11, tenantId: 'pw-uk', notAfter: newer },
+  );
+  assert.equal(cleared.cleared, 1);
+  assert.equal(db.heartbeats.length, 0);
+  assert.equal(parseUkAdminPresenceNotAfterMs({ notAfterMs: older.getTime() })?.getTime(), older.getTime());
+  assert.equal(parseUkAdminPresenceNotAfterMs({}), undefined);
 });
 
 test('authenticated UK agent heartbeat yields verified human Online and operator count', async () => {
@@ -312,11 +375,12 @@ test('automated bot reply path never writes AdminPresence or ChatPresenceSetting
   assert.doesNotMatch(respondBlock, /adminPresence\.upsert/);
 });
 
-test('WS-2 wiring: UK offline path, dashboard enrichment, Option 1 stays inactive', () => {
+test('WS-2 wiring: UK offline path, dashboard enrichment, Option 1 not activated by this PR', () => {
   const server = read('server.ts');
   assert.match(server, /UK_ADMIN_PRESENCE_OFFLINE_PATH/);
   assert.match(server, /buildUkAdminPresenceDashboardView/);
   assert.match(server, /assertUkAdminPresenceBodyClean/);
+  assert.match(server, /parseUkAdminPresenceNotAfterMs/);
   assert.match(server, /attachAdminSessionIfPresent/);
   assert.match(server, /clearOperatorPresence:/);
   assert.doesNotMatch(server, /heartbeat_required_online['"]\s*,\s*reason:/);
@@ -325,9 +389,13 @@ test('WS-2 wiring: UK offline path, dashboard enrichment, Option 1 stays inactiv
   const panel = read('src/components/AdminPanel.tsx');
   assert.match(panel, /\/api\/admin\/presence\/offline/);
   assert.match(panel, /pagehide/);
+  assert.match(panel, /notAfterMs/);
+  assert.match(panel, /presenceGenerationRef/);
+  assert.match(panel, /queueMicrotask/);
   assert.match(panel, /admin-presence-operator-summary/);
   assert.match(panel, /verifiedHumanOnline/);
 
+  assert.match(read('src/lib/chat/ukAdminPresence.ts'), /isOption1Activated/);
   assert.doesNotMatch(
     read('src/lib/integrations/integrationRegistry.ts'),
     /scopes:\s*\[[^\]]*chat:presence:write/,

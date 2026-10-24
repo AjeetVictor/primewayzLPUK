@@ -178,6 +178,7 @@ import {
   assertUkAdminPresenceBodyClean,
   buildUkAdminPresenceDashboardView,
   clearUkAdminOperatorPresenceForTenant,
+  parseUkAdminPresenceNotAfterMs,
   UK_ADMIN_PRESENCE_OFFLINE_PATH,
 } from './src/lib/chat/ukAdminPresence.ts';
 import { createPublicChatApiCorsMiddleware } from './src/lib/chat/publicChatApiCors.ts';
@@ -2941,9 +2942,10 @@ app.post(UK_ADMIN_PRESENCE_OFFLINE_PATH, requireAdmin, requireRole(isOperationsR
       code: 'invalid_request',
     });
   }
+  const notAfter = parseUkAdminPresenceNotAfterMs(req.body);
   const result = await clearUkAdminOperatorPresenceForTenant(
     (input) => clearAdminPresenceForUser(prisma, input),
-    { userId: req.adminUser!.id, tenantId },
+    { userId: req.adminUser!.id, tenantId, ...(notAfter ? { notAfter } : {}) },
   );
   try {
     await tenantPresenceEventStore.append({
@@ -2952,7 +2954,11 @@ app.post(UK_ADMIN_PRESENCE_OFFLINE_PATH, requireAdmin, requireRole(isOperationsR
       actorUserId: req.adminUser!.id,
       actorRef: `user:${req.adminUser!.id}`,
       correlationId: `admin-offline:${tenantId}:${req.adminUser!.id}:${Date.now()}`,
-      details: { source: 'admin_presence_offline', cleared: result.cleared },
+      details: {
+        source: 'admin_presence_offline',
+        cleared: result.cleared,
+        ...(notAfter ? { notAfter: notAfter.toISOString() } : {}),
+      },
     });
   } catch {
     // Clear already applied.

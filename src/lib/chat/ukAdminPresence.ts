@@ -64,8 +64,14 @@ export type UkAdminPresenceDashboardView = {
   heartbeatWindowMs: number;
   operatorSession: UkAdminOperatorSessionView;
   presencePolicy: ChatPresencePolicy;
-  option1Activated: false;
+  /** True only when Host has activated Option 1 (`heartbeat_required_online`) for this tenant. */
+  option1Activated: boolean;
 };
+
+/** Option 1 = verified human Online requires an authorised fresh heartbeat. */
+export function isOption1Activated(presencePolicy: ChatPresencePolicy): boolean {
+  return presencePolicy === 'heartbeat_required_online';
+}
 
 export function assertUkAdminPresenceBodyClean(body: unknown): void {
   if (body == null || body === '') return;
@@ -154,7 +160,7 @@ export async function buildUkAdminPresenceDashboardView(input: {
     },
     // WS-2 never flips the durable policy row; Host activation remains WS-1 governance.
     presencePolicy: input.presencePolicy,
-    option1Activated: false,
+    option1Activated: isOption1Activated(input.presencePolicy),
   };
 }
 
@@ -165,13 +171,30 @@ export type UkAdminPresenceClearResult = {
 };
 
 /**
+ * Parse optional `notAfterMs` from an Offline body.
+ * Used so a delayed Offline cannot clear a heartbeat written after this session ended.
+ */
+export function parseUkAdminPresenceNotAfterMs(body: unknown): Date | undefined {
+  if (body == null || typeof body !== 'object' || Array.isArray(body)) return undefined;
+  const raw = (body as Record<string, unknown>).notAfterMs;
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return undefined;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+/**
  * Drop this operator's heartbeat for one concrete tenant (disconnect / offline).
  * Does not rewrite ChatPresenceSetting modes.
+ * Pass `notAfter` to refuse clearing heartbeats newer than the ending session.
  */
 export async function clearUkAdminOperatorPresenceForTenant(
-  clear: (input: { userId: number; tenantId: string }) => Promise<number>,
-  input: { userId: number; tenantId: string },
+  clear: (input: { userId: number; tenantId: string; notAfter?: Date }) => Promise<number>,
+  input: { userId: number; tenantId: string; notAfter?: Date },
 ): Promise<UkAdminPresenceClearResult> {
-  const cleared = await clear({ userId: input.userId, tenantId: input.tenantId });
+  const cleared = await clear({
+    userId: input.userId,
+    tenantId: input.tenantId,
+    ...(input.notAfter ? { notAfter: input.notAfter } : {}),
+  });
   return { cleared, tenantId: input.tenantId, userId: input.userId };
 }

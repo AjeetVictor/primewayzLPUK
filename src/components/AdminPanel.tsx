@@ -266,7 +266,7 @@ interface ChatAvailability {
   presenceExpiresAt?: string | null;
   heartbeatWindowMs?: number;
   operatorSession?: ChatAvailabilityOperatorSession;
-  option1Activated?: false;
+  option1Activated?: boolean;
 }
 
 interface User {
@@ -605,6 +605,10 @@ const AdminPanelContent = () => {
   const hasInitializedMessageWatchRef = useRef(false);
   const adminFileInputRef = useRef<HTMLInputElement | null>(null);
   const lastHeartbeatAtRef = useRef(0);
+  /** Bumps on each presence-effect start so stale Offline from a prior mount can be ignored client-side. */
+  const presenceGenerationRef = useRef(0);
+  /** Tenant currently owned by the live presence effect (null when none). */
+  const activePresenceTenantRef = useRef<string | null>(null);
 
   const adminTenantPath = (path: string) =>
     `${path}${path.includes('?') ? '&' : '?'}tenantId=${encodeURIComponent(adminTenantFilter)}`;
@@ -750,34 +754,69 @@ const AdminPanelContent = () => {
     }
   };
 
-  const sendPresenceOffline = (tenantId: string, keepalive = false) => {
+  /**
+   * Best-effort Offline for one tenant. Always include notAfterMs so a delayed response cannot
+   * clear a heartbeat written after this session ended (remount / tenant switch / newer beat).
+   * pagehide and effect cleanup are not authoritative — logout + heartbeat TTL are the safety net.
+   */
+  const sendPresenceOffline = (
+    tenantId: string,
+    options: { keepalive?: boolean; notAfterMs: number; generation?: number },
+  ) => {
     if (!tenantId || tenantId === 'all') return;
+    if (
+      typeof options.generation === 'number'
+      && options.generation !== presenceGenerationRef.current
+    ) {
+      // A newer presence effect already owns the session; skip this stale Offline.
+      return;
+    }
     // Use the captured tenant id — do not read adminTenantFilter (may already have changed on cleanup).
     const path = `/api/admin/presence/offline?tenantId=${encodeURIComponent(tenantId)}`;
     void fetch(apiUrl(path), {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: '{}',
-      keepalive,
+      body: JSON.stringify({ notAfterMs: options.notAfterMs }),
+      keepalive: options.keepalive === true,
     }).catch(() => {
-      // Disconnect best-effort; TTL remains the safety net.
+      // Disconnect best-effort; TTL remains the safety net when unload beacons are dropped.
     });
   };
 
   // Heartbeats and availability reads follow the selected entity (not Host default pw-uk).
-  // Cleanup / pagehide clears this operator's heartbeat so Human Online does not linger on disconnect.
+  // pagehide + tenant-switch attempt Offline; explicit logout + heartbeat TTL remain authoritative.
   useEffect(() => {
     if (!isAuthenticated || !user) return;
-    if (!adminTenantFilter || adminTenantFilter === 'all') return;
+    if (!adminTenantFilter || adminTenantFilter === 'all') {
+      activePresenceTenantRef.current = null;
+      return;
+    }
 
     const tenantForSession = adminTenantFilter;
+    const previousTenant = activePresenceTenantRef.current;
+    const generation = ++presenceGenerationRef.current;
+    activePresenceTenantRef.current = tenantForSession;
+
+    // Leaving another entity: clear the prior tenant immediately (not the remount case).
+    if (previousTenant && previousTenant !== tenantForSession) {
+      sendPresenceOffline(previousTenant, {
+        keepalive: true,
+        notAfterMs: Date.now(),
+      });
+    }
+
     lastHeartbeatAtRef.current = 0;
     fetchChatAvailability(true);
     sendPresenceHeartbeat(true);
     const interval = setInterval(() => sendPresenceHeartbeat(true), 60000);
     const activityHandler = () => sendPresenceHeartbeat(false);
-    const disconnectHandler = () => sendPresenceOffline(tenantForSession, true);
+    const disconnectHandler = () =>
+      sendPresenceOffline(tenantForSession, {
+        keepalive: true,
+        notAfterMs: Date.now(),
+        generation,
+      });
 
     window.addEventListener('focus', activityHandler);
     window.addEventListener('click', activityHandler);
@@ -790,7 +829,21 @@ const AdminPanelContent = () => {
       window.removeEventListener('click', activityHandler);
       window.removeEventListener('keydown', activityHandler);
       window.removeEventListener('pagehide', disconnectHandler);
-      sendPresenceOffline(tenantForSession, true);
+      const notAfterMs = Date.now();
+      const endingGeneration = generation;
+      // Defer: same-tenant remount bumps generation before this runs, so we skip Offline.
+      // True unmount / logout leaves generation unchanged (or logout bumps it and we still skip).
+      queueMicrotask(() => {
+        if (presenceGenerationRef.current !== endingGeneration) return;
+        sendPresenceOffline(tenantForSession, {
+          keepalive: true,
+          notAfterMs,
+          generation: endingGeneration,
+        });
+        if (activePresenceTenantRef.current === tenantForSession) {
+          activePresenceTenantRef.current = null;
+        }
+      });
     };
   }, [isAuthenticated, user, adminTenantFilter]);
 
@@ -952,6 +1005,9 @@ const AdminPanelContent = () => {
 
   const handleLogout = async () => {
     try {
+      // Invalidate this tab's presence generation so late pagehide/cleanup Offline is a no-op.
+      presenceGenerationRef.current += 1;
+      // Server logout clears all tenant heartbeats for this user (authoritative; not unload-dependent).
       await fetch(apiUrl('/api/admin/logout'), { method: 'POST', credentials: 'include' });
       setIsAuthenticated(false);
       setUser(null);

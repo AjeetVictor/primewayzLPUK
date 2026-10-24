@@ -36,7 +36,9 @@ export type TenantChatPresencePrisma = {
       create: { tenantId: string; userId: number; lastSeenAt: Date };
     }) => Promise<unknown>;
     deleteMany: (args: {
-      where: { userId: number } | { tenantId: string; userId: number };
+      where:
+        | { userId: number; lastSeenAt?: { lte: Date } }
+        | { tenantId: string; userId: number; lastSeenAt?: { lte: Date } };
     }) => Promise<{ count: number }>;
   };
 };
@@ -157,15 +159,23 @@ export async function listActiveTenantOperators(
  * Drop heartbeat rows for one administrator (all tenants, or one concrete tenant).
  * Used on explicit logout so auto-mode team availability does not linger until TTL.
  * Does not change ChatPresenceSetting — forced available/away/offline modes stay as set.
+ *
+ * When `notAfter` is set, only rows with lastSeenAt <= notAfter are cleared. That prevents a
+ * stale async Offline (remount / tenant-switch race) from wiping a newer heartbeat.
+ * Explicit logout omits `notAfter` so all of this operator's rows are cleared.
  */
 export async function clearAdminPresenceForUser(
   prisma: Pick<TenantChatPresencePrisma, 'adminPresence'>,
-  input: { userId: number; tenantId?: string },
+  input: { userId: number; tenantId?: string; notAfter?: Date },
 ): Promise<number> {
-  const where =
+  const base =
     typeof input.tenantId === 'string' && input.tenantId.length > 0
       ? { tenantId: input.tenantId, userId: input.userId }
       : { userId: input.userId };
+  const where =
+    input.notAfter instanceof Date && !Number.isNaN(input.notAfter.getTime())
+      ? { ...base, lastSeenAt: { lte: input.notAfter } }
+      : base;
   const result = await prisma.adminPresence.deleteMany({ where });
   return result.count;
 }
