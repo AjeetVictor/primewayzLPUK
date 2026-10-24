@@ -43,3 +43,9 @@ export function setAnalyticsConsent(consent: Exclude<AnalyticsConsent, null>): v
   }
   window.dispatchEvent(new Event(ANALYTICS_CONSENT_CHANGE_EVENT));
 }
+
+/** Reopen Cookie settings from site chrome (e.g. footer). No-op during SSR. */
+export function openAnalyticsSettings(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(OPEN_ANALYTICS_SETTINGS_EVENT));
+}

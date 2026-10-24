@@ -147,6 +147,8 @@ test('27–29 footer legal links, contact details and ordinary navigation remain
   assert.match(footer, /Privacy Policy/);
   assert.match(footer, /Terms of Service/);
   assert.match(footer, /Cookies Policy/);
+  assert.match(footer, /Cookie settings/);
+  assert.match(footer, /openAnalyticsSettings/);
   assert.match(footer, /tel:\+447588741740/);
   assert.match(footer, /mailto:info@primewayz\.com/);
   assert.match(footer, /Shelton Street/);

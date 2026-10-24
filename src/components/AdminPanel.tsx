@@ -2098,6 +2098,20 @@ const AdminPanelContent = () => {
                 >
                   <h3 className="text-base font-semibold text-zinc-900 sm:col-span-2">Team presence</h3>
                   <p className="text-sm leading-6 text-zinc-700 sm:col-span-2">{TENANT_CHAT_PRESENCE_NOTE} Current status: {availabilityLabel}. Chat leads and chat history stay in this workspace.</p>
+                  {(availabilityMode === 'online' || chatAvailability?.mode === 'online') &&
+                  chatAvailability &&
+                  !chatAvailability.hasActiveAdmin ? (
+                    <p
+                      role="status"
+                      data-testid="forced-online-heartbeat-warning"
+                      className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-950 sm:col-span-2"
+                    >
+                      Forced Online still advertises human availability without a fresh operator
+                      heartbeat. Prefer Auto (heartbeat-driven) or Away/Offline until tenant-owned
+                      presence adapters enforce Online only with verified operator activity. Public
+                      behaviour is unchanged in this release.
+                    </p>
+                  ) : null}
                   <label htmlFor="presence-mode" className="block text-sm font-semibold text-zinc-800">
                     Presence mode
                     <select
