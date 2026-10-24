@@ -284,7 +284,7 @@ describe('Phase 2F-1.1 launcher presence and badge helpers', () => {
   test('aria-label contains status and correct singular/plural unread text', () => {
     assert.equal(
       buildVisitorLauncherAriaLabel({ presence: 'online', unreadCount: 0 }),
-      'Open Primewayz Assistant. Team online.',
+      'Open Primewayz Assistant. Team available.',
     );
     assert.equal(
       buildVisitorLauncherAriaLabel({ presence: 'away', unreadCount: 1 }),
@@ -313,7 +313,7 @@ describe('Phase 2F-1.1 launcher presence and badge helpers', () => {
       }),
       'team_online',
     );
-    assert.equal(VISITOR_HEADER_STATUS_LABELS.team_online, 'Team online');
+    assert.equal(VISITOR_HEADER_STATUS_LABELS.team_online, 'Team available');
     assert.equal(VISITOR_HEADER_STATUS_LABELS.team_away, 'Team currently away');
     assert.equal(
       VISITOR_HEADER_STATUS_LABELS.automated_guidance,
@@ -341,7 +341,7 @@ describe('Phase 2F-1.1 launcher presence and badge helpers', () => {
       'away',
     );
     assert.match(VISITOR_HEADER_STATUS_DOT_CLASS.unavailable, /#DC2626|red/);
-    assert.equal(VISITOR_PRESENCE_STATUS_LABELS.online, 'Team online');
+    assert.equal(VISITOR_PRESENCE_STATUS_LABELS.online, 'Team available');
     assert.equal(VISITOR_HEADER_STATUS_LABELS.team_offline, 'Team offline');
   });
 });
