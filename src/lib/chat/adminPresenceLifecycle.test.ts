@@ -98,10 +98,16 @@ function createPresenceDb() {
       async deleteMany({ where }) {
         const before = heartbeats.length;
         const keep = heartbeats.filter((h) => {
-          if ('tenantId' in where && typeof where.tenantId === 'string') {
-            return !(h.tenantId === where.tenantId && h.userId === where.userId);
+          const tenantMatch =
+            'tenantId' in where && typeof where.tenantId === 'string'
+              ? h.tenantId === where.tenantId
+              : true;
+          const userMatch = h.userId === where.userId;
+          if (!tenantMatch || !userMatch) return true;
+          if (where.lastSeenAt && 'lte' in where.lastSeenAt) {
+            return h.lastSeenAt.getTime() > where.lastSeenAt.lte.getTime();
           }
-          return h.userId !== where.userId;
+          return false;
         });
         heartbeats.length = 0;
         heartbeats.push(...keep);
@@ -337,10 +343,17 @@ test('AdminPanel and logout wiring enforce tenant-scoped presence lifecycle', ()
   const adminPanel = read('src/components/AdminPanel.tsx');
   assert.match(adminPanel, /adminTenantPath\('\/api\/admin\/chat\/availability'\)/);
   assert.match(adminPanel, /adminTenantPath\('\/api\/admin\/presence\/heartbeat'\)/);
+  assert.match(adminPanel, /\/api\/admin\/presence\/offline/);
+  assert.match(adminPanel, /pagehide/);
+  assert.match(adminPanel, /notAfterMs/);
+  assert.match(adminPanel, /queueMicrotask/);
+  assert.match(adminPanel, /presenceGenerationRef/);
   assert.match(adminPanel, /\[isAuthenticated, user, adminTenantFilter\]/);
 
   const server = read('server.ts');
   assert.match(server, /clearAdminPresenceForUser\(prisma, \{ userId: decoded\.id \}\)/);
+  assert.match(server, /UK_ADMIN_PRESENCE_OFFLINE_PATH/);
+  assert.match(server, /parseUkAdminPresenceNotAfterMs/);
   assert.doesNotMatch(
     server.slice(server.indexOf("app.get('/api/chat/availability'"), server.indexOf("app.get('/api/chat/availability'") + 800),
     /req\.(query|body)\.tenantId/,

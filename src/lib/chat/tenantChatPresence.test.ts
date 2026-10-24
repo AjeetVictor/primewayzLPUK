@@ -91,10 +91,16 @@ function createPresenceDb() {
         queries.push({ table: 'adminPresence', where });
         const before = heartbeats.length;
         const keep = heartbeats.filter((h) => {
-          if ('tenantId' in where && typeof where.tenantId === 'string') {
-            return !(h.tenantId === where.tenantId && h.userId === where.userId);
+          const tenantMatch =
+            'tenantId' in where && typeof where.tenantId === 'string'
+              ? h.tenantId === where.tenantId
+              : true;
+          const userMatch = h.userId === where.userId;
+          if (!tenantMatch || !userMatch) return true;
+          if (where.lastSeenAt && 'lte' in where.lastSeenAt) {
+            return h.lastSeenAt.getTime() > where.lastSeenAt.lte.getTime();
           }
-          return h.userId !== where.userId;
+          return false;
         });
         heartbeats.length = 0;
         heartbeats.push(...keep);
@@ -303,6 +309,22 @@ test('logout wiring: admin logout clears operator heartbeats before cookie drop'
   assert.match(logout, /clearAdminPresenceForUser\(prisma, \{ userId: decoded\.id \}\)/);
   assert.match(logout, /res\.clearCookie\(adminCookieName/);
   assert.match(read('src/lib/chat/tenantChatPresenceStore.ts'), /export async function clearAdminPresenceForUser/);
+  assert.match(read('src/lib/chat/tenantChatPresenceStore.ts'), /notAfter/);
+});
+
+test('conditional offline notAfter preserves heartbeats newer than the ending session', async () => {
+  const db = createPresenceDb();
+  await recordTenantAdminHeartbeat(db.prisma, { tenantId: 'pw-uk', userId: 1, now: ago(1_000) });
+  assert.equal(
+    await clearAdminPresenceForUser(db.prisma, { userId: 1, tenantId: 'pw-uk', notAfter: ago(10_000) }),
+    0,
+  );
+  assert.equal(db.heartbeats.length, 1);
+  assert.equal(
+    await clearAdminPresenceForUser(db.prisma, { userId: 1, tenantId: 'pw-uk', notAfter: ago(500) }),
+    1,
+  );
+  assert.equal(db.heartbeats.length, 0);
 });
 
 // --- H. Presence semantics unchanged ---
@@ -347,12 +369,17 @@ test('wiring: server presence reads and writes are tenant-scoped with no global 
   assert.match(publicRoute, /getChatAvailabilityPayload\(sourceContext\)/);
   assert.doesNotMatch(publicRoute, /req\.(query|body)\.tenantId/);
 
-  const adminBlock = server.slice(server.indexOf("app.get('/api/admin/chat/availability'"), server.indexOf("app.get('/api/admin/notifications/summary'"));
+  const adminBlock = server.slice(
+    server.indexOf('async function buildAdminChatAvailabilityResponse'),
+    server.indexOf("app.get('/api/admin/notifications/summary'"),
+  );
   assert.match(adminBlock, /app\.get\('\/api\/admin\/chat\/availability', requireAdmin, requireRole\(isOperationsRole\)/);
   assert.match(adminBlock, /app\.patch\('\/api\/admin\/chat\/availability', requireAdmin, requireRole\(isOperationsRole\)/);
   assert.match(adminBlock, /app\.post\('\/api\/admin\/presence\/heartbeat', requireAdmin, requireRole\(isOperationsRole\)/);
-  assert.equal((adminBlock.match(/resolveAdminPresenceTenantId\(req, res\)/g) ?? []).length, 3);
-  assert.equal((adminBlock.match(/getChatAvailabilityPayload\(undefined, tenantId\)/g) ?? []).length, 2);
+  assert.match(adminBlock, /UK_ADMIN_PRESENCE_OFFLINE_PATH/);
+  assert.equal((adminBlock.match(/resolveAdminPresenceTenantId\(req, res\)/g) ?? []).length, 4);
+  assert.match(adminBlock, /getChatAvailabilityPayload\(undefined, tenantId\)/);
+  assert.match(adminBlock, /buildUkAdminPresenceDashboardView/);
   assert.match(adminBlock, /recordTenantChatPresenceSetting\(prisma, \{\s*tenantId,/);
   assert.match(adminBlock, /recordTenantAdminHeartbeat\(prisma, \{ tenantId, userId: req\.adminUser!\.id \}\)/);
   assert.doesNotMatch(adminBlock, /req\.body\.tenantId/);

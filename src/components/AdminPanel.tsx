@@ -235,6 +235,16 @@ function EntitySourceBadge({
 type ChatAvailabilityStatus = 'online' | 'away' | 'offline' | 'assistant';
 type ChatAvailabilityMode = 'auto' | 'online' | 'away' | 'offline';
 
+interface ChatAvailabilityOperatorSession {
+  authenticatedChatAgent: boolean;
+  chatRole: string;
+  chatRoleBasis: string;
+  contributing: boolean;
+  ownLastSeenAt: string | null;
+  ownExpiresAt: string | null;
+  authIsNotAvailability: true;
+}
+
 interface ChatAvailability {
   status: ChatAvailabilityStatus;
   title: string;
@@ -249,6 +259,14 @@ interface ChatAvailability {
   hasActiveAdmin: boolean;
   latestAdminSeenAt: string | null;
   customMessage: string;
+  /** WS-2: same visitor resolver status for this tenant. */
+  visitorStatus?: ChatAvailabilityStatus;
+  verifiedHumanOnline?: boolean;
+  activeOperatorCount?: number;
+  presenceExpiresAt?: string | null;
+  heartbeatWindowMs?: number;
+  operatorSession?: ChatAvailabilityOperatorSession;
+  option1Activated?: boolean;
 }
 
 interface User {
@@ -587,6 +605,10 @@ const AdminPanelContent = () => {
   const hasInitializedMessageWatchRef = useRef(false);
   const adminFileInputRef = useRef<HTMLInputElement | null>(null);
   const lastHeartbeatAtRef = useRef(0);
+  /** Bumps on each presence-effect start so stale Offline from a prior mount can be ignored client-side. */
+  const presenceGenerationRef = useRef(0);
+  /** Tenant currently owned by the live presence effect (null when none). */
+  const activePresenceTenantRef = useRef<string | null>(null);
 
   const adminTenantPath = (path: string) =>
     `${path}${path.includes('?') ? '&' : '?'}tenantId=${encodeURIComponent(adminTenantFilter)}`;
@@ -723,6 +745,8 @@ const AdminPanelContent = () => {
     try {
       await adminRequest(adminTenantPath('/api/admin/presence/heartbeat'), {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
       });
       fetchChatAvailability(false);
     } catch (error) {
@@ -730,26 +754,96 @@ const AdminPanelContent = () => {
     }
   };
 
+  /**
+   * Best-effort Offline for one tenant. Always include notAfterMs so a delayed response cannot
+   * clear a heartbeat written after this session ended (remount / tenant switch / newer beat).
+   * pagehide and effect cleanup are not authoritative — logout + heartbeat TTL are the safety net.
+   */
+  const sendPresenceOffline = (
+    tenantId: string,
+    options: { keepalive?: boolean; notAfterMs: number; generation?: number },
+  ) => {
+    if (!tenantId || tenantId === 'all') return;
+    if (
+      typeof options.generation === 'number'
+      && options.generation !== presenceGenerationRef.current
+    ) {
+      // A newer presence effect already owns the session; skip this stale Offline.
+      return;
+    }
+    // Use the captured tenant id — do not read adminTenantFilter (may already have changed on cleanup).
+    const path = `/api/admin/presence/offline?tenantId=${encodeURIComponent(tenantId)}`;
+    void fetch(apiUrl(path), {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notAfterMs: options.notAfterMs }),
+      keepalive: options.keepalive === true,
+    }).catch(() => {
+      // Disconnect best-effort; TTL remains the safety net when unload beacons are dropped.
+    });
+  };
+
   // Heartbeats and availability reads follow the selected entity (not Host default pw-uk).
+  // pagehide + tenant-switch attempt Offline; explicit logout + heartbeat TTL remain authoritative.
   useEffect(() => {
     if (!isAuthenticated || !user) return;
-    if (!adminTenantFilter || adminTenantFilter === 'all') return;
+    if (!adminTenantFilter || adminTenantFilter === 'all') {
+      activePresenceTenantRef.current = null;
+      return;
+    }
+
+    const tenantForSession = adminTenantFilter;
+    const previousTenant = activePresenceTenantRef.current;
+    const generation = ++presenceGenerationRef.current;
+    activePresenceTenantRef.current = tenantForSession;
+
+    // Leaving another entity: clear the prior tenant immediately (not the remount case).
+    if (previousTenant && previousTenant !== tenantForSession) {
+      sendPresenceOffline(previousTenant, {
+        keepalive: true,
+        notAfterMs: Date.now(),
+      });
+    }
 
     lastHeartbeatAtRef.current = 0;
     fetchChatAvailability(true);
     sendPresenceHeartbeat(true);
     const interval = setInterval(() => sendPresenceHeartbeat(true), 60000);
     const activityHandler = () => sendPresenceHeartbeat(false);
+    const disconnectHandler = () =>
+      sendPresenceOffline(tenantForSession, {
+        keepalive: true,
+        notAfterMs: Date.now(),
+        generation,
+      });
 
     window.addEventListener('focus', activityHandler);
     window.addEventListener('click', activityHandler);
     window.addEventListener('keydown', activityHandler);
+    window.addEventListener('pagehide', disconnectHandler);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('focus', activityHandler);
       window.removeEventListener('click', activityHandler);
       window.removeEventListener('keydown', activityHandler);
+      window.removeEventListener('pagehide', disconnectHandler);
+      const notAfterMs = Date.now();
+      const endingGeneration = generation;
+      // Defer: same-tenant remount bumps generation before this runs, so we skip Offline.
+      // True unmount / logout leaves generation unchanged (or logout bumps it and we still skip).
+      queueMicrotask(() => {
+        if (presenceGenerationRef.current !== endingGeneration) return;
+        sendPresenceOffline(tenantForSession, {
+          keepalive: true,
+          notAfterMs,
+          generation: endingGeneration,
+        });
+        if (activePresenceTenantRef.current === tenantForSession) {
+          activePresenceTenantRef.current = null;
+        }
+      });
     };
   }, [isAuthenticated, user, adminTenantFilter]);
 
@@ -911,6 +1005,9 @@ const AdminPanelContent = () => {
 
   const handleLogout = async () => {
     try {
+      // Invalidate this tab's presence generation so late pagehide/cleanup Offline is a no-op.
+      presenceGenerationRef.current += 1;
+      // Server logout clears all tenant heartbeats for this user (authoritative; not unload-dependent).
       await fetch(apiUrl('/api/admin/logout'), { method: 'POST', credentials: 'include' });
       setIsAuthenticated(false);
       setUser(null);
@@ -1732,6 +1829,35 @@ const AdminPanelContent = () => {
                   <span> Last admin heartbeat {format(new Date(chatAvailability.latestAdminSeenAt), 'MMM d, h:mm a')}.</span>
                 )}
               </p>
+              <p className="mt-1 text-xs text-zinc-600" data-testid="admin-presence-operator-summary">
+                {typeof chatAvailability?.activeOperatorCount === 'number' ? (
+                  <>
+                    Active operators: {chatAvailability.activeOperatorCount}
+                    {chatAvailability.presenceExpiresAt ? (
+                      <span>
+                        {' '}· Presence expires {format(new Date(chatAvailability.presenceExpiresAt), 'h:mm a')}
+                      </span>
+                    ) : null}
+                    {chatAvailability.operatorSession ? (
+                      <span>
+                        {' '}· Your session:{' '}
+                        {chatAvailability.operatorSession.contributing
+                          ? 'contributing heartbeat'
+                          : chatAvailability.operatorSession.authenticatedChatAgent
+                            ? 'authenticated (not yet contributing)'
+                            : 'not a chat agent'}
+                      </span>
+                    ) : null}
+                    {typeof chatAvailability.verifiedHumanOnline === 'boolean' ? (
+                      <span>
+                        {' '}· Verified human Online: {chatAvailability.verifiedHumanOnline ? 'yes' : 'no'}
+                      </span>
+                    ) : null}
+                  </>
+                ) : (
+                  'Operator session and count load with availability.'
+                )}
+              </p>
               <p className="mt-1 text-[11px] text-zinc-400">
                 {TENANT_CHAT_PRESENCE_NOTE}
               </p>
@@ -2097,19 +2223,24 @@ const AdminPanelContent = () => {
                   }}
                 >
                   <h3 className="text-base font-semibold text-zinc-900 sm:col-span-2">Team presence</h3>
-                  <p className="text-sm leading-6 text-zinc-700 sm:col-span-2">{TENANT_CHAT_PRESENCE_NOTE} Current status: {availabilityLabel}. Chat leads and chat history stay in this workspace.</p>
+                  <p className="text-sm leading-6 text-zinc-700 sm:col-span-2">
+                    {TENANT_CHAT_PRESENCE_NOTE} Current status: {availabilityLabel}.
+                    {typeof chatAvailability?.activeOperatorCount === 'number'
+                      ? ` Active operators: ${chatAvailability.activeOperatorCount}.`
+                      : ''}
+                    {' '}Visitor status uses the same resolver as this dashboard. Chat leads and chat history stay in this workspace.
+                  </p>
                   {(availabilityMode === 'online' || chatAvailability?.mode === 'online') &&
                   chatAvailability &&
-                  !chatAvailability.hasActiveAdmin ? (
+                  !chatAvailability.verifiedHumanOnline ? (
                     <p
                       role="status"
                       data-testid="forced-online-heartbeat-warning"
                       className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-950 sm:col-span-2"
                     >
-                      Forced Online still advertises human availability without a fresh operator
-                      heartbeat. Prefer Auto (heartbeat-driven) or Away/Offline until tenant-owned
-                      presence adapters enforce Online only with verified operator activity. Public
-                      behaviour is unchanged in this release.
+                      Forced Online can still advertise visitor Online without a fresh UK chat-operator
+                      heartbeat while Option 1 stays Host-disabled. Prefer Auto (heartbeat-driven) or
+                      Away/Offline. Verified human Online requires an authenticated active operator.
                     </p>
                   ) : null}
                   <label htmlFor="presence-mode" className="block text-sm font-semibold text-zinc-800">
