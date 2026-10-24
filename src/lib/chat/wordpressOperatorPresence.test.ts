@@ -121,12 +121,12 @@ function createPresenceDb() {
   return { prisma, settings, heartbeats };
 }
 
-test('WS-3 registry: only primewayz-wordpress receives chat:presence:write for pw-infotech', () => {
+test('WS-3 registry: primewayz-wordpress retains chat:presence:write for pw-infotech', () => {
   const wordpress = INTEGRATION_REGISTRY.find((e) => e.integrationId === 'primewayz-wordpress')!;
   const silver = INTEGRATION_REGISTRY.find((e) => e.integrationId === 'rrb-silver-campaign-next')!;
   assert.equal(wordpress.tenantId, 'pw-infotech');
   assert.ok(wordpress.scopes.includes(OPERATOR_PRESENCE_WRITE_SCOPE));
-  assert.equal(silver.scopes.includes(OPERATOR_PRESENCE_WRITE_SCOPE), false);
+  assert.ok(silver.scopes.includes(OPERATOR_PRESENCE_WRITE_SCOPE), 'WS-4 also grants Silver');
   assert.doesNotThrow(() =>
     assertPresenceWriteAuthorized({
       kind: 'integration',
@@ -141,7 +141,7 @@ test('WS-3 registry: only primewayz-wordpress receives chat:presence:write for p
         kind: 'integration',
         tenantId: 'rrb-silver-campaign',
         integrationId: 'rrb-silver-campaign-next',
-        scopes: silver.scopes,
+        scopes: silver.scopes.filter((s) => s !== OPERATOR_PRESENCE_WRITE_SCOPE),
       }),
     (err: unknown) => err instanceof OperatorPresenceIngestionError && err.code === 'forbidden_scope',
   );

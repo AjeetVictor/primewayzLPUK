@@ -4,7 +4,7 @@
  * Adapters:
  * - Primewayz UK administration (Admin cookie; also legacy Admin heartbeat path)
  * - Primewayz Infotech WordPress Chat Connect (integration Bearer + chat:presence:write)
- * - RentReadBuy Silver Campaign (deferred WS-4 — no presence write scope)
+ * - RentReadBuy Silver Campaign Next.js console (integration Bearer + chat:presence:write; WS-4)
  *
  * Credentials are tenant-bound server secrets (integration Bearer or Chat Connect installation).
  * Presence-write credentials must never ship in frontend JavaScript.
@@ -33,12 +33,13 @@ export const OPERATOR_PRESENCE_HEARTBEAT_PATH = '/api/v1/operator-presence/heart
 /**
  * Explicit offline / session invalidation.
  * WS-2: authenticated Admin (UK) principals.
- * WS-3: integration principals that hold chat:presence:write (WordPress / pw-infotech only).
- * Installation credentials and Silver remain deferred (no write scope / WS-4).
+ * WS-3 / WS-4: integration principals that hold chat:presence:write
+ * (WordPress / pw-infotech; Silver / rrb-silver-campaign).
+ * Installation credentials remain reserved (connection health ≠ human Online).
  */
 export const OPERATOR_PRESENCE_OFFLINE_PATH = '/api/v1/operator-presence/offline';
 
-/** Scope required for integration-credential presence writes. Granted to primewayz-wordpress only (WS-3). */
+/** Scope required for integration-credential presence writes (WP WS-3 + Silver WS-4). */
 export const OPERATOR_PRESENCE_WRITE_SCOPE = 'chat:presence:write' as const;
 
 export const OPERATOR_PRESENCE_CLIENT_ACTION_ID_MAX = 64;
@@ -627,13 +628,15 @@ export const OPERATOR_PRESENCE_INGESTION_CONTRACT = {
     'Tenant id is taken only from the credential binding.',
     'Operator identity is bound to the authorised credential + operatorRef; client-supplied central User ids are rejected.',
     'Do not embed presence-write credentials in frontend JavaScript.',
-    'WS-3: chat:presence:write is granted only to primewayz-wordpress (pw-infotech); Silver has no presence write.',
+    'WS-3: chat:presence:write on primewayz-wordpress (pw-infotech).',
+    'WS-4: chat:presence:write on rrb-silver-campaign-next (rrb-silver-campaign); archive/delete remain excluded.',
     'Heartbeats refresh AdminPresence TTL; permanent audit events are transitions only.',
     'Idempotency keys are released if the heartbeat/offline write fails after claim, so retries remain safe.',
     'WS-2: Admin cookie offline clears the authenticated operator heartbeat for the bound tenant.',
-    'WS-3: integration offline clears the adapter-bound synthetic operator-session for that credential + operatorRef.',
+    'WS-3/WS-4: integration offline clears the adapter-bound synthetic operator-session for that credential + operatorRef.',
     'Installation-credential offline remains reserved; connection-health heartbeats must never write human presence.',
     'Multi-tab: each console instance must use a distinct operatorRef so Offline for one tab cannot clear another.',
+    'Do not activate heartbeat_required_online for Silver in WS-4; Host activates Option 1 after soak.',
   ],
 } as const;
 

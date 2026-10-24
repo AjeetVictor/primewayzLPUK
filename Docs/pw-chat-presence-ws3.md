@@ -3,7 +3,7 @@
 **Branch:** `feat/pw-chat-presence-ws3-central`  
 **Depends on:** WS-1 / WS-2 on `main`  
 **Plugin:** Primewayz Chat Connect **v1.3.5** (separate source tree)  
-**Status:** Central + WP adapter implemented. Option 1 is **not** activated for Infotech. Silver untouched.
+**Status:** Central + WP adapter implemented. Option 1 is **not** activated for Infotech. Silver presence write is WS-4 (`Docs/pw-chat-presence-ws4.md`).
 
 ---
 

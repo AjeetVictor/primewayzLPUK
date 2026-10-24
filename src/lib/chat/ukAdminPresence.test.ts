@@ -358,12 +358,20 @@ test('v1 offline: Admin and WP integration with write scope clear presence; inst
           scopes: [],
         };
       }
-      if (kind === 'silver') {
+      if (kind === 'silver-no-write') {
         return {
           kind: 'integration',
           tenantId: 'rrb-silver-campaign',
           integrationId: 'rrb-silver-campaign-next',
           scopes: ['chat:dashboard'],
+        };
+      }
+      if (kind === 'silver') {
+        return {
+          kind: 'integration',
+          tenantId: 'rrb-silver-campaign',
+          integrationId: 'rrb-silver-campaign-next',
+          scopes: [OPERATOR_PRESENCE_WRITE_SCOPE],
         };
       }
       return {
@@ -390,12 +398,20 @@ test('v1 offline: Admin and WP integration with write scope clear presence; inst
     });
     assert.equal(installation.status, 501);
 
+    const silverDenied = await fetch(`http://127.0.0.1:${port}${OPERATOR_PRESENCE_OFFLINE_PATH}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-kind': 'silver-no-write' },
+      body: JSON.stringify({ clientActionId: 'off-silver-denied', operatorRef: 'op-1' }),
+    });
+    assert.equal(silverDenied.status, 403);
+
     const silver = await fetch(`http://127.0.0.1:${port}${OPERATOR_PRESENCE_OFFLINE_PATH}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-kind': 'silver' },
-      body: JSON.stringify({ clientActionId: 'off-silver', operatorRef: 'op-1' }),
-    });
-    assert.equal(silver.status, 403);
+      body: JSON.stringify({ clientActionId: 'off-silver', operatorRef: 'sil-op-1', notAfterMs: NOW }),
+    }).then((r) => r.json());
+    assert.equal(silver.success, true);
+    assert.equal(silver.cleared, 0, 'no prior silver heartbeat row in this fixture');
 
     const integration = await fetch(`http://127.0.0.1:${port}${OPERATOR_PRESENCE_OFFLINE_PATH}`, {
       method: 'POST',
@@ -452,8 +468,5 @@ test('WS-2 wiring: UK offline path, dashboard enrichment, Option 1 not activated
   assert.match(read('src/lib/chat/ukAdminPresence.ts'), /isOption1Activated/);
   const registry = read('src/lib/integrations/integrationRegistry.ts');
   assert.match(registry, /integrationId: 'primewayz-wordpress'[\s\S]*?chat:presence:write/);
-  assert.doesNotMatch(
-    registry,
-    /integrationId: 'rrb-silver-campaign-next'[\s\S]*?chat:presence:write/,
-  );
+  assert.match(registry, /integrationId: 'rrb-silver-campaign-next'[\s\S]*?chat:presence:write/);
 });
