@@ -45,10 +45,10 @@ import {
   buildVisitorLauncherAriaLabel,
   formatVisitorUnreadBadge,
   resolveVisitorHeaderStatus,
+  resolveVisitorHeaderTone,
   resolveVisitorPresenceTone,
   VISITOR_CHAT_MESSAGE_SAVED,
   VISITOR_HEADER_STATUS_LABELS,
-  type VisitorHeaderStatus,
 } from '../../lib/chat/visitorChatUi.ts';
 import {
   createDefaultPwChatAnalyticsSink,
@@ -79,7 +79,6 @@ import {
   renderIntents,
   renderMessages,
   setTone,
-  type PwChatTone,
 } from './renderer.ts';
 import { createPwChatStorage } from './storage.ts';
 import { PW_CHAT_EMBED_VERSION } from './version.ts';
@@ -174,13 +173,6 @@ export function resolvePwChatBookingUrl(availability: ChatAvailability | null): 
   }
 }
 
-function headerTone(status: VisitorHeaderStatus): PwChatTone {
-  if (status === 'team_online' || status === 'human_response_received') return 'online';
-  if (status === 'automated_guidance') return 'automated';
-  if (status === 'unavailable') return 'unavailable';
-  return 'away';
-}
-
 /** Page URL for backend attribution: origin + path, keeping only utm_* query parameters. */
 export function toAttributionPageUrl(href: string): string | undefined {
   try {
@@ -221,7 +213,10 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
     clearTimeout: (id) => win.clearTimeout(id as number),
   };
   const api = createPwChatApiClient({ apiBaseUrl: config.apiBaseUrl, fetchImpl: deps.fetchImpl });
-  const track = createPwChatTracker(deps.analyticsSink ?? createDefaultPwChatAnalyticsSink(win));
+  const track = createPwChatTracker(
+    deps.analyticsSink
+      ?? createDefaultPwChatAnalyticsSink(win, undefined, { analyticsEnabled: config.analyticsEnabled }),
+  );
   const storage = createPwChatStorage(win, config.storageKeys);
 
   const capabilities = await api.get('/api/platform/capabilities');
@@ -270,6 +265,8 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
   let showLeadForm = false;
   let leadDismissed = false;
   let leadSaving = false;
+  /** In-memory only: suppress duplicate chat_lead_captured for this widget instance. */
+  let leadCaptureTracked = Boolean(contact.email);
   let selectedIntent: string | null = null;
   let documentVisible = doc.visibilityState !== 'hidden';
   let isMobile = isPwChatMobileViewport(win.innerWidth);
@@ -412,7 +409,7 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
     dom.statusText.textContent = headerStatus === 'waiting_for_team'
       ? branding.waitingForTeamLabel
       : VISITOR_HEADER_STATUS_LABELS[headerStatus];
-    setTone(dom.statusDot, headerTone(headerStatus));
+    setTone(dom.statusDot, resolveVisitorHeaderTone(headerStatus));
 
     dom.introGreeting.textContent = intro.greeting;
     dom.introText.textContent = intro.supportingText;
@@ -813,7 +810,11 @@ export async function startPwChatWidget(deps: PwChatWidgetDeps): Promise<PwChatW
       contact = { name, email };
       showLeadForm = false;
       announce(VISITOR_CHAT_MESSAGE_SAVED);
-      track('chat_lead_captured', analyticsBase());
+      const newlyCaptured = isObject(result.body) && result.body.leadCaptured === true;
+      if (newlyCaptured && !leadCaptureTracked) {
+        leadCaptureTracked = true;
+        track('chat_lead_captured', analyticsBase());
+      }
       track('chat_human_handoff_requested', analyticsBase());
       render();
       dom.textarea.focus();

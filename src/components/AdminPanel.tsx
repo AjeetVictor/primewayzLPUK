@@ -45,6 +45,10 @@ import {
   shouldLeaveCapabilityDisabledAdminTab,
   shouldLeaveUkOnlyAdminTab,
 } from '../lib/admin/adminModuleScope';
+import {
+  formatAdminAvailabilityLabel,
+  resolveAdminAvailabilityDotClass,
+} from '../lib/chat/chatPresenceColors';
 
 interface FormResponse {
   id: number;
@@ -584,6 +588,10 @@ const AdminPanelContent = () => {
   const adminFileInputRef = useRef<HTMLInputElement | null>(null);
   const lastHeartbeatAtRef = useRef(0);
 
+  const adminTenantPath = (path: string) =>
+    `${path}${path.includes('?') ? '&' : '?'}tenantId=${encodeURIComponent(adminTenantFilter)}`;
+  const adminTenantQuery = (path: string) => apiUrl(adminTenantPath(path));
+
   const loadTenantOptions = async () => {
     try {
       const res = await fetch(apiUrl('/api/admin/tenant-options'), { credentials: 'include' });
@@ -608,7 +616,7 @@ const AdminPanelContent = () => {
         setActiveTab(getDefaultAdminTab(data.user?.role));
         loadTenantOptions();
         fetchData(false, data.user);
-        fetchChatAvailability();
+        // Availability + heartbeat retarget when adminTenantFilter settles (see presence effect).
         fetchNotificationSummary();
       }
     } catch (error) {
@@ -690,8 +698,9 @@ const AdminPanelContent = () => {
   };
 
   const fetchChatAvailability = async (syncForm = true) => {
+    if (!adminTenantFilter || adminTenantFilter === 'all') return;
     try {
-      const res = await adminRequest('/api/admin/chat/availability');
+      const res = await adminRequest(adminTenantPath('/api/admin/chat/availability'));
       if (!res.ok) return;
       const data = await res.json();
       setChatAvailability(data);
@@ -706,12 +715,13 @@ const AdminPanelContent = () => {
 
   const sendPresenceHeartbeat = async (force = false) => {
     if (!isAuthenticated || !user) return;
+    if (!adminTenantFilter || adminTenantFilter === 'all') return;
     const now = Date.now();
     if (!force && now - lastHeartbeatAtRef.current < 30000) return;
     lastHeartbeatAtRef.current = now;
 
     try {
-      await adminRequest('/api/admin/presence/heartbeat', {
+      await adminRequest(adminTenantPath('/api/admin/presence/heartbeat'), {
         method: 'POST',
       });
       fetchChatAvailability(false);
@@ -720,9 +730,13 @@ const AdminPanelContent = () => {
     }
   };
 
+  // Heartbeats and availability reads follow the selected entity (not Host default pw-uk).
   useEffect(() => {
     if (!isAuthenticated || !user) return;
+    if (!adminTenantFilter || adminTenantFilter === 'all') return;
 
+    lastHeartbeatAtRef.current = 0;
+    fetchChatAvailability(true);
     sendPresenceHeartbeat(true);
     const interval = setInterval(() => sendPresenceHeartbeat(true), 60000);
     const activityHandler = () => sendPresenceHeartbeat(false);
@@ -737,14 +751,18 @@ const AdminPanelContent = () => {
       window.removeEventListener('click', activityHandler);
       window.removeEventListener('keydown', activityHandler);
     };
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, adminTenantFilter]);
 
   const saveChatAvailability = async () => {
+    if (!adminTenantFilter || adminTenantFilter === 'all') {
+      setAvailabilityError('Select a specific entity to manage team availability.');
+      return;
+    }
     setAvailabilityError('');
     setIsSavingAvailability(true);
 
     try {
-      const res = await adminRequest('/api/admin/chat/availability', {
+      const res = await adminRequest(adminTenantPath('/api/admin/chat/availability'), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: availabilityMode, message: availabilityMessage }),
@@ -791,10 +809,6 @@ const AdminPanelContent = () => {
       return next;
     });
   };
-
-  const adminTenantPath = (path: string) =>
-    `${path}${path.includes('?') ? '&' : '?'}tenantId=${encodeURIComponent(adminTenantFilter)}`;
-  const adminTenantQuery = (path: string) => apiUrl(adminTenantPath(path));
 
   const fetchData = async (silent = false, currentUser = user) => {
     if (!silent) setLoading(true);
@@ -880,10 +894,13 @@ const AdminPanelContent = () => {
       if (data.success) {
         setIsAuthenticated(true);
         setUser(data.user);
+        setAdminTenantFilter(
+          data.user?.isPlatformOwner ? 'pw-uk' : data.user?.tenantIds?.[0] ?? '',
+        );
         setActiveTab(getDefaultAdminTab(data.user?.role));
         loadTenantOptions();
         fetchData(false, data.user);
-        fetchChatAvailability();
+        // Availability + heartbeat retarget when adminTenantFilter settles (see presence effect).
       } else {
         setLoginError(data.error || 'Invalid credentials');
       }
@@ -1589,14 +1606,8 @@ const AdminPanelContent = () => {
     canViewOperations &&
     schedulingScope.available &&
     schedulingScope.configurationActive === false;
-  const availabilityDotClass = chatAvailability?.status === 'online'
-    ? 'bg-emerald-500'
-    : chatAvailability?.status === 'away'
-      ? 'bg-amber-400'
-      : chatAvailability?.status === 'assistant'
-        ? 'bg-indigo-400'
-        : 'bg-zinc-400';
-  const availabilityLabel = chatAvailability?.status || 'loading';
+  const availabilityDotClass = resolveAdminAvailabilityDotClass(chatAvailability?.status);
+  const availabilityLabel = formatAdminAvailabilityLabel(chatAvailability?.status);
 
 
   const updateChatAlertStatus = async (alertId: number, status: 'reviewed' | 'resolved') => {
@@ -1700,9 +1711,14 @@ const AdminPanelContent = () => {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <span className={`h-2.5 w-2.5 rounded-full ${availabilityDotClass}`} />
+                <span
+                  className={`inline-block h-3.5 w-3.5 shrink-0 rounded-full ring-2 ring-white shadow-sm ${availabilityDotClass}`}
+                  aria-hidden="true"
+                  data-testid="admin-chat-availability-dot"
+                />
                 <p className="text-sm font-bold text-zinc-900">
-                  Chat availability: <span className="capitalize">{availabilityLabel}</span>
+                  Chat availability:{' '}
+                  <span data-testid="admin-chat-availability-label">{availabilityLabel}</span>
                 </p>
                 {chatAvailability?.mode === 'auto' && (
                   <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">

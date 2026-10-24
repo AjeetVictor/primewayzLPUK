@@ -62,10 +62,6 @@ button { cursor: pointer; }
   font-size: 12px; font-weight: 700; line-height: 20px; text-align: center;
 }
 .pw-chat-badge[hidden] { display: none; }
-.pw-chat-tone-online { background: #16a34a; }
-.pw-chat-tone-away { background: #d97706; }
-.pw-chat-tone-automated { background: var(--pw-chat-accent); }
-.pw-chat-tone-unavailable { background: var(--pw-chat-error); }
 
 .pw-chat-panel {
   position: fixed; right: 18px; bottom: var(--pw-chat-bottom); z-index: var(--pw-chat-z);
@@ -90,7 +86,16 @@ button { cursor: pointer; }
 .pw-chat-heading { flex: 1; min-width: 0; }
 .pw-chat-title { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: 0.01em; }
 .pw-chat-status { display: flex; align-items: center; gap: 6px; margin-top: 2px; font-size: 13px; color: var(--pw-chat-header-muted); }
+/* Default grey only until a .pw-chat-tone-* class is applied. Tone rules MUST follow
+   both .pw-chat-launcher-dot and .pw-chat-status-dot so equal-specificity cascade
+   does not leave the expanded header stuck grey (PW-CHAT-PRESENCE-03). */
 .pw-chat-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; flex: none; }
+/* PW-CHAT-PRESENCE-02/03 — keep in sync with src/lib/chat/chatPresenceColors.ts */
+.pw-chat-tone-online { background: #16A34A; }
+.pw-chat-tone-away { background: #F59E0B; }
+.pw-chat-tone-offline { background: #94A3B8; }
+.pw-chat-tone-automated { background: #0284C7; }
+.pw-chat-tone-unavailable { background: #DC2626; }
 .pw-chat-close {
   width: 40px; height: 40px; flex: none; border: 0; border-radius: 8px;
   background: transparent; color: #ffffff; font-size: 24px; line-height: 1;

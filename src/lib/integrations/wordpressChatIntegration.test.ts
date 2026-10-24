@@ -1015,7 +1015,12 @@ test('presence helper preserves the existing availability semantics', () => {
   const recent = new Date(NOW - 60 * 1000);
   const stale = new Date(NOW - 6 * 60 * 1000);
   assert.deepEqual(resolveChatPresence({ mode: null, latestAdminSeenAt: recent, now: NOW }), {
-    mode: 'auto', hasActiveAdmin: true, computedStatus: 'online', status: 'online', canAcceptMessages: true,
+    mode: 'auto',
+    hasActiveAdmin: true,
+    computedStatus: 'online',
+    status: 'online',
+    teamStatus: 'available',
+    canAcceptMessages: true,
   });
   assert.equal(resolveChatPresence({ mode: 'auto', latestAdminSeenAt: stale, now: NOW }).status, 'assistant');
   assert.equal(resolveChatPresence({ mode: 'online', latestAdminSeenAt: null, now: NOW }).status, 'online');

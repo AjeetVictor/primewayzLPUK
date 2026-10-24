@@ -227,7 +227,8 @@ describe('Phase 2F-1.1 launcher presence and badge helpers', () => {
       resolveVisitorPresenceTone({ availabilityStatus: 'online', serviceAvailable: true }),
       'online',
     );
-    assert.match(VISITOR_PRESENCE_DOT_CLASS.online, /emerald|green/);
+    assert.match(VISITOR_PRESENCE_DOT_CLASS.online, /#16A34A|green/);
+    assert.doesNotMatch(VISITOR_PRESENCE_DOT_CLASS.online, /emerald/);
   });
 
   test('away uses amber', () => {
@@ -235,15 +236,24 @@ describe('Phase 2F-1.1 launcher presence and badge helpers', () => {
       resolveVisitorPresenceTone({ availabilityStatus: 'away', serviceAvailable: true }),
       'away',
     );
-    assert.match(VISITOR_PRESENCE_DOT_CLASS.away, /amber/);
+    assert.match(VISITOR_PRESENCE_DOT_CLASS.away, /#F59E0B|amber/);
   });
 
-  test('automated/unknown uses grey', () => {
+  test('automated assistance uses blue (not grey)', () => {
     assert.equal(
       resolveVisitorPresenceTone({ availabilityStatus: 'assistant', serviceAvailable: true }),
       'automated',
     );
-    assert.match(VISITOR_PRESENCE_DOT_CLASS.automated, /slate|gray|grey/i);
+    assert.match(VISITOR_PRESENCE_DOT_CLASS.automated, /#0284C7/);
+    assert.doesNotMatch(VISITOR_PRESENCE_DOT_CLASS.automated, /slate|gray|grey|#94A3B8/i);
+  });
+
+  test('offline uses grey and is distinct from away', () => {
+    assert.equal(
+      resolveVisitorPresenceTone({ availabilityStatus: 'offline', serviceAvailable: true }),
+      'offline',
+    );
+    assert.match(VISITOR_PRESENCE_DOT_CLASS.offline, /#94A3B8/);
   });
 
   test('service failure uses red', () => {
@@ -251,7 +261,7 @@ describe('Phase 2F-1.1 launcher presence and badge helpers', () => {
       resolveVisitorPresenceTone({ availabilityStatus: 'online', serviceAvailable: false }),
       'unavailable',
     );
-    assert.match(VISITOR_PRESENCE_DOT_CLASS.unavailable, /red/);
+    assert.match(VISITOR_PRESENCE_DOT_CLASS.unavailable, /#DC2626|red/);
   });
 
   test('unread badge and presence labels stay distinct', () => {
@@ -274,7 +284,7 @@ describe('Phase 2F-1.1 launcher presence and badge helpers', () => {
   test('aria-label contains status and correct singular/plural unread text', () => {
     assert.equal(
       buildVisitorLauncherAriaLabel({ presence: 'online', unreadCount: 0 }),
-      'Open Primewayz Assistant. Team online.',
+      'Open Primewayz Assistant. Team available.',
     );
     assert.equal(
       buildVisitorLauncherAriaLabel({ presence: 'away', unreadCount: 1 }),
@@ -288,6 +298,10 @@ describe('Phase 2F-1.1 launcher presence and badge helpers', () => {
       buildVisitorLauncherAriaLabel({ presence: 'unavailable', unreadCount: 0 }),
       'Open Primewayz Assistant. Chat temporarily unavailable.',
     );
+    assert.equal(
+      buildVisitorLauncherAriaLabel({ presence: 'offline', unreadCount: 0 }),
+      'Open Primewayz Assistant. Team offline.',
+    );
   });
 
   test('open-panel status aligns with launcher presence hierarchy', () => {
@@ -299,7 +313,7 @@ describe('Phase 2F-1.1 launcher presence and badge helpers', () => {
       }),
       'team_online',
     );
-    assert.equal(VISITOR_HEADER_STATUS_LABELS.team_online, 'Team online');
+    assert.equal(VISITOR_HEADER_STATUS_LABELS.team_online, 'Team available');
     assert.equal(VISITOR_HEADER_STATUS_LABELS.team_away, 'Team currently away');
     assert.equal(
       VISITOR_HEADER_STATUS_LABELS.automated_guidance,
@@ -326,8 +340,9 @@ describe('Phase 2F-1.1 launcher presence and badge helpers', () => {
       resolveVisitorPresenceTone({ availabilityStatus: 'away', serviceAvailable: true }),
       'away',
     );
-    assert.match(VISITOR_HEADER_STATUS_DOT_CLASS.unavailable, /red/);
-    assert.equal(VISITOR_PRESENCE_STATUS_LABELS.online, 'Team online');
+    assert.match(VISITOR_HEADER_STATUS_DOT_CLASS.unavailable, /#DC2626|red/);
+    assert.equal(VISITOR_PRESENCE_STATUS_LABELS.online, 'Team available');
+    assert.equal(VISITOR_HEADER_STATUS_LABELS.team_offline, 'Team offline');
   });
 });
 

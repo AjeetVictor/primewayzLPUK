@@ -10,6 +10,12 @@ export type AdminTenantPrincipal = {
   role: string;
   isPlatformOwner: boolean;
   tenantIds: readonly string[];
+  /** Optional; when omitted, chat-role resolution infers non-explicit none from tenantIds. */
+  tenantChatGrants?: ReadonlyArray<{
+    tenantId: string;
+    chatRole: 'none' | 'agent';
+    chatRoleExplicit: boolean;
+  }>;
 };
 
 export class AdminTenantAccessError extends Error {

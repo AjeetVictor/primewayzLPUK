@@ -19,10 +19,11 @@ const PANEL_ID = 'pw-chat-panel';
 const TITLE_ID = 'pw-chat-title';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-export type PwChatTone = 'online' | 'away' | 'automated' | 'unavailable';
+export type PwChatTone = 'online' | 'away' | 'offline' | 'automated' | 'unavailable';
 const TONE_CLASSES: readonly string[] = [
   'pw-chat-tone-online',
   'pw-chat-tone-away',
+  'pw-chat-tone-offline',
   'pw-chat-tone-automated',
   'pw-chat-tone-unavailable',
 ];

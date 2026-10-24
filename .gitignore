@@ -64,3 +64,6 @@ data/web-presence-audit-reports/*.json
 data/web-presence-audit-leads/
 data/web-presence-audit-leads/*.json
 dist.bak-*/
+
+tmp/
+
