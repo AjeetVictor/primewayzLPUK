@@ -6,6 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 import express from 'express';
 import {
+  CHAT_OPS_INTEGRATION_PATH,
   createWordPressChatIntegrationHandler,
   resetWordPressChatRateLimitsForTests,
   resolveRequestId,
@@ -49,7 +50,7 @@ import {
 } from '../chat/visitorIntelligence.ts';
 import type { ChatOperatorActionRecord } from '../chat/chatConversationService.ts';
 import { createMemoryChatConversationStore, type MemoryChatStoreHooks } from '../chat/testing/memoryChatConversationStore.ts';
-import { computeDelegatedRequestHash, OPERATOR_ACTION_SOURCE } from './wordpressChatDelegatedActions.ts';
+import { computeDelegatedRequestHash, OPERATOR_ACTION_SOURCE, operatorActionSourceFor } from './wordpressChatDelegatedActions.ts';
 import { isPublicChatCorsPath } from '../chat/publicChatApiCors.ts';
 import { isPublicPlatformCorsPath } from '../platform/publicPlatformApiCors.ts';
 import { isAdminStateChangingRequest } from '../admin/adminRequestOrigin.ts';
@@ -62,8 +63,24 @@ const nextActionId = () => `0b8f6c1e-2d3a-4e5f-8a9b-${String(++actionCounter).pa
 
 const TOKEN = 'wpint_TEST_7f3c9a1e5b2d8f604c1a9e7b3d5f2a8c';
 const PREVIOUS_TOKEN = 'wpint_PREV_0a1b2c3d4e5f60718293a4b5c6d7e8f9';
+const SILVER_TOKEN = 'rrbsv_TEST_a1b2c3d4e5f60718293a4b5c6d7e8f90';
+const SILVER_PREVIOUS_TOKEN = 'rrbsv_PREV_9f8e7d6c5b4a39281706150413221100';
 const ENV = { WORDPRESS_CHAT_INTEGRATION_TOKEN: TOKEN } as NodeJS.ProcessEnv;
+const SILVER_ENV = {
+  RRB_SILVER_CHAT_INTEGRATION_TOKEN: SILVER_TOKEN,
+  RRB_SILVER_CAMPAIGN_ENABLED: 'true',
+} as NodeJS.ProcessEnv;
 const NOW = Date.parse('2026-10-04T09:00:00.000Z');
+const SILVER_SCOPES = [
+  'chat:dashboard',
+  'chat:diagnostics',
+  'chat:read',
+  'chat:reopen',
+  'chat:reply',
+  'chat:resolve',
+] as const;
+const SILVER_DEFINITION = INTEGRATION_REGISTRY.find((entry) => entry.integrationId === 'rrb-silver-campaign-next')!;
+const WORDPRESS_DEFINITION = INTEGRATION_REGISTRY.find((entry) => entry.integrationId === 'primewayz-wordpress')!;
 
 // --- In-memory model of the shared chat tables ---
 
@@ -179,6 +196,14 @@ function createDb(): Db {
     session('inf-empty', 'pw-infotech', { name: 'Heartbeat Only', status: 'new' }),
     session('uk-1', 'pw-uk', { name: 'UK Visitor', email: 'uk@example.com' }),
     session('rrb-1', 'rrb', { name: 'RRB Visitor' }),
+    session('silver-1', 'rrb-silver-campaign', {
+      name: 'Silver Visitor',
+      email: 'silver@example.com',
+      status: 'admin_needed',
+      sourceSite: 'rentreadbuy-silver',
+      sourceOrigin: 'https://join.rentreadbuy.com',
+    }),
+    session('silver-closed', 'rrb-silver-campaign', { name: 'Silver Closed', status: 'closed' }),
     session('legacy-1', null, { name: 'Legacy Visitor' }),
   ];
   const messages: MessageRow[] = [];
@@ -197,12 +222,16 @@ function createDb(): Db {
   messages.push(message('inf-5', 'user', 50, { text: `<b>Hello</b>\n\nthere ${'x'.repeat(400)}` }));
   messages.push(message('uk-1', 'user', 100, { text: 'UK ONLY TEXT' }));
   messages.push(message('rrb-1', 'user', 101, { text: 'RRB ONLY TEXT' }));
+  messages.push(message('silver-1', 'user', 103, { text: 'SILVER ONLY TEXT' }));
   messages.push(message('legacy-1', 'user', 102, { text: 'LEGACY ONLY TEXT' }));
   return {
     sessions,
     messages,
     operatorActions: [],
-    presence: { 'pw-infotech': { mode: 'auto', latestAdminSeenAt: new Date(NOW - 60 * 1000) } },
+    presence: {
+      'pw-infotech': { mode: 'auto', latestAdminSeenAt: new Date(NOW - 60 * 1000) },
+      'rrb-silver-campaign': { mode: 'auto', latestAdminSeenAt: new Date(NOW - 60 * 1000) },
+    },
     presenceReads: [],
     down: false,
   };
@@ -380,7 +409,7 @@ async function startApp(options: {
   const clock = options.clock ?? { now: NOW };
   const app = express();
   app.use(express.json());
-  app.post(WORDPRESS_CHAT_INTEGRATION_PATH, createWordPressChatIntegrationHandler({
+  const handler = createWordPressChatIntegrationHandler({
     store: createMemoryStore(db, calls),
     writes: createMemoryChatConversationStore(db, {
       now: () => new Date(clock.now),
@@ -398,9 +427,13 @@ async function startApp(options: {
     log: (entry) => logs.push(entry),
     logError: (line) => errors.push(line),
     resolveChatAccess: options.resolveChatAccess,
-  }));
+  });
+  app.post(WORDPRESS_CHAT_INTEGRATION_PATH, handler);
+  app.post(CHAT_OPS_INTEGRATION_PATH, handler);
   app.all(WORDPRESS_CHAT_INTEGRATION_PATH, wordpressChatMethodNotAllowed);
+  app.all(CHAT_OPS_INTEGRATION_PATH, wordpressChatMethodNotAllowed);
   app.use(WORDPRESS_CHAT_INTEGRATION_PATH, wordpressChatBodyErrorHandler);
+  app.use(CHAT_OPS_INTEGRATION_PATH, wordpressChatBodyErrorHandler);
 
   const server = await new Promise<http.Server>((resolve) => {
     const listening = app.listen(0, () => resolve(listening));
@@ -518,13 +551,22 @@ test('rotation: the _PREVIOUS secret is accepted alongside the current secret, a
 });
 
 test('registry: the WordPress integration is bound to pw-infotech with reply / resolve / reopen / archive / delete scopes', () => {
-  assert.equal(INTEGRATION_REGISTRY.length, 1);
-  const [definition] = INTEGRATION_REGISTRY;
-  assert.equal(definition.tenantId, 'pw-infotech');
-  assert.deepEqual([...definition.scopes].sort(), [
+  assert.equal(INTEGRATION_REGISTRY.length, 2);
+  assert.equal(WORDPRESS_DEFINITION.tenantId, 'pw-infotech');
+  assert.deepEqual([...WORDPRESS_DEFINITION.scopes].sort(), [
     'chat:archive', 'chat:dashboard', 'chat:delete', 'chat:diagnostics', 'chat:read', 'chat:reopen', 'chat:reply', 'chat:resolve',
   ]);
-  assert.ok(definition.scopes.every((scope) => !/assign|manage|edit|note|spam|presence|availability|attach|appointment|tenant|user/.test(scope)));
+  assert.ok(WORDPRESS_DEFINITION.scopes.every((scope) => !/assign|manage|edit|note|spam|presence|availability|attach|appointment|tenant|user/.test(scope)));
+});
+
+test('registry: Silver campaign ops are bound to rrb-silver-campaign without archive / delete scopes', () => {
+  assert.ok(SILVER_DEFINITION);
+  assert.equal(SILVER_DEFINITION.tenantId, 'rrb-silver-campaign');
+  assert.equal(SILVER_DEFINITION.tokenEnv, 'RRB_SILVER_CHAT_INTEGRATION_TOKEN');
+  assert.equal(SILVER_DEFINITION.previousTokenEnv, 'RRB_SILVER_CHAT_INTEGRATION_TOKEN_PREVIOUS');
+  assert.deepEqual([...SILVER_DEFINITION.scopes].sort(), [...SILVER_SCOPES]);
+  assert.equal(SILVER_DEFINITION.scopes.includes('chat:archive'), false);
+  assert.equal(SILVER_DEFINITION.scopes.includes('chat:delete'), false);
 });
 
 test('scopes: a valid credential without the required scope returns 403 integration_forbidden', async () => {
@@ -838,12 +880,12 @@ test('conversation: transcript is bounded to the latest 100 messages with hasMor
   }
 });
 
-test('tenant isolation: pw-uk, rrb, legacy and unknown sessions all return the same 404', async () => {
+test('tenant isolation: pw-uk, rrb, silver, legacy and unknown sessions all return the same 404', async () => {
   const app = await startApp();
   try {
     assert.equal((await app.call({ body: { action: 'conversation', sessionId: 'inf-1' } })).status, 200);
     const bodies: string[] = [];
-    for (const sessionId of ['uk-1', 'rrb-1', 'legacy-1', 'does-not-exist']) {
+    for (const sessionId of ['uk-1', 'rrb-1', 'silver-1', 'legacy-1', 'does-not-exist']) {
       const res = await app.call({ body: { action: 'conversation', sessionId } });
       assert.equal(res.status, 404, sessionId);
       assert.equal(res.json.error.code, 'conversation_not_found');
@@ -1103,25 +1145,34 @@ test('audit log: minimal fields, never the token, message bodies or visitor cont
 
 const read = (relativePath: string) => fs.readFileSync(path.join(process.cwd(), relativePath), 'utf8');
 
-test('server mounts one POST endpoint, outside admin cookie auth, before the /api fallback', () => {
+test('server mounts one shared ops handler on WordPress and provider-neutral paths, outside admin cookie auth', () => {
   const server = read('server.ts');
-  const route = server.indexOf('app.post(WORDPRESS_CHAT_INTEGRATION_PATH, createWordPressChatIntegrationHandler({');
-  assert.ok(route > 0);
-  assert.ok(route < server.indexOf("app.use('/api', (req, res) =>"));
+  const factory = server.indexOf('const chatOpsIntegrationHandler = createWordPressChatIntegrationHandler({');
+  assert.ok(factory > 0);
+  assert.ok(factory < server.indexOf("app.use('/api', (req, res) =>"));
   const bodyParser = server.search(/app\.use\(\s*express\.json\(/);
-  assert.ok(bodyParser > 0 && route > bodyParser, 'body parser runs first');
-  const block = server.slice(route, server.indexOf('}));', route));
+  assert.ok(bodyParser > 0 && factory > bodyParser, 'body parser runs first');
+  const block = server.slice(factory, server.indexOf('});', factory) + 2);
   assert.doesNotMatch(block, /requireAdmin|requireRole|adminCookieName/);
+  assert.match(server, /app\.post\(WORDPRESS_CHAT_INTEGRATION_PATH, chatOpsIntegrationHandler\)/);
+  assert.match(server, /app\.post\(CHAT_OPS_INTEGRATION_PATH, chatOpsIntegrationHandler\)/);
   assert.match(server, /app\.all\(WORDPRESS_CHAT_INTEGRATION_PATH, wordpressChatMethodNotAllowed\)/);
+  assert.match(server, /app\.all\(CHAT_OPS_INTEGRATION_PATH, wordpressChatMethodNotAllowed\)/);
   assert.match(server, /app\.use\(WORDPRESS_CHAT_INTEGRATION_PATH, wordpressChatBodyErrorHandler\)/);
+  assert.match(server, /app\.use\(CHAT_OPS_INTEGRATION_PATH, wordpressChatBodyErrorHandler\)/);
   assert.equal((server.match(/\/api\/integrations\//g) ?? []).length, 0, 'path comes from the shared constant only');
   assert.equal(WORDPRESS_CHAT_INTEGRATION_PATH, '/api/integrations/wordpress/chat');
+  assert.equal(CHAT_OPS_INTEGRATION_PATH, '/api/integrations/chat/ops');
+  assert.equal((server.match(/createWordPressChatIntegrationHandler\(/g) ?? []).length, 1);
 });
 
 test('the integration path is outside public CORS and the admin Origin guard', () => {
   assert.equal(isPublicChatCorsPath(WORDPRESS_CHAT_INTEGRATION_PATH), false);
   assert.equal(isPublicPlatformCorsPath(WORDPRESS_CHAT_INTEGRATION_PATH), false);
   assert.equal(isAdminStateChangingRequest('POST', WORDPRESS_CHAT_INTEGRATION_PATH), false);
+  assert.equal(isPublicChatCorsPath(CHAT_OPS_INTEGRATION_PATH), false);
+  assert.equal(isPublicPlatformCorsPath(CHAT_OPS_INTEGRATION_PATH), false);
+  assert.equal(isAdminStateChangingRequest('POST', CHAT_OPS_INTEGRATION_PATH), false);
 });
 
 test('integration credential never reaches browser-facing code, public capabilities or docs', () => {
@@ -1146,14 +1197,22 @@ test('integration credential never reaches browser-facing code, public capabilit
   for (const file of textFiles) {
     const content = fs.readFileSync(file, 'utf8');
     assert.ok(!content.includes('WORDPRESS_CHAT_INTEGRATION_TOKEN'), `${file} references the integration secret`);
+    assert.ok(!content.includes('RRB_SILVER_CHAT_INTEGRATION_TOKEN'), `${file} references the Silver integration secret`);
     assert.ok(!content.includes('/api/integrations/wordpress'), `${file} advertises the server-to-server endpoint`);
+    assert.ok(!content.includes('/api/integrations/chat/ops'), `${file} advertises the chat ops alias`);
   }
 
   for (const config of ['vite.config.ts', 'vite.embed.config.ts']) {
-    if (fs.existsSync(path.join(process.cwd(), config))) assert.ok(!read(config).includes('WORDPRESS_CHAT_INTEGRATION'));
+    if (fs.existsSync(path.join(process.cwd(), config))) {
+      const configText = read(config);
+      assert.ok(!configText.includes('WORDPRESS_CHAT_INTEGRATION'));
+      assert.ok(!configText.includes('RRB_SILVER_CHAT_INTEGRATION'));
+    }
   }
   assert.match(read('.env.example'), /^WORDPRESS_CHAT_INTEGRATION_TOKEN=$/m);
   assert.match(read('.env.example'), /^WORDPRESS_CHAT_INTEGRATION_TOKEN_PREVIOUS=$/m);
+  assert.match(read('.env.example'), /^RRB_SILVER_CHAT_INTEGRATION_TOKEN=$/m);
+  assert.match(read('.env.example'), /^RRB_SILVER_CHAT_INTEGRATION_TOKEN_PREVIOUS=$/m);
 
   const distClient = path.join(process.cwd(), 'dist', 'client');
   if (fs.existsSync(distClient)) {
@@ -1830,17 +1889,22 @@ test('entitlement: an unavailable store denies WordPress chat writes and does no
   }
 });
 
-test('wiring: one endpoint, delegated writes use the shared conversation store and service', () => {
+test('wiring: one shared handler, delegated writes use the shared conversation store and service', () => {
   const server = read('server.ts');
-  const route = server.indexOf('app.post(WORDPRESS_CHAT_INTEGRATION_PATH, createWordPressChatIntegrationHandler({');
-  const block = server.slice(route, server.indexOf('}));', route));
+  const factory = server.indexOf('const chatOpsIntegrationHandler = createWordPressChatIntegrationHandler({');
+  const block = server.slice(factory, server.indexOf('});', factory) + 2);
   assert.match(block, /writes: chatConversationStore,/);
   assert.match(block, /resolveChatAccess:/);
-  assert.equal((server.match(/WORDPRESS_CHAT_INTEGRATION_PATH, createWordPressChatIntegrationHandler/g) ?? []).length, 1);
+  assert.equal((server.match(/createWordPressChatIntegrationHandler\(/g) ?? []).length, 1);
+  assert.match(server, /app\.post\(WORDPRESS_CHAT_INTEGRATION_PATH, chatOpsIntegrationHandler\)/);
+  assert.match(server, /app\.post\(CHAT_OPS_INTEGRATION_PATH, chatOpsIntegrationHandler\)/);
   const adapter = read('src/lib/integrations/wordpressChatDelegatedActions.ts');
   assert.match(adapter, /createTeamReply\(tx, \{[\s\S]*?isInternalNote: false,[\s\S]*?replyToId: null,[\s\S]*?terminalPolicy: 'reject'/);
   assert.doesNotMatch(adapter, /prisma|chatMessage\.create|updateMany/);
   assert.doesNotMatch(adapter, /adminPresence|chatPresenceSetting|chatAlert|chatAppointment/);
+  assert.match(adapter, /operatorActionSourceFor\(integrationId\)/);
+  assert.equal(operatorActionSourceFor('primewayz-wordpress'), OPERATOR_ACTION_SOURCE);
+  assert.equal(operatorActionSourceFor('rrb-silver-campaign-next'), 'rrb-silver-campaign-next');
 });
 
 // --- Visitor intelligence (P27 presence & session context, P28 identity & contact) ---
@@ -2183,4 +2247,256 @@ test('wiring: public session / heartbeat persist normalised telemetry; location 
   const chatSession = schema.slice(schema.indexOf('model ChatSession {'), schema.indexOf('model ChatMessage {'));
   assert.doesNotMatch(chatSession, /userAgent|ipAddress|latitude|longitude|presence\s/i, 'no raw UA, IP, exact location or stored presence');
   assert.match(chatSession, /@@index\(\[tenantId, visitorId\]\)/);
+});
+
+// =====================================================================================
+// Silver campaign ops (rrb-silver-campaign-next) — negative auth, isolation, regression
+// =====================================================================================
+
+async function startSilverApp(options: {
+  db?: Db;
+  env?: NodeJS.ProcessEnv;
+  resolveChatAccess?: (tenantId: string) => Promise<{ allowed: boolean; basis: string }>;
+} = {}) {
+  return startApp({
+    db: options.db,
+    env: options.env ?? SILVER_ENV,
+    registry: INTEGRATION_REGISTRY,
+    resolveChatAccess: options.resolveChatAccess,
+  });
+}
+
+test('silver auth: missing or wrong token returns 401 integration_unauthorized', async () => {
+  const app = await startSilverApp();
+  try {
+    for (const token of [null, 'wrong-token-that-is-long-enough-0123456789ab', TOKEN]) {
+      const res = await app.call({ token, body: { action: 'diagnostics' } });
+      assert.equal(res.status, 401, String(token));
+      assert.equal(res.json.error.code, 'integration_unauthorized');
+      assert.equal(res.headers['www-authenticate'], 'Bearer');
+    }
+  } finally {
+    await app.close();
+  }
+});
+
+test('silver auth: cleared or revoked env fails closed', async () => {
+  for (const env of [
+    { RRB_SILVER_CAMPAIGN_ENABLED: 'true' },
+    { RRB_SILVER_CHAT_INTEGRATION_TOKEN: '', RRB_SILVER_CAMPAIGN_ENABLED: 'true' },
+    { RRB_SILVER_CHAT_INTEGRATION_TOKEN: 'short', RRB_SILVER_CAMPAIGN_ENABLED: 'true' },
+  ] as NodeJS.ProcessEnv[]) {
+    const app = await startSilverApp({ env });
+    try {
+      const res = await app.call({ token: SILVER_TOKEN, body: { action: 'diagnostics' } });
+      assert.equal(res.status, 401);
+      assert.equal(res.json.error.code, 'integration_unauthorized');
+    } finally {
+      await app.close();
+    }
+  }
+});
+
+test('silver auth: previous token works only while _PREVIOUS is configured', async () => {
+  const withPrevious = {
+    ...SILVER_ENV,
+    RRB_SILVER_CHAT_INTEGRATION_TOKEN_PREVIOUS: SILVER_PREVIOUS_TOKEN,
+  } as NodeJS.ProcessEnv;
+  assert.equal(resolveIntegrationPrincipal(SILVER_TOKEN, withPrevious)?.tenantId, 'rrb-silver-campaign');
+  assert.equal(resolveIntegrationPrincipal(SILVER_PREVIOUS_TOKEN, withPrevious)?.integrationId, 'rrb-silver-campaign-next');
+  assert.equal(resolveIntegrationPrincipal(SILVER_PREVIOUS_TOKEN, SILVER_ENV), null);
+  assert.equal(resolveIntegrationPrincipal(TOKEN, SILVER_ENV), null, 'WordPress token never authenticates as Silver');
+});
+
+test('silver tenant gate: inactive campaign returns tenant_unavailable', async () => {
+  const app = await startSilverApp({
+    env: { RRB_SILVER_CHAT_INTEGRATION_TOKEN: SILVER_TOKEN } as NodeJS.ProcessEnv,
+  });
+  try {
+    const res = await app.call({ token: SILVER_TOKEN, body: { action: 'diagnostics' } });
+    assert.equal(res.status, 503);
+    assert.equal(res.json.error.code, 'tenant_unavailable');
+  } finally {
+    await app.close();
+  }
+});
+
+test('silver diagnostics: binds rrb-silver-campaign and reports non-destructive scopes', async () => {
+  const app = await startSilverApp();
+  try {
+    const res = await app.call({ token: SILVER_TOKEN, body: { action: 'diagnostics' } });
+    assert.equal(res.status, 200);
+    assert.deepEqual(res.json.tenant, {
+      key: 'rrb-silver-campaign',
+      market: 'IN',
+      displayName: 'RentReadBuy Silver Membership',
+    });
+    assert.deepEqual(res.json.data.authentication, {
+      valid: true,
+      integrationId: 'rrb-silver-campaign-next',
+      scopes: [...SILVER_DEFINITION.scopes],
+    });
+    assert.deepEqual(res.json.data.tenantBinding, {
+      tenantId: 'rrb-silver-campaign',
+      valid: true,
+      active: true,
+    });
+  } finally {
+    await app.close();
+  }
+});
+
+test('silver scopes: archive and delete are forbidden', async () => {
+  const app = await startSilverApp();
+  try {
+    const before = snapshot(app.db);
+    for (const action of ['archive', 'restore', 'delete'] as const) {
+      const res = await app.call({
+        token: SILVER_TOKEN,
+        body: { action, sessionId: 'silver-1', clientActionId: nextActionId(), actor: ACTOR },
+      });
+      assert.equal(res.status, 403, action);
+      assert.equal(res.json.error.code, 'integration_forbidden');
+    }
+    assert.equal(snapshot(app.db), before);
+  } finally {
+    await app.close();
+  }
+});
+
+test('silver isolation: Infotech and other-tenant sessions return opaque 404', async () => {
+  const app = await startSilverApp();
+  try {
+    assert.equal((await app.call({ token: SILVER_TOKEN, body: { action: 'conversation', sessionId: 'silver-1' } })).status, 200);
+    const bodies: string[] = [];
+    for (const sessionId of ['inf-1', 'uk-1', 'rrb-1', 'legacy-1', 'does-not-exist']) {
+      const res = await app.call({ token: SILVER_TOKEN, body: { action: 'conversation', sessionId } });
+      assert.equal(res.status, 404, sessionId);
+      assert.equal(res.json.error.code, 'conversation_not_found');
+      assert.ok(!res.text.includes('ONLY TEXT') && !res.text.includes('Need a new website'));
+      const { requestId: _requestId, ...rest } = res.json;
+      bodies.push(JSON.stringify(rest));
+    }
+    assert.equal(new Set(bodies).size, 1);
+  } finally {
+    await app.close();
+  }
+});
+
+test('silver request: body tenant override is rejected', async () => {
+  const app = await startSilverApp();
+  try {
+    const before = snapshot(app.db);
+    for (const field of TENANT_AUTHORITY_FIELDS) {
+      const res = await app.call({
+        token: SILVER_TOKEN,
+        body: { action: 'diagnostics', [field]: 'pw-infotech' },
+      });
+      assert.equal(res.status, 400, field);
+      assert.equal(res.json.error.code, 'tenant_override_rejected');
+    }
+    assert.equal(snapshot(app.db), before);
+  } finally {
+    await app.close();
+  }
+});
+
+test('silver entitlement: suspended chat denies writes while diagnostics stay coherent', async () => {
+  const seen: string[] = [];
+  const app = await startSilverApp({
+    resolveChatAccess: async (tenantId) => {
+      seen.push(tenantId);
+      return { allowed: false, basis: 'suspended' };
+    },
+  });
+  try {
+    const diagnostics = await app.call({ token: SILVER_TOKEN, body: { action: 'diagnostics' } });
+    assert.equal(diagnostics.status, 200);
+    assert.equal(diagnostics.json.data.chat.enabled, false);
+    assert.equal(diagnostics.json.data.status, 'degraded');
+    assert.deepEqual(Object.keys(diagnostics.json.data).sort(), [
+      'api', 'authentication', 'chat', 'database', 'fullAdmin', 'status', 'team', 'tenantBinding',
+    ]);
+    const before = snapshot(app.db);
+    assert.equal((await app.call({ token: SILVER_TOKEN, body: { action: 'dashboard' } })).status, 200);
+    assert.equal((await app.call({ token: SILVER_TOKEN, body: { action: 'conversation', sessionId: 'silver-1' } })).status, 200);
+    const reply = await app.call({ token: SILVER_TOKEN, body: replyBody('silver-1', 'Should not send') });
+    assert.equal(reply.status, 403);
+    assert.equal(reply.json.error.code, 'integration_forbidden');
+    assert.equal(snapshot(app.db), before);
+    assert.ok(seen.every((tenantId) => tenantId === 'rrb-silver-campaign'));
+  } finally {
+    await app.close();
+  }
+});
+
+test('silver writes: reply / resolve / reopen work and audit with integrationId source', async () => {
+  const app = await startSilverApp();
+  try {
+    const reply = await app.call({ token: SILVER_TOKEN, body: replyBody('silver-1', 'Silver team reply') });
+    assert.equal(reply.status, 200);
+    assert.equal(reply.json.data.action, 'reply');
+    assert.equal(reply.json.tenant.key, 'rrb-silver-campaign');
+    const action = app.db.operatorActions[0];
+    assert.equal(action.integrationId, 'rrb-silver-campaign-next');
+    assert.equal(action.source, 'rrb-silver-campaign-next');
+    assert.equal(action.tenantId, 'rrb-silver-campaign');
+
+    const resolve = await app.call({ token: SILVER_TOKEN, body: statusBody('resolve', 'silver-1') });
+    assert.equal(resolve.status, 200);
+    assert.equal(sessionOf(app.db, 'silver-1').status, 'closed');
+
+    const reopen = await app.call({ token: SILVER_TOKEN, body: statusBody('reopen', 'silver-1') });
+    assert.equal(reopen.status, 200);
+    assert.equal(sessionOf(app.db, 'silver-1').status, 'admin_needed');
+  } finally {
+    await app.close();
+  }
+});
+
+test('silver alias: provider-neutral path serves the same handler', async () => {
+  const app = await startSilverApp();
+  try {
+    const viaAlias = await app.call({
+      token: SILVER_TOKEN,
+      path: CHAT_OPS_INTEGRATION_PATH,
+      body: { action: 'diagnostics' },
+    });
+    assert.equal(viaAlias.status, 200);
+    assert.equal(viaAlias.json.tenant.key, 'rrb-silver-campaign');
+    const viaWordpressPath = await app.call({
+      token: SILVER_TOKEN,
+      path: WORDPRESS_CHAT_INTEGRATION_PATH,
+      body: { action: 'diagnostics' },
+    });
+    assert.equal(viaWordpressPath.status, 200);
+    assert.equal(viaWordpressPath.json.data.authentication.integrationId, 'rrb-silver-campaign-next');
+  } finally {
+    await app.close();
+  }
+});
+
+test('silver regression: WordPress Infotech scopes and binding are unchanged', async () => {
+  assert.equal(WORDPRESS_DEFINITION.integrationId, 'primewayz-wordpress');
+  assert.equal(WORDPRESS_DEFINITION.tenantId, 'pw-infotech');
+  assert.ok(WORDPRESS_DEFINITION.scopes.includes('chat:archive'));
+  assert.ok(WORDPRESS_DEFINITION.scopes.includes('chat:delete'));
+  const app = await startApp();
+  try {
+    const diagnostics = await app.call({ body: { action: 'diagnostics' } });
+    assert.equal(diagnostics.status, 200);
+    assert.equal(diagnostics.json.tenant.key, 'pw-infotech');
+    assert.ok(diagnostics.json.data.authentication.scopes.includes('chat:archive'));
+    const dashboard = await app.call({ body: { action: 'dashboard' } });
+    assert.deepEqual(dashboard.json.data.operator, {
+      canReply: true,
+      canResolve: true,
+      canReopen: true,
+      canArchive: true,
+      canDelete: true,
+    });
+    assert.equal((await app.call({ body: { action: 'conversation', sessionId: 'silver-1' } })).status, 404);
+  } finally {
+    await app.close();
+  }
 });
