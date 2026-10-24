@@ -14,8 +14,8 @@ import type { PlatformTenantId } from '../platform/sourceContext.ts';
  * Read: chat:dashboard, chat:read, chat:diagnostics.
  * Delegated write: chat:reply, chat:resolve, chat:reopen, chat:archive (archive and restore),
  * chat:delete (permanent deletion of message content; lead identity is retained on the tombstone).
- * Presence write (WS-1 contract / WS-3–4 adapters): chat:presence:write — not granted to
- * existing WordPress or Silver credentials until those adapters ship.
+ * Presence write (WS-1 contract): chat:presence:write.
+ * WS-3 grants it only to primewayz-wordpress (pw-infotech). Silver remains without it (WS-4).
  */
 export type IntegrationScope =
   | 'chat:dashboard'
@@ -49,7 +49,18 @@ export const INTEGRATION_REGISTRY: readonly IntegrationDefinition[] = [
   {
     integrationId: 'primewayz-wordpress',
     tenantId: 'pw-infotech',
-    scopes: ['chat:dashboard', 'chat:read', 'chat:diagnostics', 'chat:reply', 'chat:resolve', 'chat:reopen', 'chat:archive', 'chat:delete'],
+    scopes: [
+      'chat:dashboard',
+      'chat:read',
+      'chat:diagnostics',
+      'chat:reply',
+      'chat:resolve',
+      'chat:reopen',
+      'chat:archive',
+      'chat:delete',
+      // WS-3: Infotech WordPress Chat Connect operator presence only.
+      'chat:presence:write',
+    ],
     tokenEnv: 'WORDPRESS_CHAT_INTEGRATION_TOKEN',
     previousTokenEnv: 'WORDPRESS_CHAT_INTEGRATION_TOKEN_PREVIOUS',
   },

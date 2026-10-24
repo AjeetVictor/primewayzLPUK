@@ -2749,7 +2749,7 @@ const operatorPresenceIngestion = createOperatorPresenceIngestionHandlers({
       try {
         const installation = await authenticateInstallationCredential(chatConnectStore, installationBearer);
         if (!installation) return null;
-        // Installation credentials do not receive presence write until Chat Connect adapters grant it.
+        // Installation credentials never receive presence write (connection health ≠ human Online).
         return {
           kind: 'installation',
           tenantId: installation.tenantId,
@@ -2784,7 +2784,7 @@ app.post(
   attachAdminSessionIfPresent,
   operatorPresenceIngestion.heartbeat,
 );
-/** WS-2: Admin (UK) offline supported; WP/Silver integration/installation stay 501 reserved. */
+/** WS-2 Admin + WS-3 integration (chat:presence:write); installation stays reserved. */
 app.post(
   OPERATOR_PRESENCE_OFFLINE_PATH,
   attachAdminSessionIfPresent,
