@@ -550,13 +550,30 @@ test('rotation: the _PREVIOUS secret is accepted alongside the current secret, a
   assert.equal(parseBearerToken(`Bearer ${TOKEN} extra`), null);
 });
 
-test('registry: the WordPress integration is bound to pw-infotech with reply / resolve / reopen / archive / delete scopes', () => {
+test('registry: the WordPress integration is bound to pw-infotech with ops + WS-3 presence write scopes', () => {
   assert.equal(INTEGRATION_REGISTRY.length, 2);
   assert.equal(WORDPRESS_DEFINITION.tenantId, 'pw-infotech');
   assert.deepEqual([...WORDPRESS_DEFINITION.scopes].sort(), [
-    'chat:archive', 'chat:dashboard', 'chat:delete', 'chat:diagnostics', 'chat:read', 'chat:reopen', 'chat:reply', 'chat:resolve',
+    'chat:archive',
+    'chat:dashboard',
+    'chat:delete',
+    'chat:diagnostics',
+    'chat:presence:write',
+    'chat:read',
+    'chat:reopen',
+    'chat:reply',
+    'chat:resolve',
   ]);
-  assert.ok(WORDPRESS_DEFINITION.scopes.every((scope) => !/assign|manage|edit|note|spam|presence|availability|attach|appointment|tenant|user/.test(scope)));
+  assert.ok(WORDPRESS_DEFINITION.scopes.includes('chat:presence:write'));
+  assert.ok(
+    WORDPRESS_DEFINITION.scopes.every(
+      (scope) =>
+        scope === 'chat:presence:write'
+        || !/assign|manage|edit|note|spam|presence|availability|attach|appointment|tenant|user/.test(scope),
+    ),
+  );
+  const silver = INTEGRATION_REGISTRY.find((entry) => entry.integrationId === 'rrb-silver-campaign-next')!;
+  assert.equal(silver.scopes.includes('chat:presence:write'), false, 'Silver must not receive presence write in WS-3');
 });
 
 test('registry: Silver campaign ops are bound to rrb-silver-campaign without archive / delete scopes', () => {

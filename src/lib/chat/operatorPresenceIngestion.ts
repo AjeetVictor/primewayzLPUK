@@ -1,18 +1,16 @@
 /**
- * Versioned operator-presence ingestion contract (WS-1).
+ * Versioned operator-presence ingestion contract (WS-1 + WS-2/WS-3 adapters).
  *
- * Supports future adapters for:
- * - Primewayz UK administration (also keeps legacy Admin heartbeat path)
- * - Primewayz Infotech WordPress Chat Connect
- * - RentReadBuy Silver Campaign
- * - Future tenants
+ * Adapters:
+ * - Primewayz UK administration (Admin cookie; also legacy Admin heartbeat path)
+ * - Primewayz Infotech WordPress Chat Connect (integration Bearer + chat:presence:write)
+ * - RentReadBuy Silver Campaign (deferred WS-4 — no presence write scope)
  *
  * Credentials are tenant-bound server secrets (integration Bearer or Chat Connect installation).
  * Presence-write credentials must never ship in frontend JavaScript.
- * Existing WordPress / Silver ops scopes do not include presence write until WS-3 / WS-4.
  *
  * Identity: never trust a client-supplied central User id. Bind presence to the authorised
- * integration/installation/admin session + tenant-local operatorRef.
+ * integration/installation/admin session + tenant-local operatorRef (adapter-asserted).
  */
 
 import { createHash } from 'node:crypto';
@@ -34,12 +32,13 @@ export const OPERATOR_PRESENCE_INGESTION_VERSION = 'v1' as const;
 export const OPERATOR_PRESENCE_HEARTBEAT_PATH = '/api/v1/operator-presence/heartbeat';
 /**
  * Explicit offline / session invalidation.
- * WS-2: authenticated Admin (UK) principals only.
- * WP / Silver installation & integration principals remain deferred (WS-3 / WS-4).
+ * WS-2: authenticated Admin (UK) principals.
+ * WS-3: integration principals that hold chat:presence:write (WordPress / pw-infotech only).
+ * Installation credentials and Silver remain deferred (no write scope / WS-4).
  */
 export const OPERATOR_PRESENCE_OFFLINE_PATH = '/api/v1/operator-presence/offline';
 
-/** Scope required for integration-credential presence writes. Not granted to WP/Silver yet. */
+/** Scope required for integration-credential presence writes. Granted to primewayz-wordpress only (WS-3). */
 export const OPERATOR_PRESENCE_WRITE_SCOPE = 'chat:presence:write' as const;
 
 export const OPERATOR_PRESENCE_CLIENT_ACTION_ID_MAX = 64;
@@ -47,6 +46,11 @@ export const OPERATOR_PRESENCE_OPERATOR_REF_MAX = 64;
 export const OPERATOR_PRESENCE_CORRELATION_ID_MAX = 64;
 export const OPERATOR_PRESENCE_IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
 export const OPERATOR_PRESENCE_HEARTBEAT_EXPIRES_MS = ADMIN_PRESENCE_ACTIVE_WINDOW_MS;
+/**
+ * Client clocks may run slightly ahead. Stamps beyond this skew are rejected so a
+ * delayed Offline cannot use a far-future notAfterMs to wipe newer heartbeats.
+ */
+export const OPERATOR_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS = 2 * 60 * 1000;
 
 export type OperatorPresenceIngestionPrincipal = {
   kind: 'integration' | 'installation' | 'admin';
@@ -260,6 +264,11 @@ export type OperatorPresenceOfflineRequest = {
   clientActionId: string;
   operatorRef: string;
   correlationId?: string;
+  /**
+   * Epoch ms — refuse clearing heartbeats newer than this stamp so a delayed Offline
+   * cannot wipe a newer heartbeat for the same operator-session ref.
+   */
+  notAfterMs?: number;
 };
 
 export type OperatorPresenceOfflineResponse = {
@@ -280,14 +289,79 @@ export type OperatorPresenceIngestionDeps = {
     userId: number;
     now?: Date;
   }) => Promise<{ previousLastSeenAt: Date | null; becameActive: boolean } | void>;
-  /** WS-2+: clear one operator's heartbeat for the principal's tenant. */
+  /** WS-2+: clear one operator-session heartbeat for the principal's tenant. */
   clearOperatorPresence?: (input: {
     tenantId: string;
     userId: number;
+    notAfter?: Date;
   }) => Promise<number>;
   resolvePrincipal: (req: Parameters<RequestHandler>[0]) => Promise<OperatorPresenceIngestionPrincipal | null>;
   now?: () => Date;
 };
+
+/**
+ * Parse Offline body. Allows optional notAfterMs for race protection; rejects tenant/operatorUserId.
+ */
+export function parseOperatorPresenceOfflineBody(body: unknown): OperatorPresenceOfflineRequest {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    throw new OperatorPresenceIngestionError(400, 'invalid_request', 'Request body must be a JSON object.');
+  }
+  const record = body as Record<string, unknown>;
+  if ('tenantId' in record) {
+    throw new OperatorPresenceIngestionError(400, 'tenant_mismatch', 'Tenant is bound to the credential and cannot be overridden.');
+  }
+  if ('operatorUserId' in record) {
+    throw new OperatorPresenceIngestionError(
+      400,
+      'invalid_request',
+      'operatorUserId is not accepted; operator identity is bound to the authenticated credential and operatorRef.',
+    );
+  }
+  const allowed = new Set(['clientActionId', 'operatorRef', 'correlationId', 'notAfterMs']);
+  const unexpected = Object.keys(record).filter((key) => !allowed.has(key));
+  if (unexpected.length > 0) {
+    throw new OperatorPresenceIngestionError(400, 'invalid_request', 'Request contains unsupported fields.');
+  }
+
+  const base = parseOperatorPresenceHeartbeatBody({
+    clientActionId: record.clientActionId,
+    operatorRef: record.operatorRef,
+    ...(record.correlationId !== undefined ? { correlationId: record.correlationId } : {}),
+  });
+
+  let notAfterMs: number | undefined;
+  if (record.notAfterMs !== undefined) {
+    if (typeof record.notAfterMs !== 'number' || !Number.isFinite(record.notAfterMs)) {
+      throw new OperatorPresenceIngestionError(400, 'invalid_request', 'notAfterMs must be a finite number when provided.');
+    }
+    const date = new Date(record.notAfterMs);
+    if (Number.isNaN(date.getTime())) {
+      throw new OperatorPresenceIngestionError(400, 'invalid_request', 'notAfterMs must be a valid epoch millisecond timestamp.');
+    }
+    notAfterMs = record.notAfterMs;
+  }
+
+  return { ...base, ...(notAfterMs !== undefined ? { notAfterMs } : {}) };
+}
+
+/**
+ * Reject far-future Offline stamps. Honest clients send Date.now() at disconnect;
+ * a delayed request with a year-ahead stamp must not clear heartbeats written later.
+ */
+export function assertOperatorPresenceNotAfterMsAllowed(
+  notAfterMs: number | undefined,
+  now: Date = new Date(),
+): void {
+  if (notAfterMs === undefined) return;
+  const maxAllowed = now.getTime() + OPERATOR_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS;
+  if (notAfterMs > maxAllowed) {
+    throw new OperatorPresenceIngestionError(
+      400,
+      'invalid_request',
+      'notAfterMs cannot be substantially in the future.',
+    );
+  }
+}
 
 export function createOperatorPresenceIngestionHandlers(deps: OperatorPresenceIngestionDeps) {
   const now = () => deps.now?.() ?? new Date();
@@ -385,8 +459,8 @@ export function createOperatorPresenceIngestionHandlers(deps: OperatorPresenceIn
   };
 
   /**
-   * Explicit offline for authenticated Admin principals (UK WS-2).
-   * Integration / installation adapters stay reserved until WS-3 / WS-4 grant presence write.
+   * Explicit offline for Admin (WS-2) and integration principals with chat:presence:write (WS-3).
+   * Installation credentials stay reserved; Silver has no write scope.
    */
   const offline: RequestHandler = async (req, res) => {
     try {
@@ -394,11 +468,11 @@ export function createOperatorPresenceIngestionHandlers(deps: OperatorPresenceIn
       if (!principal) {
         throw new OperatorPresenceIngestionError(401, 'unauthorized', 'Valid presence credentials are required.');
       }
-      if (principal.kind !== 'admin') {
+      if (principal.kind === 'installation') {
         throw new OperatorPresenceIngestionError(
           501,
           'reserved',
-          'Explicit offline for integration/installation adapters is reserved for WS-3/WS-4. UK Admin sessions use the Admin offline path or this endpoint with an Admin session.',
+          'Explicit offline for installation credentials is reserved. Use integration presence write (WS-3) or Admin offline (WS-2).',
         );
       }
       assertPresenceWriteAuthorized(principal);
@@ -409,8 +483,9 @@ export function createOperatorPresenceIngestionHandlers(deps: OperatorPresenceIn
           'Operator presence clear is not configured on this host.',
         );
       }
-      const body = parseOperatorPresenceHeartbeatBody(req.body) as OperatorPresenceOfflineRequest;
+      const body = parseOperatorPresenceOfflineBody(req.body);
       const at = now();
+      assertOperatorPresenceNotAfterMsAllowed(body.notAfterMs, at);
       const claimInput = {
         tenantId: principal.tenantId,
         action: 'offline',
@@ -428,25 +503,37 @@ export function createOperatorPresenceIngestionHandlers(deps: OperatorPresenceIn
       if (!duplicated) {
         try {
           const identity = resolveOperatorPresenceIdentity(principal, body);
-          if (identity.synthetic || identity.userId !== principal.adminUserId) {
-            throw new OperatorPresenceIngestionError(
-              403,
-              'forbidden_scope',
-              'Admin offline may only clear the authenticated operator session.',
-            );
+          if (principal.kind === 'admin') {
+            if (identity.synthetic || identity.userId !== principal.adminUserId) {
+              throw new OperatorPresenceIngestionError(
+                403,
+                'forbidden_scope',
+                'Admin offline may only clear the authenticated operator session.',
+              );
+            }
           }
+          const notAfter =
+            typeof body.notAfterMs === 'number' ? new Date(body.notAfterMs) : undefined;
           cleared = await deps.clearOperatorPresence({
             tenantId: principal.tenantId,
             userId: identity.userId,
+            ...(notAfter ? { notAfter } : {}),
           });
           try {
             await deps.eventStore.append({
               tenantId: principal.tenantId,
               eventType: 'operator_session_ended',
               actorRef: body.operatorRef,
-              actorUserId: identity.userId,
+              actorUserId: identity.synthetic ? null : identity.userId,
               correlationId: body.correlationId ?? body.clientActionId,
-              details: { source: 'admin_offline_v1', cleared },
+              details: {
+                source: principal.kind === 'admin' ? 'admin_offline_v1' : 'integration_offline_v1',
+                binding: identity.binding,
+                cleared,
+                integrationId: principal.integrationId ?? null,
+                installationId: principal.installationId ?? null,
+                ...(notAfter ? { notAfter: notAfter.toISOString() } : {}),
+              },
               at,
             });
           } catch {
@@ -501,38 +588,52 @@ export const OPERATOR_PRESENCE_INGESTION_CONTRACT = {
     },
     offline: {
       path: OPERATOR_PRESENCE_OFFLINE_PATH,
-      status: 'admin_only' as const,
-      availableFor: ['admin'] as const,
-      deferredAdapters: ['WS-3', 'WS-4'] as const,
+      status: 'admin_and_integration_write' as const,
+      availableFor: ['admin', 'integration_with_presence_write'] as const,
+      deferredAdapters: ['WS-4'] as const,
+      reservedPrincipals: ['installation'] as const,
       ttlFallback: 'Heartbeat TTL expiry (ADMIN_PRESENCE_ACTIVE_WINDOW_MS)',
+      raceProtection: 'optional notAfterMs refuses clears when lastSeenAt is newer',
     },
   },
   auth: {
     integrationBearer: 'Authorization: Bearer <server-side integration token>',
-    installationBearer: 'Authorization: Bearer cck_…ccs_…',
-    adminCookie: 'Existing Admin JWT cookie (UK path); prefer dedicated adapter tokens for WP/Silver',
+    installationBearer: 'Authorization: Bearer cck_…ccs_… (no presence write)',
+    adminCookie: 'Existing Admin JWT cookie (UK path)',
   },
   requiredScope: OPERATOR_PRESENCE_WRITE_SCOPE,
   heartbeat: {
     method: 'POST',
     body: {
       clientActionId: 'string (1..64) — replay protection',
-      operatorRef: 'string (1..64) — tenant-local operator id asserted by the adapter',
+      operatorRef: 'string (1..64) — tenant-local operator-session id asserted by the adapter',
       correlationId: 'optional string (1..64)',
     },
     rejectedFields: ['tenantId', 'operatorUserId', 'token', 'password', 'secret'],
     expiresInMs: OPERATOR_PRESENCE_HEARTBEAT_EXPIRES_MS,
     idempotencyTtlMs: OPERATOR_PRESENCE_IDEMPOTENCY_TTL_MS,
   },
+  offline: {
+    method: 'POST',
+    body: {
+      clientActionId: 'string (1..64) — replay protection',
+      operatorRef: 'string (1..64) — same session ref as heartbeat',
+      correlationId: 'optional string (1..64)',
+      notAfterMs: 'optional finite epoch ms — stale Offline must not wipe a newer beat; far-future stamps rejected (2m skew)',
+    },
+    rejectedFields: ['tenantId', 'operatorUserId', 'token', 'password', 'secret'],
+  },
   notes: [
     'Tenant id is taken only from the credential binding.',
     'Operator identity is bound to the authorised credential + operatorRef; client-supplied central User ids are rejected.',
     'Do not embed presence-write credentials in frontend JavaScript.',
-    'Existing WordPress and Silver API contracts are unchanged until adapters grant chat:presence:write.',
+    'WS-3: chat:presence:write is granted only to primewayz-wordpress (pw-infotech); Silver has no presence write.',
     'Heartbeats refresh AdminPresence TTL; permanent audit events are transitions only.',
-    'Idempotency keys are released if the heartbeat write fails after claim, so retries remain safe.',
+    'Idempotency keys are released if the heartbeat/offline write fails after claim, so retries remain safe.',
     'WS-2: Admin cookie offline clears the authenticated operator heartbeat for the bound tenant.',
-    'WS-3/WS-4: integration/installation offline remains reserved until those adapters ship.',
+    'WS-3: integration offline clears the adapter-bound synthetic operator-session for that credential + operatorRef.',
+    'Installation-credential offline remains reserved; connection-health heartbeats must never write human presence.',
+    'Multi-tab: each console instance must use a distinct operatorRef so Offline for one tab cannot clear another.',
   ],
 } as const;
 

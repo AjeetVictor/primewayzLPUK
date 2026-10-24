@@ -2749,7 +2749,7 @@ const operatorPresenceIngestion = createOperatorPresenceIngestionHandlers({
       try {
         const installation = await authenticateInstallationCredential(chatConnectStore, installationBearer);
         if (!installation) return null;
-        // Installation credentials do not receive presence write until Chat Connect adapters grant it.
+        // Installation credentials never receive presence write (connection health ≠ human Online).
         return {
           kind: 'installation',
           tenantId: installation.tenantId,
@@ -2784,7 +2784,7 @@ app.post(
   attachAdminSessionIfPresent,
   operatorPresenceIngestion.heartbeat,
 );
-/** WS-2: Admin (UK) offline supported; WP/Silver integration/installation stay 501 reserved. */
+/** WS-2 Admin + WS-3 integration (chat:presence:write); installation stays reserved. */
 app.post(
   OPERATOR_PRESENCE_OFFLINE_PATH,
   attachAdminSessionIfPresent,
@@ -2942,7 +2942,16 @@ app.post(UK_ADMIN_PRESENCE_OFFLINE_PATH, requireAdmin, requireRole(isOperationsR
       code: 'invalid_request',
     });
   }
-  const notAfter = parseUkAdminPresenceNotAfterMs(req.body);
+  let notAfter: Date | undefined;
+  try {
+    notAfter = parseUkAdminPresenceNotAfterMs(req.body);
+  } catch {
+    return res.status(400).json({
+      success: false,
+      error: 'notAfterMs cannot be substantially in the future.',
+      code: 'invalid_request',
+    });
+  }
   const result = await clearUkAdminOperatorPresenceForTenant(
     (input) => clearAdminPresenceForUser(prisma, input),
     { userId: req.adminUser!.id, tenantId, ...(notAfter ? { notAfter } : {}) },

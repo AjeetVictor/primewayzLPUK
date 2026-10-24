@@ -32,6 +32,7 @@ import {
   resetTenantPresencePruneForTests,
 } from '../chat/tenantPresenceRetention.ts';
 import {
+  clearAdminPresenceForUser,
   countActiveTenantOperators,
   recordTenantAdminHeartbeat,
   recordTenantChatPresenceSetting,
@@ -469,14 +470,16 @@ test('Host/Owner read-only reporting; tenant-scoped reporting access', async () 
 test('ingestion contract: replay protection, scope gate, no tenant override, no frontend secrets', async () => {
   assert.equal(OPERATOR_PRESENCE_INGESTION_CONTRACT.version, 'v1');
   assert.equal(OPERATOR_PRESENCE_INGESTION_CONTRACT.requiredScope, OPERATOR_PRESENCE_WRITE_SCOPE);
-  assert.equal(OPERATOR_PRESENCE_INGESTION_CONTRACT.paths.offline.status, 'admin_only');
+  assert.equal(OPERATOR_PRESENCE_INGESTION_CONTRACT.paths.offline.status, 'admin_and_integration_write');
   assert.equal(OPERATOR_PRESENCE_INGESTION_CONTRACT.paths.heartbeat.status, 'available');
   assert.ok(OPERATOR_PRESENCE_INGESTION_CONTRACT.notes.some((n) => /frontend JavaScript/i.test(n)));
   assert.ok(OPERATOR_PRESENCE_INGESTION_CONTRACT.heartbeat.rejectedFields.includes('operatorUserId'));
 
-  for (const entry of INTEGRATION_REGISTRY) {
-    assert.equal(entry.scopes.includes(OPERATOR_PRESENCE_WRITE_SCOPE), false);
-  }
+  const wordpress = INTEGRATION_REGISTRY.find((entry) => entry.integrationId === 'primewayz-wordpress')!;
+  const silver = INTEGRATION_REGISTRY.find((entry) => entry.integrationId === 'rrb-silver-campaign-next')!;
+  assert.equal(wordpress.scopes.includes(OPERATOR_PRESENCE_WRITE_SCOPE), true, 'WS-3 grants WP presence write');
+  assert.equal(wordpress.tenantId, 'pw-infotech');
+  assert.equal(silver.scopes.includes(OPERATOR_PRESENCE_WRITE_SCOPE), false, 'Silver stays without presence write');
 
   assert.throws(
     () => parseOperatorPresenceHeartbeatBody({ clientActionId: 'a', operatorRef: 'op-1', tenantId: 'pw-uk' }),
@@ -509,10 +512,11 @@ test('ingestion contract: replay protection, scope gate, no tenant override, no 
       heartbeats += 1;
       return recordTenantAdminHeartbeat(db.prisma, input);
     },
+    clearOperatorPresence: async (input) => clearAdminPresenceForUser(db.prisma, input),
     resolvePrincipal: async () => ({
       kind: 'integration',
       tenantId: 'pw-infotech',
-      integrationId: 'future-wp-adapter',
+      integrationId: 'primewayz-wordpress',
       scopes: [OPERATOR_PRESENCE_WRITE_SCOPE],
     }),
     now: () => T0,
@@ -539,7 +543,7 @@ test('ingestion contract: replay protection, scope gate, no tenant override, no 
     assert.equal(heartbeats, 1);
     assert.equal(
       db.heartbeats[0]?.userId,
-      syntheticPresenceUserId('pw-infotech', 'future-wp-adapter', 'wp-admin-9'),
+      syntheticPresenceUserId('pw-infotech', 'primewayz-wordpress', 'wp-admin-9'),
     );
 
     const replay = await fetch(`http://127.0.0.1:${port}${OPERATOR_PRESENCE_HEARTBEAT_PATH}`, {
@@ -557,11 +561,11 @@ test('ingestion contract: replay protection, scope gate, no tenant override, no 
     const offline = await fetch(`http://127.0.0.1:${port}${OPERATOR_PRESENCE_OFFLINE_PATH}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    assert.equal(offline.status, 501);
-    const offlineBody = await offline.json();
-    assert.equal(offlineBody.code, 'reserved');
+      body: JSON.stringify({ ...body, clientActionId: 'offline-1', notAfterMs: T0.getTime() }),
+    }).then((r) => r.json());
+    assert.equal(offline.success, true);
+    assert.equal(offline.cleared, 1);
+    assert.equal(db.heartbeats.length, 0);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
   }
@@ -843,7 +847,7 @@ test('retention constants and opportunistic prune ownership', async () => {
   }), 'claimed', 'expired idempotency key was pruned and can be reclaimed');
 });
 
-test('server wiring: policy/reporting/ingestion routes present; offline admin-only; no Option 1 activation', () => {
+test('server wiring: policy/reporting/ingestion routes present; WP presence write only; no Option 1 activation', () => {
   const server = read('server.ts');
   assert.match(server, /TENANT_PRESENCE_POLICY_ADMIN_PATH/);
   assert.match(server, /TENANT_PRESENCE_REPORTING_ADMIN_PATH/);
@@ -853,9 +857,11 @@ test('server wiring: policy/reporting/ingestion routes present; offline admin-on
   assert.match(server, /pruneTenantPresenceArtifacts/);
   assert.match(server, /lookupEffectivePresencePolicy/);
   assert.doesNotMatch(server, /heartbeat_required_online['"]\s*,\s*reason:/);
+  const registry = read('src/lib/integrations/integrationRegistry.ts');
+  assert.match(registry, /integrationId: 'primewayz-wordpress'[\s\S]*?chat:presence:write/);
   assert.doesNotMatch(
-    read('src/lib/integrations/integrationRegistry.ts'),
-    /scopes:\s*\[[^\]]*chat:presence:write/,
+    registry,
+    /integrationId: 'rrb-silver-campaign-next'[\s\S]*?chat:presence:write/,
   );
 });
 

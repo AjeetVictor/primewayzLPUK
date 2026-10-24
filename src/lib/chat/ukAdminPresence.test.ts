@@ -27,6 +27,7 @@ import {
   isVerifiedHumanOnline,
   parseUkAdminPresenceNotAfterMs,
   presenceExpiresAtFromLatest,
+  UK_ADMIN_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS,
   UK_ADMIN_PRESENCE_OFFLINE_PATH,
 } from './ukAdminPresence.ts';
 import {
@@ -34,6 +35,7 @@ import {
   OPERATOR_PRESENCE_OFFLINE_PATH,
   OPERATOR_PRESENCE_WRITE_SCOPE,
   OPERATOR_PRESENCE_INGESTION_CONTRACT,
+  syntheticPresenceUserId,
 } from './operatorPresenceIngestion.ts';
 import { createMemoryTenantPresencePolicyStore } from '../platform/tenantPresencePolicyMemory.ts';
 import { createMemoryTenantPresenceEventStore } from './tenantPresenceEventsMemory.ts';
@@ -211,8 +213,26 @@ test('stale Offline notAfter does not clear a newer heartbeat', async () => {
   );
   assert.equal(cleared.cleared, 1);
   assert.equal(db.heartbeats.length, 0);
-  assert.equal(parseUkAdminPresenceNotAfterMs({ notAfterMs: older.getTime() })?.getTime(), older.getTime());
-  assert.equal(parseUkAdminPresenceNotAfterMs({}), undefined);
+  assert.equal(
+    parseUkAdminPresenceNotAfterMs({ notAfterMs: older.getTime() }, new Date(NOW))?.getTime(),
+    older.getTime(),
+  );
+  assert.equal(parseUkAdminPresenceNotAfterMs({}, new Date(NOW)), undefined);
+  assert.equal(
+    parseUkAdminPresenceNotAfterMs(
+      { notAfterMs: NOW + UK_ADMIN_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS },
+      new Date(NOW),
+    )?.getTime(),
+    NOW + UK_ADMIN_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS,
+  );
+  assert.throws(
+    () =>
+      parseUkAdminPresenceNotAfterMs(
+        { notAfterMs: NOW + UK_ADMIN_PRESENCE_NOT_AFTER_FUTURE_SKEW_MS + 1 },
+        new Date(NOW),
+      ),
+    /notAfterMs_too_far_future/,
+  );
 });
 
 test('authenticated UK agent heartbeat yields verified human Online and operator count', async () => {
@@ -307,11 +327,13 @@ test('heartbeat body rejects client-supplied tenant / operator identity', () => 
   assert.throws(() => assertUkAdminPresenceBodyClean({ userId: 1 }));
 });
 
-test('v1 offline: Admin principal clears presence; integration stays reserved (WP/Silver untouched)', async () => {
-  assert.equal(OPERATOR_PRESENCE_INGESTION_CONTRACT.paths.offline.status, 'admin_only');
+test('v1 offline: Admin and WP integration with write scope clear presence; installation stays reserved', async () => {
+  assert.equal(OPERATOR_PRESENCE_INGESTION_CONTRACT.paths.offline.status, 'admin_and_integration_write');
 
   const db = createPresenceDb();
   await recordTenantAdminHeartbeat(db.prisma, { tenantId: 'pw-uk', userId: 42, now: ago(1_000) });
+  const wpUserId = syntheticPresenceUserId('pw-infotech', 'primewayz-wordpress', 'wp-1');
+  await recordTenantAdminHeartbeat(db.prisma, { tenantId: 'pw-infotech', userId: wpUserId, now: ago(1_000) });
   const handlers = createOperatorPresenceIngestionHandlers({
     policyStore: createMemoryTenantPresencePolicyStore(),
     eventStore: createMemoryTenantPresenceEventStore(),
@@ -319,12 +341,29 @@ test('v1 offline: Admin principal clears presence; integration stays reserved (W
     recordHeartbeat: async (input) => recordTenantAdminHeartbeat(db.prisma, input),
     clearOperatorPresence: async (input) => clearAdminPresenceForUser(db.prisma, input),
     resolvePrincipal: async (req) => {
-      if (req.get('x-kind') === 'integration') {
+      const kind = req.get('x-kind');
+      if (kind === 'integration') {
         return {
           kind: 'integration',
           tenantId: 'pw-infotech',
-          integrationId: 'wp',
+          integrationId: 'primewayz-wordpress',
           scopes: [OPERATOR_PRESENCE_WRITE_SCOPE],
+        };
+      }
+      if (kind === 'installation') {
+        return {
+          kind: 'installation',
+          tenantId: 'pw-infotech',
+          installationId: 'inst-1',
+          scopes: [],
+        };
+      }
+      if (kind === 'silver') {
+        return {
+          kind: 'integration',
+          tenantId: 'rrb-silver-campaign',
+          integrationId: 'rrb-silver-campaign-next',
+          scopes: ['chat:dashboard'],
         };
       }
       return {
@@ -344,12 +383,27 @@ test('v1 offline: Admin principal clears presence; integration stays reserved (W
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address() as AddressInfo;
   try {
+    const installation = await fetch(`http://127.0.0.1:${port}${OPERATOR_PRESENCE_OFFLINE_PATH}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-kind': 'installation' },
+      body: JSON.stringify({ clientActionId: 'off-inst', operatorRef: 'wp-1' }),
+    });
+    assert.equal(installation.status, 501);
+
+    const silver = await fetch(`http://127.0.0.1:${port}${OPERATOR_PRESENCE_OFFLINE_PATH}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-kind': 'silver' },
+      body: JSON.stringify({ clientActionId: 'off-silver', operatorRef: 'op-1' }),
+    });
+    assert.equal(silver.status, 403);
+
     const integration = await fetch(`http://127.0.0.1:${port}${OPERATOR_PRESENCE_OFFLINE_PATH}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-kind': 'integration' },
-      body: JSON.stringify({ clientActionId: 'off-1', operatorRef: 'wp-1' }),
-    });
-    assert.equal(integration.status, 501);
+      body: JSON.stringify({ clientActionId: 'off-1', operatorRef: 'wp-1', notAfterMs: NOW }),
+    }).then((r) => r.json());
+    assert.equal(integration.success, true);
+    assert.equal(integration.cleared, 1);
 
     const admin = await fetch(`http://127.0.0.1:${port}${OPERATOR_PRESENCE_OFFLINE_PATH}`, {
       method: 'POST',
@@ -396,8 +450,10 @@ test('WS-2 wiring: UK offline path, dashboard enrichment, Option 1 not activated
   assert.match(panel, /verifiedHumanOnline/);
 
   assert.match(read('src/lib/chat/ukAdminPresence.ts'), /isOption1Activated/);
+  const registry = read('src/lib/integrations/integrationRegistry.ts');
+  assert.match(registry, /integrationId: 'primewayz-wordpress'[\s\S]*?chat:presence:write/);
   assert.doesNotMatch(
-    read('src/lib/integrations/integrationRegistry.ts'),
-    /scopes:\s*\[[^\]]*chat:presence:write/,
+    registry,
+    /integrationId: 'rrb-silver-campaign-next'[\s\S]*?chat:presence:write/,
   );
 });
